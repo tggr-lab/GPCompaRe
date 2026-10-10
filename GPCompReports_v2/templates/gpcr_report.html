@@ -602,6 +602,11 @@
 {% endblock %}
 
 {% block scripts %}
+{% if gpcr_id == 'par2_human' and has_delta_chart %}
+{# Easter egg: the ΔRRCS distribution can turn into a game of Tetris. #}
+<link rel="stylesheet" href="{{ static_prefix }}static/css/rrcs-tetris.css">
+<script src="{{ static_prefix }}static/js/rrcs-tetris.js" defer></script>
+{% endif %}
 <script>
 window.CHART_DATA = window.CHART_DATA || {};
 {% if has_delta_chart %}window.CHART_DATA['delta-chart'] = {{ fig_delta_json | safe }};{% endif %}
