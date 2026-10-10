@@ -1,9 +1,13 @@
 /* RRCS Tetris: an easter egg on the PAR2 report page.
    The ΔRRCS histogram turns into a Tetris board whose starting stack is the
-   histogram itself (binned into the board's columns). Exit restores the chart.
+   histogram itself (binned into the board's columns). The board is drawn to
+   look like the Plotly chart it replaces: same title, axes, grid and bar style,
+   with real counts on the y-axis and real ΔRRCS values on the x-axis.
+   Exit restores the chart.
 
    Triggers: the faint ▦ button next to the "ΔRRCS distribution" heading,
-   or the Konami code (↑ ↑ ↓ ↓ ← → ← → B A) anywhere on the page.
+   typing SLIGKV (PAR2's tethered ligand) or the Konami code
+   (↑ ↑ ↓ ↓ ← → ← → B A) anywhere on the page.
 
    Controls: ← → move · ↑ / X rotate · Z rotate back · ↓ soft drop
              Space hard drop · P pause · Esc exit. Touch buttons on mobile. */
@@ -14,6 +18,8 @@
   var ROWS = 20;
   var SEED_MAX_ROWS = 8;
   var BEST_KEY = 'gpcrsynth-rrcs-tetris-best';
+  // Plot margins around the board, in px (roughly the figure's own margins).
+  var M = { l: 56, r: 16, t: 44, b: 52 };
 
   var SHAPES = {
     I: [[0, 1], [1, 1], [2, 1], [3, 1]],
@@ -35,9 +41,18 @@
     J: [null, '#7C3AED'],
     L: [null, '#CA8A04']
   };
+  // Fallbacks match website/plotly_theming.py, used if the chart div lacks its overrides.
+  var PLOT_THEME = {
+    light: { paper: '#ffffff', font: '#1f2328', tick: '#59636e', grid: '#eaeef2', line: '#d1d9e0' },
+    dark:  { paper: '#0f1417', font: '#e2e8f0', tick: '#94a3b8', grid: '#1f2937', line: '#334155' }
+  };
+  var PLOT_FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
   var LINE_SCORES = [0, 100, 300, 500, 800];
   var LINE_MSGS = ['', 'Contact broken', 'Double rearrangement', 'Triple rearrangement', 'Full activation!'];
-  var KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+  var CODES = [
+    { keys: ['s', 'l', 'i', 'g', 'k', 'v'], msg: 'SLIGKV bound. Receptor active.' },
+    { keys: ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'], msg: '' }
+  ];
 
   var chartEl, wrapEl, canvas, ctx, nextCanvas, nextCtx;
   var ui = {};
@@ -58,15 +73,21 @@
     try { localStorage.setItem(BEST_KEY, String(v)); } catch (e) {}
   }
 
-  // ---------- board seeding from the histogram ----------
+  // ---------- chart data + theme ----------
+
+  function chartPayload() {
+    return (window.CHART_DATA || {})['delta-chart'] || {};
+  }
+
+  function histogramTrace() {
+    return (chartPayload().data || [])[0] || {};
+  }
 
   function histogramValues() {
-    var payload = (window.CHART_DATA || {})['delta-chart'];
-    var trace = payload && payload.data && payload.data[0];
-    var xs = trace && trace.x;
+    var xs = histogramTrace().x;
     if (xs && xs.bdata) xs = decodeBdata(xs);
     if (!xs || !xs.length) return null;
-    return Array.prototype.filter.call(xs,function(v) { return typeof v === 'number' && isFinite(v); });
+    return Array.prototype.filter.call(xs, function(v) { return typeof v === 'number' && isFinite(v); });
   }
 
   // Plotly >= 6 may serialise numeric arrays as {dtype: 'f8', bdata: <base64>}.
@@ -82,7 +103,39 @@
     } catch (e) { return null; }
   }
 
-  function seedBoard() {
+  function plotTitle() {
+    var t = (chartPayload().layout || {}).title;
+    var text = (t && typeof t === 'object') ? t.text : t;
+    return text ? String(text).replace('Distribution', 'Tetris') : 'ΔRRCS Tetris';
+  }
+
+  function isDark() {
+    var root = document.documentElement;
+    var mode = root.getAttribute('data-color-mode');
+    if (mode === 'dark' || mode === 'light') return mode === 'dark';
+    var forced = root.getAttribute('data-theme');
+    if (forced === 'dark' || forced === 'light') return forced === 'dark';
+    return !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  }
+
+  // Colours from the same light/dark layout overrides site.js applies to the real chart.
+  function plotTheme() {
+    var key = isDark() ? 'dark' : 'light';
+    var t = {}, base = PLOT_THEME[key], o = {};
+    for (var k in base) t[k] = base[k];
+    try { o = JSON.parse(chartEl.getAttribute('data-chart-layout-' + key) || '{}'); } catch (e) {}
+    if (o.paper_bgcolor) t.paper = o.paper_bgcolor;
+    if (o['font.color']) t.font = o['font.color'];
+    if (o['yaxis.tickfont.color']) t.tick = o['yaxis.tickfont.color'];
+    if (o['yaxis.gridcolor']) t.grid = o['yaxis.gridcolor'];
+    if (o['yaxis.linecolor']) t.line = o['yaxis.linecolor'];
+    t.family = o['font.family'] || PLOT_FONT;
+    return t;
+  }
+
+  // ---------- board seeding from the histogram ----------
+
+  function seedBoard(s) {
     var board = emptyBoard();
     var xs = histogramValues();
     var counts = [];
@@ -95,10 +148,13 @@
         var idx = Math.min(COLS - 1, Math.floor((v - lo) / span * COLS));
         counts[idx]++;
       });
+      s.xLo = lo; s.xHi = lo + span;
     } else {
       for (c = 0; c < COLS; c++) counts.push(Math.round(100 * Math.exp(-Math.pow((c - 4.5) / 2, 2))));
+      s.xLo = -5; s.xHi = 5;
     }
     var max = Math.max.apply(null, counts) || 1;
+    s.countsPerRow = max / SEED_MAX_ROWS;
     var heights = counts.map(function(n) {
       if (!n) return 0;
       return Math.max(1, Math.round(n / max * SEED_MAX_ROWS));
@@ -250,14 +306,14 @@
   function gameOver(s) {
     s.over = true;
     if (s.score > s.best) { s.best = s.score; writeBest(s.best); }
-    flash('Game over. Enter to restart', true);
+    flash('β-arrestin recruited. Receptor internalized. Press Enter to recycle it.', true);
   }
 
   // ---------- loop + rendering ----------
 
-  function newGame() {
+  function newGame(msg) {
     state = {
-      board: seedBoard(),
+      board: null,
       queue: [],
       piece: null,
       score: 0, lines: 0, level: 0,
@@ -265,9 +321,10 @@
       over: false, paused: false,
       dropAcc: 0, last: performance.now()
     };
+    state.board = seedBoard(state);
     refillBag(state);
     spawn(state);
-    flash('');
+    flash(msg || '');
     updatePanel();
   }
 
@@ -289,7 +346,10 @@
   }
 
   function pieceColor(type) {
-    if (type === 'seed') return cssVar('--brand-primary', '#0D9488');
+    if (type === 'seed') {
+      var marker = histogramTrace().marker || {};
+      return typeof marker.color === 'string' ? marker.color : '#008080';
+    }
     var v = COLOR_VARS[type];
     return cssVar(v[0], v[1]);
   }
@@ -306,75 +366,132 @@
   }
 
   function cellSize() {
-    var avail = Math.min(window.innerHeight * 0.7, 560);
-    var byWidth = (wrapEl.clientWidth - 40) / COLS;
-    return Math.max(14, Math.floor(Math.min(avail / ROWS, byWidth, 28)));
+    var avail = Math.min(window.innerHeight * 0.75, 640) - M.t - M.b;
+    var byWidth = (wrapEl.clientWidth - 32 - M.l - M.r) / COLS;
+    return Math.max(14, Math.floor(Math.min(avail / ROWS, byWidth, 26)));
   }
 
   function resize() {
     if (!active) return;
     var cs = cellSize();
     state.cs = cs;
-    ctx = fitCanvas(canvas, cs * COLS, cs * ROWS);
+    ctx = fitCanvas(canvas, M.l + cs * COLS + M.r, M.t + cs * ROWS + M.b);
     nextCtx = fitCanvas(nextCanvas, cs * 4, cs * 3);
   }
 
-  function drawCell(c, x, y, cs, color, alpha, seed) {
+  // A block drawn like a histogram bar: flat fill at the trace's opacity, with a
+  // 1px gutter between columns. Seed cells have no vertical gap so they read as bars.
+  function drawCell(c, ox, oy, x, y, cs, color, alpha, bar) {
     c.globalAlpha = alpha;
     c.fillStyle = color;
-    c.fillRect(x * cs + 1, y * cs + 1, cs - 2, cs - 2);
-    if (alpha === 1) {
-      c.globalAlpha = seed ? 0.15 : 0.25;
-      c.fillStyle = '#fff';
-      c.fillRect(x * cs + 1, y * cs + 1, cs - 2, Math.max(2, cs * 0.18));
-    }
+    if (bar) c.fillRect(ox + x * cs + 1, oy + y * cs, cs - 2, cs);
+    else c.fillRect(ox + x * cs + 1, oy + y * cs + 1, cs - 2, cs - 2);
     c.globalAlpha = 1;
   }
 
-  function draw() {
-    var s = state, cs = s.cs, c = ctx;
-    var bg = cssVar('--bgColor-default', '#fff');
-    var grid = cssVar('--borderColor-muted', '#d0d7de');
-    c.fillStyle = bg;
-    c.fillRect(0, 0, cs * COLS, cs * ROWS);
-    c.strokeStyle = grid;
+  // Round tick spacing (1, 2 or 5 × 10^k), as Plotly picks for its axes.
+  function niceStep(raw) {
+    var p = Math.pow(10, Math.floor(Math.log10(Math.max(raw, 1e-9))));
+    var f = raw / p;
+    return Math.max(1, (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p);
+  }
+
+  function drawAxes(c, t, cs) {
+    var s = state, W = cs * COLS, H = cs * ROWS, ox = M.l, oy = M.t;
+    c.font = '12px ' + t.family;
     c.lineWidth = 1;
-    c.globalAlpha = 0.5;
-    for (var gx = 1; gx < COLS; gx++) {
-      c.beginPath(); c.moveTo(gx * cs + 0.5, 0); c.lineTo(gx * cs + 0.5, cs * ROWS); c.stroke();
+
+    // Horizontal grid + y ticks: real counts, as on the histogram's y-axis.
+    c.strokeStyle = t.grid;
+    c.fillStyle = t.tick;
+    c.textAlign = 'right';
+    c.textBaseline = 'middle';
+    var topCount = (ROWS - 1) * s.countsPerRow, step = niceStep(topCount / 5);
+    for (var n = 0; n <= topCount; n += step) {
+      var y = Math.round(oy + H - n / s.countsPerRow * cs) + 0.5;
+      if (n > 0) { c.beginPath(); c.moveTo(ox, y); c.lineTo(ox + W, y); c.stroke(); }
+      c.fillText(String(n), ox - 8, y);
     }
-    for (var gy = 1; gy < ROWS; gy++) {
-      c.beginPath(); c.moveTo(0, gy * cs + 0.5); c.lineTo(cs * COLS, gy * cs + 0.5); c.stroke();
+
+    // Baseline.
+    c.strokeStyle = t.line;
+    c.beginPath(); c.moveTo(ox, oy + H + 0.5); c.lineTo(ox + W, oy + H + 0.5); c.stroke();
+
+    // x ticks: ΔRRCS at every other column edge.
+    c.fillStyle = t.tick;
+    c.textAlign = 'center';
+    c.textBaseline = 'top';
+    var span = s.xHi - s.xLo;
+    for (var i = 0; i <= COLS; i += 2) {
+      var v = s.xLo + span * i / COLS;
+      c.fillText(Math.abs(v) < 0.05 ? '0' : v.toFixed(1), ox + i * cs, oy + H + 6);
     }
+
+    // Axis titles.
+    c.fillStyle = t.font;
+    c.font = '13px ' + t.family;
+    c.fillText('ΔRRCS (Active − Inactive)', ox + W / 2, oy + H + 26);
+    c.save();
+    c.translate(16, oy + H / 2);
+    c.rotate(-Math.PI / 2);
+    c.textBaseline = 'middle';
+    c.fillText('Count', 0, 0);
+    c.restore();
+
+    // Figure title, shrunk to fit narrow screens.
+    var title = plotTitle(), size = 17, maxW = M.l + W + M.r - 16;
+    c.textAlign = 'left';
+    c.textBaseline = 'alphabetic';
+    do { c.font = size + 'px ' + t.family; size--; } while (size > 11 && c.measureText(title).width > maxW);
+    c.fillText(title, 8, 26);
+  }
+
+  function drawOverlay(c, t, cs, text) {
+    var W = cs * COLS, H = cs * ROWS, ox = M.l, oy = M.t;
+    c.globalAlpha = 0.7;
+    c.fillStyle = t.paper;
+    c.fillRect(ox, oy, W, H);
     c.globalAlpha = 1;
+    // Styled like a Plotly annotation box.
+    c.font = '600 ' + Math.round(cs * 0.75) + 'px ' + t.family;
+    var tw = c.measureText(text).width + 20, th = cs * 1.4;
+    var bx = ox + (W - tw) / 2, by = oy + (H - th) / 2;
+    c.fillStyle = t.paper;
+    c.fillRect(bx, by, tw, th);
+    c.strokeStyle = t.line;
+    c.strokeRect(bx + 0.5, by + 0.5, tw - 1, th - 1);
+    c.fillStyle = t.font;
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillText(text, ox + W / 2, by + th / 2);
+  }
+
+  function draw() {
+    var s = state, cs = s.cs, c = ctx, t = plotTheme();
+    var ox = M.l, oy = M.t, alpha = histogramTrace().opacity || 0.8;
+    c.fillStyle = t.paper;
+    c.fillRect(0, 0, M.l + cs * COLS + M.r, M.t + cs * ROWS + M.b);
+    drawAxes(c, t, cs);
 
     for (var r = 0; r < ROWS; r++) {
       for (var col = 0; col < COLS; col++) {
-        var t = s.board[r][col];
-        if (t) drawCell(c, col, r, cs, pieceColor(t), t === 'seed' ? 0.8 : 1, t === 'seed');
+        var type = s.board[r][col];
+        if (type) drawCell(c, ox, oy, col, r, cs, pieceColor(type), alpha, type === 'seed');
       }
     }
 
     if (s.piece && !s.over) {
       var p = s.piece, color = pieceColor(p.type), gyPos = ghostY();
       cellsOf(p.type, p.rot).forEach(function(cell) {
-        if (gyPos + cell[1] >= 0) drawCell(c, p.x + cell[0], gyPos + cell[1], cs, color, 0.2);
+        if (gyPos + cell[1] >= 0) drawCell(c, ox, oy, p.x + cell[0], gyPos + cell[1], cs, color, 0.18);
       });
       cellsOf(p.type, p.rot).forEach(function(cell) {
-        if (p.y + cell[1] >= 0) drawCell(c, p.x + cell[0], p.y + cell[1], cs, color, 1);
+        if (p.y + cell[1] >= 0) drawCell(c, ox, oy, p.x + cell[0], p.y + cell[1], cs, color, alpha);
       });
     }
 
-    if (s.paused || s.over) {
-      c.globalAlpha = 0.6;
-      c.fillStyle = bg;
-      c.fillRect(0, 0, cs * COLS, cs * ROWS);
-      c.globalAlpha = 1;
-      c.fillStyle = cssVar('--fgColor-default', '#1f2328');
-      c.font = '600 ' + Math.round(cs * 0.9) + 'px ' + cssVar('--font-ui', 'system-ui');
-      c.textAlign = 'center';
-      c.fillText(s.over ? 'GAME OVER' : 'PAUSED', cs * COLS / 2, cs * ROWS / 2);
-    }
+    if (s.over) drawOverlay(c, t, cs, 'Internalized');
+    else if (s.paused) drawOverlay(c, t, cs, 'Desensitized');
 
     // Next-piece preview.
     var nc = nextCtx, nt = s.queue[0];
@@ -385,8 +502,8 @@
       var maxX = Math.max.apply(null, cells.map(function(q) { return q[0]; }));
       var minY = Math.min.apply(null, cells.map(function(q) { return q[1]; }));
       var maxY = Math.max.apply(null, cells.map(function(q) { return q[1]; }));
-      var ox = (4 - (maxX - minX + 1)) / 2 - minX, oy = (3 - (maxY - minY + 1)) / 2 - minY;
-      cells.forEach(function(q) { drawCell(nc, q[0] + ox, q[1] + oy, cs, pieceColor(nt), 1); });
+      var nx = (4 - (maxX - minX + 1)) / 2 - minX, ny = (3 - (maxY - minY + 1)) / 2 - minY;
+      cells.forEach(function(q) { drawCell(nc, 0, 0, q[0] + nx, q[1] + ny, cs, pieceColor(nt), alpha); });
     }
   }
 
@@ -402,7 +519,7 @@
   function flash(msg, sticky) {
     ui.msg.textContent = msg;
     clearTimeout(flashTimer);
-    if (msg && !sticky) flashTimer = setTimeout(function() { ui.msg.textContent = ''; }, 1600);
+    if (msg && !sticky) flashTimer = setTimeout(function() { ui.msg.textContent = ''; }, 2000);
   }
 
   // ---------- input ----------
@@ -411,7 +528,7 @@
     if (!active) return;
     var s = state;
     if (action === 'exit') { stop(); return; }
-    if (action === 'restart') { newGame(); return; }
+    if (action === 'restart') { newGame('Recycled to the membrane'); return; }
     if (action === 'pause') { if (!s.over) s.paused = !s.paused; return; }
     if (s.over || s.paused) return;
     if (action === 'left') move(-1, 0);
@@ -428,13 +545,26 @@
     p: 'pause', P: 'pause', Escape: 'exit'
   };
 
-  var konamiPos = 0;
+  var recentKeys = [];
+  function matchCode(key) {
+    recentKeys.push(key.length === 1 ? key.toLowerCase() : key);
+    if (recentKeys.length > 12) recentKeys.shift();
+    for (var i = 0; i < CODES.length; i++) {
+      var code = CODES[i].keys, tail = recentKeys.slice(-code.length);
+      if (tail.length === code.length && tail.every(function(k, j) { return k === code[j]; })) {
+        recentKeys = [];
+        return CODES[i];
+      }
+    }
+    return null;
+  }
+
   function onKey(e) {
     if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (!active) {
-      var k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-      konamiPos = (k === KONAMI[konamiPos]) ? konamiPos + 1 : (k === KONAMI[0] ? 1 : 0);
-      if (konamiPos === KONAMI.length) { konamiPos = 0; start(true); }
+      var code = matchCode(e.key);
+      if (code) start(true, code.msg);
       return;
     }
     if (e.key === 'Enter' && state.over) { e.preventDefault(); act('restart'); return; }
@@ -466,7 +596,7 @@
         '<div class="rrcs-tetris-btns">' +
           '<button type="button" class="btn" data-k="pause">Pause</button>' +
           '<button type="button" class="btn" data-a="restart">Restart</button>' +
-          '<button type="button" class="btn" data-a="exit">Back to chart</button>' +
+          '<button type="button" class="btn" data-a="exit">Back to science</button>' +
         '</div>' +
         '<div class="rrcs-tetris-help">← → move · ↑/X rotate · Z rotate back · ↓ soft drop · Space hard drop · P pause · Esc exit</div>' +
       '</div>' +
@@ -491,14 +621,14 @@
     });
   }
 
-  function start(scrollIntoView) {
+  function start(scrollIntoView, msg) {
     if (active) return;
     if (!wrapEl) buildUI();
     active = true;
     chartEl.hidden = true;
     wrapEl.hidden = false;
     if (ui.toggle) ui.toggle.setAttribute('aria-pressed', 'true');
-    newGame();
+    newGame(msg);
     resize();
     if (scrollIntoView) wrapEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
     state.last = performance.now();
@@ -529,7 +659,7 @@
       btn.type = 'button';
       btn.className = 'rrcs-tetris-toggle';
       btn.textContent = '▦';
-      btn.title = 'Insert coin';
+      btn.title = 'Cleave to activate';
       btn.setAttribute('aria-label', 'Play RRCS Tetris');
       btn.setAttribute('aria-pressed', 'false');
       btn.addEventListener('click', function() { active ? stop() : start(false); });
@@ -540,7 +670,6 @@
     window.addEventListener('resize', resize);
     window.addEventListener('blur', pauseIfPlaying);
     document.addEventListener('visibilitychange', function() { if (document.hidden) pauseIfPlaying(); });
-    document.addEventListener('gpcrsynth-theme-change', function() { if (active) draw(); });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
