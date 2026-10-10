@@ -1,0 +1,85 @@
+/* RRCS Tetris easter egg (PAR2 report page only). See static/js/rrcs-tetris.js. */
+
+.rrcs-tetris-toggle {
+  margin-left: var(--s-2, 8px);
+  padding: 0 4px;
+  font-size: 0.9rem;
+  line-height: 1;
+  color: var(--fgColor-muted);
+  background: none;
+  border: 0;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  opacity: 0.25;
+  vertical-align: middle;
+  transition: opacity var(--t-fast);
+}
+.rrcs-tetris-toggle:hover,
+.rrcs-tetris-toggle:focus-visible,
+.rrcs-tetris-toggle[aria-pressed="true"] { opacity: 1; color: var(--brand-primary); }
+
+.rrcs-tetris {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-4, 16px);
+  justify-content: center;
+  align-items: flex-start;
+  background: var(--bgColor-default);
+  border: 1px solid var(--borderColor-muted);
+  border-radius: var(--r-md);
+  padding: var(--s-3, 12px);
+}
+.rrcs-tetris[hidden] { display: none; }
+
+.rrcs-tetris-board canvas {
+  display: block;
+  touch-action: none;
+}
+
+.rrcs-tetris-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2, 8px);
+  min-width: 180px;
+  max-width: 240px;
+  color: var(--fgColor-default);
+}
+.rrcs-tetris-title { font-family: var(--font-serif); font-size: 1.15rem; font-weight: 700; }
+.rrcs-tetris-sub,
+.rrcs-tetris-help { font-size: 0.8rem; color: var(--fgColor-muted); }
+.rrcs-tetris-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--fgColor-muted); }
+.rrcs-tetris-next { display: block; }
+
+.rrcs-tetris-stats {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px var(--s-3, 12px);
+  margin: 0;
+  font-size: 0.875rem;
+}
+.rrcs-tetris-stats dt { color: var(--fgColor-muted); }
+.rrcs-tetris-stats dd { margin: 0; text-align: right; font-family: var(--font-mono); font-weight: 600; }
+
+.rrcs-tetris-msg { min-height: 1.3em; font-weight: 600; color: var(--brand-accent); }
+.rrcs-tetris-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.rrcs-tetris-touch {
+  display: none;
+  width: 100%;
+  justify-content: center;
+  gap: 8px;
+}
+.rrcs-tetris-touch button {
+  width: 52px;
+  height: 52px;
+  font-size: 1.3rem;
+  color: var(--fgColor-default);
+  background: var(--bgColor-muted, transparent);
+  border: 1px solid var(--borderColor-muted);
+  border-radius: var(--r-md);
+  touch-action: manipulation;
+}
+@media (hover: none), (max-width: 600px) {
+  .rrcs-tetris-touch { display: flex; }
+  .rrcs-tetris-help { display: none; }
+}
