@@ -141,11 +141,15 @@
     var counts = [];
     var c;
     if (xs && xs.length) {
-      var lo = Math.min.apply(null, xs), hi = Math.max.apply(null, xs);
+      // Bin over the 2nd–98th percentile so long tails don't squash the shape
+      // into one column; outliers are clamped into the edge columns.
+      var sorted = Array.prototype.slice.call(xs).sort(function(a, b) { return a - b; });
+      var lo = sorted[Math.floor((sorted.length - 1) * 0.02)];
+      var hi = sorted[Math.ceil((sorted.length - 1) * 0.98)];
       var span = (hi - lo) || 1;
       for (c = 0; c < COLS; c++) counts.push(0);
       xs.forEach(function(v) {
-        var idx = Math.min(COLS - 1, Math.floor((v - lo) / span * COLS));
+        var idx = Math.max(0, Math.min(COLS - 1, Math.floor((v - lo) / span * COLS)));
         counts[idx]++;
       });
       s.xLo = lo; s.xHi = lo + span;
