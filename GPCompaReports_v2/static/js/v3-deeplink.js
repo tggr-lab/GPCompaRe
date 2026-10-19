@@ -1,6 +1,10 @@
 /* v3-deeplink.js — put snake-plot state in the URL hash so a link can point at a view.
    Grammar: #view=cfr&min=0.5&max=3&dir=active&sec=sec-changes
-   Reading the hash changes what is displayed but adds nothing to the page. */
+   Focus (written by the Browse page search, read only):
+     res=159        select residue 159 on the snake plot and show its contact arcs
+     vq=p.Met159Ile prefill the variants table search box, filtering the table
+   Reading the hash changes what is displayed but adds nothing to the page;
+   without these keys the page opens exactly as it always did. */
 (function () {
   'use strict';
 
@@ -54,8 +58,43 @@
     if (h.dir) window.SnakeAPI.setDirection(h.dir);
   }
 
+  // Search landing: filter the variants table through its own search box.
+  function applyVariantQuery() {
+    var h = parseHash();
+    if (!h.vq) return false;
+    var input = document.querySelector('[data-table-search="variants-table"]');
+    if (!input) return false;
+    if (input.value !== h.vq) {
+      input.value = h.vq;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    return true;
+  }
+
+  // Search landing: select a residue the same way a click on it does, with
+  // its contact arcs shown. Skipped if it is already the selected residue
+  // (a click would toggle it off).
+  function applyResidue() {
+    var h = parseHash();
+    if (!h.res || !/^\d+$/.test(h.res) || !window.SnakeAPI) return false;
+    var container = document.getElementById('snake-plot-container');
+    var circle = container && container.querySelector('circle[id="' + h.res + '"]');
+    if (!circle) return false;
+    if (!window.SnakeAPI.getState().links) {
+      window.SnakeAPI.setLinksVisible(true);
+      var cb = document.getElementById('snake-links-cb');
+      if (cb) cb.checked = true;
+    }
+    if (circle.getAttribute('stroke-width') !== '4') {
+      circle.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    }
+    return true;
+  }
+
   function applyHash() {
     applySnakeHash();
+    applyResidue();
+    applyVariantQuery();
     applySectionHash();
   }
 
@@ -75,13 +114,31 @@
 
   function startSnake() {
     applySnakeHash();
+    applyResidue();
     watch();
   }
+
+  // The table filter is applied before the section scroll so the scroll lands
+  // on the already-shortened table.
+  var focused = applyVariantQuery();
 
   // `sec` has no SnakeAPI dependency, so it applies immediately and
   // unconditionally, once, regardless of whether a snake plot exists on this
   // page.
   applySectionHash();
+
+  // Charts above the target can still change height while the page finishes
+  // loading; a search landing re-aims once at the end so it stays on target.
+  // A residue landing on the snake plot centres the residue itself.
+  if (focused || parseHash().res) {
+    window.addEventListener('load', function () {
+      var h = parseHash();
+      var c = h.res && /^\d+$/.test(h.res) &&
+        document.querySelector('#snake-plot-container circle[id="' + h.res + '"]');
+      if (c && (!h.sec || h.sec === 'sec-snake')) c.scrollIntoView({ block: 'center' });
+      else applySectionHash();
+    });
+  }
 
   // Ordering: the snake plot's code is an INLINE script, so it runs at parse
   // time. This module is deferred, so it runs after parsing, by which point
