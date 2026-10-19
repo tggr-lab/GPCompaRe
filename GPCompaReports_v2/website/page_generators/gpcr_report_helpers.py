@@ -754,6 +754,13 @@ def _build_tm_summary(delta_df, annot_map, sig_threshold):
 # Full variant table (10 columns)
 # ---------------------------------------------------------------------------
 
+def _parse_rsid_list(raw):
+    """rsIDs from the variant CSV's list literal, e.g. "['rs1', 'rs2']"."""
+    if raw is None or (isinstance(raw, float) and pd.isna(raw)):
+        return []
+    return re.findall(r'rs\d+', str(raw))
+
+
 def _prepare_variants_full(var_df, delta_df):
     """Prepare full 10-column variant table sorted by |ΔRRCS|."""
     if var_df.empty:
@@ -829,8 +836,16 @@ def _prepare_variants_full(var_df, delta_df):
         else:
             rsids_str = MISSING
 
+        # Not rendered by the report template. Carried so the site search
+        # index (search_index.py) can reuse these exact display strings
+        # and still match an allele by its gnomAD id or any of its rsIDs.
+        variant_id_raw = row.get('variant_id', '')
+        variant_id = str(variant_id_raw).strip() if pd.notna(variant_id_raw) else ''
+
         rows.append({
             'position': position,
+            'variant_id': variant_id,
+            'rsid_list': _parse_rsid_list(rsids_raw),
             'hgvsp': hgvsp,
             'hgvsc': hgvsc,
             'af_display': af_display,
