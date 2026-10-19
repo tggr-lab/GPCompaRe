@@ -57,17 +57,85 @@ def make_ranking_bar(info_df):
     return fig
 
 
+HISTOGRAM_NBINS = 100
+
+
+def _nice_dtick(rough):
+    """Plotly's linear autoTicks: round a rough step up to 1, 2 or 5 x 10^n (then 10)."""
+    base = 10 ** np.floor(np.log10(rough))
+    for m in (2, 5, 10):
+        if rough / base <= m:
+            return float(base * m)
+    return float(base * 10)
+
+
+def plotly_autobins(values, nbins):
+    """The bins Plotly draws for go.Histogram(x=values, nbinsx=nbins) on a linear axis.
+
+    A port of plotly.js Axes.autoBin (nice step from (max - min) / nbins, the first
+    tick at or below the minimum, then autoShiftNumericBins). Returns (start, end, size).
+    """
+    v = np.asarray(values, dtype=float)
+    v = v[np.isfinite(v)]
+    lo, hi = float(v.min()), float(v.max())
+    size = _nice_dtick((hi - lo) / nbins)
+    first_tick = np.ceil(lo / size - 1e-9) * size
+    start = first_tick - size
+
+    def near_edge(x):
+        return np.mod(1 + (x - start) * 100 / size, 100) < 2
+
+    n = len(v)
+    if np.all(np.round(v) == v):
+        if size < 1:
+            start = lo - 0.5 * size
+        else:
+            start -= 0.5
+            if start + size < lo:
+                start += size
+    elif near_edge(v + size / 2).sum() < n * 0.1:
+        if near_edge(v).sum() > n * 0.3 or near_edge(np.array([lo]))[0] or near_edge(np.array([hi]))[0]:
+            shift = size / 2
+            start += shift if start + shift < lo else -shift
+    count = 1 + int(np.floor((hi - start) / size))
+    return float(start), float(start + count * size), size
+
+
+def prebinned_histogram(values, nbins):
+    """(centers, counts, (start, end, size)) with Plotly's own bin edges and bin rule.
+
+    Plotly assigns a value to floor((x - start) / size + 1e-9), so the counts here
+    are the ones the browser would compute from the raw values.
+    """
+    v = np.asarray(values, dtype=float)
+    v = v[np.isfinite(v)]
+    start, end, size = plotly_autobins(v, nbins)
+    nb = int(round((end - start) / size))
+    idx = np.floor((v - start) / size + 1e-9).astype(int)
+    idx = idx[(idx >= 0) & (idx < nb)]
+    counts = np.bincount(idx, minlength=nb)
+    centers = start + size * (np.arange(nb) + 0.5)
+    return centers, counts, (start, end, size)
+
+
 def make_delta_histogram(store):
-    """Global distribution histogram of all delta_rrcs values."""
+    """Global distribution histogram of all delta_rrcs values.
+
+    Pre-binned: the page used to ship all 213,456 raw values (about 4 MB) for
+    Plotly to bin in the browser. The bins below are the ones Plotly picked for
+    nbinsx=100, so the chart draws the same bars from about a hundred numbers.
+    """
     all_deltas = []
     for gid in store.gpcr_ids:
         df = store.delta_data.get(gid, pd.DataFrame())
         if not df.empty:
             all_deltas.extend(df['delta_rrcs'].tolist())
 
+    centers, counts, (start, end, size) = prebinned_histogram(all_deltas, HISTOGRAM_NBINS)
     fig = go.Figure()
     fig.add_trace(go.Histogram(
-        x=all_deltas, nbinsx=100,
+        x=centers.tolist(), y=counts.tolist(), histfunc='sum',
+        xbins=dict(start=start, end=end, size=size), autobinx=False,
         marker_color='#008080', opacity=0.8,
         name='ΔRRCS'
     ))
