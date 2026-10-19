@@ -384,8 +384,8 @@
       <h3 class="report-chart-head" style="margin-top: var(--s-5);">Magnitude classification</h3>
       <div class="report-stats">
         <div class="report-stat"><div class="report-stat-num">{{ rrcs_stats.high_count }}</div><div class="report-stat-label">High (|Δ| ≥ 5.0)</div></div>
-        <div class="report-stat report-stat-accent"><div class="report-stat-num">{{ rrcs_stats.med_count }}</div><div class="report-stat-label">Medium ({{ "%.1f"|format(sig_threshold) }} ≤ |Δ| &lt; 5.0)</div></div>
-        <div class="report-stat"><div class="report-stat-num">{{ rrcs_stats.low_count }}</div><div class="report-stat-label">Low (|Δ| &lt; {{ "%.1f"|format(sig_threshold) }})</div></div>
+        <div class="report-stat report-stat-accent"><div class="report-stat-num">{{ rrcs_stats.med_count }}</div><div class="report-stat-label">Medium ({{ "%.2f"|format(sig_threshold) }} ≤ |Δ| &lt; 5.0)</div></div>
+        <div class="report-stat"><div class="report-stat-num">{{ rrcs_stats.low_count }}</div><div class="report-stat-label">Low (|Δ| &lt; {{ "%.2f"|format(sig_threshold) }})</div></div>
       </div>
     </section>
     {% endif %}
