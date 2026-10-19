@@ -270,6 +270,54 @@ p  { margin: 0 0 var(--s-4); }
 }
 .topbar-mobile-toggle:hover { background: var(--bgColor-muted); color: var(--fgColor-default); }
 
+/* Site search entry: goes to Browse with ?q=. Full field on wide screens, the
+   icon alone (opens Browse search) on narrower ones; the drawer has a field. */
+.topbar-search {
+  display: flex;
+  align-items: center;
+  gap: var(--s-1);
+  flex-shrink: 0;
+}
+.topbar-search-input {
+  font: inherit;
+  font-size: 0.88rem;
+  width: 210px;
+  min-height: 36px;
+  padding: 0 var(--s-3);
+  color: var(--fgColor-default);
+  background: var(--bgColor-default);
+  border: 1px solid var(--borderColor-muted);
+  border-radius: var(--r-md);
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+.topbar-search-input::placeholder { color: var(--fgColor-muted); }
+.topbar-search-input:focus {
+  outline: none;
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px var(--bgColor-accent-muted);
+}
+.topbar-search-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: transparent;
+  color: var(--fgColor-muted);
+  border: 1px solid var(--borderColor-muted);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.topbar-search-btn:hover { background: var(--bgColor-muted); color: var(--fgColor-default); border-color: var(--borderColor-default); }
+@media (max-width: 1099px) {
+  .topbar-search-input { display: none; }
+}
+.drawer-search { display: flex; gap: var(--s-2); }
+.drawer-search .v2-input { flex: 1 1 auto; min-width: 0; }
+.drawer-search .topbar-search-btn { width: 40px; height: 40px; }
+
 /* Dark-mode trick for any lab-logo image: invert luminance + rotate hue back so
    teal/orange emblem colors survive and the ring text stays legible. */
 [data-color-mode="dark"] .wordmark-logo,
@@ -1138,6 +1186,8 @@ p  { margin: 0 0 var(--s-4); }
 @media (max-width: 600px) {
   .topnav { display: none; }
   .topbar-mobile-toggle { display: inline-flex; }
+  .topbar-search { margin-left: auto; }
+  .topbar-inner { gap: var(--s-3); }
   .wordmark-logo { height: 40px; }
   .wordmark-text { font-size: 1.05rem; }
   .footer-logo { height: 72px; }

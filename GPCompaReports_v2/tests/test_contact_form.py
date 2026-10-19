@@ -42,7 +42,10 @@ needs_build = pytest.mark.skipif(
 
 def _form():
     h = CONTACT.read_text(encoding='utf-8')
-    return h[h.find('<form class="contact-form"'):h.find('</form>')], h
+    # The topbar carries its own search <form>, so look for the closing tag
+    # after the contact form starts, not the first one on the page.
+    start = h.find('<form class="contact-form"')
+    return h[start:h.find('</form>', start)], h
 
 
 @needs_build
