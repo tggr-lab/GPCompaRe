@@ -368,7 +368,7 @@
         ? esc(receptorLabel(c.receptor)) + ' at <strong>' + esc(keys.join(', ')) + '</strong>.'
         : '<strong>' + count + ' of ' + total + '</strong> receptors have a residue at <strong>' +
           esc(keys.join(', ')) + '</strong> (GPCRdb numbering, as in the snake plots). Residues: ' + esc(compTxt) + '.' +
-          (miss ? ' ' + miss + ' receptor' + (miss === 1 ? '' : 's') + ' could not be checked (no GPCRdb numbering in this build).' : ''));
+          (miss ? ' ' + miss + ' receptor' + (miss === 1 ? '' : 's') + ' could not be checked (no snake-plot numbering).' : ''));
       out.pos = { rows: rows, col: 'name', dir: 'asc' };
     });
   }

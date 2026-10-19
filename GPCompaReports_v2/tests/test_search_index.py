@@ -90,3 +90,13 @@ def test_position_index_uses_full_gpcrdb_numbering():
     assert hit and hit[0][1] == 300 and hit[0][2] == 'F'
     # Far more receptors than the partial annotation table could number.
     assert len(entries) > 250
+
+
+def test_snapshot_matches_the_database_numbering_not_live_gpcrdb():
+    """GPCRdb now serves MCHR1 as a 353-residue isoform (3.50x50 = R141). The
+    database and its approved snake plot use the 422-residue numbering."""
+    snap = json.loads((BASE / 'data' / 'snake_numbering.json').read_text(encoding='utf-8'))
+    rows = {gn: (seq, aa) for seq, aa, gn in snap['receptors']['mchr1_human']}
+    assert rows['3.50x50'] == (210, 'R')
+    assert rows['6.48x48'] == (338, 'W')
+    assert len(snap['receptors']) == 283

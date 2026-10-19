@@ -15,7 +15,7 @@ frequency, AlphaMissense and conservation strings are exactly what each
 report's variant table shows, including its gaps. Residue generic numbers for
 variants come from the annotation `display_number` column (`generic_number`
 is empty in every annotation file). Position search uses the full GPCRdb
-numbering that the snake plots are drawn from (see gpcrdb_residues.py).
+numbering shown in the published snake plots (see snake_numbering.py).
 """
 
 import json
@@ -26,7 +26,7 @@ import pandas as pd
 
 from . import gpcr_report_helpers as v1
 from ..format_helpers import MISSING
-from ..gpcrdb_residues import load_residue_maps
+from ..snake_numbering import load_snake_numbering
 
 RSID_SHARDS = 100
 
@@ -147,15 +147,15 @@ def generate_search_index(store, output_dir):
         for chrom, per in sorted(ranges.items())
     }
 
-    # ---- generic positions (full GPCRdb numbering) ----
-    maps, missing = load_residue_maps(gids, output_dir)
+    # ---- generic positions (snake-plot numbering) ----
+    maps, missing = load_snake_numbering(gids)
     pos_shards = {}
     for g in gids:
         rows = maps.get(g)
         if not rows:
             continue
         maxd = _residue_max_abs_delta(store.delta_data.get(g, pd.DataFrame()))
-        for seq, aa, _seg, gn in rows:
+        for seq, aa, gn in rows:
             m = _GN_RE.match(gn or '')
             if not m:
                 continue
