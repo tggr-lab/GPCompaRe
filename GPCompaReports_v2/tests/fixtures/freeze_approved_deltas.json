@@ -1,21 +1,102 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "approved_on": "2026-08-26",
   "approved_by": "PI, relayed by the repository owner",
   "what_changed": "The RRCS section heading 'Complete RRCS results' became 'RRCS results', and reports whose table is capped at 1,000 rows gained one line directly below that heading: 'Showing 1,000 of N contact pairs.' The sticky-navigation label for that section changed from 'Complete RRCS' to 'RRCS results' in the same approved correction.",
   "why": "_get_complete_rrcs() caps the table at 1,000 rows, so 'Complete' overstated it for 7 of the 283 receptors.",
-  "scope": "The sec-rrcs section header only. Nothing else in any report section is covered by this approval. The pre-V3 baseline in freeze_manifest.json is unchanged and remains authoritative: the freeze test reverses the two edits below and then compares against that baseline, so any other difference still fails.",
+  "scope": "The pre-V3 baseline in freeze_manifest.json is unchanged and remains authoritative: the freeze test reverses every rule in 'reversal' below and then compares against that baseline, so any other difference still fails. The top-level 'what_changed', 'why', 'row_cap', 'ordering' and 'truncated_receptors' keys describe the first approval (2026-08-26, the sec-rrcs header). The text fixes of 2026-10-19 are documented on their own rules (each rule has an id).",
   "row_cap": 1000,
-  "ordering": "delta_df.nlargest(1000, 'abs_delta'): the 1,000 contact pairs with the largest |\u0394RRCS|, descending. Ties broken by pandas' nlargest, which keeps first occurrence in row order.",
+  "ordering": "delta_df.nlargest(1000, 'abs_delta'): the 1,000 contact pairs with the largest |ΔRRCS|, descending. Ties broken by pandas' nlargest, which keeps first occurrence in row order.",
   "reversal": [
     {
+      "id": "rrcs-heading",
+      "approved_on": "2026-08-26",
       "kind": "literal",
       "after": "<h2>RRCS results</h2>",
       "before": "<h2>Complete RRCS results</h2>"
     },
     {
+      "id": "rrcs-truncation-note",
+      "approved_on": "2026-08-26",
       "kind": "regex_delete",
       "pattern": "\\n        <p class=\"section-sub rrcs-truncation-note\">Showing [\\d,]+ of [\\d,]+ contact pairs\\.</p>"
+    },
+    {
+      "id": "methods-multistate-citation",
+      "approved_on": "2026-10-19",
+      "approved_by": "Yamir (scope \"Additions + text fixes\", database brief 2026-10-19)",
+      "section": "sec-methods",
+      "what": "The AlphaFold-multistate citation text.",
+      "why": "The link pointed at Heo and Feig's paper (doi 10.1002/prot.26382) but the text named \"del Alamo et al., 2022\".",
+      "kind": "literal",
+      "after": "rel=\"noopener\">Heo L, Feig M. Proteins 2022;90(11):1873-1885, doi 10.1002/prot.26382</a>)",
+      "before": "rel=\"noopener\">del Alamo et al., 2022</a>)"
+    },
+    {
+      "id": "gnomad-release",
+      "approved_on": "2026-10-19",
+      "approved_by": "Yamir (scope \"Additions + text fixes\", database brief 2026-10-19)",
+      "section": "sec-variants, sec-methods, sec-understanding",
+      "what": "Every place a report names the gnomAD release (Methods link text, the Allele freq and Het count column tooltips, the Understanding paragraph).",
+      "why": "The variants were fetched from gnomAD v4.1 (dataset gnomad_r4) on 2026-02-02; \"gnomAD v4\" did not name the release.",
+      "kind": "literal",
+      "after": "gnomAD v4.1 (dataset gnomad_r4, accessed 2 February 2026)",
+      "before": "gnomAD v4"
+    },
+    {
+      "id": "methods-gnomad-citation",
+      "approved_on": "2026-10-19",
+      "approved_by": "Yamir (scope \"Additions + text fixes\", database brief 2026-10-19)",
+      "section": "sec-methods",
+      "what": "Citation after the gnomAD credit in Methods.",
+      "why": "Methods credited gnomAD without citing it.",
+      "kind": "literal",
+      "after": "</a> (Chen et al., Nature 2024, doi 10.1038/s41586-023-06045-0);",
+      "before": "</a>;"
+    },
+    {
+      "id": "methods-alphamissense-citation-licence",
+      "approved_on": "2026-10-19",
+      "approved_by": "Yamir (scope \"Additions + text fixes\", database brief 2026-10-19)",
+      "section": "sec-methods",
+      "what": "Citation and licence line after the AlphaMissense credit in Methods.",
+      "why": "Methods credited AlphaMissense with no citation and no licence; the Studio states the predictions as CC BY-NC-SA 4.0.",
+      "kind": "literal",
+      "after": ">AlphaMissense</a> (Cheng et al., Science 2023; predictions licensed CC BY-NC-SA 4.0);",
+      "before": ">AlphaMissense</a>;"
+    },
+    {
+      "id": "methods-conservation-credit",
+      "approved_on": "2026-10-19",
+      "approved_by": "Yamir (scope \"Additions + text fixes\", database brief 2026-10-19)",
+      "section": "sec-methods",
+      "what": "The conservation credit in Methods.",
+      "why": "The conservation scores are VarSite scores served by ProtVar; \"ProtVar / UniProt\" named the wrong source pair.",
+      "kind": "literal",
+      "after": "          conservation from VarSite scores served by\n          <a href=\"https://www.ebi.ac.uk/ProtVar/\" target=\"_blank\" rel=\"noopener\">ProtVar</a> (Stephenson et al., Nucleic Acids Res 2024, doi 10.1093/nar/gkae413).",
+      "before": "          conservation from\n          <a href=\"https://www.ebi.ac.uk/ProtVar/\" target=\"_blank\" rel=\"noopener\">ProtVar</a> /\n          <a href=\"https://www.uniprot.org/\" target=\"_blank\" rel=\"noopener\">UniProt</a>."
+    },
+    {
+      "id": "methods-homozygote-statement",
+      "approved_on": "2026-10-19",
+      "approved_by": "Yamir (scope \"Additions + text fixes\", database brief 2026-10-19)",
+      "section": "sec-methods",
+      "what": "The Het count sentence in Methods.",
+      "why": "It said homozygote counts are uniformly zero. They are not: 789 of the 29,213 alleles in the site's variant tables (3,621 of 145,345 alleles in the Studio's full gnomAD v4.1 pack) have ac_hom > 0. het_count = ac - 2 * ac_hom for every row.",
+      "kind": "literal",
+      "after": "The Het count column shows heterozygote allele counts (allele count minus twice the homozygote count); homozygote counts are not shown.",
+      "before": "The Het count column shows heterozygote allele counts; homozygote counts are uniformly zero across these rare missense variants in the current gnomAD v4 snapshot and are omitted."
+    },
+    {
+      "id": "methods-gpcrdb-uniprot-citations",
+      "approved_on": "2026-10-19",
+      "approved_by": "Yamir (scope \"Additions + text fixes\", database brief 2026-10-19)",
+      "section": "sec-methods",
+      "what": "Citations for GPCRdb and UniProt in the Structural annotation paragraph (UniProt moves here from the conservation credit).",
+      "why": "Methods credited GPCRdb and UniProt without citing them.",
+      "kind": "literal",
+      "after": ">GPCRdb</a> (Herrera et al., Nucleic Acids Res 2025, doi 10.1093/nar/gkae1065); protein accessions from\n          <a href=\"https://www.uniprot.org/\" target=\"_blank\" rel=\"noopener\">UniProt</a> (The UniProt Consortium, Nucleic Acids Res 2025, doi 10.1093/nar/gkae1010).",
+      "before": ">GPCRdb</a>."
     }
   ],
   "truncated_receptors": {

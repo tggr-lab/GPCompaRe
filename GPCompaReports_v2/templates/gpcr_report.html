@@ -289,8 +289,8 @@
                 <th data-sort="pos" data-tooltip="Residue position in the protein">Position</th>
                 <th data-sort="hgvsp" data-tooltip="HGVS protein-level annotation">Protein change</th>
                 <th data-sort="hgvsc" data-tooltip="HGVS coding-DNA annotation">DNA change</th>
-                <th data-sort="af" data-tooltip="Population frequency from gnomAD v4: lower = rarer variant">Allele freq</th>
-                <th data-tooltip="Heterozygote allele count from gnomAD v4">Het count</th>
+                <th data-sort="af" data-tooltip="Population frequency from gnomAD v4.1 (dataset gnomad_r4, accessed 2 February 2026): lower = rarer variant">Allele freq</th>
+                <th data-tooltip="Heterozygote allele count from gnomAD v4.1 (dataset gnomad_r4, accessed 2 February 2026)">Het count</th>
                 <th data-sort="delta" data-tooltip="Max |ΔRRCS| at this position">ΔRRCS</th>
                 <th data-sort="am" data-tooltip="AlphaMissense score: 0 = benign-like, 1 = pathogenic-like">AM score</th>
                 <th data-sort="path" data-tooltip="AlphaMissense pathogenicity class">Pathogenicity</th>
@@ -400,7 +400,7 @@
           quantify pairwise residue contact strength from inter-atomic distances; comparing active and
           inactive structures predicted by
           <a href="https://github.com/huhlim/alphafold-multistate" target="_blank" rel="noopener">AlphaFold multistate</a>
-          (<a href="https://onlinelibrary.wiley.com/doi/10.1002/prot.26382" target="_blank" rel="noopener">del Alamo et al., 2022</a>)
+          (<a href="https://onlinelibrary.wiley.com/doi/10.1002/prot.26382" target="_blank" rel="noopener">Heo L, Feig M. Proteins 2022;90(11):1873-1885, doi 10.1002/prot.26382</a>)
           gives a per-pair ΔRRCS.
         </p>
         <p>
@@ -408,17 +408,17 @@
         </p>
         <p>
           <strong>Variant data.</strong> Population frequencies from
-          <a href="https://gnomad.broadinstitute.org/" target="_blank" rel="noopener">gnomAD v4</a>;
+          <a href="https://gnomad.broadinstitute.org/" target="_blank" rel="noopener">gnomAD v4.1 (dataset gnomad_r4, accessed 2 February 2026)</a> (Chen et al., Nature 2024, doi 10.1038/s41586-023-06045-0);
           pathogenicity predictions from
-          <a href="https://alphamissense.hegelab.org/" target="_blank" rel="noopener">AlphaMissense</a>;
-          conservation from
-          <a href="https://www.ebi.ac.uk/ProtVar/" target="_blank" rel="noopener">ProtVar</a> /
-          <a href="https://www.uniprot.org/" target="_blank" rel="noopener">UniProt</a>.
-          The Het count column shows heterozygote allele counts; homozygote counts are uniformly zero across these rare missense variants in the current gnomAD v4 snapshot and are omitted.
+          <a href="https://alphamissense.hegelab.org/" target="_blank" rel="noopener">AlphaMissense</a> (Cheng et al., Science 2023; predictions licensed CC BY-NC-SA 4.0);
+          conservation from VarSite scores served by
+          <a href="https://www.ebi.ac.uk/ProtVar/" target="_blank" rel="noopener">ProtVar</a> (Stephenson et al., Nucleic Acids Res 2024, doi 10.1093/nar/gkae413).
+          The Het count column shows heterozygote allele counts (allele count minus twice the homozygote count); homozygote counts are not shown.
         </p>
         <p>
           <strong>Structural annotation.</strong> TM domain boundaries and generic numbering from
-          <a href="https://gpcrdb.org/" target="_blank" rel="noopener">GPCRdb</a>.
+          <a href="https://gpcrdb.org/" target="_blank" rel="noopener">GPCRdb</a> (Herrera et al., Nucleic Acids Res 2025, doi 10.1093/nar/gkae1065); protein accessions from
+          <a href="https://www.uniprot.org/" target="_blank" rel="noopener">UniProt</a> (The UniProt Consortium, Nucleic Acids Res 2025, doi 10.1093/nar/gkae1010).
         </p>
       </div>
     </section>
@@ -465,7 +465,7 @@
             Highly conserved positions are often functionally important, but conservation alone is not proof of function.
           </p>
           <p>
-            <strong>Allele frequency.</strong> Population frequency of the variant in gnomAD v4. Rare variants
+            <strong>Allele frequency.</strong> Population frequency of the variant in gnomAD v4.1 (dataset gnomad_r4, accessed 2 February 2026). Rare variants
             are common across the genome and many are undersampled; rarity alone is not evidence of pathogenicity.
           </p>
         </div>
