@@ -99,6 +99,17 @@
       "before": ">GPCRdb</a>."
     },
     {
+      "id": "variants-selection-wording",
+      "approved_on": "2026-10-19",
+      "approved_by": "Yamir (scope \"Additions + text fixes\", database brief 2026-10-19)",
+      "section": "sec-variants",
+      "what": "The variants section subtitle.",
+      "why": "Alleles are selected at residues in pairs with |dRRCS| >= 3.0 (single_gpcr_processor.py get_significant_positions, threshold=3.0), not at every contact-forming residue and not at the receptor-specific threshold. The selection itself is unchanged.",
+      "kind": "literal",
+      "after": " gnomAD missense variants at residues that take part in at least one contact pair with |ΔRRCS| ≥ 3.0 (a fixed cutoff, not the receptor-specific threshold), sorted by",
+      "before": " gnomAD missense variants located at contact-forming residues, sorted by"
+    },
+    {
       "id": "threshold-label-two-decimals",
       "approved_on": "2026-10-19",
       "approved_by": "Yamir (scope \"Additions + text fixes\", database brief 2026-10-19)",
