@@ -132,9 +132,16 @@ def make_delta_histogram(store):
             all_deltas.extend(df['delta_rrcs'].tolist())
 
     centers, counts, (start, end, size) = prebinned_histogram(all_deltas, HISTOGRAM_NBINS)
+    # Two x values per bin, just inside its two edges (the count on the first,
+    # 0 on the second). With a single value per bin Plotly labels the hover with
+    # that value, and with values far from the edges it rounds the range label
+    # to them; next to the edges it shows the bin range, as the raw data did.
+    eps = size * 1e-6
+    xs = np.column_stack([centers - size / 2 + eps, centers + size / 2 - eps]).ravel()
+    ys = np.column_stack([counts, np.zeros_like(counts)]).ravel()
     fig = go.Figure()
     fig.add_trace(go.Histogram(
-        x=centers.tolist(), y=counts.tolist(), histfunc='sum',
+        x=xs.tolist(), y=ys.tolist(), histfunc='sum',
         xbins=dict(start=start, end=end, size=size), autobinx=False,
         marker_color='#008080', opacity=0.8,
         name='ΔRRCS'
