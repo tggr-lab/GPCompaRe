@@ -480,6 +480,7 @@ p  { margin: 0 0 var(--s-4); }
   margin-bottom: var(--s-5);
 }
 .filter-bar .v2-input { flex: 1 1 260px; min-width: 200px; }
+.filter-bar .v2-select { max-width: 100%; min-width: 0; text-overflow: ellipsis; }
 
 /* ----------- 9. Tables ----------- */
 
