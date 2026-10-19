@@ -38,6 +38,7 @@ def generate_gpcr_index(env: Environment, store, output_dir):
         nav_downloads_url='../downloads.html',
         nav_contact_url='../contact.html',
         page_title='Browse GPCRs · GPCompaRe',
+        extra_css=['static/css/search.css'],
         total_gpcrs=total_gpcrs,
         gpcr_json=gpcr_json,
     )
