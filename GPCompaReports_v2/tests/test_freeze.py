@@ -32,10 +32,11 @@ import pytest
 BASE = Path(__file__).resolve().parent.parent
 MANIFEST_PATH = BASE / 'tests' / 'fixtures' / 'freeze_manifest.json'
 
-# One PI-approved edit to report content lives here, expressed as the exact
-# reversal that undoes it. The baseline manifest above is NOT regenerated: it
-# stays the pre-V3 record. Sections are reversed back to that baseline before
-# hashing, so the approved edit passes and anything else still fails.
+# Approved edits to report content live here, each expressed as the exact
+# reversal that undoes it (one rule per approved edit, each with an id). The
+# baseline manifest above is NOT regenerated: it stays the pre-V3 record.
+# Sections are reversed back to that baseline before hashing, so the approved
+# edits pass and anything else still fails.
 DELTAS_PATH = BASE / 'tests' / 'fixtures' / 'freeze_approved_deltas.json'
 
 # Overridable so the same test can be pointed at a full 283-receptor build
@@ -68,27 +69,40 @@ def _load_deltas():
 _REVERSAL = _load_deltas()
 
 
-def _reverse_approved_edits(body):
+def _reverse_approved_edits(body, gpcr_id=None):
     """Undo the approved edits so the section can be compared to the baseline.
 
-    Deliberately narrow. The literal rule rewrites one exact heading string,
-    and the delete rule matches one exact element with its own class. Neither
-    can absorb an unrelated change.
+    Deliberately narrow. A literal rule rewrites one exact string, and the
+    delete rule matches one exact element with its own class. A
+    literal_per_receptor rule is a literal rule whose exact strings differ by
+    receptor: it rewrites only the strings recorded for this gpcr_id, and does
+    nothing for a receptor it has no entry for (so that receptor fails). None
+    of them can absorb an unrelated change.
     """
     for rule in _REVERSAL:
         if rule['kind'] == 'literal':
             body = body.replace(rule['after'], rule['before'])
         elif rule['kind'] == 'regex_delete':
             body = re.sub(rule['pattern'], '', body)
+        elif rule['kind'] == 'literal_per_receptor':
+            values = rule['values'].get(gpcr_id)
+            if values is None:
+                continue
+            after, before = values
+            for after_t, before_t in rule['templates']:
+                body = body.replace(after_t.format(after=after),
+                                    before_t.format(before=before))
+        else:
+            raise ValueError('unknown reversal kind %r' % rule['kind'])
     return body
 
 
-def _approved_sections(html):
-    return [_reverse_approved_edits(b) for b in SECTION_RE.findall(html)]
+def _approved_sections(html, gpcr_id=None):
+    return [_reverse_approved_edits(b, gpcr_id) for b in SECTION_RE.findall(html)]
 
 
-def _approved_content_hash(html):
-    sections = _approved_sections(html)
+def _approved_content_hash(html, gpcr_id=None):
+    sections = _approved_sections(html, gpcr_id)
     blob = SECTION_SEP.join(section.encode('utf-8') for section in sections)
     return hashlib.sha256(blob).hexdigest(), len(sections)
 
@@ -177,7 +191,7 @@ class TestBuildAgainstManifest:
             if baseline is None:
                 continue  # already reported by test_no_unexpected_receptor_in_the_build
             html = path.read_text(encoding='utf-8')
-            digest, count = _approved_content_hash(html)
+            digest, count = _approved_content_hash(html, gpcr_id)
             assert count == baseline['section_count'], (
                 '%s: approved section count changed (manifest=%d, build=%d). '
                 'A report-section was added or removed inside the frozen '
@@ -225,7 +239,7 @@ class TestBuildAgainstManifest:
         """
         for gpcr_id, path in sorted(_build_reports().items()):
             html = path.read_text(encoding='utf-8')
-            for i, body in enumerate(_approved_sections(html)):
+            for i, body in enumerate(_approved_sections(html, gpcr_id)):
                 found = V3_TOKEN_RE.findall(body)
                 assert not found, (
                     '%s section %d contains V3 markup: %s'
