@@ -17,6 +17,7 @@ def generate_downloads_page(env, store, output_dir):
         nav_downloads_url='downloads.html',
         nav_contact_url='contact.html',
         page_title='Downloads · GPCompaRe',
+        page_path='downloads.html',
         total_gpcrs=len(store.gpcr_ids),
     )
     (output_dir / 'downloads.html').write_text(html, encoding='utf-8')

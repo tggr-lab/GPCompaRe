@@ -29,6 +29,8 @@ from pathlib import Path
 
 import pytest
 
+from .report_files import report_pages
+
 BASE = Path(__file__).resolve().parent.parent
 MANIFEST_PATH = BASE / 'tests' / 'fixtures' / 'freeze_manifest.json'
 
@@ -121,11 +123,12 @@ def _load_manifest():
 
 
 def _build_reports():
-    """gpcr_id -> Path for every report html present in BUILD_DIR."""
+    """gpcr_id -> Path for every report page in BUILD_DIR (gene-symbol
+    redirect stubs excluded, see tests/report_files.py)."""
     reports_dir = BUILD_DIR / 'reports'
     if not reports_dir.is_dir():
         return {}
-    return {path.stem: path for path in sorted(reports_dir.glob('*.html'))}
+    return {path.stem: path for path in report_pages(reports_dir)}
 
 
 def test_manifest_and_test_agree_on_what_is_frozen():

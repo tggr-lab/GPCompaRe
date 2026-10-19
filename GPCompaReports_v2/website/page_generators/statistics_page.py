@@ -83,6 +83,8 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
         nav_downloads_url='downloads.html',
         nav_contact_url='contact.html',
         page_title='Database Statistics · GPCompaRe',
+        page_path='statistics.html',
+        page_description='Cross-receptor statistics for %d human Class A GPCRs: contact-change rankings, transmembrane patterns, recurrent Core Functional Residue positions and variant annotations.' % len(store.gpcr_ids),
         total_gpcrs=len(store.gpcr_ids),
         charts=charts,
         cfr_table=cfr_table_data,

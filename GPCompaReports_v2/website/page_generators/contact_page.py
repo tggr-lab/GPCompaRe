@@ -29,6 +29,7 @@ def generate_contact_page(env, store, output_dir):
         nav_downloads_url='downloads.html',
         nav_contact_url='contact.html',
         page_title='Contact · GPCompaRe',
+        page_path='contact.html',
         total_gpcrs=len(store.gpcr_ids),
         formspree_endpoint=FORMSPREE_ENDPOINT,
     )

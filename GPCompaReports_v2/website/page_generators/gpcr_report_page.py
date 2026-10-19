@@ -16,6 +16,7 @@ from jinja2 import Environment
 
 from . import gpcr_report_helpers as v1
 from ..plotly_theming import theme_overrides
+from ..seo import report_description
 
 
 def _load_conservation_cache(gpcr_id, output_dir):
@@ -501,6 +502,8 @@ def generate_all_reports(env: Environment, store, output_dir, analysis_results=N
             nav_downloads_url='../downloads.html',
             nav_contact_url='../contact.html',
             page_title=f"{info['uniprot_name']} · GPCompaRe",
+            page_path=f'reports/{gid}.html',
+            page_description=report_description(info, sig_threshold, len(delta_df)),
             total_gpcrs=total,
             uniprot_name=info['uniprot_name'],
             gene_name=info['gene_name'],

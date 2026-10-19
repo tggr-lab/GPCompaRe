@@ -15,6 +15,8 @@ import re
 
 import pytest
 
+from .report_files import report_pages
+
 BASE = pathlib.Path(__file__).resolve().parent.parent
 DELTAS = json.loads(
     (BASE / 'tests' / 'fixtures' / 'freeze_approved_deltas.json')
@@ -41,7 +43,7 @@ needs_build = pytest.mark.skipif(
 
 
 def _built():
-    return {p.stem: p for p in sorted(REPORTS.glob('*.html'))}
+    return {p.stem: p for p in report_pages(REPORTS)}
 
 
 @needs_build

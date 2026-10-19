@@ -35,6 +35,9 @@ def generate_landing_page(env: Environment, store, output_dir: Path):
         .to_dict('records')
     )
 
+    dataset_jsonld = _dataset_jsonld(total_gpcrs, n_families, n_contact_records,
+                                     n_threshold_changes, n_models)
+
     template = env.get_template('landing.html')
     html = template.render(
         static_prefix='',
@@ -45,6 +48,7 @@ def generate_landing_page(env: Environment, store, output_dir: Path):
         nav_downloads_url='downloads.html',
         nav_contact_url='contact.html',
         page_title='GPCompaRe database: active-inactive contact changes across human Class A GPCRs',
+        page_path='',
         extra_css=['static/css/landing.css'],
         cfr_top_n=CFR_TOP_N,
         total_gpcrs=total_gpcrs,
@@ -54,8 +58,44 @@ def generate_landing_page(env: Environment, store, output_dir: Path):
         n_models=n_models,
         n_excluded=n_excluded,
         search_json=json.dumps(search_records, separators=(',', ':')),
+        dataset_jsonld=dataset_jsonld,
     )
 
     out_path = output_dir / 'index.html'
     out_path.write_text(html, encoding='utf-8')
     print(f"  Generated: {out_path.name}")
+
+
+def _dataset_jsonld(total_gpcrs, n_families, n_contact_records, n_threshold_changes, n_models):
+    """schema.org Dataset description of the database, for search engines.
+
+    States only what the landing page states. No licence, DOI or download is
+    claimed: none exists yet (the Downloads page says "Coming soon").
+    """
+    from ..seo import SITE_URL
+    data = {
+        '@context': 'https://schema.org',
+        '@type': 'Dataset',
+        'name': 'GPCompaRe database',
+        'alternateName': 'GPCompaRe',
+        'description': (
+            'Residue-residue contact scores (RRCS) compared between paired active and inactive '
+            'AlphaFold-Multistate models for %d human Class A GPCRs in %d receptor families: '
+            '%s contact-pair records from %d models, %s changes above each receptor\'s own threshold, with GPCRdb '
+            'generic numbering, conservation, AlphaMissense predictions and gnomAD missense variation.'
+            % (total_gpcrs, n_families, format(n_contact_records, ','), n_models, format(n_threshold_changes, ','))),
+        'url': SITE_URL,
+        'version': '2026.08',
+        'isAccessibleForFree': True,
+        'keywords': ['GPCR', 'Class A GPCR', 'residue-residue contact score', 'RRCS',
+                     'receptor activation', 'AlphaFold-Multistate', 'GPCRdb', 'AlphaMissense', 'gnomAD'],
+        'measurementTechnique': 'Residue-residue contact score (RRCS) on AlphaFold-Multistate models',
+        'variableMeasured': ['RRCS', 'ΔRRCS (active minus inactive)'],
+        'creator': {
+            '@type': 'Organization',
+            'name': 'TGGR Laboratory, Genetics Institute, Tel Aviv Sourasky Medical Center',
+            'url': 'https://github.com/tggr-lab',
+        },
+    }
+    # </ inside a script element would end it early; none is expected, but be safe.
+    return json.dumps(data, ensure_ascii=False, indent=1).replace('</', '<\\/')

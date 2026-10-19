@@ -38,6 +38,8 @@ def generate_gpcr_index(env: Environment, store, output_dir):
         nav_downloads_url='../downloads.html',
         nav_contact_url='../contact.html',
         page_title='Browse GPCRs · GPCompaRe',
+        page_path='browse/index.html',
+        page_description='Search and filter the reports of %d human Class A GPCRs by name, gene, family and ligand type.' % len(store.gpcr_ids),
         total_gpcrs=total_gpcrs,
         gpcr_json=gpcr_json,
     )

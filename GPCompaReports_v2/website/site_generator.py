@@ -23,6 +23,7 @@ from .page_generators.statistics_page import generate_statistics_page
 from .page_generators.contact_page import generate_contact_page
 from .page_generators.downloads_page import generate_downloads_page
 from .page_generators.info_pages import generate_glossary_page, generate_privacy_page
+from .seo import SITE_URL, write_robots, write_sitemap, write_gene_redirects
 
 
 def select_gpcr_ids(all_ids, limit=None, only=None):
@@ -93,6 +94,7 @@ class SiteGenerator:
 
         print("\n[5/5] Generating website pages...")
         env = Environment(loader=FileSystemLoader(str(self.template_dir)))
+        env.globals['site_url'] = SITE_URL
 
         print("  Landing page...")
         generate_landing_page(env, self.store, self.output_dir)
@@ -118,6 +120,12 @@ class SiteGenerator:
         generate_all_reports(env, self.store, self.output_dir,
                              analysis_results=self.analysis_results,
                              only=selected)
+
+        print("  robots.txt, sitemap.xml, gene-symbol redirects...")
+        write_robots(self.output_dir)
+        n_urls = write_sitemap(self.output_dir, selected)
+        stubs = write_gene_redirects(self.output_dir, self.store, selected)
+        print(f"  sitemap.xml: {n_urls} URLs; {len(stubs)} gene-symbol redirects")
 
         print("\n" + "=" * 60)
         print("Site generation complete!")

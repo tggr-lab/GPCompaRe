@@ -48,6 +48,8 @@ import threading
 
 import pytest
 
+from .report_files import report_pages
+
 pytest.importorskip(
     'playwright.sync_api',
     reason='Playwright is not installed in this interpreter. These tests '
@@ -101,7 +103,7 @@ def _representatives():
     if not REPORTS_DIR.is_dir():
         return []
     seen = {}
-    for path in sorted(REPORTS_DIR.glob('*.html')):
+    for path in report_pages(REPORTS_DIR):
         sig = _structural_signature(path.read_text(encoding='utf-8'))
         seen.setdefault(sig, path.stem)
     return sorted(seen.values())

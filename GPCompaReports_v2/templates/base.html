@@ -10,8 +10,12 @@
 
   Optional context:
     page_title       — string inserted into <title>
-    page_description — string for <meta name="description">
+    page_description — string for <meta name="description"> and og:description
+    page_path        — this page's path under the site root ('' for the landing
+                       page), for the canonical link and og:url
     extra_css        — list of extra CSS paths (relative to static_prefix) to load
+
+  Globals (set by the generator): site_url, the site's absolute base URL.
 
   Blocks child templates may override:
     head        — inject extra tags into <head> (e.g. Plotly CDN)
@@ -25,7 +29,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ page_title or 'GPCompaRe database: active-inactive contact changes across human Class A GPCRs' }}</title>
-<meta name="description" content="{{ page_description or 'Residue-residue contact analysis of all ' ~ total_gpcrs ~ ' human Class A GPCRs across active and inactive conformations.' }}">
+{% set _title = page_title or 'GPCompaRe database: active-inactive contact changes across human Class A GPCRs' %}
+{% set _desc = page_description or 'Residue-residue contact analysis of all ' ~ total_gpcrs ~ ' human Class A GPCRs across active and inactive conformations.' %}
+<meta name="description" content="{{ _desc|e }}">
+{% if site_url and page_path is defined %}
+<link rel="canonical" href="{{ site_url }}{{ page_path }}">
+<meta property="og:url" content="{{ site_url }}{{ page_path }}">
+{% endif %}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="GPCompaRe database">
+<meta property="og:title" content="{{ _title|e }}">
+<meta property="og:description" content="{{ _desc|e }}">
+{% if site_url %}<meta property="og:image" content="{{ site_url }}static/img/lablogo.png">{% endif %}
+<meta name="twitter:card" content="summary">
 
 <script>
 (function() {

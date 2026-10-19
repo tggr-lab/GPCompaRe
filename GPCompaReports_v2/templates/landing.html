@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 
+{% block head %}
+<script type="application/ld+json">{{ dataset_jsonld | safe }}</script>
+{% endblock %}
+
 {% block content %}
 
 <section class="hero">

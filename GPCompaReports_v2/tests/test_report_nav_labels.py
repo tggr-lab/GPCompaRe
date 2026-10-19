@@ -16,6 +16,8 @@ import re
 
 import pytest
 
+from .report_files import report_pages
+
 BASE = pathlib.Path(__file__).resolve().parent.parent
 DELTAS = json.loads(
     (BASE / 'tests' / 'fixtures' / 'freeze_approved_deltas.json')
@@ -45,7 +47,7 @@ def _labels(path):
 
 @needs_build
 def test_every_report_uses_the_approved_labels_in_the_approved_order():
-    for path in sorted(REPORTS.glob('*.html')):
+    for path in report_pages(REPORTS):
         labels = _labels(path)
         assert labels, '%s has no section nav labels' % path.stem
         assert len(labels) == len(set(labels)), (
@@ -69,7 +71,7 @@ def test_every_report_uses_the_approved_labels_in_the_approved_order():
 @needs_build
 def test_the_superseded_label_is_gone_everywhere():
     before = NAV['changed_by_this_approval']['before']
-    offenders = [p.stem for p in sorted(REPORTS.glob('*.html'))
+    offenders = [p.stem for p in report_pages(REPORTS)
                  if before in p.read_text(encoding='utf-8')]
     assert not offenders, (
         'reports still carry the superseded nav label %r: %s'
@@ -79,7 +81,7 @@ def test_the_superseded_label_is_gone_everywhere():
 @needs_build
 def test_the_approved_label_is_present_everywhere():
     after = NAV['changed_by_this_approval']['after']
-    missing = [p.stem for p in sorted(REPORTS.glob('*.html'))
+    missing = [p.stem for p in report_pages(REPORTS)
                if after not in _labels(p)]
     assert not missing, (
         'reports missing the approved nav label %r: %s' % (after, missing[:10]))
