@@ -213,19 +213,32 @@
     </header>
     <p>
       Structures are paired active-state and inactive-state models from
-      <a href="https://github.com/huhlim/alphafold-multistate" target="_blank" rel="noopener">AlphaFold-Multistate</a>.
+      <a href="https://github.com/huhlim/alphafold-multistate" target="_blank" rel="noopener">AlphaFold-Multistate</a>
+      (Heo and Feig, Proteins 2022).
       Contacts are scored with
       <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6954041/" target="_blank" rel="noopener">RRCS</a>.
       Generic numbering and segment boundaries come from
       <a href="https://gpcrdb.org/" target="_blank" rel="noopener">GPCRdb</a>.
       Population variation comes from
-      <a href="https://gnomad.broadinstitute.org/" target="_blank" rel="noopener">gnomAD v4</a>,
+      <a href="https://gnomad.broadinstitute.org/" target="_blank" rel="noopener">gnomAD v4.1</a>
+      (dataset gnomad_r4, accessed 2 February 2026),
       pathogenicity predictions from
-      <a href="https://alphamissense.hegelab.org/" target="_blank" rel="noopener">AlphaMissense</a>,
-      and conservation from
-      <a href="https://www.ebi.ac.uk/ProtVar/" target="_blank" rel="noopener">ProtVar</a> and
+      <a href="https://alphamissense.hegelab.org/" target="_blank" rel="noopener">AlphaMissense</a>
+      (licensed CC BY-NC-SA 4.0),
+      and conservation from VarSite scores served by
+      <a href="https://www.ebi.ac.uk/ProtVar/" target="_blank" rel="noopener">ProtVar</a>.
+      Receptor accessions come from
       <a href="https://www.uniprot.org/" target="_blank" rel="noopener">UniProt</a>.
     </p>
+    <ul class="refs-list">
+      <li>Zhou Q et al. Common activation mechanism of class A GPCRs. eLife 2019;8:e50279. <a href="https://doi.org/10.7554/eLife.50279" target="_blank" rel="noopener">doi 10.7554/eLife.50279</a></li>
+      <li>Heo L, Feig M. Multi-state modeling of G-protein coupled receptors at experimental accuracy. Proteins 2022;90(11):1873-1885. <a href="https://doi.org/10.1002/prot.26382" target="_blank" rel="noopener">doi 10.1002/prot.26382</a></li>
+      <li>Herrera LPT et al. GPCRdb in 2025. Nucleic Acids Res 2025;53(D1):D425-D435. <a href="https://doi.org/10.1093/nar/gkae1065" target="_blank" rel="noopener">doi 10.1093/nar/gkae1065</a></li>
+      <li>Chen S et al. A genomic mutational constraint map using variation in 76,156 human genomes. Nature 2024;625:92-100. <a href="https://doi.org/10.1038/s41586-023-06045-0" target="_blank" rel="noopener">doi 10.1038/s41586-023-06045-0</a></li>
+      <li>Cheng J et al. Accurate proteome-wide missense variant effect prediction with AlphaMissense. Science 2023;381:eadg7492. <a href="https://doi.org/10.1126/science.adg7492" target="_blank" rel="noopener">doi 10.1126/science.adg7492</a></li>
+      <li>Stephenson JD et al. ProtVar: mapping and contextualizing human missense variation. Nucleic Acids Res 2024;52(W1):W140-W147. <a href="https://doi.org/10.1093/nar/gkae413" target="_blank" rel="noopener">doi 10.1093/nar/gkae413</a></li>
+      <li>The UniProt Consortium. UniProt: the Universal Protein Knowledgebase in 2025. Nucleic Acids Res 2025;53(D1):D609-D617. <a href="https://doi.org/10.1093/nar/gkae1010" target="_blank" rel="noopener">doi 10.1093/nar/gkae1010</a></li>
+    </ul>
     <p>
       Each receptor has its own ΔRRCS threshold, computed as max(mean(|Δ|) + σ, 0.2).
     </p>
