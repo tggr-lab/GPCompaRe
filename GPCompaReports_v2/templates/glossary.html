@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{{ static_prefix }}index.html">Home</a>
+  <span class="breadcrumbs-sep">/</span>
+  <span class="breadcrumbs-current">Glossary</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="info-page glossary-page" aria-labelledby="glossary-heading">
+  <div class="section-inner">
+    <header class="section-head">
+      <h1 id="glossary-heading" data-glossary-skip>Glossary</h1>
+      <p class="section-sub">One plain sentence for each term and abbreviation the site uses. On the report pages, terms with a dotted underline show the same sentence when you point at, tab to or tap them.</p>
+    </header>
+    <nav class="gloss-nav" aria-label="Glossary groups">
+      {% for group, terms in groups %}<a href="#{{ group|lower|replace(' ', '-') }}">{{ group }}</a>{% endfor %}
+    </nav>
+    {% for group, terms in groups %}
+    <h2 id="{{ group|lower|replace(' ', '-') }}" data-glossary-skip>{{ group }}</h2>
+    <dl class="gloss-list" data-glossary-skip>
+      {% for t in terms %}
+      <div id="{{ t.id }}">
+        <dt>{{ t.term|e }}{% if t.full %} <span class="gloss-full">({{ t.full|e }})</span>{% endif %}</dt>
+        <dd>{{ t.definition|e }}{% if t.href %} <a href="{{ t.href }}" target="_blank" rel="noopener" aria-label="Learn more about {{ t.term|e }} (opens in a new tab)">Learn more</a>{% endif %}</dd>
+      </div>
+      {% endfor %}
+    </dl>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

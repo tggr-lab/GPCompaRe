@@ -22,6 +22,7 @@ from .page_generators.gpcr_report_page import generate_all_reports
 from .page_generators.statistics_page import generate_statistics_page
 from .page_generators.contact_page import generate_contact_page
 from .page_generators.downloads_page import generate_downloads_page
+from .page_generators.info_pages import generate_glossary_page, generate_privacy_page
 
 
 def select_gpcr_ids(all_ids, limit=None, only=None):
@@ -107,6 +108,10 @@ class SiteGenerator:
 
         print("  Downloads page...")
         generate_downloads_page(env, self.store, self.output_dir)
+
+        print("  Glossary and privacy pages...")
+        generate_glossary_page(env, self.store, self.output_dir)
+        generate_privacy_page(env, self.store, self.output_dir)
 
         selected = select_gpcr_ids(self.store.gpcr_ids, self.limit, self.only)
         print(f"  Individual reports ({len(selected)} pages)...")

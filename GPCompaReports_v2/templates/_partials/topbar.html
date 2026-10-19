@@ -1,7 +1,7 @@
 {#
   Shared topbar partial. Requires context vars:
     static_prefix  — path prefix to site root (e.g. '' for pages at root, '../' for /reports/)
-    active_page    — one of 'home' | 'browse' | 'statistics' | 'report' | 'downloads' | 'contact' (for aria-current)
+    active_page    — one of 'home' | 'browse' | 'statistics' | 'glossary' | 'report' | 'downloads' | 'contact' | 'privacy' (for aria-current)
     nav_home_url, nav_browse_url, nav_stats_url, nav_downloads_url, nav_contact_url — nav targets (generator controls v1/v2 paths)
 #}
 <header class="topbar">
@@ -14,6 +14,7 @@
       <a href="{{ nav_home_url }}"{% if active_page == 'home' %} aria-current="page"{% endif %}>Home</a>
       <a href="{{ nav_browse_url }}"{% if active_page == 'browse' %} aria-current="page"{% endif %}>Browse</a>
       <a href="{{ nav_stats_url }}"{% if active_page == 'statistics' %} aria-current="page"{% endif %}>Statistics</a>
+      <a href="{{ static_prefix }}glossary.html"{% if active_page == 'glossary' %} aria-current="page"{% endif %}>Glossary</a>
       <a href="{{ nav_downloads_url }}"{% if active_page == 'downloads' %} aria-current="page"{% endif %}>Downloads</a>
       <a href="{{ nav_contact_url }}"{% if active_page == 'contact' %} aria-current="page"{% endif %}>Contact</a>
     </nav>
@@ -40,6 +41,7 @@
       <a href="{{ nav_home_url }}"{% if active_page == 'home' %} aria-current="page"{% endif %}>Home</a>
       <a href="{{ nav_browse_url }}"{% if active_page == 'browse' %} aria-current="page"{% endif %}>Browse</a>
       <a href="{{ nav_stats_url }}"{% if active_page == 'statistics' %} aria-current="page"{% endif %}>Statistics</a>
+      <a href="{{ static_prefix }}glossary.html"{% if active_page == 'glossary' %} aria-current="page"{% endif %}>Glossary</a>
       <a href="{{ nav_downloads_url }}"{% if active_page == 'downloads' %} aria-current="page"{% endif %}>Downloads</a>
       <a href="{{ nav_contact_url }}"{% if active_page == 'contact' %} aria-current="page"{% endif %}>Contact</a>
     </nav>

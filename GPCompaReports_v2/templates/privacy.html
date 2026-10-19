@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{{ static_prefix }}index.html">Home</a>
+  <span class="breadcrumbs-sep">/</span>
+  <span class="breadcrumbs-current">Privacy</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="info-page privacy-page" aria-labelledby="privacy-heading">
+  <div class="section-inner">
+    <header class="section-head">
+      <h1 id="privacy-heading">Privacy</h1>
+      <p class="section-sub">The GPCompaRe database is a set of static pages. It has no user accounts and sets no cookies. These are the outside services a visit can reach, and what each one receives.</p>
+    </header>
+
+    <table class="privacy-table">
+      <thead>
+        <tr><th scope="col">Service</th><th scope="col">When</th><th scope="col">What it receives</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub Pages</a></td>
+          <td>Every page, because it hosts the site</td>
+          <td>What any web server receives with a request: your IP address, your browser's user agent and the page you asked for.</td>
+        </tr>
+        <tr>
+          <td><a href="https://www.goatcounter.com/help/privacy" target="_blank" rel="noopener">GoatCounter</a></td>
+          <td>Every page, to count visits</td>
+          <td>The page you visited, the page you came from, your browser's user agent, screen size and your IP address. GoatCounter is cookie-free; by its own account it keeps no IP addresses and records only aggregate counts (pages, referrers, browsers, screen sizes and countries).</td>
+        </tr>
+        <tr>
+          <td><a href="https://plotly.com/privacy/" target="_blank" rel="noopener">Plotly CDN</a> (cdn.plot.ly)</td>
+          <td>Receptor reports and the Statistics page, which load the Plotly charting library from it</td>
+          <td>A file request: your IP address, your browser's user agent and the address of the page that asked for the file.</td>
+        </tr>
+        <tr>
+          <td><a href="https://formspree.io/legal/privacy-policy/" target="_blank" rel="noopener">Formspree</a></td>
+          <td>Only when you send the <a href="{{ static_prefix }}contact.html">contact form</a></td>
+          <td>Everything you type into the form (name, email, institution, enquiry type, receptor, page address and message), plus your IP address and browser details. Formspree forwards the message to the TGGR Laboratory by email.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Kept in your browser only</h2>
+    <p>Your light or dark theme choice and the compact-view setting on reports are saved in your browser's local storage. They never leave your device, and clearing site data removes them.</p>
+
+    <h2>Not loaded from elsewhere</h2>
+    <p>The heading font, Source Serif 4, is served from this site (SIL Open Font License, <a href="{{ static_prefix }}static/fonts/OFL.txt">licence text</a>), so no font service is contacted.</p>
+
+    <h2>Questions</h2>
+    <p>Use the <a href="{{ static_prefix }}contact.html">contact page</a>.</p>
+  </div>
+</section>
+{% endblock %}
