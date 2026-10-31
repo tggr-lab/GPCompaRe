@@ -311,7 +311,7 @@ p  { margin: 0 0 var(--s-4); }
   flex-shrink: 0;
 }
 .topbar-search-btn:hover { background: var(--bgColor-muted); color: var(--fgColor-default); border-color: var(--borderColor-default); }
-@media (max-width: 1099px) {
+@media (max-width: 1179px) {
   .topbar-search-input { display: none; }
 }
 .drawer-search { display: flex; gap: var(--s-2); }
@@ -1184,10 +1184,14 @@ p  { margin: 0 0 var(--s-4); }
   .downloads-grid { grid-template-columns: 1fr; }
 }
 
-@media (max-width: 600px) {
+/* the full bar needs 936 px with the search box folded, 1150 px with it open */
+@media (max-width: 959px) {
   .topnav { display: none; }
   .topbar-mobile-toggle { display: inline-flex; }
   .topbar-search { margin-left: auto; }
+}
+
+@media (max-width: 600px) {
   .topbar-inner { gap: var(--s-3); }
   .wordmark-logo { height: 40px; }
   .wordmark-text { font-size: 1.05rem; }
