@@ -529,7 +529,7 @@ def test_submitting_the_contact_form_posts_the_expected_fields(browser, server):
     page.fill('#contact-institution', 'Example University')
     page.select_option('#contact-enquiry-type', 'Website problem')
     page.fill('#contact-message', 'Test message, not sent anywhere.')
-    page.click('button[type="submit"]')
+    page.click('.contact-form button[type="submit"]')
     page.wait_for_timeout(1200)
 
     assert captured, (
