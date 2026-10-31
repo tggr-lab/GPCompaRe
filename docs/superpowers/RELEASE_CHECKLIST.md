@@ -155,6 +155,13 @@ that investigation was deliberately not pursued.
 **In both cases the RRCS tables contain every contact.** These are rendering
 gaps in one receptor's snake plot, not missing or altered data.
 
+**Snake plots do not follow GPCRdb.** The build draws them from
+`GPCompaReports_v2/data/snake_residues.json`, recovered from the published
+reports, not from GPCRdb's API. On 2026-10-31 the live tables differed for 13
+receptors: `ogr1` and `psyr` were renamed, MCHR1 became another isoform, and 10
+others changed segments or numbering. Refreshing the snapshot would change
+frozen plots, so it is a deliberate act with review, never a release step.
+
 ---
 
 ## First-time setup for the browser tests

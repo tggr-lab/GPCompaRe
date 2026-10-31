@@ -25,7 +25,7 @@ from ..format_helpers import MISSING, fmt_sci, fmt_decimal
 
 # Optional ouroboros import for snake plot generation
 try:
-    from ouroboros import fetch_protein_data, SnakePlotRenderer, RenderConfig
+    from ouroboros import ProteinData, ProteinInfo, RenderConfig, Residue, SnakePlotRenderer
     _OUROBOROS_OK = True
 except ImportError:
     _OUROBOROS_OK = False
@@ -40,6 +40,12 @@ try:
 except ImportError:
     _BUILDER_OK = False
 
+
+# Residue tables of the published snake plots. GPCRdb's live tables have moved
+# on for 13 receptors since the reports were approved, so the build does not
+# read them (scripts/extract_snake_residues.py).
+_SNAKE_RESIDUES = Path(__file__).resolve().parent.parent.parent / 'data' / 'snake_residues.json'
+_snake_tables = None
 
 # Transmembrane helices (primary analysis)
 TM_HELICES = ['TM1', 'TM2', 'TM3', 'TM4', 'TM5', 'TM6', 'TM7']
@@ -100,6 +106,17 @@ def _inject_svg_viewbox(svg: str) -> str:
     return svg.replace(m.group(0), new_open, 1)
 
 
+def _snake_protein(gpcr_id):
+    global _snake_tables
+    if _snake_tables is None:
+        _snake_tables = json.loads(_SNAKE_RESIDUES.read_text(encoding='utf-8'))['receptors']
+    return ProteinData(
+        info=ProteinInfo(entry_name=gpcr_id, name=''),
+        residues=[Residue(sequence_number=number, amino_acid=letter, protein_segment=segment,
+                          display_generic_number=display)
+                  for number, letter, segment, display in _snake_tables[gpcr_id]])
+
+
 def _prepare_snake_plot(gpcr_id, delta_df, var_df, sig_threshold):
     """Prepare snake plot SVG and interactive view JSON for one GPCR.
 
@@ -111,7 +128,7 @@ def _prepare_snake_plot(gpcr_id, delta_df, var_df, sig_threshold):
         return None, None
 
     try:
-        protein_data = fetch_protein_data(gpcr_id)
+        protein_data = _snake_protein(gpcr_id)
         renderer = SnakePlotRenderer(config=RenderConfig())
         svg = renderer.render(protein_data)
         positions = renderer._extract_positions(svg)
@@ -127,7 +144,8 @@ def _prepare_snake_plot(gpcr_id, delta_df, var_df, sig_threshold):
         )
         json_data = builder.to_json(positions)
         return svg, json_data
-    except Exception:
+    except Exception as e:
+        print(f"  WARNING: no snake plot for {gpcr_id}: {e}")
         return None, None
 
 

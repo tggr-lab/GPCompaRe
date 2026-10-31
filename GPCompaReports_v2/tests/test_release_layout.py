@@ -1,7 +1,6 @@
 """The release layout: database at the site root, Studio under studio/."""
+import json
 import pathlib
-import re
-import subprocess
 
 BASE = pathlib.Path(__file__).resolve().parent.parent
 ROOT = BASE.parent
@@ -30,3 +29,11 @@ def test_publication_exclusions_are_kept():
 
 def test_build_refuses_to_run_without_snake_plots():
     assert '_OUROBOROS_OK' in BUILD and '_BUILDER_OK' in BUILD
+
+
+def test_snake_plots_are_drawn_from_the_published_residue_tables():
+    helpers = (BASE / 'website' / 'page_generators' / 'gpcr_report_helpers.py').read_text(encoding='utf-8')
+    assert 'fetch_protein_data' not in helpers, 'a live GPCRdb fetch would move the frozen plots'
+    tables = json.loads((BASE / 'data' / 'snake_residues.json').read_text(encoding='utf-8'))['receptors']
+    frozen = json.loads((BASE / 'tests' / 'fixtures' / 'freeze_manifest.json').read_text(encoding='utf-8'))['receptors']
+    assert set(tables) == set(frozen)
