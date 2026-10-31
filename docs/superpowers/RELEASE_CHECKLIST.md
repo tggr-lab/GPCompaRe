@@ -4,6 +4,18 @@ Required checks before publishing a build, whether to gh-pages or to any
 other public location. This list is short on purpose. Everything on it is
 enforced by `scripts/deploy_pages.sh` except where noted.
 
+A release is one staging directory: the database at its root, the Studio under
+`studio/`. `scripts/build_release.sh` assembles it and `scripts/deploy_pages.sh`
+publishes it. The sync deletes what the stage does not hold, so there is no
+database-only deployment: a database update is staged with the current Studio
+build, and a stage without `studio/` is refused.
+
+```bash
+bash scripts/build_release.sh --stage STAGE --studio-dist STUDIO_DIST
+FREEZE_BUILD_DIR=STAGE SMOKE_BUILD_DIR=STAGE .venv-test/bin/python -m pytest GPCompaReports_v2/tests -rs
+bash scripts/deploy_pages.sh STAGE
+```
+
 ---
 
 ## The rule about skipped tests
@@ -66,8 +78,8 @@ To test exactly what is about to be published rather than the demo:
 SMOKE_BUILD_DIR=output bash scripts/run_browser_tests.sh
 ```
 
-`scripts/deploy_pages.sh` runs this automatically against the freshly built
-site, after the build and before anything is pushed.
+`scripts/deploy_pages.sh` runs this automatically against the stage, before
+anything is pushed.
 
 There is no bypass flag, by design. This is a publication companion site, not
 an operational service, so no emergency justifies publishing JavaScript that
@@ -153,6 +165,8 @@ so this goes in a project venv and does not touch the system install.
 ```bash
 python3 -m venv .venv-test
 .venv-test/bin/python -m pip install -r GPCompaReports_v2/requirements-test.txt
+.venv-test/bin/python -m pip install -r GPCompaReports_v2/requirements-site.txt
+.venv-test/bin/python -m pip install ../ouroboros   # the gpcr_synth/ouroboros checkout
 .venv-test/bin/python -m playwright install chromium
 ```
 

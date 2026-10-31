@@ -1,0 +1,18 @@
+# Site build dependencies, pinned to the versions that produced the live site.
+#
+# The system Python is externally managed, so install into the project venv:
+#
+#     python3 -m venv .venv-test
+#     .venv-test/bin/python -m pip install -r GPCompaReports_v2/requirements-site.txt
+#     .venv-test/bin/python -m pip install /path/to/gpcr_synth/ouroboros
+#
+# ouroboros is the snake plot renderer. It is a sibling project, not on PyPI
+# under this name, so it is installed from its checkout. Without it the build
+# still succeeds but drops every snake plot: use scripts/build_release.sh,
+# which refuses to run in that state.
+jinja2==3.1.6
+numpy==2.4.2
+pandas==3.0.0
+plotly==6.5.2
+scipy==1.17.0
+requests>=2.31
