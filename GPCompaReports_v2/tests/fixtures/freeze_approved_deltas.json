@@ -55,14 +55,25 @@
       "before": "</a>;"
     },
     {
+      "id": "methods-alphamissense-link",
+      "approved_on": "2026-10-31",
+      "approved_by": "Yamir (release brief 2026-10-31)",
+      "section": "sec-methods",
+      "what": "AlphaMissense link target in Methods.",
+      "why": "The link went to a third-party viewer. It now goes to the DeepMind record that states the CC BY 4.0 licence.",
+      "kind": "literal",
+      "after": "<a href=\"https://zenodo.org/records/10813168\" target=\"_blank\" rel=\"noopener\">AlphaMissense</a>",
+      "before": "<a href=\"https://alphamissense.hegelab.org/\" target=\"_blank\" rel=\"noopener\">AlphaMissense</a>"
+    },
+    {
       "id": "methods-alphamissense-citation-licence",
       "approved_on": "2026-10-19",
       "approved_by": "Yamir (scope \"Additions + text fixes\", database brief 2026-10-19)",
       "section": "sec-methods",
       "what": "Citation and licence line after the AlphaMissense credit in Methods.",
-      "why": "Methods credited AlphaMissense with no citation and no licence; the Studio states the predictions as CC BY-NC-SA 4.0.",
+      "why": "Methods credited AlphaMissense with no citation and no licence. Updated 2026-10-31 by Yamir (release brief): DeepMind relicensed the predictions as CC BY 4.0 on 2024-03-13 (google-deepmind/alphamissense fe2dc84), so the earlier CC BY-NC-SA 4.0 label was stale.",
       "kind": "literal",
-      "after": ">AlphaMissense</a> (Cheng et al., Science 2023; predictions licensed CC BY-NC-SA 4.0);",
+      "after": ">AlphaMissense</a> (Cheng et al., Science 2023; predictions copyright 2023 DeepMind Technologies Limited, <a href=\"https://creativecommons.org/licenses/by/4.0/\" target=\"_blank\" rel=\"noopener\">CC BY 4.0</a>);",
       "before": ">AlphaMissense</a>;"
     },
     {
