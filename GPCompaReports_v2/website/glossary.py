@@ -165,7 +165,7 @@ GLOSSARY = [
          match=[_L + r'Het count' + _R]),
     dict(id='hgvs', group='Variants', term='Protein change, DNA change', full='HGVS notation',
          definition='The standard way to write a variant: p.Met159Ile is the methionine at protein position 159 '
-                    'replaced by isoleucine, and c.475G>A is the DNA letter change behind it.',
+                    'replaced by isoleucine, and c.477G>A is the DNA letter change behind it.',
          match=[_L + r'(?:Protein|DNA) change' + _R]),
     dict(id='rsid', group='Variants', term='dbSNP, rsID',
          definition="A variant's identifier in dbSNP, NCBI's catalogue of genetic variants, such as rs1042713.",
