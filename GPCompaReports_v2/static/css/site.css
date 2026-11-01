@@ -1140,7 +1140,7 @@ p  { margin: 0 0 var(--s-4); }
 
 .downloads-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: var(--s-6);
   align-items: start;
   margin-bottom: var(--s-6);
@@ -1181,7 +1181,6 @@ p  { margin: 0 0 var(--s-4); }
 
 @media (max-width: 900px) {
   .contact-grid { grid-template-columns: 1fr; }
-  .downloads-grid { grid-template-columns: 1fr; }
 }
 
 /* the full bar needs 936 px with the search box folded, 1150 px with it open */

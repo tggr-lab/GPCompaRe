@@ -31,8 +31,6 @@ CONTACT_INTRO = ('Questions about the data, methods, or website? Use the form '
 DB_TEXT = ('A downloadable version of the GPCompaRe database is being prepared. '
            'Until then, the complete collection of receptor reports can be '
            'explored online.')
-SW_TEXT = ('A packaged release of the GPCompaRe analysis software, including '
-           'installation instructions and an example dataset, is being prepared.')
 
 #: Wording that must never appear in the visible copy of a public page.
 FORBIDDEN = [
@@ -74,14 +72,21 @@ def test_the_contact_page_names_no_individual_and_promises_no_future_contacts():
 
 
 @needs_build
-def test_the_downloads_page_presents_both_as_planned_releases():
+def test_the_downloads_page_offers_the_database_and_no_local_program():
     text = _visible(DOWNLOADS)
     assert 'Database download' in text, 'database heading missing'
-    assert 'Analysis software' in text, 'software heading missing'
-    assert text.count('Coming soon') == 2, (
-        'expected two "Coming soon" labels, found %d' % text.count('Coming soon'))
+    assert text.count('Coming soon') == 1, (
+        'expected one "Coming soon" label, found %d' % text.count('Coming soon'))
     assert DB_TEXT in text, 'the approved database text is missing'
-    assert SW_TEXT in text, 'the approved software text is missing'
+    assert 'analysis software' not in text.lower()
+
+
+@needs_build
+def test_the_landing_page_sends_your_own_structures_to_studio():
+    text = _visible(BUILD_DIR / 'index.html')
+    assert 'analysis software' not in text.lower()
+    assert 'releasable version' not in text.lower()
+    assert 'Open GPCompaRe Studio' in text
 
 
 @needs_build
