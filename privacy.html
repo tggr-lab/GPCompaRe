@@ -1,0 +1,201 @@
+
+<!DOCTYPE html>
+<html lang="en" data-color-mode="light" data-light-theme="light" data-dark-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy · GPCompaRe</title>
+
+
+<meta name="description" content="What the GPCompaRe database site loads from other services and what each receives.">
+
+<link rel="canonical" href="https://tggr-lab.github.io/GPCompaRe/privacy.html">
+<meta property="og:url" content="https://tggr-lab.github.io/GPCompaRe/privacy.html">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="GPCompaRe database">
+<meta property="og:title" content="Privacy · GPCompaRe">
+<meta property="og:description" content="What the GPCompaRe database site loads from other services and what each receives.">
+<meta property="og:image" content="https://tggr-lab.github.io/GPCompaRe/static/img/lablogo.png">
+<meta name="twitter:card" content="summary">
+
+<script>
+(function() {
+  var root = document.documentElement;
+  var stored = null;
+  try { stored = localStorage.getItem('gpcrsynth-theme'); } catch (e) {}
+  var mode;
+  if (stored === 'light' || stored === 'dark') {
+    mode = stored;
+  } else {
+    mode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  root.setAttribute('data-color-mode', mode);
+  root.setAttribute('data-light-theme', 'light');
+  root.setAttribute('data-dark-theme', 'dark');
+  if (!stored) root.setAttribute('data-theme-auto', '');
+})();
+</script>
+
+<link rel="stylesheet" href="static/css/fonts.css">
+<link rel="stylesheet" href="static/css/primer/primitives.css">
+<link rel="stylesheet" href="static/css/primer/primitives-dark.css">
+<link rel="stylesheet" href="static/css/site.css">
+
+
+
+<!-- Analytics: GoatCounter, cookie-free, GDPR-safe. -->
+<script data-goatcounter="https://gpcompreports.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="index.html" class="wordmark" aria-label="GPCompaRe database home">
+      <img src="static/img/lablogo.png" alt="TGGR Laboratory" class="wordmark-logo">
+      <span class="wordmark-text">GPCompaRe</span>
+    </a>
+    <nav class="topnav" aria-label="Primary">
+      <a href="index.html">Home</a>
+      <a href="browse/index.html">Browse</a>
+      <a href="statistics.html">Statistics</a>
+      <a href="studio/">Studio</a>
+      <a href="glossary.html">Glossary</a>
+      <a href="downloads.html">Downloads</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+    <form class="topbar-search" action="browse/index.html" method="get" role="search">
+      <input type="search" name="q" class="topbar-search-input" placeholder="Search receptors, variants, positions" aria-label="Search receptors, variants and generic positions" spellcheck="false" autocapitalize="off">
+      <button type="submit" class="topbar-search-btn" aria-label="Search" title="Search receptors, variants and generic positions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    </form>
+    <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle color theme" title="Toggle light / dark">
+      <svg class="icon icon-sun"  viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="2"  x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2"  y1="12" x2="5"  y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.5"  y1="4.5"  x2="6.5"  y2="6.5"/><line x1="17.5" y1="17.5" x2="19.5" y2="19.5"/><line x1="4.5"  y1="19.5" x2="6.5"  y2="17.5"/><line x1="17.5" y1="6.5"  x2="19.5" y2="4.5"/></g></svg>
+      <svg class="icon icon-moon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20 15A8 8 0 0 1 9 4a1 1 0 0 0-1.3-1.1A10 10 0 1 0 21.1 16.3 1 1 0 0 0 20 15z"/></svg>
+    </button>
+    <button type="button" class="topbar-mobile-toggle" id="mobile-nav-toggle" aria-label="Open menu" aria-controls="mobile-drawer" aria-expanded="false">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="mobile-drawer" id="mobile-drawer" role="dialog" aria-modal="true" aria-label="Navigation menu" aria-hidden="true">
+  <div class="mobile-drawer-backdrop" data-drawer-close></div>
+  <aside class="mobile-drawer-panel">
+    <div class="mobile-drawer-head">
+      <span class="mobile-drawer-title">Menu</span>
+      <button type="button" class="mobile-drawer-close" data-drawer-close aria-label="Close menu">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <form class="drawer-search" action="browse/index.html" method="get" role="search">
+      <input type="search" name="q" class="v2-input" placeholder="Receptor, variant or position" aria-label="Search receptors, variants and generic positions" spellcheck="false" autocapitalize="off">
+      <button type="submit" class="topbar-search-btn" aria-label="Search"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    </form>
+    <nav class="mobile-drawer-nav" aria-label="Primary">
+      <a href="index.html">Home</a>
+      <a href="browse/index.html">Browse</a>
+      <a href="statistics.html">Statistics</a>
+      <a href="studio/">Studio</a>
+      <a href="glossary.html">Glossary</a>
+      <a href="downloads.html">Downloads</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+  </aside>
+</div>
+
+
+<div class="breadcrumbs">
+  <a href="index.html">Home</a>
+  <span class="breadcrumbs-sep">/</span>
+  <span class="breadcrumbs-current">Privacy</span>
+</div>
+
+
+<main id="main">
+
+<section class="info-page privacy-page" aria-labelledby="privacy-heading">
+  <div class="section-inner">
+    <header class="section-head">
+      <h1 id="privacy-heading">Privacy</h1>
+      <p class="section-sub">The GPCompaRe database is a set of static pages. It has no user accounts and sets no cookies. These are the outside services a visit can reach, and what each one receives.</p>
+    </header>
+
+    <table class="privacy-table">
+      <thead>
+        <tr><th scope="col">Service</th><th scope="col">When</th><th scope="col">What it receives</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub Pages</a></td>
+          <td>Every page, because it hosts the site</td>
+          <td>What any web server receives with a request: your IP address, your browser's user agent and the page you asked for.</td>
+        </tr>
+        <tr>
+          <td><a href="https://www.goatcounter.com/help/privacy" target="_blank" rel="noopener">GoatCounter</a></td>
+          <td>Every page, to count visits</td>
+          <td>The page you visited, the page you came from, your browser's user agent, screen size and your IP address. GoatCounter is cookie-free; by its own account it keeps no IP addresses and records only aggregate counts (pages, referrers, browsers, screen sizes and countries).</td>
+        </tr>
+        <tr>
+          <td><a href="https://plotly.com/privacy/" target="_blank" rel="noopener">Plotly CDN</a> (cdn.plot.ly)</td>
+          <td>Receptor reports and the Statistics page, which load the Plotly charting library from it</td>
+          <td>A file request: your IP address, your browser's user agent and the address of the page that asked for the file.</td>
+        </tr>
+        <tr>
+          <td><a href="https://formspree.io/legal/privacy-policy/" target="_blank" rel="noopener">Formspree</a></td>
+          <td>Only when you send the <a href="contact.html">contact form</a></td>
+          <td>Everything you type into the form (name, email, institution, enquiry type, receptor, page address and message), plus your IP address and browser details. Formspree forwards the message to the TGGR Laboratory by email.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Kept in your browser only</h2>
+    <p>Your display preferences (light or dark theme, the compact view on reports) and any game high score are saved in your browser's local storage. They never leave your device, and clearing site data removes them.</p>
+
+    <h2>GPCompaRe Studio</h2>
+    <p><a href="studio/">GPCompaRe Studio</a> runs in your browser. Files you open are read on your computer and are not uploaded. It loads no analytics and no charting library from elsewhere. It contacts RCSB or the AlphaFold Protein Structure Database only when you ask it to fetch a structure. It keeps your display preferences and an offline copy of itself in your browser.</p>
+
+    <h2>Not loaded from elsewhere</h2>
+    <p>The heading font, Source Serif 4, is served from this site (SIL Open Font License, <a href="static/fonts/OFL.txt">licence text</a>), so no font service is contacted.</p>
+
+    <h2>Questions</h2>
+    <p>Use the <a href="contact.html">contact page</a>.</p>
+  </div>
+</section>
+
+</main>
+
+
+<footer class="site-footer">
+  <div class="section-inner footer-inner">
+    <div class="footer-brand">
+      <img src="static/img/lablogo.png" alt="TGGR Laboratory" class="footer-logo">
+      <div class="footer-brand-text">
+        <strong>GPCompaRe database</strong>
+        <span>283 Class A GPCRs. Active vs inactive contact analysis.</span>
+      </div>
+    </div>
+    <div class="footer-lab">
+      <strong>TGGR Laboratory</strong>
+      <span>Translational Genetics and Genomics Research Lab<br>Genetics Institute, Tel Aviv Sourasky Medical Center</span>
+      <a href="https://www.tasmc.org.il/rd/en/next-unit/research-laboratories/genetics/the-translational-genetics-and-genomics-research-laboratory-prof-hagit-baris-feldman/" target="_blank" rel="noopener">tasmc.org.il · lab page</a>
+      <a href="https://github.com/tggr-lab" target="_blank" rel="noopener">github.com/tggr-lab</a>
+    </div>
+    <nav class="footer-links" aria-label="Site information">
+      <a href="glossary.html">Glossary</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+  </div>
+</footer>
+
+<script src="static/js/site.js" defer></script>
+<script src="static/js/glossary-data.js" defer></script>
+<script src="static/js/glossary.js" defer></script>
+
+
+</body>
+</html>

@@ -1,0 +1,420 @@
+
+<!DOCTYPE html>
+<html lang="en" data-color-mode="light" data-light-theme="light" data-dark-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glossary · GPCompaRe</title>
+
+
+<meta name="description" content="Plain-language definitions of the terms used in the GPCompaRe database: RRCS, ΔRRCS, thresholds, generic numbers, AlphaMissense, gnomAD and more.">
+
+<link rel="canonical" href="https://tggr-lab.github.io/GPCompaRe/glossary.html">
+<meta property="og:url" content="https://tggr-lab.github.io/GPCompaRe/glossary.html">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="GPCompaRe database">
+<meta property="og:title" content="Glossary · GPCompaRe">
+<meta property="og:description" content="Plain-language definitions of the terms used in the GPCompaRe database: RRCS, ΔRRCS, thresholds, generic numbers, AlphaMissense, gnomAD and more.">
+<meta property="og:image" content="https://tggr-lab.github.io/GPCompaRe/static/img/lablogo.png">
+<meta name="twitter:card" content="summary">
+
+<script>
+(function() {
+  var root = document.documentElement;
+  var stored = null;
+  try { stored = localStorage.getItem('gpcrsynth-theme'); } catch (e) {}
+  var mode;
+  if (stored === 'light' || stored === 'dark') {
+    mode = stored;
+  } else {
+    mode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  root.setAttribute('data-color-mode', mode);
+  root.setAttribute('data-light-theme', 'light');
+  root.setAttribute('data-dark-theme', 'dark');
+  if (!stored) root.setAttribute('data-theme-auto', '');
+})();
+</script>
+
+<link rel="stylesheet" href="static/css/fonts.css">
+<link rel="stylesheet" href="static/css/primer/primitives.css">
+<link rel="stylesheet" href="static/css/primer/primitives-dark.css">
+<link rel="stylesheet" href="static/css/site.css">
+
+
+
+<!-- Analytics: GoatCounter, cookie-free, GDPR-safe. -->
+<script data-goatcounter="https://gpcompreports.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="index.html" class="wordmark" aria-label="GPCompaRe database home">
+      <img src="static/img/lablogo.png" alt="TGGR Laboratory" class="wordmark-logo">
+      <span class="wordmark-text">GPCompaRe</span>
+    </a>
+    <nav class="topnav" aria-label="Primary">
+      <a href="index.html">Home</a>
+      <a href="browse/index.html">Browse</a>
+      <a href="statistics.html">Statistics</a>
+      <a href="studio/">Studio</a>
+      <a href="glossary.html" aria-current="page">Glossary</a>
+      <a href="downloads.html">Downloads</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+    <form class="topbar-search" action="browse/index.html" method="get" role="search">
+      <input type="search" name="q" class="topbar-search-input" placeholder="Search receptors, variants, positions" aria-label="Search receptors, variants and generic positions" spellcheck="false" autocapitalize="off">
+      <button type="submit" class="topbar-search-btn" aria-label="Search" title="Search receptors, variants and generic positions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    </form>
+    <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle color theme" title="Toggle light / dark">
+      <svg class="icon icon-sun"  viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="2"  x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2"  y1="12" x2="5"  y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.5"  y1="4.5"  x2="6.5"  y2="6.5"/><line x1="17.5" y1="17.5" x2="19.5" y2="19.5"/><line x1="4.5"  y1="19.5" x2="6.5"  y2="17.5"/><line x1="17.5" y1="6.5"  x2="19.5" y2="4.5"/></g></svg>
+      <svg class="icon icon-moon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20 15A8 8 0 0 1 9 4a1 1 0 0 0-1.3-1.1A10 10 0 1 0 21.1 16.3 1 1 0 0 0 20 15z"/></svg>
+    </button>
+    <button type="button" class="topbar-mobile-toggle" id="mobile-nav-toggle" aria-label="Open menu" aria-controls="mobile-drawer" aria-expanded="false">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="mobile-drawer" id="mobile-drawer" role="dialog" aria-modal="true" aria-label="Navigation menu" aria-hidden="true">
+  <div class="mobile-drawer-backdrop" data-drawer-close></div>
+  <aside class="mobile-drawer-panel">
+    <div class="mobile-drawer-head">
+      <span class="mobile-drawer-title">Menu</span>
+      <button type="button" class="mobile-drawer-close" data-drawer-close aria-label="Close menu">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <form class="drawer-search" action="browse/index.html" method="get" role="search">
+      <input type="search" name="q" class="v2-input" placeholder="Receptor, variant or position" aria-label="Search receptors, variants and generic positions" spellcheck="false" autocapitalize="off">
+      <button type="submit" class="topbar-search-btn" aria-label="Search"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    </form>
+    <nav class="mobile-drawer-nav" aria-label="Primary">
+      <a href="index.html">Home</a>
+      <a href="browse/index.html">Browse</a>
+      <a href="statistics.html">Statistics</a>
+      <a href="studio/">Studio</a>
+      <a href="glossary.html" aria-current="page">Glossary</a>
+      <a href="downloads.html">Downloads</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+  </aside>
+</div>
+
+
+<div class="breadcrumbs">
+  <a href="index.html">Home</a>
+  <span class="breadcrumbs-sep">/</span>
+  <span class="breadcrumbs-current">Glossary</span>
+</div>
+
+
+<main id="main">
+
+<section class="info-page glossary-page" aria-labelledby="glossary-heading">
+  <div class="section-inner">
+    <header class="section-head">
+      <h1 id="glossary-heading" data-glossary-skip>Glossary</h1>
+      <p class="section-sub">One plain sentence for each term and abbreviation the site uses. On the report pages, terms with a dotted underline show the same sentence when you point at, tab to or tap them.</p>
+    </header>
+    <nav class="gloss-nav" aria-label="Glossary groups">
+      <a href="#contact-scores">Contact scores</a><a href="#the-models">The models</a><a href="#the-receptor">The receptor</a><a href="#variants">Variants</a><a href="#statistics-page">Statistics page</a><a href="#links-and-files">Links and files</a>
+    </nav>
+    
+    <h2 id="contact-scores" data-glossary-skip>Contact scores</h2>
+    <dl class="gloss-list" data-glossary-skip>
+      
+      <div id="rrcs">
+        <dt>RRCS <span class="gloss-full">(residue-residue contact score)</span></dt>
+        <dd>How tightly two residues pack in one structure, summed over their pairs of atoms within 4.63 Å of each other (closer pairs count more); 0 means no contact. <a href="https://doi.org/10.7554/eLife.50279" target="_blank" rel="noopener" aria-label="Learn more about RRCS (opens in a new tab)">Learn more</a></dd>
+      </div>
+      
+      <div id="active-inactive-rrcs">
+        <dt>Active RRCS, Inactive RRCS</dt>
+        <dd>The RRCS of one contact pair in the active model and in the inactive model.</dd>
+      </div>
+      
+      <div id="delta">
+        <dt>ΔRRCS <span class="gloss-full">(delta RRCS)</span></dt>
+        <dd>The change in one contact: its RRCS in the active model minus its RRCS in the inactive model. Positive (red) means stronger in the active state, negative (blue) stronger in the inactive state.</dd>
+      </div>
+      
+      <div id="absdelta">
+        <dt>|ΔRRCS|, |Δ|</dt>
+        <dd>The size of a change whatever its direction: ΔRRCS without its sign.</dd>
+      </div>
+      
+      <div id="pair">
+        <dt>Contact pair</dt>
+        <dd>Two residues with atoms within 4.63 Å of each other in at least one of the two models.</dd>
+      </div>
+      
+      <div id="threshold">
+        <dt>Threshold</dt>
+        <dd>The |ΔRRCS| a contact must reach to count as changed on a receptor&#39;s page: that receptor&#39;s mean |ΔRRCS| plus one standard deviation, and never below 0.2.</dd>
+      </div>
+      
+      <div id="magnitude">
+        <dt>Magnitude (HIGH, MED, LOW)</dt>
+        <dd>How large a pair&#39;s change is: HIGH at |Δ| 5.0 or more, MED from the receptor&#39;s threshold up to 5.0, LOW below the threshold.</dd>
+      </div>
+      
+      <div id="favoring">
+        <dt>Active-favoring, inactive-favoring</dt>
+        <dd>A contact or residue that is stronger in the active model (red, positive ΔRRCS) or in the inactive model (blue, negative ΔRRCS).</dd>
+      </div>
+      
+      <div id="sumdelta">
+        <dt>Total |ΔRRCS|</dt>
+        <dd>|ΔRRCS| added up over all of a receptor&#39;s contact pairs; it grows with the number of contacts as well as with the size of their changes.</dd>
+      </div>
+      
+      <div id="signed">
+        <dt>Signed sum, Residue net Δ</dt>
+        <dd>ΔRRCS added up over all contacts of one residue, keeping the signs: the net gain (red) or loss (blue) of contact at that residue.</dd>
+      </div>
+      
+      <div id="maxdelta">
+        <dt>Largest single contact, Residue max Δ</dt>
+        <dd>The one contact of a residue with the largest |ΔRRCS|, coloured by that contact&#39;s sign.</dd>
+      </div>
+      
+      <div id="sd">
+        <dt>Std Dev, σ <span class="gloss-full">(standard deviation)</span></dt>
+        <dd>How widely values spread around their mean.</dd>
+      </div>
+      
+      <div id="angstrom">
+        <dt>Å <span class="gloss-full">(ångström)</span></dt>
+        <dd>A tenth of a nanometre; atoms in contact sit about 3 to 4.6 Å apart.</dd>
+      </div>
+      
+    </dl>
+    
+    <h2 id="the-models" data-glossary-skip>The models</h2>
+    <dl class="gloss-list" data-glossary-skip>
+      
+      <div id="models">
+        <dt>Active model, inactive model</dt>
+        <dd>Two computer predictions of the same receptor, one in the active (signalling) state and one in the inactive state. They are models, not experimental structures.</dd>
+      </div>
+      
+      <div id="multistate">
+        <dt>AlphaFold-Multistate</dt>
+        <dd>A way of running AlphaFold that predicts a GPCR in a chosen activation state by giving it only template structures of that state (Heo and Feig, 2022). <a href="https://doi.org/10.1002/prot.26382" target="_blank" rel="noopener" aria-label="Learn more about AlphaFold-Multistate (opens in a new tab)">Learn more</a></dd>
+      </div>
+      
+    </dl>
+    
+    <h2 id="the-receptor" data-glossary-skip>The receptor</h2>
+    <dl class="gloss-list" data-glossary-skip>
+      
+      <div id="gpcr">
+        <dt>GPCR <span class="gloss-full">(G protein-coupled receptor)</span></dt>
+        <dd>A cell-surface receptor that crosses the membrane seven times and signals through G proteins. <a href="https://gpcrdb.org/" target="_blank" rel="noopener" aria-label="Learn more about GPCR (opens in a new tab)">Learn more</a></dd>
+      </div>
+      
+      <div id="classa">
+        <dt>Class A</dt>
+        <dd>The largest GPCR class, related to rhodopsin; this database covers 283 human class A receptors.</dd>
+      </div>
+      
+      <div id="gpcrdb">
+        <dt>GPCRdb</dt>
+        <dd>The reference database of G protein-coupled receptors; the source of the generic numbers, the segment boundaries and the snake plot layout. <a href="https://gpcrdb.org/" target="_blank" rel="noopener" aria-label="Learn more about GPCRdb (opens in a new tab)">Learn more</a></dd>
+      </div>
+      
+      <div id="residue">
+        <dt>Residue, Res1, Res2</dt>
+        <dd>One amino acid in the protein chain, written as its code and position, for example D130; Res1 and Res2 are the two residues of a contact pair.</dd>
+      </div>
+      
+      <div id="aa">
+        <dt>AA <span class="gloss-full">(amino acid)</span></dt>
+        <dd>One of the 20 building blocks of a protein; AA1 and AA2 are the amino acids of a pair.</dd>
+      </div>
+      
+      <div id="segment">
+        <dt>Segment</dt>
+        <dd>One stretch of the receptor: a transmembrane helix (TM1 to TM7), a loop between two helices (ICL inside the cell, ECL outside), helix 8 (H8) or one of the two ends (N-term, C-term).</dd>
+      </div>
+      
+      <div id="tm">
+        <dt>TM, TM1 to TM7 <span class="gloss-full">(transmembrane helix)</span></dt>
+        <dd>The seven helices that cross the cell membrane, numbered from the N-terminus.</dd>
+      </div>
+      
+      <div id="loops">
+        <dt>ICL, ECL <span class="gloss-full">(intracellular and extracellular loops)</span></dt>
+        <dd>The loops joining the helices, on the inside (ICL1 to ICL3) or the outside (ECL1 to ECL3) of the cell.</dd>
+      </div>
+      
+      <div id="h8">
+        <dt>H8 <span class="gloss-full">(helix 8)</span></dt>
+        <dd>A short helix after TM7 that lies along the inner face of the membrane.</dd>
+      </div>
+      
+      <div id="termini">
+        <dt>N-term, C-term <span class="gloss-full">(N-terminus, C-terminus)</span></dt>
+        <dd>The two ends of the chain, the N-terminus outside the cell and the C-terminus inside; often flexible, so their contacts are the least reliable part of a model.</dd>
+      </div>
+      
+      <div id="gn">
+        <dt>Generic number <span class="gloss-full">(Ballesteros-Weinstein numbering, written 3.50x50 by GPCRdb)</span></dt>
+        <dd>A residue address shared across receptors. In 3.50x50, 3 is the helix (TM3) and 50 marks the helix&#39;s most conserved residue, so one number names the equivalent residue in every receptor; the number after the x is GPCRdb&#39;s structure-based correction. <a href="https://gpcrdb.org/" target="_blank" rel="noopener" aria-label="Learn more about Generic number (opens in a new tab)">Learn more</a></dd>
+      </div>
+      
+      <div id="snake">
+        <dt>Snake plot</dt>
+        <dd>A flat map of the receptor&#39;s sequence, one circle per residue, drawn as the chain threads back and forth through the membrane. <a href="https://gpcrdb.org/" target="_blank" rel="noopener" aria-label="Learn more about Snake plot (opens in a new tab)">Learn more</a></dd>
+      </div>
+      
+      <div id="cfr">
+        <dt>CFR <span class="gloss-full">(Core Functional Residue)</span></dt>
+        <dd>A generic-numbered position where an above-threshold contact change recurs across many receptors (at least three); the Statistics page ranks them.</dd>
+      </div>
+      
+      <div id="ligand">
+        <dt>Ligand type</dt>
+        <dd>The kind of molecule that naturally activates the receptor, for example an amine, a peptide or a lipid; orphan receptors have no confirmed natural ligand.</dd>
+      </div>
+      
+    </dl>
+    
+    <h2 id="variants" data-glossary-skip>Variants</h2>
+    <dl class="gloss-list" data-glossary-skip>
+      
+      <div id="missense">
+        <dt>Missense variant</dt>
+        <dd>A DNA change that swaps one amino acid of the protein for another.</dd>
+      </div>
+      
+      <div id="contactsite">
+        <dt>Contact-site variants</dt>
+        <dd>The gnomAD missense variants listed on a report: those at residues that take part in at least one contact pair with |ΔRRCS| ≥ 3.0, a fixed cutoff rather than the receptor threshold.</dd>
+      </div>
+      
+      <div id="gnomad">
+        <dt>gnomAD <span class="gloss-full">(Genome Aggregation Database)</span></dt>
+        <dd>Genetic variation seen in hundreds of thousands of people; the source of the missense variants and their frequencies (release v4.1, dataset gnomad_r4, accessed 2 February 2026). <a href="https://gnomad.broadinstitute.org/" target="_blank" rel="noopener" aria-label="Learn more about gnomAD (opens in a new tab)">Learn more</a></dd>
+      </div>
+      
+      <div id="af">
+        <dt>Allele frequency <span class="gloss-full">(AF)</span></dt>
+        <dd>The share of chromosomes in gnomAD that carry the variant; 1e-4 means 1 in 10,000.</dd>
+      </div>
+      
+      <div id="het">
+        <dt>Het count <span class="gloss-full">(heterozygote count)</span></dt>
+        <dd>How many people in gnomAD carry one copy of the variant (allele count minus twice the number of people who carry two copies).</dd>
+      </div>
+      
+      <div id="hgvs">
+        <dt>Protein change, DNA change <span class="gloss-full">(HGVS notation)</span></dt>
+        <dd>The standard way to write a variant: p.Met159Ile is the methionine at protein position 159 replaced by isoleucine, and c.477G&gt;A is the DNA letter change behind it.</dd>
+      </div>
+      
+      <div id="rsid">
+        <dt>dbSNP, rsID</dt>
+        <dd>A variant&#39;s identifier in dbSNP, NCBI&#39;s catalogue of genetic variants, such as rs1042713.</dd>
+      </div>
+      
+      <div id="am">
+        <dt>AlphaMissense, AM</dt>
+        <dd>A machine-learning prediction of how likely one amino-acid change is to harm the protein, from 0 to 1: likely benign below 0.34, likely pathogenic from 0.564, ambiguous between. A prediction, not a clinical classification. <a href="https://doi.org/10.1126/science.adg7492" target="_blank" rel="noopener" aria-label="Learn more about AlphaMissense, AM (opens in a new tab)">Learn more</a></dd>
+      </div>
+      
+      <div id="pathogenicity">
+        <dt>Pathogenicity</dt>
+        <dd>AlphaMissense&#39;s class for a change: Benign, Ambiguous or Pathogenic, from its score.</dd>
+      </div>
+      
+      <div id="conservation">
+        <dt>Conservation</dt>
+        <dd>How unchanged a position is across related proteins, from 0 (variable) to 1 (conserved); conserved positions are often important (VarSite scores, served by ProtVar). <a href="https://www.ebi.ac.uk/ProtVar/" target="_blank" rel="noopener" aria-label="Learn more about Conservation (opens in a new tab)">Learn more</a></dd>
+      </div>
+      
+    </dl>
+    
+    <h2 id="statistics-page" data-glossary-skip>Statistics page</h2>
+    <dl class="gloss-list" data-glossary-skip>
+      
+      <div id="cfrscore">
+        <dt>CFR score</dt>
+        <dd>The mean of a position&#39;s normalised recurrence (how many receptors) and normalised mean |ΔRRCS|; it orders the CFR table.</dd>
+      </div>
+      
+      <div id="kw">
+        <dt>Kruskal-Wallis test</dt>
+        <dd>A test of whether several groups differ in their typical values, using ranks instead of raw values; H is the test statistic, and a small p means a difference this large would be unlikely if the groups were alike.</dd>
+      </div>
+      
+      <div id="or">
+        <dt>Odds ratio, 95% CI <span class="gloss-full">(95% confidence interval)</span></dt>
+        <dd>How much more often something happens in one group than in another (1 means no difference); the confidence interval is the range the true value plausibly lies in.</dd>
+      </div>
+      
+      <div id="recurrence">
+        <dt>Recurrence</dt>
+        <dd>How many receptors show an above-threshold change at the same generic-numbered position.</dd>
+      </div>
+      
+    </dl>
+    
+    <h2 id="links-and-files" data-glossary-skip>Links and files</h2>
+    <dl class="gloss-list" data-glossary-skip>
+      
+      <div id="uniprot">
+        <dt>UniProt</dt>
+        <dd>The reference protein database; each report links to the receptor&#39;s UniProt entry by its accession, such as P07550. <a href="https://www.uniprot.org/" target="_blank" rel="noopener" aria-label="Learn more about UniProt (opens in a new tab)">Learn more</a></dd>
+      </div>
+      
+      <div id="csv">
+        <dt>CSV <span class="gloss-full">(comma-separated values)</span></dt>
+        <dd>A plain table file that opens in any spreadsheet program; every table here can be exported as one.</dd>
+      </div>
+      
+    </dl>
+    
+  </div>
+</section>
+
+</main>
+
+
+<footer class="site-footer">
+  <div class="section-inner footer-inner">
+    <div class="footer-brand">
+      <img src="static/img/lablogo.png" alt="TGGR Laboratory" class="footer-logo">
+      <div class="footer-brand-text">
+        <strong>GPCompaRe database</strong>
+        <span>283 Class A GPCRs. Active vs inactive contact analysis.</span>
+      </div>
+    </div>
+    <div class="footer-lab">
+      <strong>TGGR Laboratory</strong>
+      <span>Translational Genetics and Genomics Research Lab<br>Genetics Institute, Tel Aviv Sourasky Medical Center</span>
+      <a href="https://www.tasmc.org.il/rd/en/next-unit/research-laboratories/genetics/the-translational-genetics-and-genomics-research-laboratory-prof-hagit-baris-feldman/" target="_blank" rel="noopener">tasmc.org.il · lab page</a>
+      <a href="https://github.com/tggr-lab" target="_blank" rel="noopener">github.com/tggr-lab</a>
+    </div>
+    <nav class="footer-links" aria-label="Site information">
+      <a href="glossary.html">Glossary</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+  </div>
+</footer>
+
+<script src="static/js/site.js" defer></script>
+<script src="static/js/glossary-data.js" defer></script>
+<script src="static/js/glossary.js" defer></script>
+
+
+</body>
+</html>

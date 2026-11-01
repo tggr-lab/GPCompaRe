@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://tggr-lab.github.io/GPCompaRe/sitemap.xml

@@ -206,3 +206,7 @@
 .release-list dd { margin: 0; }
 .release-scope { max-width: 70ch; color: var(--fgColor-muted); font-size: 14px; }
 @media (max-width: 820px) { .contains-list { columns: 1; } }
+
+/* Reference list under "Methods and data sources". */
+.methods-sources .refs-list { max-width: 70ch; margin: var(--s-3) 0 var(--s-4); padding-left: 1.2rem; font-size: 0.875rem; color: var(--fgColor-muted); }
+.methods-sources .refs-list li { margin-bottom: var(--s-1); overflow-wrap: anywhere; }

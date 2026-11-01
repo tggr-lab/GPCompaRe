@@ -1,0 +1,1 @@
+var e=1e3,t=.2;function n(e){return!e||e.z===null||e.ci===null?!1:Math.abs(e.z)>=2&&(e.ci[0]>0||e.ci[1]<0)}export{t as n,n as r,e as t};
