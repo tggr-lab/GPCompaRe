@@ -82,6 +82,14 @@ def test_the_downloads_page_offers_the_database_and_no_local_program():
 
 
 @needs_build
+def test_no_page_says_results_were_submitted():
+    for name in ('index.html', 'statistics.html'):
+        html = (BUILD_DIR / name).read_text(encoding='utf-8').lower()
+        assert 'submitted with the manuscript' not in html, name
+        assert 'as submitted' not in html, name
+
+
+@needs_build
 def test_the_landing_page_sends_your_own_structures_to_studio():
     text = _visible(BUILD_DIR / 'index.html')
     assert 'analysis software' not in text.lower()
