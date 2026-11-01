@@ -82,10 +82,10 @@ def test_the_downloads_page_offers_the_database_and_no_local_program():
 
 
 @needs_build
-def test_no_page_says_results_were_submitted():
+def test_no_page_mentions_the_manuscript():
     for name in ('index.html', 'statistics.html'):
         html = (BUILD_DIR / name).read_text(encoding='utf-8').lower()
-        assert 'submitted with the manuscript' not in html, name
+        assert 'manuscript' not in html, name
         assert 'as submitted' not in html, name
 
 
