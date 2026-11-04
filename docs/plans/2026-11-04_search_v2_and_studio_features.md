@@ -177,3 +177,24 @@ The order gives value early. P1–P5 can ship on their own, as "search v2", with
 | P6 | 1 session |
 | P7 | 1 to 2 sessions once D1 is settled |
 | P8 | 1 to 2 sessions, plus freeze review |
+
+## Addendum 2026-11-04 (owner requirement): every transcript, both assemblies
+
+The search must accept GRCh37 and GRCh38 coordinates and **any** transcript a user may type, not only MANE. That covers:
+- every protein-coding Ensembl ENST/ENSP and RefSeq NM_/NP_, including older versions found in ClinVar or the literature;
+- `p.` on NP_/ENSP accessions, and LRG ids where available.
+
+P2 is extended to build the following:
+- **Exon and CDS maps** for each transcript on both assemblies.
+- **A protein-to-model alignment** for each transcript.
+- **Version-mismatch rules.** If the protein is identical to a current transcript, resolve to it with a note. Otherwise answer "this version is not mapped".
+- **Isoform flags** for transcripts whose protein differs from the model.
+
+The index (P3) ships compact per-gene transcript tables. The resolver converts:
+- **any c.** → genomic (GRCh38 and GRCh37) and model residue;
+- **any g.** → every transcript's c. and the model residue.
+
+Result cards list:
+- the c./p. on MANE;
+- the c./p. on the transcript the user typed;
+- both genome builds.
