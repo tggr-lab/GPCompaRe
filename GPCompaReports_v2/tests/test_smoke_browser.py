@@ -137,11 +137,10 @@ def server():
 
 
 @pytest.fixture(scope='session')
-def browser():
-    with sync_playwright() as p:
-        b = p.chromium.launch()
-        yield b
-        b.close()
+def browser(playwright_session):
+    b = playwright_session.chromium.launch()
+    yield b
+    b.close()
 
 
 @pytest.fixture

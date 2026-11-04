@@ -117,12 +117,12 @@ def server():
 
 
 @pytest.fixture(scope='session')
-def browser():
+def browser(playwright_session):
     exe = os.environ.get('CHROMIUM_PATH') or (str(DEFAULT_CHROMIUM) if DEFAULT_CHROMIUM.exists() else None)
-    with sync_playwright() as p:
-        b = p.chromium.launch(executable_path=exe) if exe else p.chromium.launch()
-        yield b
-        b.close()
+    p = playwright_session
+    b = p.chromium.launch(executable_path=exe) if exe else p.chromium.launch()
+    yield b
+    b.close()
 
 
 @pytest.fixture(scope='session')
