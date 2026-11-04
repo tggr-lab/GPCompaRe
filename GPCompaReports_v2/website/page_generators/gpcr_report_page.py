@@ -15,6 +15,7 @@ import pandas as pd
 from jinja2 import Environment
 
 from . import gpcr_report_helpers as v1
+from . import report_extras
 from ..plotly_theming import theme_overrides
 from ..seo import report_description
 
@@ -428,6 +429,7 @@ def generate_all_reports(env: Environment, store, output_dir, analysis_results=N
     layout_dark_json = json.dumps(dark, separators=(',', ':'))
 
     cfr_generics = _cfr_generic_numbers(analysis_results)
+    models_root = report_extras.models_dir()
 
     gen_total = len(gpcr_ids)
     for i, gid in enumerate(gpcr_ids):
@@ -490,6 +492,8 @@ def generate_all_reports(env: Environment, store, output_dir, analysis_results=N
                 am_landscape_cache=am_cache,
             )
 
+        rx = report_extras.build_extras(gid, annot_map, residue_metrics, models_root)
+
         max_increase = float(delta_df['delta_rrcs'].max()) if not delta_df.empty else 0.0
         max_decrease = float(delta_df['delta_rrcs'].min()) if not delta_df.empty else 0.0
 
@@ -540,6 +544,8 @@ def generate_all_reports(env: Environment, store, output_dir, analysis_results=N
             rrcs_total_pairs=int(len(delta_df)),
             rrcs_stats=rrcs_stats,
             residue_summary_json=residue_summary_json,
+            rx=rx,
+            rx_clinvar_label=report_extras.clinvar_label(rx['clinvar']),
             layout_light_json=layout_light_json,
             layout_dark_json=layout_dark_json,
         )

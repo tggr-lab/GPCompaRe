@@ -16,6 +16,15 @@ FREEZE_BUILD_DIR=STAGE SMOKE_BUILD_DIR=STAGE .venv-test/bin/python -m pytest GPC
 bash scripts/deploy_pages.sh STAGE
 ```
 
+The report pages' 3D view needs two more things in the stage. The Studio build
+must carry `embed/` (`npm run build` produces it; `studio-dist/embed/pair-viewer.js`),
+and the stage holds `models/{active,inactive}/<gid>_<state>.pdb.gz`, written by
+`scripts/stage_models.py` from the database's GPCRdb models (gzipped, bytes
+unmodified, CC BY 4.0 credited on the reports and in `static/notices/`).
+`build_release.sh` does both; `check_stage.py` checks every report's model pair
+against the Studio pack's `modelSha256`. The reports read their ClinVar records
+from the Studio build's `pack/` (set by `build_release.sh`).
+
 ---
 
 ## The rule about skipped tests

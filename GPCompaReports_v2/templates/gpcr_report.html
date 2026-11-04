@@ -3,6 +3,7 @@
 {% block head %}
 <script src="https://cdn.plot.ly/plotly-3.3.1.min.js"></script>
 <link rel="stylesheet" href="{{ static_prefix }}static/css/v3.css">
+<link rel="stylesheet" href="{{ static_prefix }}static/css/report-extras.css">
 {% endblock %}
 
 {% block breadcrumbs %}
@@ -115,6 +116,37 @@
       <div id="snake-plot-container">
         {{ snake_plot_svg | safe }}
       </div>
+    </section>
+    {% endif %}
+
+    {# -------------- 3D view: opt-in, outside every report section, loads nothing until asked -------------- #}
+    {% if rx.has_3d %}
+    <section class="report-extra" id="sec-3d" aria-labelledby="rx-3d-title">
+      <header class="report-section-head"><h2 id="rx-3d-title">3D view</h2></header>
+      <div class="rx-actions">
+        <button type="button" class="btn btn-sm" id="rx-3d-toggle" aria-expanded="false" aria-controls="rx-3d-panel">Show 3D view</button>
+        <a class="btn btn-ghost btn-sm" href="{{ rx.studio_url }}" data-tooltip="Open this model pair in GPCompaRe Studio">Open in Studio</a>
+      </div>
+      <div class="rx-3d-panel" id="rx-3d-panel" hidden>
+        <div class="rx-3d-tools">
+          <div class="rx-3d-show" role="group" aria-label="Structures shown">
+            <button type="button" class="btn btn-sm rx-show-btn active" data-rx-show="both" aria-pressed="true">Both</button>
+            <button type="button" class="btn btn-sm rx-show-btn" data-rx-show="active" aria-pressed="false">Active</button>
+            <button type="button" class="btn btn-sm rx-show-btn" data-rx-show="inactive" aria-pressed="false">Inactive</button>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" id="rx-3d-whole">Whole receptor</button>
+          <span class="rx-3d-status" id="rx-3d-status" role="status" aria-live="polite"></span>
+        </div>
+        <div class="rx-3d-pane" id="rx-3d-pane" role="group" aria-label="Active and inactive models of {{ uniprot_name }}, superposed"></div>
+        <p class="rx-caption">Colour: net ΔRRCS per residue. <span class="is-active">Red:</span> stronger in active. <span class="is-inactive">Blue:</span> stronger in inactive.</p>
+      </div>
+      <p class="rx-attr">
+        Models: <a href="https://gpcrdb.org" target="_blank" rel="noopener">GPCRdb</a> AlphaFold-Multistate models (2024-05-15 build),
+        <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.
+        Heo L, Feig M. <a href="https://doi.org/10.1002/prot.26382" target="_blank" rel="noopener">Multi-state modeling of G-protein coupled receptors at experimental accuracy</a>. Proteins 90:1873-1885 (2022).
+        Viewer: <a href="https://molstar.org" target="_blank" rel="noopener">Mol*</a> (MIT licence).
+        <a href="{{ static_prefix }}static/notices/models-and-viewer.txt">Notices</a>
+      </p>
     </section>
     {% endif %}
 
@@ -321,6 +353,52 @@
     </section>
     {% endif %}
 
+    {# -------------- ClinVar P/LP missense records: opt-in (collapsed), outside every report section -------------- #}
+    {% if rx.clinvar is not none %}
+    {% set cv = rx.clinvar.records %}
+    <section class="report-extra" id="sec-clinvar" aria-labelledby="rx-clinvar-title">
+      <header class="report-section-head"><h2 id="rx-clinvar-title">ClinVar</h2></header>
+      <details class="rx-details" id="rx-clinvar">
+        <summary>{{ rx_clinvar_label }}: {% if cv %}{{ cv|length }} record{{ '' if cv|length == 1 else 's' }}{% else %}no records{% endif %}</summary>
+        {% if cv %}
+        <div class="v2-table-wrap">
+          <div class="v2-table-scroll">
+            <table class="v2-table" id="clinvar-table">
+              <thead>
+                <tr>
+                  <th data-tooltip="Residue and position in the model">Residue</th>
+                  <th data-tooltip="GPCRdb generic number">Generic number</th>
+                  <th data-tooltip="Protein change as named in ClinVar">Protein change</th>
+                  <th data-tooltip="ClinVar germline classification">Classification</th>
+                  <th data-tooltip="ClinVar review status, gold stars out of 4">Stars</th>
+                  <th data-tooltip="Conditions submitted with the record">Condition</th>
+                  <th data-tooltip="ClinVar variation record">ClinVar</th>
+                </tr>
+              </thead>
+              <tbody>
+              {% for r in cv %}
+                <tr>
+                  <td><button type="button" class="rx-res-link" data-rx-res="{{ r.pos }}">{{ r.aa3 }}{{ r.pos }}</button>{% if r.differs %} <small class="muted">(model residue differs)</small>{% endif %}</td>
+                  <td class="mono">{{ r.gn or '-' }}</td>
+                  <td>{{ r.hgvsp }}</td>
+                  <td>{{ r.cls }}</td>
+                  <td class="rx-stars" role="img" aria-label="{{ r.stars }} of 4 stars" data-tooltip="{{ r.review }}">{{ r.stars_text }}</td>
+                  <td>{{ r.conditions | join('; ') if r.conditions else '-' }}</td>
+                  <td class="mono"><a href="https://www.ncbi.nlm.nih.gov/clinvar/variation/{{ r.vid }}/" target="_blank" rel="noopener">{{ r.vcv }}</a></td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {% else %}
+        <p class="rx-none">No germline pathogenic or likely pathogenic missense records for this receptor in {{ rx_clinvar_label }}.</p>
+        {% endif %}
+        <p class="rx-attr">Source: <a href="https://www.ncbi.nlm.nih.gov/clinvar/" target="_blank" rel="noopener">NCBI ClinVar</a>, release {{ rx.clinvar.release }}. {{ rx.clinvar.scope[:1]|upper }}{{ rx.clinvar.scope[1:] }}.</p>
+      </details>
+    </section>
+    {% endif %}
+
     {# -------------- Complete RRCS (top 1000) -------------- #}
     {% if complete_rrcs %}
     <section class="report-section" id="sec-rrcs" data-section-title="RRCS results">
@@ -471,6 +549,15 @@
         </div>
       </div>
     </section>
+
+    {# -------------- Residue drawer: hidden until a residue is clicked -------------- #}
+    <aside class="rx-drawer" id="rx-drawer" hidden aria-label="Residue details">
+      <div class="rx-drawer-head">
+        <strong class="rx-drawer-title" id="rx-drawer-title"></strong>
+        <button type="button" class="rx-drawer-close" id="rx-drawer-close" aria-label="Close residue details">&times;</button>
+      </div>
+      <div class="rx-drawer-body" id="rx-drawer-body"></div>
+    </aside>
 
     {# -------------- Credits condensed -------------- #}
     <p class="report-refs">
@@ -976,10 +1063,19 @@ document.addEventListener('DOMContentLoaded', function() {
     redrawSnakeLinks();
   }
 
-  function setSelectedResidue(seq) {
+  // Tell other modules (the residue drawer, the 3D view) which residue is
+  // selected now. `user` is true only for a real click.
+  function announceSelection(user) {
+    document.dispatchEvent(new CustomEvent('snake-residue-select', {
+      detail: { residue: filterState.selectedResidue, user: !!user }
+    }));
+  }
+
+  function setSelectedResidue(seq, user) {
     filterState.selectedResidue = (filterState.selectedResidue === seq) ? null : seq;
     updateResidueHighlight();
     redrawSnakeLinks();
+    announceSelection(user);
   }
 
   function updateMagDisplays() {
@@ -1012,6 +1108,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updateMagDisplays();
     updateResidueHighlight();
     redrawSnakeLinks();
+    announceSelection(false);
   }
 
   function initFilterControls() {
@@ -1061,7 +1158,7 @@ document.addEventListener('DOMContentLoaded', function() {
       c.style.cursor = 'pointer';
       c.addEventListener('click', function(ev) {
         ev.stopPropagation();
-        setSelectedResidue(parseInt(id, 10));
+        setSelectedResidue(parseInt(id, 10), ev.isTrusted);
       });
     });
     var svgEl = container.querySelector('svg');
@@ -1071,6 +1168,7 @@ document.addEventListener('DOMContentLoaded', function() {
           filterState.selectedResidue = null;
           updateResidueHighlight();
           redrawSnakeLinks();
+          announceSelection(ev.isTrusted);
         }
       });
     }
@@ -1118,7 +1216,21 @@ document.addEventListener('DOMContentLoaded', function() {
         links: filterState.visible
       };
     },
-    bounds: function () { return { lo: minAbsDelta, hi: maxAbsDelta }; }
+    bounds: function () { return { lo: minAbsDelta, hi: maxAbsDelta }; },
+    // Select a residue without toggling it off (a click toggles). Returns
+    // false when the plot has no circle for it.
+    selectResidue: function (seq) {
+      if (!positions[String(seq)]) return false;
+      if (filterState.selectedResidue !== seq) setSelectedResidue(seq, false);
+      return true;
+    },
+    getSelectedResidue: function () { return filterState.selectedResidue; },
+    // Toggle a residue exactly as a click on its circle does. `user` marks a real click.
+    toggleResidue: function (seq, user) {
+      if (!positions[String(seq)]) return false;
+      setSelectedResidue(seq, !!user);
+      return true;
+    }
   };
   document.dispatchEvent(new CustomEvent('snake-ready'));
   switchSnakeView('delta_rrcs');
@@ -1127,6 +1239,9 @@ document.addEventListener('DOMContentLoaded', function() {
 })();
 </script>
 {% endif %}
+<script type="application/json" id="rx-config">{{ rx.config_json | safe }}</script>
 <script src="{{ static_prefix }}static/js/v3-nav.js" defer></script>
 <script src="{{ static_prefix }}static/js/v3-deeplink.js" defer></script>
+<script src="{{ static_prefix }}static/js/residue-drawer.js" defer></script>
+<script src="{{ static_prefix }}static/js/viewer3d.js" defer></script>
 {% endblock %}

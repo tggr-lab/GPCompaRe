@@ -1,0 +1,35 @@
+GPCompaRe database: notices for the 3D view
+
+Structure models
+----------------
+The 3D view on each receptor report shows the receptor's active and inactive
+models from GPCRdb (https://gpcrdb.org): the AlphaFold-Multistate models, 2024-05-15 build.
+
+  Licence:   Creative Commons Attribution 4.0 International (CC BY 4.0),
+             https://creativecommons.org/licenses/by/4.0/
+             GPCRdb legal notice: https://docs.gpcrdb.org/legal_notice
+  Credit:    GPCRdb (https://gpcrdb.org)
+             Heo L, Feig M. Multi-state modeling of G-protein coupled receptors at
+             experimental accuracy. Proteins 90:1873-1885 (2022).
+             https://doi.org/10.1002/prot.26382
+  Changes:   none to the coordinates. The files under /models/ are the GPCRdb PDB
+             files byte for byte, compressed with gzip (file name
+             <receptor>_<state>.pdb.gz, for example par2_human_active.pdb.gz).
+             Residue numbers follow the models.
+
+Viewer
+------
+The 3D view uses the pair viewer of GPCompaRe Studio (/studio/embed/), which
+bundles Mol* (https://molstar.org, MIT licence, Copyright (c) 2017 - now Mol*
+contributors) and the packages it depends on. The licence text and the list of
+packages are in /studio/embed/NOTICE.txt and /studio/embed/THIRD_PARTY_NOTICES.txt.
+
+  Sehnal D, Bittrich S, Deshpande M, et al. Mol* Viewer: modern web app and
+  plugin for visualizing 3D structures and large-scale data.
+  Nucleic Acids Res 49:W431-W437 (2021). https://doi.org/10.1093/nar/gkab314
+
+ClinVar
+-------
+The ClinVar section lists records from NCBI ClinVar (https://www.ncbi.nlm.nih.gov/clinvar/),
+release 2026-10-11: germline pathogenic, likely pathogenic and pathogenic/likely
+pathogenic single-residue missense records.

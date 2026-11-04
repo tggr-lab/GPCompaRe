@@ -10,6 +10,10 @@
 #                  main checkout, because both are gitignored and a linked
 #                  worktree has neither)
 #   --build-dir    where the database is generated (default: <stage>-db-build).
+#   --models-dir   the database's GPCRdb models (active/ and inactive/ of
+#                  <gid>_<state>.pdb; default: <data-root>/gpcrdb_alphafold_models).
+#                  Hosted under <stage>/models/ gzipped, bytes unmodified
+#                  (CC BY 4.0, credited on the reports and in static/notices/).
 #
 # Reuses an existing --build-dir only with --skip-build, which assembles again
 # without regenerating. Nothing here pushes anything; publish with
@@ -18,7 +22,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PY="$ROOT/.venv-test/bin/python"
-STAGE="" STUDIO_DIST="" DATA_ROOT="" BUILD="" SKIP_BUILD=0
+STAGE="" STUDIO_DIST="" DATA_ROOT="" BUILD="" MODELS_DIR="" SKIP_BUILD=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -26,22 +30,26 @@ while [ $# -gt 0 ]; do
     --studio-dist) STUDIO_DIST="$2"; shift 2 ;;
     --data-root) DATA_ROOT="$2"; shift 2 ;;
     --build-dir) BUILD="$2"; shift 2 ;;
+    --models-dir) MODELS_DIR="$2"; shift 2 ;;
     --skip-build) SKIP_BUILD=1; shift ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
 
-[ -n "$STAGE" ] && [ -n "$STUDIO_DIST" ] || { sed -n 2,16p "$0" >&2; exit 2; }
+[ -n "$STAGE" ] && [ -n "$STUDIO_DIST" ] || { sed -n 2,20p "$0" >&2; exit 2; }
 if [ -z "$DATA_ROOT" ]; then
   DATA_ROOT="$(dirname "$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir)")"
 fi
 BUILD="${BUILD:-${STAGE%/}-db-build}"
+MODELS_DIR="${MODELS_DIR:-$DATA_ROOT/gpcrdb_alphafold_models}"
 ANALYZER="$DATA_ROOT/The_batch_RRCS_analyzer"
 BATCH="$ANALYZER/batch_analysis_full/batch_analysis_20260202_151051"
 CACHES="$DATA_ROOT/GPCompaReports_v2/output/data"
 
 [ -x "$PY" ] || { echo "no venv at $ROOT/.venv-test: see GPCompaReports_v2/requirements-site.txt" >&2; exit 1; }
 [ -d "$BATCH/csv_data" ] || { echo "no batch data at $BATCH" >&2; exit 1; }
+[ -d "$MODELS_DIR/active" ] && [ -d "$MODELS_DIR/inactive" ] || {
+  echo "no GPCRdb models at $MODELS_DIR (active/ and inactive/)" >&2; exit 1; }
 [ -f "$STUDIO_DIST/index.html" ] && [ -f "$STUDIO_DIST/sw.js" ] || {
   echo "no Studio build at $STUDIO_DIST" >&2; exit 1; }
 
@@ -66,16 +74,23 @@ if [ "$SKIP_BUILD" -eq 0 ]; then
   SEEDED=$(find "$BUILD/data" -name '*.json' | wc -l)
   [ "$SEEDED" -ge 566 ] || { echo "seeded only $SEEDED cache files from $CACHES" >&2; exit 1; }
   echo "==> Generating the database (seeded $SEEDED caches)..."
+  # The reports' ClinVar section and residue numbering come from the packs the
+  # release ships, and the 3D view needs the models to exist.
+  export STUDIO_PACK_DIR="$STUDIO_DIST/pack" GPCOMPARE_MODELS_DIR="$MODELS_DIR"
   "$PY" "$ROOT/GPCompaReports_v2/generate_site.py" --output "$BUILD" --batch-dir "$BATCH"
 fi
 
 echo "==> Assembling $STAGE..."
 mkdir -p "$STAGE"
 rsync -a --delete \
-  --exclude='/data/' --exclude='/poster/' --exclude='/dossier/' --exclude='/studio/' \
+  --exclude='/data/' --exclude='/poster/' --exclude='/dossier/' --exclude='/studio/' --exclude='/models/' \
   "$BUILD/" "$STAGE/"
 mkdir -p "$STAGE/studio"
 rsync -a --delete "${STUDIO_DIST%/}/" "$STAGE/studio/"
+echo "==> Hosting the GPCRdb models (gzipped, bytes unmodified)..."
+"$PY" "$ROOT/scripts/stage_models.py" --src "$MODELS_DIR" --reports "$STAGE/reports" \
+  --out "$STAGE/models" --index "$STAGE/studio/pack/index.json"
+cp "$ROOT/GPCompaReports_v2/static/notices/models-and-viewer.txt" "$STAGE/models/NOTICE.txt"
 touch "$STAGE/.nojekyll"
 
 "$PY" "$ROOT/scripts/check_stage.py" "$STAGE"

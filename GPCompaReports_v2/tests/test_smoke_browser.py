@@ -574,3 +574,228 @@ def test_the_honeypot_is_not_reachable_by_keyboard(browser, server):
     assert 'contact-gotcha' not in reached, (
         'tabbing through the form reaches the honeypot: %s' % reached)
     ctx.close()
+
+
+# ---------------------------------------------------------------------------
+# The opt-in report additions: 3D view, ClinVar section, residue drawer
+# ---------------------------------------------------------------------------
+#
+# These need a stage (or a build with studio/embed and models/ beside the
+# reports), because the viewer and the model files are separate from the
+# report page. Against a plain build they skip; against the staged release
+# that deploy_pages.sh tests they always run.
+
+HAS_VIEWER = ((BUILD_DIR / 'studio' / 'embed' / 'pair-viewer.js').is_file()
+              and (BUILD_DIR / 'models' / 'active').is_dir())
+needs_viewer = pytest.mark.skipif(
+    not HAS_VIEWER, reason='%s has no studio/embed or models/ (a stage has both)' % BUILD_DIR)
+
+
+def _pick_report(prefer, *needles):
+    """A built report containing every needle, preferring `prefer`."""
+    if not REPORTS_DIR.is_dir():
+        return None
+    ids = [p.stem for p in report_pages(REPORTS_DIR)]
+    ids.sort(key=lambda g: (g != prefer, g))
+    for gid in ids:
+        html = (REPORTS_DIR / ('%s.html' % gid)).read_text(encoding='utf-8')
+        if all(n in html for n in needles):
+            return gid
+    return None
+
+
+def _console_errors(page):
+    """Console errors that are ours: the hosts the suite blocks fail on purpose."""
+    return [t for t, url in page.console_errors
+            if not any(h.strip('*/') in url for h in BLOCKED)]
+
+
+@pytest.fixture
+def open_extra(browser, server):
+    """Like open_report, and it also records console errors and every request."""
+    contexts = []
+
+    def _open(gpcr_id, hash_=''):
+        ctx = browser.new_context(viewport=VIEWPORT)
+        contexts.append(ctx)
+        page = ctx.new_page()
+        page.errors, page.console_errors, page.requests = [], [], []
+        page.on('pageerror', lambda e: page.errors.append(str(e)))
+        page.on('console', lambda m: m.type == 'error' and page.console_errors.append(
+            (m.text, (m.location or {}).get('url', ''))))
+        page.on('request', lambda r: page.requests.append(r.url))
+        for pattern in BLOCKED:
+            page.route(pattern, lambda route: route.abort())
+        page.goto('%s/reports/%s.html%s' % (server, gpcr_id, hash_), wait_until='load')
+        page.wait_for_timeout(SETTLE_MS)
+        return page
+
+    yield _open
+    for ctx in contexts:
+        ctx.close()
+
+
+def _open_3d(page):
+    page.locator('#rx-3d-toggle').click()
+    page.wait_for_selector('#rx-3d-pane[data-state="ready"], #rx-3d-pane[data-state="error"]',
+                           timeout=90000)
+    assert page.get_attribute('#rx-3d-pane', 'data-state') == 'ready', (
+        '3D view did not start: %s' % page.inner_text('#rx-3d-status'))
+
+
+def _snake_residue(page):
+    """A residue that has both a snake-plot circle and a residue-summary row."""
+    return page.evaluate("""(function () {
+      var rows = JSON.parse(document.getElementById('residue-summary-data').textContent);
+      for (var i = 0; i < rows.length; i++) {
+        var n = rows[i].position;
+        var c = document.querySelector('#snake-plot-container circle[id="' + n + '"]');
+        var t = document.getElementById(n + 't');
+        // drawn and on screen (collapsed loops hide some residues)
+        if (c && t && rows[i].n_contact_partners > 3 &&
+            c.getBoundingClientRect().width > 4 && t.getBoundingClientRect().width > 2) return n;
+      }
+      return null;
+    })()""")
+
+
+def _click_snake_residue(page, n):
+    """Click the residue letter, which sits on top of its circle."""
+    label = page.locator('[id="%dt"]' % n)
+    label.scroll_into_view_if_needed()
+    label.click(force=True)
+
+
+@needs_viewer
+def test_3d_view_loads_nothing_until_asked_then_only_from_this_site(open_extra, server):
+    gid = _pick_report('par2_human', 'id="sec-3d"')
+    assert gid, 'no report with a 3D view in this build'
+    page = open_extra(gid)
+    assert page.locator('#rx-3d-toggle').get_attribute('aria-expanded') == 'false'
+    assert page.locator('#rx-3d-panel').is_hidden()
+    before = [u for u in page.requests if '/studio/' in u or '/models/' in u]
+    assert before == [], '%s requested the viewer or models before being asked: %s' % (gid, before)
+
+    n_before = len(page.requests)
+    _open_3d(page)
+    after = page.requests[n_before:]
+    assert any(u.endswith('/studio/embed/pair-viewer.js') for u in after)
+    assert any(u.endswith('/models/active/%s_active.pdb.gz' % gid) for u in after)
+    assert any(u.endswith('/models/inactive/%s_inactive.pdb.gz' % gid) for u in after)
+    foreign = [u for u in after if not u.startswith(server) and not u.startswith('data:')
+               and not u.startswith('blob:')]
+    assert foreign == [], 'the 3D view contacted other hosts: %s' % foreign
+    assert page.errors == [] and _console_errors(page) == [], (
+        '%s: errors with the 3D view open: %s %s' % (gid, page.errors, _console_errors(page)))
+
+
+@needs_viewer
+def test_3d_view_draws_a_webgl_canvas_with_the_attribution_beside_it(open_extra):
+    gid = _pick_report('par2_human', 'id="sec-3d"')
+    page = open_extra(gid)
+    _open_3d(page)
+    canvas = page.locator('#rx-3d-pane canvas')
+    assert canvas.count() >= 1, 'no canvas in the 3D pane'
+    box = canvas.first.bounding_box()
+    assert box and box['width'] > 200 and box['height'] > 150, 'canvas has no size: %s' % box
+    assert page.evaluate("""(function () {
+      var c = document.querySelector('#rx-3d-pane canvas');
+      var gl = c.getContext('webgl2') || c.getContext('webgl');
+      return !!gl;
+    })()"""), 'the canvas has no WebGL context'
+    assert 'RMSD' in page.inner_text('#rx-3d-status')
+    section = page.inner_text('#sec-3d')
+    for needle in ('CC BY 4.0', 'Heo L, Feig M', 'Mol*', 'AlphaFold-Multistate'):
+        assert needle in section, 'attribution lacks %r' % needle
+    assert page.get_attribute('#sec-3d a.btn-ghost', 'href') == '../studio/?db=%s' % gid
+
+
+@needs_viewer
+def test_clicking_a_snake_residue_opens_the_drawer_and_focuses_the_3d_view(open_extra):
+    gid = _pick_report('par2_human', 'id="sec-3d"', 'id="snake-plot-data"')
+    page = open_extra(gid)
+    assert page.locator('#rx-drawer').is_hidden(), 'the drawer must start closed'
+    _open_3d(page)
+    n = _snake_residue(page)
+    assert n, 'no usable residue in the snake plot'
+
+    page.locator('#rx-3d-pane').scroll_into_view_if_needed()
+    before = page.locator('#rx-3d-pane').screenshot()
+    _click_snake_residue(page, n)
+
+    expect(page.locator('#rx-drawer')).to_be_visible()
+    assert str(n) in page.inner_text('#rx-drawer-title')
+    body = page.inner_text('#rx-drawer-body')
+    for label in ('Generic number', 'Segment', 'Net', 'Largest', 'Contacts', 'ClinVar'):
+        assert label in body, 'drawer lacks %r' % label
+    assert page.evaluate('window.SnakeAPI.getSelectedResidue()') == n
+    expect(page.locator('#rx-3d-pane')).to_have_attribute('data-focus', str(n))
+    page.wait_for_timeout(1500)  # the camera move
+    after = page.locator('#rx-3d-pane').screenshot()
+    assert before != after, 'the 3D view did not change when a residue was selected'
+
+    # Show in 3D from the drawer frames the same residue; Escape closes the drawer
+    page.locator('#rx-show-in-3d').click()
+    expect(page.locator('#rx-3d-pane')).to_have_attribute('data-focus', str(n))
+    page.keyboard.press('Escape')
+    expect(page.locator('#rx-drawer')).to_be_hidden()
+    assert page.errors == [] and _console_errors(page) == [], (page.errors, _console_errors(page))
+
+
+def test_a_table_cell_opens_the_drawer_and_a_deep_link_does_not(open_extra):
+    gid = _pick_report('par2_human', 'id="variants-table"', 'id="snake-plot-data"')
+    assert gid, 'no report with a variants table'
+    # a landing on #res= selects the residue on the plot but leaves the drawer closed
+    probe = open_extra(gid)
+    n = _snake_residue(probe)
+    page = open_extra(gid, '#res=%d' % n)
+    assert page.evaluate('window.SnakeAPI.getSelectedResidue()') == n
+    assert page.locator('#rx-drawer').is_hidden(), 'a #res= landing must not open the drawer'
+
+    page = open_extra(gid)
+    cell = page.locator('#variants-table tbody tr:not([hidden]) td:nth-child(1)').first
+    pos = int(cell.inner_text().strip())
+    cell.scroll_into_view_if_needed()
+    cell.click()
+    expect(page.locator('#rx-drawer')).to_be_visible()
+    assert str(pos) in page.inner_text('#rx-drawer-title')
+    assert 'Variants in this report' in page.inner_text('#rx-drawer-body')
+    page.click('#rx-drawer-close')
+    expect(page.locator('#rx-drawer')).to_be_hidden()
+    assert page.errors == [] and _console_errors(page) == [], (page.errors, _console_errors(page))
+
+
+def test_the_clinvar_section_is_collapsed_and_toggles(open_extra):
+    with_records = _pick_report('opsd_human', 'id="sec-clinvar"', 'id="clinvar-table"')
+    without = _pick_report('par2_human', 'id="sec-clinvar"', 'class="rx-none"')
+    if not (with_records and without):
+        pytest.skip('this build lacks a receptor with and one without ClinVar records')
+
+    page = open_extra(with_records)
+    details = page.locator('#rx-clinvar')
+    assert details.get_attribute('open') is None, 'the ClinVar section must start collapsed'
+    assert page.locator('#clinvar-table').is_hidden()
+    assert re.search(r'ClinVar \d{4}-\d{2}-\d{2}: \d+ records?', page.inner_text('#rx-clinvar summary'))
+
+    page.locator('#rx-clinvar summary').click()
+    expect(page.locator('#clinvar-table')).to_be_visible()
+    assert page.locator('#clinvar-table tbody tr').count() >= 1
+    assert page.locator('#clinvar-table a[href^="https://www.ncbi.nlm.nih.gov/clinvar/variation/"]').count() >= 1
+    page.locator('#rx-clinvar summary').click()
+    expect(page.locator('#clinvar-table')).to_be_hidden()
+
+    # a residue in the table opens the drawer with the same record
+    page.locator('#rx-clinvar summary').click()
+    link = page.locator('#clinvar-table .rx-res-link').first
+    pos = link.get_attribute('data-rx-res')
+    link.click()
+    expect(page.locator('#rx-drawer')).to_be_visible()
+    assert pos in page.inner_text('#rx-drawer-title')
+    assert 'VCV' in page.inner_text('#rx-drawer-body')
+    assert page.errors == [] and _console_errors(page) == [], (page.errors, _console_errors(page))
+
+    page = open_extra(without)
+    page.locator('#rx-clinvar summary').click()
+    note = page.locator('#rx-clinvar .rx-none')
+    expect(note).to_be_visible()
+    assert 'No germline pathogenic or likely pathogenic missense records' in note.inner_text()
