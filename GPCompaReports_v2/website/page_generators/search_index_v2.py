@@ -25,7 +25,10 @@ Shards (all JSON, compact; the deploy gzips them; sizes are budgeted by tests):
                               [receptor idx], the gene it is MANE or model-identical for first (LTB4R/LTB4R2 share some)
   residues/<gid>.json         every model residue: aa, segment, generic number, CFR rank, max |dRRCS|,
                               threshold-passing contacts, conservation, mean AlphaMissense
-  variants/<gid>.json         gnomAD alleles (columnar), dropped alleles, ClinVar records (all classes)
+  variants/<gid>.json         gnomAD alleles (columnar), dropped alleles, ClinVar records (all classes), and
+                              `rt`: one '1' or '0' per allele, '1' when its protein change is a row of the
+                              report page's own variant table (the frozen gnomAD v4.1.0 table); see
+                              report_table_changes
   transcripts/<gid>.json      every transcript: exons, CDS segments (c. <-> g. blocks), strand, protein
                               ids, protein->model map; NM_ version relations; GRCh38->GRCh37 lift blocks
   cds/<gid>.json              reference bases of every coding exon (GRCh38, plus strand), for codon and
@@ -712,11 +715,11 @@ def _am_of(pack, pos, ref, alt):
     return None, '-'
 
 
-def build_variants(gid, pack, g37map, clinvar_rows, strand=1):
+def build_variants(gid, pack, g37map, clinvar_rows, strand=1, report_changes=None):
     vs = pack.get('variants') or []
     prov = pack['provenance'].get('gnomad') or {}
     cols = {k: [] for k in ('pos', 'tx', 'c', 'g', 'g37', 'rs', 'ac', 'an', 'hom', 'src', 'am', 'amc')}
-    ref, alt, nt, conflict, hgvsc_x, hgvsp_x = [], [], [], [], {}, {}
+    ref, alt, nt, conflict, hgvsc_x, hgvsp_x, in_table = [], [], [], [], {}, {}, []
     chrom = None
     last_g = last_pos = last_an = 0
     for i, v in enumerate(vs):
@@ -763,6 +766,8 @@ def build_variants(gid, pack, g37map, clinvar_rows, strand=1):
         cols['am'].append(None if s is None else round(s * 1000))
         cols['amc'].append(c)
         conflict.append(1 if conf else 0)
+        if report_changes is not None:
+            in_table.append('1' if hgvsp in report_changes else '0')
     out = {
         'gid': gid, 'chrom': chrom, 'strand': strand,
         'gnomad': {'tx': prov.get('transcript'), 'v': prov.get('transcriptVersion'),
@@ -776,6 +781,8 @@ def build_variants(gid, pack, g37map, clinvar_rows, strand=1):
         'dropped': prov.get('droppedVariants', []) if prov else [],
         'clinvar': compact_clinvar(clinvar_rows),
     }
+    if report_changes is not None:
+        out['rt'] = ''.join(in_table)
     return out
 
 
@@ -1050,6 +1057,18 @@ def _threshold(store, gid):
     return round(float(_calc_significance_threshold(store.delta_data.get(gid, pd.DataFrame()))), 3)
 
 
+def report_table_changes(store, gid):
+    """The protein changes (hgvsp strings) listed in the report page's variant table for gid, or None
+    when there is no store. The selection is the report's own (gpcr_report_helpers._prepare_variants_full
+    over store.variant_data), so search links to that table only for a change the page really shows."""
+    if store is None:
+        return None
+    import pandas as pd
+    from .gpcr_report_helpers import _prepare_variants_full
+    rows = _prepare_variants_full(store.variant_data.get(gid, pd.DataFrame()), store.delta_data.get(gid, pd.DataFrame()))
+    return {str(v['hgvsp']) for v in rows if v.get('hgvsp')}
+
+
 def build_meta(gids, packs, s, store, lift_blocks=None):
     lift_blocks = lift_blocks or {}
     hgnc = s['hgnc']
@@ -1235,7 +1254,7 @@ def generate_search_index_v2(store, output_dir, studio=None, sources=None, gids=
             raw = _gz(f)
         cv_rows = build_clinvar(g, raw, p, s['pmap'], s['nmv'], None, s['mcod'].get(g), cv_stats, b)
         strand = ((s['ens_cds'].get(g) or {}).get('grch38') or {}).get('strand', 1)
-        v = build_variants(g, p, g37.get(g, {}), cv_rows, strand)
+        v = build_variants(g, p, g37.get(g, {}), cv_rows, strand, report_table_changes(store, g))
         put('variants', f'variants/{g}.json', v)
         with_var.append(i)
         for k, rsl in enumerate(v['rs']):

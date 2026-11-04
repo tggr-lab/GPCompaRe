@@ -95,6 +95,8 @@ const WARN_NOTES = new Set([
 export function queryFor(r, interp) {
   const sym = r.receptor?.symbol ?? r.gid;
   if (r.type === 'receptor') return sym;
+  // a typed change whose residue is not the model's: reproduce what was typed, never the corrected change
+  if (r.typed && hasNote(r, 'reference_mismatch')) return `${sym} ${typedChangeText(r.typed) ?? ''}`.trim();
   if (r.alt && r.kind === 'missense') return `${sym} ${hgvsP(r)}`;
   // a generic number or a motif position: name the position, so every row reads the same way
   const gn = r.summary?.generic ?? r.generic;
@@ -162,6 +164,7 @@ export function readAsText(answer, query) {
     case 'receptor': {
       const t = i.receptorId ? `the ${({ uniprot: 'UniProt accession', entry: 'UniProt entry name', ensg: 'Ensembl gene ID', hgnc: 'HGNC ID', geneid: 'NCBI Gene ID' })[i.receptorId.type] ?? 'identifier'} ${i.receptorId.value}` : `the name “${i.receptorTerm ?? query}”`;
       if (rs.length > 1) return `${rs.length} receptors whose names start with “${i.receptorTerm ?? query}”`;
+      if (rec && first.clinvarList) return `every ClinVar record of ${rec}`;
       return rec ? `the receptor ${rec}, from ${t}` : `a receptor, from ${t}`;
     }
     case 'protein':
@@ -201,7 +204,9 @@ export function readAsText(answer, query) {
       const g = i.generic;
       parts.push(rec ?? 'every receptor');
       parts.push(g.residueLetter && !rec ? `residue ${three(g.residueLetter)} at generic number ${g.display}` : `generic residue number ${g.display}`);
-      if (sameRec && first.pos) parts[1] = `residue ${three(first.ref)}${first.pos} at generic number ${first.residue?.generic || g.display}`;
+      // a typed residue that is not the model's (PAR2 F3.36) stays as typed
+      if (sameRec && first.pos && !hasNote(first, 'reference_mismatch')) parts[1] = `residue ${three(first.ref)}${first.pos} at generic number ${first.residue?.generic || g.display}`;
+      else if (sameRec && g.residueLetter) parts[1] = `residue ${three(g.residueLetter)} at generic number ${g.display}`;
       return parts.join(', ');
     }
     case 'motif': {
@@ -351,6 +356,7 @@ function leadNeeded(r, i) {
 function leadLine(r, o) {
   if (!leadNeeded(r, o.interp)) return '';
   const m = modelText(r);
+  if (subjectOf(r, o).mismatch) m.change = null; // the change on the model residue is only ever a suggestion
   const q = String(o.query ?? '').trim();
   const typed = q.length > 90 ? `${q.slice(0, 87)}...` : q;
   return html`<p class="sr-lead"><span class="sr-label">You typed</span> <span class="mono">${typed}</span> <span class="sr-arrow" aria-hidden="true">→</span><span class="sr-sr-only"> which is </span> <span class="sr-label">model residue</span> <strong class="mono">${m.res}</strong>${m.change ? html`<span class="sr-sub">, </span><span class="mono">${m.change}</span>` : ''} <span class="sr-sub">(${leadReason(r, o.interp)})</span></p>`;
@@ -407,13 +413,13 @@ function genomeTable(r) {
     <p class="sr-sub">IDs read chromosome-position-reference-alternate, on the forward strand.</p>`;
 }
 
-function notationsDetails(r) {
+function notationsDetails(r, mismatch = false) {
   const tx = transcriptTable(r);
   const gen = genomeTable(r);
   if (!tx && !gen) return '';
   const open = hasNote(r, MAPPING_WARN);
   return html`<div class="sr-row sr-row--wide"><details class="sr-more sr-notations"${open ? raw(' open') : ''}>
-    <summary>All transcript notations${open ? html` <span class="sr-badge sr-badge--warn">numbering differs</span>` : ''}</summary>
+    <summary>${mismatch ? 'The model residue on each transcript' : 'All transcript notations'}${open ? html` <span class="sr-badge sr-badge--warn">numbering differs</span>` : ''}</summary>
     ${tx}${gen}</details></div>`;
 }
 
@@ -427,29 +433,32 @@ function gnomadRow(r, releases, mismatch) {
   if (alleles.length) {
     body = allelesTable(alleles, { caption: `${label} alleles for this change` });
   } else if (mismatch) {
-    body = ''; // the residue is not the one typed: do not claim anything about the typed change
+    // the residue is not the one typed: nothing is claimed about the typed change
+    body = html`<p>Not looked up: the residue you typed is not the model residue.</p>`;
   } else if (r.kind === 'missense' && r.alt) {
     body = html`<p>This exact change is not listed in ${label}.</p>
       <p>AlphaMissense prediction for it: not available in this index.${r.residue?.amMean != null ? html` The <strong>mean</strong> AlphaMissense prediction over all possible substitutions at this residue is <strong>${fmt2(r.residue.amMean)}</strong>.` : ''}</p>`;
   } else if (!resid.length) {
     body = html`<p>No ${label} missense allele at this residue.</p>`;
   } else body = '';
+  const where = mismatch && r.pos ? `the model residue ${three(r.residue?.aa ?? r.ref)}${r.pos}` : 'this residue';
   const more = others.length
-    ? html`<details class="sr-more"><summary>${alleles.length ? 'Other' : 'All'} ${others.length} ${label} missense allele${others.length === 1 ? '' : 's'} at this residue</summary>${allelesTable(others, { caption: `Other ${label} alleles at this residue` })}</details>`
+    ? html`<details class="sr-more"><summary>${alleles.length ? 'Other' : 'All'} ${others.length} ${label} missense allele${others.length === 1 ? '' : 's'} at ${where}</summary>${allelesTable(others, { caption: `Other ${label} alleles at this residue` })}</details>`
     : '';
   return html`<div class="sr-row"><h4>${label}</h4><div>${body}${more}</div></div>`;
 }
 
-function clinvarRow(r, releases) {
+function clinvarRow(r, releases, mismatch = false) {
   const recs = r.clinvar ?? [];
   const label = r.releases?.clinvar ?? releases?.clinvar?.label ?? 'ClinVar';
+  const at = mismatch && r.pos ? `the model residue ${three(r.residue?.aa ?? r.ref)}${r.pos}` : null;
   const body = recs.length
-    ? html`<ul class="sr-list">${recs.map((c) => html`<li>
+    ? html`${at ? html`<p class="sr-sub">Records at ${at}, not of the change you typed:</p>` : ''}<ul class="sr-list">${recs.map((c) => html`<li>
         <a href="${c.url}" target="_blank" rel="noopener noreferrer">${c.accession}<span class="sr-sr-only"> (opens ClinVar in a new tab)</span></a>
         <span class="sr-badge">${c.classification}</span> ${stars(c.stars)}
         ${c.conditions?.length ? html`<div class="sr-sub">${c.conditions.join('; ')}</div>` : ''}
         <div class="sr-sub">${c.title}</div></li>`)}</ul>`
-    : html`<p>No ClinVar record matches this query.</p>`;
+    : html`<p>${at ? `No ClinVar record at ${at}.` : 'No ClinVar record matches this query.'}</p>`;
   return html`<div class="sr-row"><h4>${label}</h4><div>${body}</div></div>`;
 }
 
@@ -477,11 +486,29 @@ function factsRow(r) {
 
 // --------------------------------------------------------------- copy buttons' text
 
-/** Everything the "Copy all notations" button copies, as text. */
-export function notationsText(r) {
+/**
+ * Everything the "Copy all notations" button copies, as text. On a reference mismatch the typed change
+ * comes first, marked as not checkable; the model residue follows on its own; the correction is a suggestion.
+ *
+ * @param {object} r a result
+ * @param {{typed?: object, interp?: object, alternates?: object[]}} [ctx] renderAnswer()'s ctx
+ */
+export function notationsText(r, ctx = {}) {
   const out = [];
-  out.push(`${recFull(r.receptor)} residue ${three(r.residue?.aa ?? r.ref)}${r.pos}${r.residue?.generic ? ` (${r.residue.generic}, ${r.residue.segment})` : ''}`);
-  if (r.alt && r.kind === 'missense') out.push(`${hgvsP(r)} (${r.ref}${r.pos}${r.alt})`);
+  const sub = subjectOf(r, ctx);
+  if (!r.pos) {
+    out.push(`${recFull(r.receptor)}: no residue was placed`);
+    return out.join('\n');
+  }
+  const resLine = `${three(r.residue?.aa ?? r.ref)}${r.pos}${r.residue?.generic ? ` (${r.residue.generic}, ${r.residue.segment})` : ''}`;
+  if (sub.mismatch) {
+    out.push(recFull(r.receptor));
+    out.push(`Typed ${sub.what}: ${sub.unverifiable}`);
+    out.push(`Model residue: ${resLine}`);
+  } else {
+    out.push(`${recFull(r.receptor)} residue ${resLine}`);
+  }
+  if (sub.change && r.kind === 'missense') out.push(`${hgvsP(r)} (${r.ref}${r.pos}${r.alt})`);
   const seen = new Set();
   for (const t of r.transcriptViews ?? []) {
     if (t.c) { const s = `${t.transcript}:${t.c}`; if (!seen.has(s)) { seen.add(s); out.push(s); } }
@@ -497,6 +524,7 @@ export function notationsText(r) {
     if (r.genomic?.grch37) out.push(`GRCh37: ${r.genomic.grch37}`);
   }
   for (const c of r.clinvar ?? []) out.push(c.accession);
+  if (sub.fix) out.push(`Suggested correction (a suggestion only; check that it is what you meant): ${sub.fix.query}`);
   return out.join('\n');
 }
 
@@ -516,7 +544,11 @@ function releaseLines(r, rel) {
  * reproduces the search. ASCII-friendly, one fact per line, pasteable into notes or a report.
  *
  * @param {object} r a result
- * @param {{query?: string, reading?: string|null, interp?: object, releases?: object, pageUrl?: string}} [ctx]
+ * On a reference mismatch (`PAR2 p.Ala159Ile`) the typed change is reported as typed and unverifiable, the
+ * model residue on its own, and the correction only as a suggestion: never as the subject.
+ *
+ * @param {{query?: string, reading?: string|null, interp?: object, releases?: object, pageUrl?: string,
+ *          typed?: object, alternates?: object[]}} [ctx]
  */
 export function evidenceText(r, ctx = {}) {
   const L = [];
@@ -527,13 +559,18 @@ export function evidenceText(r, ctx = {}) {
   L.push(`Query: ${q}`);
   if (ctx.reading) L.push(`Interpretation: ${ctx.reading}`);
   L.push(`Receptor: ${recFull(r.receptor)}`);
+  const sub = subjectOf(r, ctx);
   if (r.pos) {
-    L.push(`Residue: ${three(x?.aa ?? r.ref)}${r.pos} (model numbering, the numbering of the report)${x?.generic ? `; generic number ${x.generic}; ${x.segment}` : ''}`);
-    if (r.alt) L.push(`Change: ${r.kind === 'missense' ? `${hgvsP(r)} (${r.ref}${r.pos}${r.alt})` : hgvsP(r)}; ${kindLabel(r.kind).toLowerCase()}`);
+    // a reference mismatch: the typed change is the subject and cannot be checked; the model residue is separate
+    if (sub.mismatch) L.push(`Typed ${sub.what}: ${sub.unverifiable}.`);
+    L.push(`${sub.mismatch ? 'Model residue' : 'Residue'}: ${three(x?.aa ?? r.ref)}${r.pos} (model numbering, the numbering of the report)${x?.generic ? `; generic number ${x.generic}; ${x.segment}` : ''}`);
+    if (sub.change) L.push(`Change: ${r.kind === 'missense' ? `${hgvsP(r)} (${r.ref}${r.pos}${r.alt})` : hgvsP(r)}; ${kindLabel(r.kind).toLowerCase()}`);
+  } else {
+    L.push('Residue: not placed (nothing below is about a residue)');
   }
   const tv = r.transcriptViews ?? [];
   if (tv.length) {
-    L.push('Transcript notations:');
+    L.push(sub.mismatch ? 'The model residue on each transcript:' : 'Transcript notations:');
     for (const t of tv) {
       const bits = [t.c, t.p].filter(Boolean).join(', ');
       L.push(`  ${roleLabel(t)}: ${t.transcript}${t.protein ? ` / ${t.protein}` : ''}${bits ? `: ${bits}` : ''}${t.allele ? ` (allele ${t.allele})` : ''}`);
@@ -558,16 +595,20 @@ export function evidenceText(r, ctx = {}) {
     for (const a of alleles) {
       L.push(`  ${a.id} ${a.hgvsc ?? ''} ${a.hgvsp ?? ''}; ${a.rsids?.length ? a.rsids.join(', ') : 'no rsID'}; allele count ${fmtInt(a.ac)} of ${fmtInt(a.an)}; allele frequency ${fmtAf(a.af)}; homozygotes ${fmtInt(a.hom)}; AlphaMissense prediction ${a.am == null ? 'not available' : `${a.am.toFixed(2)}${a.amClass ? ` (${a.amClass})` : ''}`}`.replace(/\s+;/g, ';'));
     }
-  } else if (r.alt && r.kind === 'missense') {
+  } else if (sub.mismatch) {
+    L.push(`${gl}: the typed ${sub.what} was not looked up, because ${sub.what === 'change' ? 'its residue is' : 'it is'} not the model residue.`);
+  } else if (r.alt && r.kind === 'missense' && r.pos) {
     L.push(`${gl}: this exact change is not listed.`);
   }
   const nOther = (r.residueAlleles ?? []).filter((a) => !alleles.some((b) => b.id === a.id)).length;
-  if (nOther) L.push(`${gl}: ${nOther} other missense allele${nOther === 1 ? '' : 's'} at this residue.`);
+  const at = sub.mismatch ? `the model residue ${sub.modelRes}` : 'this residue';
+  if (nOther) L.push(`${gl}: ${nOther} ${sub.mismatch ? '' : 'other '}missense allele${nOther === 1 ? '' : 's'} at ${at}.`);
   const cl = r.releases?.clinvar ?? ctx.releases?.clinvar?.label ?? 'ClinVar';
   if ((r.clinvar ?? []).length) {
-    L.push(`${cl} records:`);
+    L.push(sub.mismatch ? `${cl} records at ${at} (not of the typed ${sub.what}):` : `${cl} records:`);
     for (const c of r.clinvar) L.push(`  ${c.accession}: ${c.classification}, ${c.stars ?? 0} of 4 review stars${c.conditions?.length ? `; ${c.conditions.join('; ')}` : ''}; ${c.url}`);
-  } else L.push(`${cl}: no record matches this query.`);
+  } else if (sub.mismatch) L.push(`${cl}: no record at ${at}.`);
+  else if (r.pos) L.push(`${cl}: no record matches this query.`);
   if (x) {
     L.push('In this database:');
     L.push(`  Core functional residue (class-wide): ${x.cfr ? `yes, rank ${f.cfrRank} of the class-wide positions` : (f.cfrRank ? `no, its generic position ranks ${f.cfrRank}` : 'not ranked (no generic number)')}`);
@@ -581,6 +622,11 @@ export function evidenceText(r, ctx = {}) {
     L.push('Warnings and notes:');
     for (const n of r.notes) L.push(`  ${WARN_NOTES.has(n.code) ? 'Warning: ' : ''}${n.text}`);
   }
+  if (sub.fix) {
+    const n = sub.fix.count;
+    const rec = n === null || n === undefined ? '' : (n ? ` (${n} ${n === 1 ? 'record' : 'records'} in gnomAD or ClinVar)` : ' (not recorded in gnomAD or ClinVar)');
+    L.push(`Suggested correction (a suggestion only; check that it is what you meant): ${sub.fix.query}${rec}`);
+  }
   const rl = releaseLines(r, ctx.releases);
   if (rl.length) L.push(`Data releases: ${rl.join('; ')}`);
   L.push(`Search link: ${ctx.pageUrl ?? 'search/'}?q=${encodeURIComponent(q)}`);
@@ -589,9 +635,15 @@ export function evidenceText(r, ctx = {}) {
 
 // ---------------------------------------------------------------------------- actions & cards
 
-/** True when the residue can appear in the report's variant table. */
+/** The gnomAD release the report pages' variant tables were built from (frozen). */
+export const REPORT_TABLE_RELEASE = 'gnomAD v4.1.0';
+
+/** True when the report's variant table lists the change named by the result. */
 export function inReportTable(r) {
   if (typeof r.inReportTable === 'boolean') return r.inReportTable;
+  const flags = (r.alleles ?? []).map((a) => a.inReportTable);
+  if (flags.length && flags.every((f) => typeof f === 'boolean')) return flags.some(Boolean);
+  // an index without the membership flags: the table's own rule (residues with |ΔRRCS| >= 3.0)
   const d = residueFacts(r).dmax;
   return d !== null && d >= REPORT_TABLE_DELTA;
 }
@@ -599,13 +651,18 @@ export function inReportTable(r) {
 function actions(r, o, idx, mismatch) {
   const gid = r.gid;
   const res = r.pos ? `${o.reports}${gid}.html#sec=sec-snake&res=${r.pos}` : `${o.reports}${gid}.html`;
-  const first = (r.alleles ?? [])[0];
-  const vq = first?.hgvsp ?? (r.alt && r.kind === 'missense' ? hgvsP(r) : null);
-  const hasAlleles = (r.alleles ?? []).length > 0;
+  const alleles = r.alleles ?? [];
+  // the protein change to find: one the report table lists, when the index says which
+  const listed = alleles.find((a) => a.inReportTable === true);
+  const vq = (listed ?? alleles[0])?.hgvsp ?? (r.alt && r.kind === 'missense' ? hgvsP(r) : null);
+  const hasAlleles = alleles.length > 0;
   const canFind = !mismatch && vq && hasAlleles && inReportTable(r);
   const dmax = residueFacts(r).dmax;
+  const belowCut = dmax === null || dmax < REPORT_TABLE_DELTA;
   const why = !mismatch && vq && hasAlleles && !canFind
-    ? html`<p class="sr-action-note">Not in the report’s variant table: it lists variants at residues with a contact change of |ΔRRCS| ${REPORT_TABLE_DELTA.toFixed(1)} or more, and ${dmax === null ? 'this residue has no contact change' : `this residue’s largest is ${dmax.toFixed(2)}`}.</p>`
+    ? html`<p class="sr-action-note">${belowCut
+      ? `Not in the report’s variant table: it lists variants at residues with a contact change of |ΔRRCS| ${REPORT_TABLE_DELTA.toFixed(1)} or more, and ${dmax === null ? 'this residue has no contact change' : `this residue’s largest is ${dmax.toFixed(2)}`}.`
+      : `Not in the report’s variant table: that table was built from ${REPORT_TABLE_RELEASE} and does not list this change.`}</p>`
     : '';
   return html`<div class="sr-actions">
     <a class="btn btn-primary btn-sm" href="${res}">${r.pos ? 'Open report at this residue' : 'Open report'}</a>
@@ -648,10 +705,33 @@ export function mismatchFix(r, o) {
   return { typed, query: alt?.query ?? `${sym} ${fixed}`, label: alt?.query ?? `${sym} ${fixed}`, count, sym };
 }
 
-function changeLine(r, fix) {
+/**
+ * What a result is about, read in one place for the card header, the change line, the lead line and both
+ * copy buttons. On a reference mismatch the typed change stays the subject and is marked as not checkable
+ * (`unverifiable`), the model residue is given on its own (`modelRes`), and the change on the model
+ * residue appears only as a suggestion (`fix`); `change` (the change the card is about) is then null.
+ */
+export function subjectOf(r, o = {}) {
+  const fix = mismatchFix(r, o);
+  const mismatch = !!fix || hasNote(r, 'reference_mismatch');
+  const aa = r.residue?.aa ?? r.ref;
+  const modelRes = r.pos && aa ? `${three(aa)}${r.pos}` : null;
+  const typedObj = r.typed ?? o.typed ?? null;
+  const typed = fix?.typed ?? (mismatch ? typedChangeText(typedObj) ?? typedChangeText(o.interp?.change) : null);
+  const what = (typedObj?.alt ?? o.interp?.change?.alt) ? 'change' : 'residue';
+  const sym = r.receptor?.symbol ?? r.gid;
+  const where = typedObj?.generic && r.pos ? `position ${r.pos} (${r.residue?.generic || typedObj.generic})` : `position ${r.pos}`;
+  const unverifiable = mismatch && modelRes
+    ? `${typed ? `${typed}: ` : ''}${where} is ${three(aa)} in ${sym}, so this ${what} cannot be checked`
+    : null;
+  return { mismatch, fix, typed, what, modelRes, unverifiable, change: !mismatch && r.pos && r.alt ? hgvsP(r) : null };
+}
+
+function changeLine(r, fix, mismatch = false) {
   if (!r.pos) return html`<span class="sr-badge sr-badge--muted">${kindLabel(r.kind)}</span>`;
   if (r.type === 'not_coding') return html`<span class="sr-change-main">Not a coding residue</span> <span class="sr-badge">outside the coding sequence</span>`;
   if (fix) return html`<span class="sr-change-main mono">${fix.typed}</span> <span class="sr-badge sr-badge--warn">typed residue does not match</span>`;
+  if (mismatch) return html`<span class="sr-change-main">Model residue ${three(r.residue?.aa ?? r.ref)}${r.pos}</span> <span class="sr-badge sr-badge--warn">typed residue does not match</span>`;
   if (r.alt && r.kind === 'missense') {
     return html`<span class="sr-change-main mono">${hgvsP(r)}</span> <span class="sr-sub">(${r.ref}${r.pos}${r.alt})</span> <span class="sr-badge">${kindLabel(r.kind)}</span>`;
   }
@@ -679,24 +759,89 @@ function card(r, o, idx) {
   const rec = r.receptor;
   const reportHref = `${o.reports}${r.gid}.html`;
   const title = html`<a href="${reportHref}">${recFull(rec)}</a>`;
-  const fix = mismatchFix(r, o);
-  const mismatch = !!fix || hasNote(r, 'reference_mismatch');
+  const sub = subjectOf(r, o);
+  const { fix, mismatch } = sub;
   const noResidue = !r.pos && r.type === 'not_in_resource'; // e.g. an unknown transcript version: nothing to show but the note
   const status = r.type === 'not_in_resource' && !mismatch && !noResidue ? html`<span class="sr-badge sr-badge--muted">not analysed here</span>` : '';
   return html`<article class="sr-card sr-card--${r.type}" aria-labelledby="sr-card-${idx}">
     <header class="sr-card-head">
-      <h3 id="sr-card-${idx}" class="sr-card-title">${title}${r.pos ? html`<span class="sr-dot" aria-hidden="true">·</span><span class="mono">${three(r.residue?.aa ?? r.ref)}${r.pos}</span>` : ''}${x?.generic ? html`<span class="sr-dot" aria-hidden="true">·</span><span class="mono" title="Generic residue number">${x.generic}</span>` : ''}${x?.segment ? html`<span class="sr-dot" aria-hidden="true">·</span><span class="sr-nowrap">${x.segment}</span>` : ''}</h3>
-      ${noResidue ? '' : html`<div class="sr-change">${changeLine(r, fix)} ${status} ${badgesFor(r)}</div>`}
+      <h3 id="sr-card-${idx}" class="sr-card-title">${title}${r.pos ? html`<span class="sr-dot" aria-hidden="true">·</span>${mismatch ? html`<span class="sr-sub">model residue </span>` : ''}<span class="mono">${three(r.residue?.aa ?? r.ref)}${r.pos}</span>` : ''}${x?.generic ? html`<span class="sr-dot" aria-hidden="true">·</span><span class="mono" title="Generic residue number">${x.generic}</span>` : ''}${x?.segment ? html`<span class="sr-dot" aria-hidden="true">·</span><span class="sr-nowrap">${x.segment}</span>` : ''}</h3>
+      ${noResidue ? '' : html`<div class="sr-change">${changeLine(r, fix, mismatch)} ${status} ${badgesFor(r)}</div>`}
     </header>
     ${leadLine(r, o)}
     ${notesBlock(r.notes)}
     ${fixBlock(fix, o)}
     ${noResidue ? '' : html`${r.type === 'not_coding' || r.type === 'not_in_resource' && !r.residue ? '' : gnomadRow(r, o.releases, mismatch)}
-    ${clinvarRow(r, o.releases)}
+    ${clinvarRow(r, o.releases, mismatch)}
     ${factsRow(r)}
-    ${notationsDetails(r)}`}
+    ${notationsDetails(r, mismatch)}`}
     ${actions(r, o, idx, mismatch)}
   </article>`;
+}
+
+// ------------------------------------------------------- every ClinVar record of one receptor
+
+/** Classification groups, most severe first; a record goes to the first group whose test matches. */
+export const CLINVAR_GROUPS = [
+  { key: 'plp', label: 'Pathogenic or likely pathogenic', test: (c) => /^(?:pathogenic|likely pathogenic)/i.test(c) },
+  { key: 'conflict', label: 'Conflicting classifications', test: (c) => /^conflicting/i.test(c) },
+  { key: 'vus', label: 'Uncertain significance', test: (c) => /^uncertain/i.test(c) },
+  { key: 'blb', label: 'Benign or likely benign', test: (c) => /^(?:benign|likely benign)/i.test(c) },
+  { key: 'other', label: 'Other or no classification', test: () => true },
+];
+
+/** The records grouped by classification (P/LP first), each group sorted by residue, then record id. */
+export function clinvarGroups(records) {
+  const groups = CLINVAR_GROUPS.map((g) => ({ key: g.key, label: g.label, records: [] }));
+  for (const c of records ?? []) {
+    const k = CLINVAR_GROUPS.findIndex((g) => g.test(String(c.classification ?? '')));
+    groups[k].records.push(c);
+  }
+  const by = (a, b) => ((a.pos ?? Infinity) - (b.pos ?? Infinity)) || (a.variationId - b.variationId);
+  for (const g of groups) g.records.sort(by);
+  return groups;
+}
+
+/** "c.46A>G (p.Arg16Gly)" from "NM_000024.6(ADRB2):c.46A>G (p.Arg16Gly)"; other titles as they are. */
+const cvChange = (c) => /\):(.+)$/.exec(String(c.title ?? ''))?.[1] ?? c.title ?? '';
+
+function clinvarListTable(recs, caption) {
+  return html`<div class="sr-table-wrap"><table class="sr-table sr-table--cv">
+    <caption class="sr-sr-only">${caption}</caption>
+    <thead><tr><th scope="col">Classification</th><th scope="col">Review</th><th scope="col">Condition</th><th scope="col">Residue</th><th scope="col">Change</th><th scope="col">Record</th></tr></thead>
+    <tbody>${recs.map((c) => {
+      const acc = c.accession ?? `VCV${String(c.variationId).padStart(9, '0')}`;
+      const q = `VCV${String(c.variationId).padStart(9, '0')}`;
+      return html`<tr>
+      <td data-label="Classification">${c.classification || html`<span class="sr-na">not given</span>`}</td>
+      <td data-label="Review">${stars(c.stars)}</td>
+      <td data-label="Condition">${c.conditions?.length ? c.conditions.join('; ') : html`<span class="sr-na">not given</span>`}</td>
+      <td data-label="Residue">${c.pos ? html`<a class="mono" href="?q=${encodeURIComponent(q)}" data-q="${q}" title="Details for ${acc}">${c.ref ? three(c.ref) : ''}${c.pos}</a>` : html`<span class="sr-na">not placed</span>`}</td>
+      <td data-label="Change"><span class="mono">${cvChange(c)}</span></td>
+      <td data-label="Record"><a class="mono" href="${c.url}" target="_blank" rel="noopener noreferrer">${acc}<span class="sr-sr-only"> (opens ClinVar in a new tab)</span></a></td></tr>`;
+    })}</tbody></table></div>`;
+}
+
+/**
+ * Every ClinVar record the index holds for a receptor, grouped by classification with counts. Open when
+ * the reader asked for the list ("ADRB2 ClinVar"), folded on a plain receptor result.
+ */
+export function clinvarListSection(r, o = {}) {
+  const recs = r.clinvar;
+  if (!Array.isArray(recs)) return '';
+  const sym = r.receptor?.symbol ?? r.gid;
+  const label = r.releases?.clinvar ?? o.releases?.clinvar?.label ?? 'ClinVar';
+  if (!recs.length) return html`<div class="sr-row sr-cvlist"><h4>${label}</h4><div><p>No ClinVar record for ${sym} in ${label}.</p></div></div>`;
+  const groups = clinvarGroups(recs);
+  const counts = groups.filter((g) => g.records.length || g.key === 'plp').map((g) => `${g.records.length} ${g.label.toLowerCase()}`).join(', ');
+  const openKey = groups.find((g) => g.key === 'plp' && g.records.length)?.key ?? (r.clinvarList ? groups.find((g) => g.records.length)?.key : null);
+  const body = html`<p class="sr-sub">${recs.length} ${recs.length === 1 ? 'record' : 'records'}: ${counts}. Single-gene records only, any classification; the report page lists the pathogenic or likely pathogenic missense records.</p>
+    ${groups.filter((g) => g.records.length).map((g) => html`<details class="sr-more sr-cvgroup" data-cv-group="${g.key}"${g.key === openKey ? raw(' open') : ''}>
+      <summary>${g.label} <span class="sr-sub">${g.records.length}</span></summary>
+      ${clinvarListTable(g.records, `${g.label}: ${g.records.length} ClinVar records for ${sym}`)}</details>`)}`;
+  return html`<div class="sr-row sr-row--wide sr-cvlist" id="sr-cvlist"><details class="sr-more sr-cvlist-all"${r.clinvarList ? raw(' open') : ''}>
+    <summary><strong>All ${recs.length} ClinVar ${recs.length === 1 ? 'record' : 'records'} for ${sym}</strong> <span class="sr-sub">${label}</span></summary>
+    ${body}</details></div>`;
 }
 
 function receptorCard(r, o, idx) {
@@ -704,9 +849,11 @@ function receptorCard(r, o, idx) {
   return html`<article class="sr-card sr-card--receptor" aria-labelledby="sr-card-${idx}">
     <header class="sr-card-head"><h3 id="sr-card-${idx}" class="sr-card-title"><a href="${o.reports}${r.gid}.html">${recFull(rec)}</a></h3>
     <div class="sr-change"><span class="sr-sub">${rec.name}</span></div></header>
+    ${r.clinvarList ? clinvarListSection(r, o) : ''}
     <div class="sr-row"><h4>Search inside this receptor</h4><div><ul class="sr-chips">
       ${[`${rec.symbol} 3.50`, `${rec.symbol} 6.48`, `${rec.symbol} 159`].map((q) => html`<li><a class="sr-chip" href="?q=${encodeURIComponent(q)}" data-q="${q}">${q}</a></li>`)}
     </ul><p class="sr-sub">Add a protein change, a residue number, a generic number or a coding change to the receptor name.</p></div></div>
+    ${r.clinvarList ? '' : clinvarListSection(r, o)}
     <div class="sr-actions"><a class="btn btn-primary btn-sm" href="${o.reports}${r.gid}.html">Open report</a>
     <a class="btn btn-ghost btn-sm" href="${o.studio}?db=${encodeURIComponent(r.gid)}">Open in Studio</a></div>
   </article>`;
@@ -887,10 +1034,18 @@ export function renderCompareBody(model, state, o = {}) {
     ${pager}`;
 }
 
-const csvField = (v) => {
-  const s = v === null || v === undefined ? '' : String(v);
+const NUMERIC_TEXT = /^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?$/;
+
+/**
+ * One CSV cell. Text that a spreadsheet would run as a formula (a cell starting with =, +, -, @, a tab or
+ * a carriage return) gets a leading apostrophe (the OWASP mitigation); numbers, and text that is a plain
+ * number such as "-1.3", stay numeric.
+ */
+export function csvField(v) {
+  let s = v === null || v === undefined ? '' : String(v);
+  if (typeof v !== 'number' && /^[=+\-@\t\r]/.test(s) && !NUMERIC_TEXT.test(s)) s = `'${s}`;
   return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-};
+}
 
 /** The table as CSV: every row after the filters and the sort, not just the visible page. */
 export function compareCsv(model, state) {
@@ -956,6 +1111,18 @@ export function renderReleases(rel) {
 
 // -------------------------------------------------------------------------------- main entry
 
+/** "No receptor has Trp at 3.50x50; all 283 receptors with their residue at 3.50x50 are listed below." */
+function groupedOnlyMessage(answer) {
+  const i = answer.interpretation ?? {};
+  const rows = (answer.groups ?? []).flatMap((g) => g.results ?? []);
+  const n = rows.length;
+  const first = rows[0];
+  const gn = first?.summary?.generic ?? first?.generic ?? /at (\S+)$/.exec(String(answer.groups[0]?.label ?? ''))?.[1] ?? i.generic?.display ?? '';
+  const letter = i.generic?.residueLetter ?? i.change?.ref ?? null;
+  const has = letter ? three(letter) : 'that residue';
+  return `No receptor has ${has}${gn ? ` at ${gn}` : ''}; ${n === 1 ? 'the 1 receptor' : `all ${n} receptors`} with ${n === 1 ? 'its' : 'their'} residue${gn ? ` at ${gn}` : ''} ${n === 1 ? 'is' : 'are'} listed below.`;
+}
+
 /**
  * @param {object} answer engine answer
  * @param {string} query what was typed
@@ -972,7 +1139,9 @@ export function renderAnswer(answer, query, o) {
   const statusBits = [];
   let out = '';
   const ro = { ...o, interp: answer.interpretation, query, typed: answer.typed ?? null, alternates: answer.alternates ?? [] };
-  const ctx = { query, reading, interp: answer.interpretation, releases: o.releases, pageUrl: o.pageUrl };
+  const ctx = { query, reading, interp: answer.interpretation, releases: o.releases, pageUrl: o.pageUrl, typed: answer.typed ?? null, alternates: answer.alternates ?? [] };
+  // no exact match, but the other residues at the position are grouped (W3.50: nobody has Trp at 3.50x50)
+  const groupedOnly = !rs.length && (answer.groups ?? []).some((g) => g.results?.length);
 
   if (String(query ?? '').length > MAX_QUERY_LENGTH || answer.interpretation?.flags?.includes('query-truncated')) {
     out += html`<div class="sr-message sr-message--info" role="note">Only the first ${MAX_QUERY_LENGTH} characters were read.</div>`.s;
@@ -988,7 +1157,9 @@ export function renderAnswer(answer, query, o) {
   }
 
   const dup = answer.message && rs.some((r) => (r.notes ?? []).some((n) => n.text === answer.message));
-  if (answer.message && !dup && !answer.filterNote) {
+  if (groupedOnly) {
+    out += html`<div class="sr-message sr-message--info" role="note" data-expect="${answer.expect}">${groupedOnlyMessage(answer)}</div>`.s;
+  } else if (answer.message && !dup && !answer.filterNote) {
     const level = answer.expect === 'unrecognised' || (answer.expect === 'not_in_resource' && !rs.length) ? 'sr-message--stop' : 'sr-message--info';
     out += html`<div class="sr-message ${level}" role="note" data-expect="${answer.expect}"><span class="sr-sr-only">${answer.expect === 'unrecognised' ? 'Could not read the query. ' : ''}</span>${answer.message}</div>`.s;
   }
@@ -1011,10 +1182,15 @@ export function renderAnswer(answer, query, o) {
       const motif = answer.motif ? html`<p class="sr-motif"><strong>${answer.motif.name}</strong>${answer.motif.positions?.length ? html`<span class="sr-sub">, generic positions ${answer.motif.positions.join(', ')}</span>` : ''}${answer.motif.note ? html`. ${answer.motif.note}` : ''}</p>` : '';
       out += html`<section class="sr-results" aria-label="Results">${motif}${rs.map((r, i) => (r.type === 'receptor' ? receptorCard(r, ro, i) : card(r, ro, i)))}</section>`.s;
     }
+  } else if (groupedOnly) {
+    compare = compareModel(answer, o);
+    const n = compare.rows.length;
+    statusBits.push(`No exact match, ${n} ${n === 1 ? 'receptor' : 'receptors'} listed`);
+    out += html`<section class="sr-results" aria-label="Results"><h2 class="sr-h2">${n} ${n === 1 ? 'receptor' : 'receptors'}</h2>${renderCompare(compare, compareDefaults(), o)}</section>`.s;
   } else {
     statusBits.push('No result');
   }
 
-  if (!rs.length || answer.expect === 'unrecognised') out += renderHelp(o).s;
+  if ((!rs.length && !groupedOnly) || answer.expect === 'unrecognised') out += renderHelp(o).s;
   return { html: out, status: statusBits.join(', '), results: rs, compare, ctx };
 }

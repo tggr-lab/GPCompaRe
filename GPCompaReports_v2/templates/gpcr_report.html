@@ -362,7 +362,7 @@
     <section class="report-extra" id="sec-clinvar" data-nav-title="ClinVar" aria-labelledby="rx-clinvar-title">
       <header class="report-section-head"><h2 id="rx-clinvar-title">ClinVar {{ rx_clinvar_scope|e }}</h2></header>
       <div class="rx-actions">
-        <a class="btn btn-ghost btn-sm" id="rx-clinvar-search" href="{{ static_prefix }}search/?q={{ gene_name|urlencode }}" data-tooltip="All ClinVar records for this gene, including uncertain significance and benign">Search all ClinVar records for {{ gene_name|e }}</a>
+        <a class="btn btn-ghost btn-sm" id="rx-clinvar-search" href="{{ static_prefix }}search/?q={{ (gene_name ~ ' ClinVar')|urlencode }}" data-tooltip="Every ClinVar record for this gene, grouped by classification, including uncertain significance and benign">Search all ClinVar records for {{ gene_name|e }}</a>
       </div>
       <details class="rx-details" id="rx-clinvar">
         <summary>{% if cv %}{{ cv|length }} record{{ '' if cv|length == 1 else 's' }} in {{ rx_clinvar_label|e }}{% else %}No {{ rx_clinvar_scope|e }} in {{ rx_clinvar_label|e }}{% endif %}</summary>

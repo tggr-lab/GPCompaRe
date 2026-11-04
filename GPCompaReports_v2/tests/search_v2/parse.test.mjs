@@ -475,3 +475,21 @@ describe('every interpretation carries the query', () => {
     for (const i of parse('  PAR2   M159I ')) assert.equal(i.query, 'PAR2 M159I');
   });
 });
+
+describe('every ClinVar record of a receptor', () => {
+  test('"ADRB2 ClinVar" and its word orders read as the receptor with the clinvar-list flag', () => {
+    for (const q of ['ADRB2 ClinVar', 'ClinVar ADRB2', 'clinvar for ADRB2', 'ADRB2 ClinVar records', 'ClinVar records for PAR2', 'PAR2 clinvar']) {
+      const t = top(q, ctx);
+      assert.equal(t.kind, 'receptor', q);
+      assert.ok(t.flags?.includes('clinvar-list'), q);
+      assert.match(t.receptorTerm, /^(?:ADRB2|PAR2)$/, q);
+    }
+  });
+  test('a ClinVar id stays a ClinVar id, and an unknown name is not taken for a receptor', () => {
+    for (const q of ['ClinVar 718860', 'clinvar:3061926', 'ClinVar VCV000718860']) {
+      assert.ok(!top(q, ctx).flags?.includes('clinvar-list'), q);
+    }
+    assert.ok(!(top('ClinVar', ctx).flags ?? []).includes('clinvar-list'));
+    assert.ok(!(top('qwertyzz ClinVar', ctx).flags ?? []).includes('clinvar-list'));
+  });
+});

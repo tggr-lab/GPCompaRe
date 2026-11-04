@@ -65,6 +65,13 @@
  *                               // transcript does not share), numbering_conflict, locus, version_unknown (a typed
  *                               // accession version above every known one: answered, never substituted), motif, ...
  *   releases: {gnomad, clinvar},
+ *   typed?: {ref, pos, alt, generic?},   // reference mismatch: the change as typed (same as answer.typed); the
+ *                               // result's ref is then the model residue and its transcriptViews/clinvar are
+ *                               // the model residue's, never the typed change moved onto the model residue
+ *   inReportTable?: boolean,    // some allele's protein change is a row of the report's variant table (index
+ *                               // built with the membership flags; absent otherwise)
+ *   clinvarList?: true,         // receptor results: `clinvar` holds every indexed record of the receptor and
+ *                               // the reader asked for that list ("ADRB2 ClinVar")
  *   summary?: {                 // every result with a residue (light or full): the compact residue summary
  *     aa, generic: string|null, segment,
  *     net: number|null,         // net ΔRRCS = signed sum of ΔRRCS over the residue's contacts (report "Residue net
@@ -254,6 +261,15 @@ function receptorResult(meta, gid, extraNotes = []) {
   return { type: 'receptor', gid, receptor: receptorInfo(meta, gid), pos: null, ref: null, alt: null, notes: extraNotes };
 }
 
+/** One receptor with every ClinVar record the index holds for it (`clinvarList` when the reader asked for them). */
+async function receptorWithClinvar(ctx, gid, i) {
+  const res = receptorResult(ctx.meta, gid);
+  const vars = await ctx.S.variants(gid);
+  if (vars) res.clinvar = vars.clinvar;
+  if (i?.flags?.includes('clinvar-list')) res.clinvarList = true;
+  return res;
+}
+
 async function resolveReceptorQuery(ctx, list) {
   const { meta } = ctx;
   const top = list[0];
@@ -273,11 +289,11 @@ async function resolveReceptorQuery(ctx, list) {
       : { kind: 'residue', gid: '*', pos: c.pos, ref: c.ref, count: hits.length, label: `${three(c.ref)}${c.pos} in ${hits.length} receptor${hits.length === 1 ? '' : 's'}` });
   }
   if (r.status === 'exact' && r.gids.length === 1) {
-    const res = [receptorResult(meta, r.gids[0])];
+    const res = [await receptorWithClinvar(ctx, r.gids[0], top)];
     if (alternates.length) return answer('ambiguous', res, { alternates, interpretation: top, message: `"${top.receptorTerm}" is read as a receptor name.` });
     return answer('receptor', res, { interpretation: top });
   }
-  if (r.status === 'prefix' && r.gids.length === 1) return answer('receptor', [receptorResult(meta, r.gids[0])], { interpretation: top });
+  if (r.status === 'prefix' && r.gids.length === 1) return answer('receptor', [await receptorWithClinvar(ctx, r.gids[0], top)], { interpretation: top });
   const res = r.gids.map((g) => receptorResult(meta, g));
   const why = r.status === 'exact' ? `"${top.receptorTerm}" names ${r.gids.length} receptors.` : `${r.gids.length} receptor names start with "${top.receptorTerm}".`;
   return answer('ambiguous', res, { alternates, interpretation: top, message: why });
@@ -463,15 +479,22 @@ async function makeResult(ctx, gid, pos, o = {}) {
   if (genomic?.grch38Approximate && !notes.some((n) => n.code === 'liftover_approximate')) {
     notes.push(note('liftover_approximate', `The GRCh38 position ${genomic.grch38} is approximate: it was lifted from GRCh37 by the nearest mapped block.`));
   }
+  // `viewAlt` (when given) replaces the change shown on the transcripts: null shows the model residue only,
+  // for a typed change whose reference residue is not the model's (never the corrected change)
+  const residueOnly = 'viewAlt' in o && !o.viewAlt;
+  const vAlt = 'viewAlt' in o ? o.viewAlt : o.alt;
+  const vRef = vAlt || residueOnly ? (o.ref ?? residue?.aa) : (residueAlleles[0]?.ref ?? o.ref ?? residue?.aa);
   const r = {
     type: o.type ?? 'target', gid, receptor: receptorInfo(ctx.meta, gid), pos: pos ?? null,
     ref: o.ref ?? residue?.aa ?? null, alt: o.alt ?? null, kind: o.kind ?? (o.alt ? 'missense' : 'residue'),
     residue, alleles, residueAlleles, clinvar: clinvar ?? [],
-    transcriptViews: pos ? transcriptViews(gene, pos, o.alt ? (o.ref ?? residue?.aa) : (residueAlleles[0]?.ref ?? o.ref ?? residue?.aa), o.alt, alleles, o.typed) : [],
+    transcriptViews: pos ? transcriptViews(gene, pos, vRef, vAlt, alleles, o.typed) : [],
     genomic: genomic ?? { grch38: null, grch37: null }, notes,
     releases: { gnomad: ctx.meta.releases?.gnomad?.label, clinvar: ctx.meta.releases?.clinvar?.label },
   };
   if (o.alts) r.alts = o.alts;
+  // the report's variant table lists this change (known only when the index carries the membership flags)
+  if (alleles.length && alleles.every((a) => typeof a.inReportTable === 'boolean')) r.inReportTable = alleles.some((a) => a.inReportTable);
   if (pos) r.summary = await summaryAt(ctx, gid, pos, gene.res?.seq);
   return r;
 }
@@ -710,11 +733,17 @@ async function resolveChange(ctx, gid, ch, i, accession) {
         break;
       }
     }
-    const res = await makeResult(ctx, gid, inModel ? P : null, { gene, type: 'not_in_resource', ref: inModel ? gene.res.seq[P - 1] : null, alt: ch.alt ?? null, kind: ch.kind, notes: [note('reference_mismatch', msg)] });
+    // the typed change cannot be checked: the result shows the model residue (transcripts and ClinVar at the
+    // residue, never the change on the model's residue as if it were the one typed)
+    const res = await makeResult(ctx, gid, inModel ? P : null, {
+      gene, type: 'not_in_resource', ref: inModel ? gene.res.seq[P - 1] : null, alt: ch.alt ?? null, kind: ch.kind,
+      viewAlt: null, clinvar: inModel ? (gene.vars?.clinvar ?? []).filter((c) => c.pos === P) : [], notes: [note('reference_mismatch', msg)],
+    });
     if (!inModel) res.ref = null;
     const out = answer('not_in_resource', [res], { interpretation: i, message: msg });
     // keep what the reader typed visible, and offer the change on the model's residue as "Did you mean"
     out.typed = { ref: ch.ref ?? null, pos: ch.pos, alt: ch.kind === 'missense' ? ch.alt : null };
+    res.typed = out.typed;
     if (inModel && ch.ref) out.alternates.push(correctionAlternate(gene, label, P, ch.kind === 'missense' ? ch.alt : null));
     return out;
   }
@@ -849,6 +878,7 @@ async function resolveGenericInterp(ctx, i) {
     const msg = `${g.display} is ${three(aa)}${P} in ${label}, not ${three(g.residueLetter)}.`;
     const out = answer('not_in_resource', [await makeResult(ctx, gid, P, { gene, type: 'not_in_resource', ref: aa, kind: 'residue', notes: [note('reference_mismatch', msg)] })], { interpretation: i, message: msg });
     out.typed = { ref: g.residueLetter, pos: P, alt: null, generic: g.bw ?? g.display };
+    out.results[0].typed = out.typed;
     out.alternates.push({ kind: 'residue', gid, pos: P, ref: aa, query: `${label} ${aa}${g.bw ?? g.display}`, label: `${label} ${three(aa)}${P} (${res.generic})` });
     return out;
   }

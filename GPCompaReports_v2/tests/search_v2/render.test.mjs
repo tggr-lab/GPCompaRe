@@ -15,6 +15,7 @@ import { search } from '../../static/js/search/resolve.js';
 import {
   renderAnswer, esc, html, compareModel, compareRows, compareCsv, compareDefaults, renderCompareBody,
   evidenceText, inReportTable, mismatchFix, residueFacts, direction, signed, CMP_PAGE_SIZE,
+  notationsText, subjectOf, csvField, clinvarGroups,
 } from '../../static/js/search-ui/render.js';
 import { suggestionsFor } from '../../static/js/search-ui/suggest.js';
 import { shardsFor } from '../../static/js/search/shards.js';
@@ -300,4 +301,161 @@ test('a motif table marks residues that are not the motif residue, and lists the
   assert.match(csv.split('\r\n')[0], /departs_from_motif/);
   assert.match(out.html, /269 of 283 receptors have Arg/);
   assert.ok(out.compare.groups.every((g) => !g.label.length || true));
+});
+
+// ------------------------------------------------------------ review round 2 (2026-11-04)
+
+test('R2-1: a reference mismatch keeps the typed change as the subject in the evidence summary and the notations', { skip }, async () => {
+  const q = 'PAR2 p.Ala159Ile';
+  const a = await search(q, loader);
+  const o = renderAnswer(a, q, OPTS2);
+  const r = o.results[0];
+  const ev = evidenceText(r, o.ctx);
+  const nt = notationsText(r, o.ctx);
+  for (const text of [ev, nt]) {
+    assert.ok(text.includes('p.Ala159Ile: position 159 is Met in F2RL1, so this change cannot be checked'), text);
+    assert.ok(!/Change: p\.Met159Ile/.test(text), text);
+    assert.ok(!text.includes('this exact change is not listed'), text);
+    assert.ok(!/^p\.Met159Ile/m.test(text), 'the corrected change is never a line of its own');
+    assert.ok(!/NP_005233\.4:p\.Met159Ile/.test(text) && !/: p\.Met159Ile$/m.test(text), 'transcripts show the model residue only');
+    assert.match(text, /Model residue: Met159/);
+    // the correction appears once, as a suggestion
+    const sugg = text.split('\n').filter((l) => l.includes('p.Met159Ile'));
+    assert.equal(sugg.length, 1, sugg.join('\n'));
+    assert.match(sugg[0], /^Suggested correction \(a suggestion only; check that it is what you meant\): F2RL1 p\.Met159Ile/);
+  }
+  assert.match(ev, /ClinVar 2026-10-11: no record at the model residue Met159\./);
+  // the context-free call (r.typed on the result) gives the same subject
+  assert.ok(notationsText(r).includes('p.Ala159Ile: position 159 is Met in F2RL1'));
+  // card: header names the model residue as such, the change line is the typed change
+  assert.match(visible(o.html), /model residue <\/span><span class="mono">Met159/);
+  assert.match(o.html, /The model residue on each transcript/);
+  assert.ok(!/<td class="mono" data-label="Protein change">p\.Met159Ile/.test(o.html));
+  assert.equal(subjectOf(r, o.ctx).change, null);
+});
+
+test('R2-1: no-counterpart (GPR142 p.Cys6Ser) and an unknown version (NM_005242.999) never invent a change', { skip }, async () => {
+  {
+    const q = 'GPR142 p.Cys6Ser';
+    const a = await search(q, loader);
+    const o = renderAnswer(a, q, OPTS2);
+    const r = o.results[0];
+    for (const text of [evidenceText(r, o.ctx), notationsText(r, o.ctx)]) {
+      assert.ok(text.includes('p.Cys6Ser: position 6 is Leu in GPR142, so this change cannot be checked'), text);
+      assert.ok(!text.includes('this exact change is not listed'), text);
+      assert.equal(text.split('\n').filter((l) => l.includes('p.Leu6Ser')).length, 1, text);
+      assert.match(text.split('\n').find((l) => l.includes('p.Leu6Ser')), /^Suggested correction/);
+    }
+    assert.ok(!/sr-change-main mono">p\.Leu6Ser/.test(o.html));
+  }
+  {
+    const q = 'NM_005242.999:c.477G>A';
+    const a = await search(q, loader);
+    const o = renderAnswer(a, q, OPTS2);
+    const r = o.results[0];
+    const ev = evidenceText(r, o.ctx);
+    assert.match(ev, /Residue: not placed/);
+    assert.ok(!/Change:|no record matches|not listed/.test(ev), ev);
+    assert.ok(!/null|undefined/.test(notationsText(r, o.ctx)));
+  }
+});
+
+test('R2-2: CSV cells that a spreadsheet would run as formulas are neutralised; numbers stay numbers', () => {
+  assert.equal(csvField('=1+1'), "'=1+1");
+  assert.equal(csvField('@SUM(1+1)'), "'@SUM(1+1)");
+  assert.equal(csvField('-cmd'), "'-cmd");
+  assert.equal(csvField('+cmd'), "'+cmd");
+  assert.equal(csvField('\tx'), "'\tx");
+  assert.equal(csvField('\rx'), '"\'\rx"');
+  assert.equal(csvField('-1'), '-1');
+  assert.equal(csvField('-1.3'), '-1.3');
+  assert.equal(csvField(-1), '-1');
+  assert.equal(csvField(2.5e-6), '0.0000025');
+  assert.equal(csvField('=HYPERLINK("x","y")'), '"\'=HYPERLINK(""x"",""y"")"');
+  const rs = [['=1+1', '@SUM(1+1)', -1.25], ['-cmd', 'Family', 2]].map(([sym, fam, net], i) => ({
+    type: 'target', light: true, gid: `g${i}`, pos: 10 + i, ref: 'M', alt: 'I', kind: 'missense',
+    receptor: { gid: `g${i}`, symbol: sym, name: 'x' }, alleles: [], clinvar: [], notes: [],
+    summary: { aa: 'M', family: fam, net, dmax: 1, dmaxSigned: -1, nsig: 0, threshold: 1 } }));
+  rs.push(...[2, 3].map((i) => ({ ...rs[1], gid: `g${i}`, receptor: { gid: `g${i}`, symbol: `S${i}`, name: 'x' } })));
+  const out = renderAnswer({ expect: 'targets', results: rs, interpretation: { kind: 'protein', change: { ref: 'M', pos: 10, alt: 'I', kind: 'missense' } } }, 'M10I', OPTS);
+  const csv = compareCsv(out.compare, compareDefaults());
+  const lines = csv.split('\r\n');
+  assert.ok(lines[1].startsWith("'=1+1,'=1+1,g0,,'@SUM(1+1),"), lines[1]);
+  assert.ok(lines[2].startsWith("'-cmd,'-cmd,g1,"), lines[2]);
+  assert.match(lines[1], /,-1\.3,stronger in inactive,/);
+  for (const l of lines.slice(1)) for (const cell of l.split(',')) assert.ok(!/^[=+@\t\r]/.test(cell) && !/^-[^\d.]/.test(cell), cell);
+});
+
+test('R2-5: a receptor result lists every ClinVar record, P/LP first, with counts; "ADRB2 ClinVar" opens it', { skip }, async () => {
+  const plain = await search('ADRB2', loader);
+  assert.equal(plain.expect, 'receptor');
+  const recs = plain.results[0].clinvar;
+  assert.ok(recs.length >= 40, recs.length);
+  const ho = renderAnswer(plain, 'ADRB2', OPTS2).html;
+  assert.match(ho, /<details class="sr-more sr-cvlist-all">/); // folded on a plain receptor search
+  assert.match(visible(ho), new RegExp(`All ${recs.length} ClinVar records for ADRB2`));
+  for (const q of ['ADRB2 ClinVar', 'ClinVar for ADRB2']) {
+    const a = await search(q, loader);
+    assert.equal(a.expect, 'receptor', q);
+    assert.equal(a.results[0].gid, 'adrb2_human');
+    assert.equal(a.results[0].clinvarList, true);
+    const h = renderAnswer(a, q, OPTS2).html;
+    assert.match(h, /<details class="sr-more sr-cvlist-all" open>/, q);
+    assert.match(visible(h), /I read this as<\/span> <strong>every ClinVar record of ADRB2/);
+    // every record is listed once, with its VCV link
+    for (const c of recs) assert.ok(h.includes(`href="https://www.ncbi.nlm.nih.gov/clinvar/variation/${c.variationId}/"`), c.accession);
+    assert.equal((h.match(/data-label="Record"/g) ?? []).length, recs.length);
+    assert.match(visible(h), /\d+ records: 0 pathogenic or likely pathogenic, \d+ uncertain significance, \d+ benign or likely benign/);
+  }
+  // a receptor with P/LP records: that group comes first and is open
+  const rho = await search('RHO ClinVar', loader);
+  const groups = clinvarGroups(rho.results[0].clinvar);
+  assert.equal(groups[0].key, 'plp');
+  assert.ok(groups[0].records.length > 0);
+  assert.ok(groups[0].records.every((c) => /pathogenic/i.test(c.classification) && !/benign|uncertain|conflicting/i.test(c.classification)));
+  const rh = renderAnswer(rho, 'RHO ClinVar', OPTS2).html;
+  const order = [...rh.matchAll(/data-cv-group="(\w+)"/g)].map((m) => m[1]);
+  assert.equal(order[0], 'plp');
+  assert.match(rh, /data-cv-group="plp" open>/);
+  assert.equal(groups.reduce((n, g) => n + g.records.length, 0), rho.results[0].clinvar.length);
+});
+
+test('R2-6: "Find in the report\'s variant table" follows the report table membership index', { skip }, async () => {
+  const gpr3 = await search('1-27393820-C-T', loader);
+  const r3 = gpr3.results[0];
+  assert.equal(r3.gid, 'gpr3_human');
+  assert.equal(r3.alleles[0].hgvsp, 'p.Pro8Ser');
+  assert.equal(r3.alleles[0].inReportTable, false);
+  assert.ok(inReportTable(r3) === false && residueFacts(r3).dmax >= 3, 'above the cutoff, still not listed');
+  const h3 = renderAnswer(gpr3, '1-27393820-C-T', OPTS2).html;
+  assert.ok(!h3.includes("Find in the report's variant table"));
+  assert.match(h3, /that table was built from gnomAD v4\.1\.0 and does not list this change/);
+  const par2 = await search('PAR2 p.Met159Ile', loader);
+  const r2 = par2.results[0];
+  assert.ok(r2.alleles.length && r2.alleles.every((x) => x.inReportTable === true));
+  const h2 = renderAnswer(par2, 'PAR2 p.Met159Ile', OPTS2).html;
+  const m = /href="[^"]*par2_human\.html#sec=sec-variants&(?:amp;)?vq=([^"]+)">Find in the report's variant table/.exec(h2);
+  assert.ok(m, 'link present');
+  const vq = decodeURIComponent(m[1]);
+  assert.equal(vq, 'p.Met159Ile');
+  // the hgvsp is a row of the built report page, when a build sits next to the index
+  const page = join(DIR, '..', 'reports', 'par2_human.html');
+  if (existsSync(page)) {
+    const table = /<table class="v2-table" id="variants-table">([^]*?)<\/table>/.exec(readFileSync(page, 'utf8'))[1];
+    assert.ok(table.includes(`<td>${vq}</td>`), 'p.Met159Ile is a row of the report table');
+    const g3 = /<table class="v2-table" id="variants-table">([^]*?)<\/table>/.exec(readFileSync(join(DIR, '..', 'reports', 'gpr3_human.html'), 'utf8'))?.[1] ?? '';
+    assert.ok(!g3.includes('<td>p.Pro8Ser</td>'), 'p.Pro8Ser is not a row of the GPR3 report table');
+  }
+});
+
+test('R2-7: no exact match but grouped residues: W3.50 lists every receptor with its residue at 3.50x50', { skip }, async () => {
+  const a = await search('W3.50', loader);
+  assert.equal(a.results.length, 0);
+  const o = renderAnswer(a, 'W3.50', OPTS2);
+  assert.ok(o.compare, 'a table is drawn');
+  assert.equal(o.compare.rows.length, 283);
+  assert.match(visible(o.html), /No receptor has Trp at 3\.50x50; all 283 receptors with their residue at 3\.50x50 are listed below\./);
+  assert.ok(!o.status.startsWith('No result'), o.status);
+  assert.ok(!o.html.includes('sr-help'), 'no "you can search like this" block under a table');
+  assert.ok(!visible(o.html).match(/undefined|NaN|\[object/));
 });

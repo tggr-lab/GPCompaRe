@@ -524,7 +524,7 @@ def test_browse_receptor_filter_still_works(open_page):
 
 # --------------------------------------------------------- phone, dark mode, no JavaScript
 
-@pytest.mark.parametrize('q', ['F2RL1 p.Met159Ile', 'M159I', 'LPAR2 p.Leu351Phe', 'GLP1R', ''])
+@pytest.mark.parametrize('q', ['F2RL1 p.Met159Ile', 'M159I', 'LPAR2 p.Leu351Phe', 'GLP1R', '', 'MC1R ClinVar', 'W3.50', 'PAR2 p.Ala159Ile'])
 def test_phone_width_has_no_horizontal_scroll(open_page, q):
     page = open_page('/search/?q=' + quote(q, safe=''), viewport=PHONE)
     if q:
@@ -1123,3 +1123,70 @@ def test_motif_table_marks_departures_and_labels_groups(open_page):
     assert page.locator('.sr-motif').inner_text().startswith('DRY motif')
     assert page.locator('.sr-motif-notes li').count() == 3
     assert 'not the motif residue' in results_text(page)
+
+
+# ------------------------------------------------------------ review round 2 (2026-11-04)
+
+def test_mismatch_copies_say_the_typed_change_cannot_be_checked(open_page):
+    page = search_page(open_page, 'PAR2 p.Ala159Ile', permissions=['clipboard-read', 'clipboard-write'])
+    assert page.errors == []
+    head = page.locator('.sr-card-title').inner_text()
+    assert 'model residue' in head and 'Met159' in head
+    assert page.locator('.sr-change-main').inner_text() == 'p.Ala159Ile'
+    for button in ('Copy evidence summary', 'Copy all notations'):
+        page.get_by_role('button', name=button).click()
+        page.wait_for_function("(n) => [...document.querySelectorAll('button')].some((b) => b.textContent === 'Copied')", arg=button)
+        clip = page.evaluate('navigator.clipboard.readText()')
+        assert 'p.Ala159Ile: position 159 is Met in F2RL1, so this change cannot be checked' in clip, clip
+        assert 'this exact change is not listed' not in clip
+        lines = [ln for ln in clip.split('\n') if 'p.Met159Ile' in ln]
+        assert len(lines) == 1 and lines[0].startswith('Suggested correction'), clip
+        page.wait_for_function("() => ![...document.querySelectorAll('button')].some((b) => b.textContent === 'Copied')")
+
+
+@pytest.mark.parametrize('q', ['ADRB2 ClinVar', 'ADRB2'])
+def test_receptor_search_lists_every_clinvar_record(open_page, q):
+    page = search_page(open_page, q)
+    assert page.errors == [] and page.foreign == []
+    box = page.locator('.sr-cvlist-all')
+    assert box.count() == 1
+    if q == 'ADRB2':
+        box.locator('summary').first.click()
+    summary = box.locator('summary').first.inner_text()
+    n = int(re.search(r'All (\d+) ClinVar records for ADRB2', summary).group(1))
+    assert n >= 40
+    assert re.search(r'\d+ records: 0 pathogenic or likely pathogenic, \d+ uncertain significance', box.inner_text())
+    for g in box.locator('.sr-cvgroup > summary').all():
+        g.click()
+    assert box.locator('tbody tr').count() == n
+    links = box.locator('td[data-label="Record"] a')
+    assert links.first.get_attribute('href').startswith('https://www.ncbi.nlm.nih.gov/clinvar/variation/')
+    assert links.first.get_attribute('rel') == 'noopener noreferrer'
+
+
+def test_report_clinvar_link_lands_on_the_list():
+    tpl = (BASE / 'templates' / 'gpcr_report.html').read_text(encoding='utf-8')
+    assert "search/?q={{ (gene_name ~ ' ClinVar')|urlencode }}" in tpl
+    drawer = (BASE / 'static' / 'js' / 'residue-drawer.js').read_text(encoding='utf-8')
+    assert "searchHref(cfg.gene + ' ClinVar')" in drawer
+
+
+def test_variant_table_link_only_for_changes_the_report_lists(open_page):
+    page = search_page(open_page, '1-27393820-C-T')
+    assert page.get_by_role('link', name="Find in the report's variant table").count() == 0
+    assert 'does not list this change' in page.locator('.sr-action-note').inner_text()
+    page = search_page(open_page, 'PAR2 p.Met159Ile')
+    href = page.get_by_role('link', name="Find in the report's variant table").get_attribute('href')
+    assert href.endswith('#sec=sec-variants&vq=p.Met159Ile')
+    report = (BUILD_DIR / 'reports' / 'par2_human.html').read_text(encoding='utf-8')
+    table = re.search(r'<table class="v2-table" id="variants-table">(.*?)</table>', report, re.S).group(1)
+    assert '<td>p.Met159Ile</td>' in table
+
+
+def test_no_exact_residue_still_lists_the_position(open_page):
+    page = search_page(open_page, 'W3.50')
+    assert page.errors == []
+    msg = page.locator('.sr-message').first.inner_text()
+    assert 'No receptor has Trp at 3.50x50; all 283 receptors with their residue at 3.50x50 are listed below.' in msg
+    assert page.locator('.sr-table--cmp tbody tr').count() == 25  # first page of 283
+    assert '283' in page.locator('#search-status').inner_text()

@@ -288,6 +288,23 @@ function receptorInterp(term, rid, match, confidence, why, flags = []) {
   return finish(reading('receptor', 1, why, { flags }), confidence, { term, rid, match });
 }
 
+const CLINVAR_LIST_RE = /^(?:(.+?)\s+)?clinvar(?:\s+(?:records?|variants?|entries))?(?:\s+(?:for|in|of)\s+(.+)|\s+(.+))?$/i;
+
+/** "ADRB2 ClinVar" and the like: the receptor, with the request for its ClinVar records (flag clinvar-list). */
+function readClinvarList(text, matcher) {
+  const m = CLINVAR_LIST_RE.exec(text);
+  if (!m) return null;
+  const parts = [m[1], m[2] ?? m[3]].filter(Boolean);
+  if (parts.length !== 1) return null;
+  const term = parts[0].trim();
+  // a record id ("ClinVar 718860", "ClinVar VCV000718860") is not a receptor
+  if (!isNameShaped(term) || /^(?:VCV|RCV|SCV)\d/i.test(term) || /^\d+$/.test(term)) return null;
+  const rid = parseReceptorId(term);
+  const match = matchOf(term, matcher);
+  if (matcher && match.status === 'none' && !rid) return null;
+  return receptorInterp(term, rid, match, 0.96, `Read as every ClinVar record of the receptor "${term}".`, ['clinvar-list']);
+}
+
 /** Every split of "receptor + notation" (head first, a "(GENE)" suffix, or notation first). */
 function splits(text, matcher) {
   const cands = [];
@@ -404,6 +421,10 @@ function parseText(query, ctx) {
   if (alone.exclusive && alone.malformed && !/\s/.test(text)) {
     return [{ kind: 'unrecognised', confidence: 1, why: `Could not read "${text}": ${alone.malformed}.` }];
   }
+
+  // 3b. every ClinVar record of one receptor: "ADRB2 ClinVar", "ClinVar ADRB2", "ClinVar records for ADRB2"
+  const cvList = readClinvarList(text, matcher);
+  if (cvList) return [cvList];
 
   // 4. the whole query as a receptor name, weighed against a variant reading of the same text
   const nameLike = isNameShaped(text) && !/^[pcgnr]\./i.test(text);

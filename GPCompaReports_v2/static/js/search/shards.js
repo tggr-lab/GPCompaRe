@@ -186,9 +186,10 @@ export function decodeRespos(raw) {
 
 /**
  * Decoded variant shard. alleles[i] = {i, pos, ref, alt, txPos, hgvsp, hgvsc, transcript, id, chrom,
- * g38, ref38, alt38, id37, rsids, ac, an, af, hom, source, am, amClass, conflict}; clinvar records
+ * g38, ref38, alt38, id37, rsids, ac, an, af, hom, source, am, amClass, conflict, inReportTable}; clinvar records
  * {variationId, accession, title, nm, classification, stars, conditions, gnomadId, pos, ref, alt, kind,
- * packed, spdi}.
+ * packed, spdi}. `inReportTable` is true when the report page's variant table lists the allele's protein
+ * change, false when it does not, and null for an index built without that table (no `rt`).
  */
 export function decodeVariants(raw) {
   const alleles = [];
@@ -221,6 +222,7 @@ export function decodeVariants(raw) {
       hom: raw.hom[i], source: raw.src[i] === 'e' ? 'exome' : 'genome',
       am: raw.am[i] === null ? null : raw.am[i] / 1000, amClass: { B: 'benign', A: 'ambiguous', P: 'pathogenic' }[raw.amc[i]] ?? null,
       conflict: raw.conflict[i] === '1',
+      inReportTable: typeof raw.rt === 'string' ? raw.rt[i] === '1' : null,
     });
   }
   const cv = raw.clinvar;

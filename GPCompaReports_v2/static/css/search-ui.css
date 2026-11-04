@@ -139,6 +139,12 @@
 .sr-notations > summary .sr-badge { margin-left: var(--s-2); }
 .sr-notations[open] > summary { margin-bottom: var(--s-2); }
 .sr-notations .sr-table-wrap + .sr-table-wrap, .sr-notations .sr-table-wrap + p { margin-top: var(--s-3); }
+/* every ClinVar record of one receptor, grouped by classification */
+.sr-cvlist-all > summary { color: var(--fgColor-default); }
+.sr-cvlist-all > summary strong { color: var(--fgColor-accent); }
+.sr-cvgroup { margin-left: var(--s-3); }
+.sr-cvgroup .sr-table-wrap { max-height: 32rem; overflow-y: auto; }
+.sr-table--cv td { overflow-wrap: anywhere; }
 .sr-action-note { flex: 1 1 100%; margin: 0; font-size: 0.86rem; color: var(--fgColor-muted); }
 
 /* a typed reference residue that is not the model's: the correction is the main action */

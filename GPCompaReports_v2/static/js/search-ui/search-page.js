@@ -229,7 +229,7 @@ out.addEventListener('click', async (e) => {
   if (!c) return;
   const text = c.dataset.copy
     ?? (c.dataset.copyNotations !== undefined
-      ? notationsText(current.results[Number(c.dataset.copyNotations)])
+      ? notationsText(current.results[Number(c.dataset.copyNotations)], current.ctx)
       : evidenceText(current.results[Number(c.dataset.copyEvidence)], current.ctx));
   const old = c.textContent;
   const ok = await copyText(text);

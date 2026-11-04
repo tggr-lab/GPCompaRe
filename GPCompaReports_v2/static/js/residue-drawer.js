@@ -305,7 +305,7 @@
     }
     if (cfg.clinvarLabel && cfg.gene) {
       var cvAll = el('a', 'rx-more-link', 'Search all ClinVar records for ' + cfg.gene);
-      cvAll.href = searchHref(cfg.gene);
+      cvAll.href = searchHref(cfg.gene + ' ClinVar'); // the search lists every record, grouped by classification
       bodyEl.appendChild(cvAll);
     }
 
