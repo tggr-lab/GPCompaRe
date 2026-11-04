@@ -1,0 +1,7 @@
+{
+ "accessions_requested": 1066,
+ "missing": [],
+ "requests": 22,
+ "returned": 1066,
+ "source": "NCBI E-utilities efetch db=nuccore fasta_cds_na / fasta_cds_aa"
+}

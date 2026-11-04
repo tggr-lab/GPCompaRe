@@ -1,0 +1,2625 @@
+{
+ "a_alleles": {
+  "5ht1a_human": {
+   "alleles": 599,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 423,
+   "examples": [],
+   "ok": 599,
+   "pack_numbering_offsets": 0
+  },
+  "5ht1b_human": {
+   "alleles": 510,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 391,
+   "examples": [],
+   "ok": 510,
+   "pack_numbering_offsets": 0
+  },
+  "5ht1d_human": {
+   "alleles": 514,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 378,
+   "examples": [],
+   "ok": 514,
+   "pack_numbering_offsets": 0
+  },
+  "5ht1e_human": {
+   "alleles": 455,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 366,
+   "examples": [],
+   "ok": 455,
+   "pack_numbering_offsets": 0
+  },
+  "5ht1f_human": {
+   "alleles": 448,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 367,
+   "examples": [],
+   "ok": 448,
+   "pack_numbering_offsets": 0
+  },
+  "5ht2a_human": {
+   "alleles": 492,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 472,
+   "examples": [],
+   "ok": 492,
+   "pack_numbering_offsets": 0
+  },
+  "5ht2b_human": {
+   "alleles": 617,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 482,
+   "examples": [],
+   "ok": 617,
+   "pack_numbering_offsets": 0
+  },
+  "5ht2c_human": {
+   "alleles": 409,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 459,
+   "examples": [],
+   "ok": 409,
+   "pack_numbering_offsets": 0
+  },
+  "5ht4r_human": {
+   "alleles": 494,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 389,
+   "examples": [],
+   "ok": 494,
+   "pack_numbering_offsets": 0
+  },
+  "5ht5a_human": {
+   "alleles": 645,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 358,
+   "examples": [],
+   "ok": 645,
+   "pack_numbering_offsets": 0
+  },
+  "5ht6r_human": {
+   "alleles": 773,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 441,
+   "examples": [],
+   "ok": 773,
+   "pack_numbering_offsets": 0
+  },
+  "5ht7r_human": {
+   "alleles": 645,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 480,
+   "examples": [],
+   "ok": 645,
+   "pack_numbering_offsets": 0
+  },
+  "aa1r_human": {
+   "alleles": 381,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 327,
+   "examples": [],
+   "ok": 381,
+   "pack_numbering_offsets": 0
+  },
+  "aa2ar_human": {
+   "alleles": 560,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 413,
+   "examples": [],
+   "ok": 560,
+   "pack_numbering_offsets": 0
+  },
+  "aa2br_human": {
+   "alleles": 581,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 333,
+   "examples": [],
+   "ok": 581,
+   "pack_numbering_offsets": 0
+  },
+  "aa3r_human": {
+   "alleles": 388,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 319,
+   "examples": [],
+   "ok": 388,
+   "pack_numbering_offsets": 0
+  },
+  "ackr1_human": {
+   "alleles": 480,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 337,
+   "examples": [],
+   "ok": 480,
+   "pack_numbering_offsets": 0
+  },
+  "ackr2_human": {
+   "alleles": 496,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 385,
+   "examples": [],
+   "ok": 496,
+   "pack_numbering_offsets": 0
+  },
+  "ackr3_human": {
+   "alleles": 431,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 363,
+   "examples": [],
+   "ok": 431,
+   "pack_numbering_offsets": 0
+  },
+  "ackr4_human": {
+   "alleles": 500,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 351,
+   "examples": [],
+   "ok": 500,
+   "pack_numbering_offsets": 0
+  },
+  "acm1_human": {
+   "alleles": 415,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 461,
+   "examples": [],
+   "ok": 415,
+   "pack_numbering_offsets": 0
+  },
+  "acm2_human": {
+   "alleles": 509,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 467,
+   "examples": [],
+   "ok": 509,
+   "pack_numbering_offsets": 0
+  },
+  "acm3_human": {
+   "alleles": 664,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 591,
+   "examples": [],
+   "ok": 664,
+   "pack_numbering_offsets": 0
+  },
+  "acm4_human": {
+   "alleles": 541,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 480,
+   "examples": [],
+   "ok": 541,
+   "pack_numbering_offsets": 0
+  },
+  "acm5_human": {
+   "alleles": 579,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 533,
+   "examples": [],
+   "ok": 579,
+   "pack_numbering_offsets": 0
+  },
+  "acthr_human": {
+   "alleles": 412,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 298,
+   "examples": [],
+   "ok": 412,
+   "pack_numbering_offsets": 0
+  },
+  "ada1a_human": {
+   "alleles": 701,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 467,
+   "examples": [],
+   "ok": 701,
+   "pack_numbering_offsets": 0
+  },
+  "ada1b_human": {
+   "alleles": 1289,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 521,
+   "examples": [],
+   "ok": 1289,
+   "pack_numbering_offsets": 0
+  },
+  "ada1d_human": {
+   "alleles": 1430,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 573,
+   "examples": [],
+   "ok": 1430,
+   "pack_numbering_offsets": 0
+  },
+  "ada2a_human": {
+   "alleles": 1225,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 466,
+   "examples": [],
+   "ok": 1225,
+   "pack_numbering_offsets": 0
+  },
+  "ada2b_human": {
+   "alleles": 733,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 451,
+   "examples": [],
+   "ok": 733,
+   "pack_numbering_offsets": 0
+  },
+  "ada2c_human": {
+   "alleles": 998,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 463,
+   "examples": [],
+   "ok": 998,
+   "pack_numbering_offsets": 0
+  },
+  "adrb1_human": {
+   "alleles": 1302,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 478,
+   "examples": [],
+   "ok": 1302,
+   "pack_numbering_offsets": 0
+  },
+  "adrb2_human": {
+   "alleles": 489,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 414,
+   "examples": [],
+   "ok": 489,
+   "pack_numbering_offsets": 0
+  },
+  "adrb3_human": {
+   "alleles": 1071,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 409,
+   "examples": [],
+   "ok": 1071,
+   "pack_numbering_offsets": 0
+  },
+  "agtr1_human": {
+   "alleles": 435,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 360,
+   "examples": [],
+   "ok": 435,
+   "pack_numbering_offsets": 0
+  },
+  "agtr2_human": {
+   "alleles": 348,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 364,
+   "examples": [],
+   "ok": 348,
+   "pack_numbering_offsets": 0
+  },
+  "apj_human": {
+   "alleles": 538,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 381,
+   "examples": [],
+   "ok": 538,
+   "pack_numbering_offsets": 0
+  },
+  "bkrb1_human": {
+   "alleles": 460,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 354,
+   "examples": [],
+   "ok": 460,
+   "pack_numbering_offsets": 0
+  },
+  "bkrb2_human": {
+   "alleles": 751,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 392,
+   "examples": [],
+   "ok": 751,
+   "pack_numbering_offsets": 0
+  },
+  "brs3_human": {
+   "alleles": 298,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 400,
+   "examples": [],
+   "ok": 298,
+   "pack_numbering_offsets": 0
+  },
+  "c3ar_human": {
+   "alleles": 630,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 483,
+   "examples": [],
+   "ok": 630,
+   "pack_numbering_offsets": 0
+  },
+  "c5ar1_human": {
+   "alleles": 489,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 351,
+   "examples": [],
+   "ok": 489,
+   "pack_numbering_offsets": 0
+  },
+  "c5ar2_human": {
+   "alleles": 615,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 338,
+   "examples": [],
+   "ok": 615,
+   "pack_numbering_offsets": 0
+  },
+  "cckar_human": {
+   "alleles": 647,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 429,
+   "examples": [],
+   "ok": 647,
+   "pack_numbering_offsets": 0
+  },
+  "ccr10_human": {
+   "alleles": 781,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 363,
+   "examples": [],
+   "ok": 781,
+   "pack_numbering_offsets": 0
+  },
+  "ccr1_human": {
+   "alleles": 391,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 356,
+   "examples": [],
+   "ok": 391,
+   "pack_numbering_offsets": 0
+  },
+  "ccr2_human": {
+   "alleles": 477,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 375,
+   "examples": [],
+   "ok": 477,
+   "pack_numbering_offsets": 0
+  },
+  "ccr3_human": {
+   "alleles": 477,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 356,
+   "examples": [],
+   "ok": 477,
+   "pack_numbering_offsets": 0
+  },
+  "ccr4_human": {
+   "alleles": 435,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 361,
+   "examples": [],
+   "ok": 435,
+   "pack_numbering_offsets": 0
+  },
+  "ccr5_human": {
+   "alleles": 517,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 353,
+   "examples": [],
+   "ok": 517,
+   "pack_numbering_offsets": 0
+  },
+  "ccr6_human": {
+   "alleles": 364,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 375,
+   "examples": [],
+   "ok": 364,
+   "pack_numbering_offsets": 0
+  },
+  "ccr7_human": {
+   "alleles": 404,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 379,
+   "examples": [],
+   "ok": 404,
+   "pack_numbering_offsets": 0
+  },
+  "ccr8_human": {
+   "alleles": 400,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 356,
+   "examples": [],
+   "ok": 400,
+   "pack_numbering_offsets": 0
+  },
+  "ccr9_human": {
+   "alleles": 438,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 370,
+   "examples": [],
+   "ok": 438,
+   "pack_numbering_offsets": 0
+  },
+  "ccrl2_human": {
+   "alleles": 516,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 345,
+   "examples": [],
+   "ok": 516,
+   "pack_numbering_offsets": 0
+  },
+  "cltr1_human": {
+   "alleles": 391,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 338,
+   "examples": [],
+   "ok": 391,
+   "pack_numbering_offsets": 0
+  },
+  "cltr2_human": {
+   "alleles": 467,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 347,
+   "examples": [],
+   "ok": 467,
+   "pack_numbering_offsets": 0
+  },
+  "cml1_human": {
+   "alleles": 471,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 374,
+   "examples": [],
+   "ok": 471,
+   "pack_numbering_offsets": 0
+  },
+  "cml2_human": {
+   "alleles": 451,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 356,
+   "examples": [],
+   "ok": 451,
+   "pack_numbering_offsets": 0
+  },
+  "cnr1_human": {
+   "alleles": 465,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 473,
+   "examples": [],
+   "ok": 465,
+   "pack_numbering_offsets": 0
+  },
+  "cnr2_human": {
+   "alleles": 448,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 361,
+   "examples": [],
+   "ok": 448,
+   "pack_numbering_offsets": 0
+  },
+  "cx3c1_human": {
+   "alleles": 418,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 356,
+   "examples": [],
+   "ok": 418,
+   "pack_numbering_offsets": 0
+  },
+  "cxcr1_human": {
+   "alleles": 492,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 351,
+   "examples": [],
+   "ok": 492,
+   "pack_numbering_offsets": 0
+  },
+  "cxcr2_human": {
+   "alleles": 437,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 361,
+   "examples": [],
+   "ok": 437,
+   "pack_numbering_offsets": 0
+  },
+  "cxcr3_human": {
+   "alleles": 334,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 369,
+   "examples": [],
+   "ok": 334,
+   "pack_numbering_offsets": 0
+  },
+  "cxcr4_human": {
+   "alleles": 335,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 353,
+   "examples": [],
+   "ok": 335,
+   "pack_numbering_offsets": 0
+  },
+  "cxcr5_human": {
+   "alleles": 406,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 373,
+   "examples": [],
+   "ok": 406,
+   "pack_numbering_offsets": 0
+  },
+  "cxcr6_human": {
+   "alleles": 361,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 343,
+   "examples": [],
+   "ok": 361,
+   "pack_numbering_offsets": 0
+  },
+  "drd1_human": {
+   "alleles": 427,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 447,
+   "examples": [],
+   "ok": 427,
+   "pack_numbering_offsets": 0
+  },
+  "drd2_human": {
+   "alleles": 462,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 444,
+   "examples": [],
+   "ok": 462,
+   "pack_numbering_offsets": 0
+  },
+  "drd3_human": {
+   "alleles": 576,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 401,
+   "examples": [],
+   "ok": 576,
+   "pack_numbering_offsets": 0
+  },
+  "drd4_human": {
+   "alleles": 1599,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 420,
+   "examples": [],
+   "ok": 1599,
+   "pack_numbering_offsets": 0
+  },
+  "drd5_human": {
+   "alleles": 955,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 478,
+   "examples": [],
+   "ok": 955,
+   "pack_numbering_offsets": 0
+  },
+  "ednra_human": {
+   "alleles": 338,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 428,
+   "examples": [],
+   "ok": 338,
+   "pack_numbering_offsets": 0
+  },
+  "ednrb_human": {
+   "alleles": 545,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 443,
+   "examples": [],
+   "ok": 545,
+   "pack_numbering_offsets": 0
+  },
+  "ffar1_human": {
+   "alleles": 738,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 301,
+   "examples": [],
+   "ok": 738,
+   "pack_numbering_offsets": 0
+  },
+  "ffar2_human": {
+   "alleles": 477,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 331,
+   "examples": [],
+   "ok": 477,
+   "pack_numbering_offsets": 0
+  },
+  "ffar3_human": {
+   "alleles": 640,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 347,
+   "examples": [],
+   "ok": 640,
+   "pack_numbering_offsets": 0
+  },
+  "ffar4_human": {
+   "alleles": 638,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 362,
+   "examples": [],
+   "ok": 638,
+   "pack_numbering_offsets": 0
+  },
+  "fpr1_human": {
+   "alleles": 455,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 351,
+   "examples": [],
+   "ok": 455,
+   "pack_numbering_offsets": 0
+  },
+  "fpr2_human": {
+   "alleles": 418,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 352,
+   "examples": [],
+   "ok": 418,
+   "pack_numbering_offsets": 0
+  },
+  "fpr3_human": {
+   "alleles": 382,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 354,
+   "examples": [],
+   "ok": 382,
+   "pack_numbering_offsets": 0
+  },
+  "fshr_human": {
+   "alleles": 1079,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 696,
+   "examples": [],
+   "ok": 1079,
+   "pack_numbering_offsets": 0
+  },
+  "g37l1_human": {
+   "alleles": 663,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 482,
+   "examples": [],
+   "ok": 663,
+   "pack_numbering_offsets": 0
+  },
+  "galr1_human": {
+   "alleles": 613,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 350,
+   "examples": [],
+   "ok": 613,
+   "pack_numbering_offsets": 0
+  },
+  "galr2_human": {
+   "alleles": 927,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 388,
+   "examples": [],
+   "ok": 927,
+   "pack_numbering_offsets": 0
+  },
+  "galr3_human": {
+   "alleles": 1376,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 369,
+   "examples": [],
+   "ok": 1376,
+   "pack_numbering_offsets": 0
+  },
+  "gasr_human": {
+   "alleles": 802,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 448,
+   "examples": [],
+   "ok": 802,
+   "pack_numbering_offsets": 0
+  },
+  "ghsr_human": {
+   "alleles": 574,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 367,
+   "examples": [],
+   "ok": 574,
+   "pack_numbering_offsets": 0
+  },
+  "gnrhr_human": {
+   "alleles": 455,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 329,
+   "examples": [],
+   "ok": 455,
+   "pack_numbering_offsets": 0
+  },
+  "gp101_human": {
+   "alleles": 510,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 509,
+   "examples": [],
+   "ok": 510,
+   "pack_numbering_offsets": 0
+  },
+  "gp119_human": {
+   "alleles": 241,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 336,
+   "examples": [],
+   "ok": 241,
+   "pack_numbering_offsets": 0
+  },
+  "gp132_human": {
+   "alleles": 468,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 381,
+   "examples": [],
+   "ok": 468,
+   "pack_numbering_offsets": 0
+  },
+  "gp135_human": {
+   "alleles": 1339,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 495,
+   "examples": [],
+   "ok": 1339,
+   "pack_numbering_offsets": 0
+  },
+  "gp139_human": {
+   "alleles": 430,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 354,
+   "examples": [],
+   "ok": 430,
+   "pack_numbering_offsets": 0
+  },
+  "gp141_human": {
+   "alleles": 412,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 306,
+   "examples": [],
+   "ok": 412,
+   "pack_numbering_offsets": 0
+  },
+  "gp142_human": {
+   "alleles": 779,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 463,
+   "examples": [],
+   "ok": 779,
+   "pack_numbering_offsets": 0
+  },
+  "gp146_human": {
+   "alleles": 694,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 334,
+   "examples": [],
+   "ok": 694,
+   "pack_numbering_offsets": 0
+  },
+  "gp148_human": {
+   "alleles": 558,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 348,
+   "examples": [],
+   "ok": 558,
+   "pack_numbering_offsets": 0
+  },
+  "gp149_human": {
+   "alleles": 1087,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 732,
+   "examples": [],
+   "ok": 1087,
+   "pack_numbering_offsets": 0
+  },
+  "gp150_human": {
+   "alleles": 1555,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 435,
+   "examples": [],
+   "ok": 1555,
+   "pack_numbering_offsets": 0
+  },
+  "gp151_human": {
+   "alleles": 558,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 420,
+   "examples": [],
+   "ok": 558,
+   "pack_numbering_offsets": 0
+  },
+  "gp152_human": {
+   "alleles": 684,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 471,
+   "examples": [],
+   "ok": 684,
+   "pack_numbering_offsets": 0
+  },
+  "gp153_human": {
+   "alleles": 1663,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 610,
+   "examples": [],
+   "ok": 1663,
+   "pack_numbering_offsets": 0
+  },
+  "gp160_human": {
+   "alleles": 451,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 339,
+   "examples": [],
+   "ok": 451,
+   "pack_numbering_offsets": 0
+  },
+  "gp161_human": {
+   "alleles": 645,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 530,
+   "examples": [],
+   "ok": 645,
+   "pack_numbering_offsets": 0
+  },
+  "gp162_human": {
+   "alleles": 921,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 589,
+   "examples": [],
+   "ok": 921,
+   "pack_numbering_offsets": 0
+  },
+  "gp171_human": {
+   "alleles": 386,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 320,
+   "examples": [],
+   "ok": 386,
+   "pack_numbering_offsets": 0
+  },
+  "gp173_human": {
+   "alleles": 345,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 374,
+   "examples": [],
+   "ok": 345,
+   "pack_numbering_offsets": 0
+  },
+  "gp174_human": {
+   "alleles": 278,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 334,
+   "examples": [],
+   "ok": 278,
+   "pack_numbering_offsets": 0
+  },
+  "gp176_human": {
+   "alleles": 801,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 516,
+   "examples": [],
+   "ok": 801,
+   "pack_numbering_offsets": 0
+  },
+  "gp182_human": {
+   "alleles": 580,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 405,
+   "examples": [],
+   "ok": 580,
+   "pack_numbering_offsets": 0
+  },
+  "gp183_human": {
+   "alleles": 407,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 362,
+   "examples": [],
+   "ok": 407,
+   "pack_numbering_offsets": 0
+  },
+  "gpbar_human": {
+   "alleles": 563,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 331,
+   "examples": [],
+   "ok": 563,
+   "pack_numbering_offsets": 0
+  },
+  "gper1_human": {
+   "alleles": 598,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 376,
+   "examples": [],
+   "ok": 598,
+   "pack_numbering_offsets": 0
+  },
+  "gpr12_human": {
+   "alleles": 377,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 335,
+   "examples": [],
+   "ok": 377,
+   "pack_numbering_offsets": 0
+  },
+  "gpr15_human": {
+   "alleles": 510,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 361,
+   "examples": [],
+   "ok": 510,
+   "pack_numbering_offsets": 0
+  },
+  "gpr17_human": {
+   "alleles": 594,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 368,
+   "examples": [],
+   "ok": 594,
+   "pack_numbering_offsets": 0
+  },
+  "gpr18_human": {
+   "alleles": 420,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 332,
+   "examples": [],
+   "ok": 420,
+   "pack_numbering_offsets": 0
+  },
+  "gpr19_human": {
+   "alleles": 471,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 416,
+   "examples": [],
+   "ok": 471,
+   "pack_numbering_offsets": 0
+  },
+  "gpr20_human": {
+   "alleles": 675,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 359,
+   "examples": [],
+   "ok": 675,
+   "pack_numbering_offsets": 0
+  },
+  "gpr21_human": {
+   "alleles": 454,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 350,
+   "examples": [],
+   "ok": 454,
+   "pack_numbering_offsets": 0
+  },
+  "gpr22_human": {
+   "alleles": 452,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 434,
+   "examples": [],
+   "ok": 452,
+   "pack_numbering_offsets": 0
+  },
+  "gpr25_human": {
+   "alleles": 979,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 362,
+   "examples": [],
+   "ok": 979,
+   "pack_numbering_offsets": 0
+  },
+  "gpr27_human": {
+   "alleles": 1418,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 376,
+   "examples": [],
+   "ok": 1418,
+   "pack_numbering_offsets": 0
+  },
+  "gpr31_human": {
+   "alleles": 466,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 320,
+   "examples": [],
+   "ok": 466,
+   "pack_numbering_offsets": 0
+  },
+  "gpr32_human": {
+   "alleles": 536,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 357,
+   "examples": [],
+   "ok": 536,
+   "pack_numbering_offsets": 0
+  },
+  "gpr33_human": {
+   "alleles": 451,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 334,
+   "examples": [],
+   "ok": 451,
+   "pack_numbering_offsets": 0
+  },
+  "gpr34_human": {
+   "alleles": 289,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 382,
+   "examples": [],
+   "ok": 289,
+   "pack_numbering_offsets": 0
+  },
+  "gpr35_human": {
+   "alleles": 509,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 310,
+   "examples": [],
+   "ok": 509,
+   "pack_numbering_offsets": 0
+  },
+  "gpr37_human": {
+   "alleles": 905,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 614,
+   "examples": [],
+   "ok": 905,
+   "pack_numbering_offsets": 0
+  },
+  "gpr39_human": {
+   "alleles": 730,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 454,
+   "examples": [],
+   "ok": 730,
+   "pack_numbering_offsets": 0
+  },
+  "gpr3_human": {
+   "alleles": 433,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 331,
+   "examples": [],
+   "ok": 433,
+   "pack_numbering_offsets": 0
+  },
+  "gpr42_human": {
+   "alleles": 741,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 347,
+   "examples": [],
+   "ok": 741,
+   "pack_numbering_offsets": 0
+  },
+  "gpr45_human": {
+   "alleles": 519,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 373,
+   "examples": [],
+   "ok": 519,
+   "pack_numbering_offsets": 0
+  },
+  "gpr4_human": {
+   "alleles": 439,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 363,
+   "examples": [],
+   "ok": 439,
+   "pack_numbering_offsets": 0
+  },
+  "gpr52_human": {
+   "alleles": 454,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 362,
+   "examples": [],
+   "ok": 454,
+   "pack_numbering_offsets": 0
+  },
+  "gpr55_human": {
+   "alleles": 420,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 320,
+   "examples": [],
+   "ok": 420,
+   "pack_numbering_offsets": 0
+  },
+  "gpr61_human": {
+   "alleles": 481,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 452,
+   "examples": [],
+   "ok": 481,
+   "pack_numbering_offsets": 0
+  },
+  "gpr62_human": {
+   "alleles": 1156,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 369,
+   "examples": [],
+   "ok": 1156,
+   "pack_numbering_offsets": 0
+  },
+  "gpr63_human": {
+   "alleles": 523,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 420,
+   "examples": [],
+   "ok": 523,
+   "pack_numbering_offsets": 0
+  },
+  "gpr6_human": {
+   "alleles": 666,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 363,
+   "examples": [],
+   "ok": 666,
+   "pack_numbering_offsets": 0
+  },
+  "gpr75_human": {
+   "alleles": 756,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 541,
+   "examples": [],
+   "ok": 756,
+   "pack_numbering_offsets": 0
+  },
+  "gpr78_human": {
+   "alleles": 1005,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 364,
+   "examples": [],
+   "ok": 1005,
+   "pack_numbering_offsets": 0
+  },
+  "gpr82_human": {
+   "alleles": 368,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 337,
+   "examples": [],
+   "ok": 368,
+   "pack_numbering_offsets": 0
+  },
+  "gpr83_human": {
+   "alleles": 704,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 424,
+   "examples": [],
+   "ok": 704,
+   "pack_numbering_offsets": 0
+  },
+  "gpr84_human": {
+   "alleles": 468,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 397,
+   "examples": [],
+   "ok": 468,
+   "pack_numbering_offsets": 0
+  },
+  "gpr85_human": {
+   "alleles": 332,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 371,
+   "examples": [],
+   "ok": 332,
+   "pack_numbering_offsets": 0
+  },
+  "gpr87_human": {
+   "alleles": 504,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 359,
+   "examples": [],
+   "ok": 504,
+   "pack_numbering_offsets": 0
+  },
+  "gpr88_human": {
+   "alleles": 1128,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 385,
+   "examples": [],
+   "ok": 1128,
+   "pack_numbering_offsets": 0
+  },
+  "grpr_human": {
+   "alleles": 397,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 385,
+   "examples": [],
+   "ok": 397,
+   "pack_numbering_offsets": 0
+  },
+  "hcar1_human": {
+   "alleles": 518,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 347,
+   "examples": [],
+   "ok": 518,
+   "pack_numbering_offsets": 0
+  },
+  "hcar2_human": {
+   "alleles": 584,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 364,
+   "examples": [],
+   "ok": 584,
+   "pack_numbering_offsets": 0
+  },
+  "hcar3_human": {
+   "alleles": 632,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 388,
+   "examples": [],
+   "ok": 632,
+   "pack_numbering_offsets": 0
+  },
+  "hrh1_human": {
+   "alleles": 594,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 488,
+   "examples": [],
+   "ok": 594,
+   "pack_numbering_offsets": 0
+  },
+  "hrh2_human": {
+   "alleles": 389,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 423,
+   "examples": [],
+   "ok": 389,
+   "pack_numbering_offsets": 0
+  },
+  "hrh3_human": {
+   "alleles": 758,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 446,
+   "examples": [],
+   "ok": 758,
+   "pack_numbering_offsets": 0
+  },
+  "hrh4_human": {
+   "alleles": 518,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 391,
+   "examples": [],
+   "ok": 518,
+   "pack_numbering_offsets": 0
+  },
+  "kissr_human": {
+   "alleles": 1407,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 399,
+   "examples": [],
+   "ok": 1407,
+   "pack_numbering_offsets": 0
+  },
+  "lgr4_human": {
+   "alleles": 1599,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 952,
+   "examples": [],
+   "ok": 1599,
+   "pack_numbering_offsets": 0
+  },
+  "lgr6_human": {
+   "alleles": 1469,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 968,
+   "examples": [],
+   "ok": 1469,
+   "pack_numbering_offsets": 0
+  },
+  "lpar1_human": {
+   "alleles": 342,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 365,
+   "examples": [],
+   "ok": 342,
+   "pack_numbering_offsets": 0
+  },
+  "lpar2_human": {
+   "alleles": 524,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 352,
+   "checked_under_gnomad_numbering_offset_c": 9,
+   "examples": [],
+   "genomic_outside_current_cds": 6,
+   "ok": 524,
+   "pack_numbering_offsets": {
+    "3": 447
+   }
+  },
+  "lpar3_human": {
+   "alleles": 437,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 354,
+   "examples": [],
+   "ok": 437,
+   "pack_numbering_offsets": 0
+  },
+  "lpar4_human": {
+   "alleles": 323,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 371,
+   "examples": [],
+   "ok": 323,
+   "pack_numbering_offsets": 0
+  },
+  "lpar5_human": {
+   "alleles": 888,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 373,
+   "examples": [],
+   "ok": 888,
+   "pack_numbering_offsets": 0
+  },
+  "lpar6_human": {
+   "alleles": 460,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 345,
+   "examples": [],
+   "ok": 460,
+   "pack_numbering_offsets": 0
+  },
+  "lshr_human": {
+   "alleles": 1071,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 700,
+   "examples": [],
+   "ok": 1071,
+   "pack_numbering_offsets": 0
+  },
+  "lt4r1_human": {
+   "alleles": 781,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 353,
+   "examples": [],
+   "ok": 781,
+   "pack_numbering_offsets": 0
+  },
+  "lt4r2_human": {
+   "alleles": 863,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 359,
+   "examples": [],
+   "ok": 863,
+   "pack_numbering_offsets": 0
+  },
+  "mas1l_human": {
+   "alleles": 507,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 379,
+   "examples": [],
+   "ok": 507,
+   "pack_numbering_offsets": 0
+  },
+  "mas_human": {
+   "alleles": 433,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 326,
+   "examples": [],
+   "ok": 433,
+   "pack_numbering_offsets": 0
+  },
+  "mc3r_human": {
+   "alleles": 477,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 324,
+   "examples": [],
+   "ok": 477,
+   "pack_numbering_offsets": 0
+  },
+  "mc4r_human": {
+   "alleles": 459,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 333,
+   "examples": [],
+   "ok": 459,
+   "pack_numbering_offsets": 0
+  },
+  "mc5r_human": {
+   "alleles": 468,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 326,
+   "examples": [],
+   "ok": 468,
+   "pack_numbering_offsets": 0
+  },
+  "mchr1_human": {
+   "alleles": 525,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 354,
+   "examples": [],
+   "ok": 525,
+   "pack_numbering_offsets": {
+    "-69": 506
+   }
+  },
+  "mchr2_human": {
+   "alleles": 450,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 341,
+   "examples": [],
+   "ok": 450,
+   "pack_numbering_offsets": 0
+  },
+  "mrgrd_human": {
+   "alleles": 479,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 322,
+   "examples": [],
+   "ok": 479,
+   "pack_numbering_offsets": 0
+  },
+  "mrgre_human": {
+   "alleles": 739,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 313,
+   "examples": [],
+   "ok": 739,
+   "pack_numbering_offsets": 0
+  },
+  "mrgrf_human": {
+   "alleles": 897,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 344,
+   "examples": [],
+   "ok": 897,
+   "pack_numbering_offsets": 0
+  },
+  "mrgrg_human": {
+   "alleles": 567,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 290,
+   "examples": [],
+   "ok": 567,
+   "pack_numbering_offsets": 0
+  },
+  "mrgx1_human": {
+   "alleles": 558,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 323,
+   "examples": [],
+   "ok": 558,
+   "pack_numbering_offsets": 0
+  },
+  "mrgx2_human": {
+   "alleles": 437,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 331,
+   "examples": [],
+   "ok": 437,
+   "pack_numbering_offsets": 0
+  },
+  "mrgx3_human": {
+   "alleles": 522,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 323,
+   "examples": [],
+   "ok": 522,
+   "pack_numbering_offsets": 0
+  },
+  "mrgx4_human": {
+   "alleles": 494,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 323,
+   "examples": [],
+   "ok": 494,
+   "pack_numbering_offsets": 0
+  },
+  "mshr_human": {
+   "alleles": 702,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 318,
+   "examples": [],
+   "ok": 702,
+   "pack_numbering_offsets": 0
+  },
+  "mtlr_human": {
+   "alleles": 1019,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 413,
+   "examples": [],
+   "ok": 1019,
+   "pack_numbering_offsets": 0
+  },
+  "mtr1a_human": {
+   "alleles": 564,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 351,
+   "examples": [],
+   "ok": 564,
+   "pack_numbering_offsets": 0
+  },
+  "mtr1b_human": {
+   "alleles": 601,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 363,
+   "examples": [],
+   "ok": 601,
+   "pack_numbering_offsets": 0
+  },
+  "mtr1l_human": {
+   "alleles": 779,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 618,
+   "examples": [],
+   "ok": 779,
+   "pack_numbering_offsets": 0
+  },
+  "nk1r_human": {
+   "alleles": 523,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 408,
+   "examples": [],
+   "ok": 523,
+   "pack_numbering_offsets": 0
+  },
+  "nk2r_human": {
+   "alleles": 621,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 399,
+   "examples": [],
+   "ok": 621,
+   "pack_numbering_offsets": 0
+  },
+  "nk3r_human": {
+   "alleles": 634,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 466,
+   "examples": [],
+   "ok": 634,
+   "pack_numbering_offsets": 0
+  },
+  "nmbr_human": {
+   "alleles": 649,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 391,
+   "examples": [],
+   "ok": 649,
+   "pack_numbering_offsets": 0
+  },
+  "nmur1_human": {
+   "alleles": 611,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 427,
+   "examples": [],
+   "ok": 611,
+   "pack_numbering_offsets": 0
+  },
+  "nmur2_human": {
+   "alleles": 589,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 416,
+   "examples": [],
+   "ok": 589,
+   "pack_numbering_offsets": 0
+  },
+  "npbw1_human": {
+   "alleles": 782,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 329,
+   "examples": [],
+   "ok": 782,
+   "pack_numbering_offsets": 0
+  },
+  "npbw2_human": {
+   "alleles": 438,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 334,
+   "examples": [],
+   "ok": 438,
+   "pack_numbering_offsets": 0
+  },
+  "npff1_human": {
+   "alleles": 1081,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 431,
+   "examples": [],
+   "ok": 1081,
+   "pack_numbering_offsets": 0
+  },
+  "npff2_human": {
+   "alleles": 642,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 421,
+   "examples": [],
+   "ok": 642,
+   "pack_numbering_offsets": {
+    "-102": 615
+   }
+  },
+  "npsr1_human": {
+   "alleles": 545,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 372,
+   "examples": [],
+   "ok": 545,
+   "pack_numbering_offsets": 0
+  },
+  "npy1r_human": {
+   "alleles": 405,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 385,
+   "examples": [],
+   "ok": 405,
+   "pack_numbering_offsets": 0
+  },
+  "npy2r_human": {
+   "alleles": 465,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 382,
+   "examples": [],
+   "ok": 465,
+   "pack_numbering_offsets": 0
+  },
+  "npy4r_human": {
+   "alleles": 852,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 376,
+   "examples": [],
+   "ok": 852,
+   "pack_numbering_offsets": 0
+  },
+  "npy5r_human": {
+   "alleles": 544,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 446,
+   "examples": [],
+   "ok": 544,
+   "pack_numbering_offsets": 0
+  },
+  "ntr1_human": {
+   "alleles": 865,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 419,
+   "examples": [],
+   "ok": 865,
+   "pack_numbering_offsets": 0
+  },
+  "ntr2_human": {
+   "alleles": 1018,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 411,
+   "examples": [],
+   "ok": 1018,
+   "pack_numbering_offsets": 0
+  },
+  "ogr1_human": {
+   "alleles": 831,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 366,
+   "examples": [],
+   "ok": 831,
+   "pack_numbering_offsets": 0
+  },
+  "opn3_human": {
+   "alleles": 588,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 403,
+   "examples": [],
+   "ok": 588,
+   "pack_numbering_offsets": 0
+  },
+  "opn4_human": {
+   "alleles": 870,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 479,
+   "examples": [],
+   "ok": 870,
+   "pack_numbering_offsets": 0
+  },
+  "opn5_human": {
+   "alleles": 364,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 355,
+   "examples": [],
+   "ok": 364,
+   "pack_numbering_offsets": 0
+  },
+  "oprd_human": {
+   "alleles": 848,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 373,
+   "examples": [],
+   "ok": 848,
+   "pack_numbering_offsets": 0
+  },
+  "oprk_human": {
+   "alleles": 561,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 381,
+   "examples": [],
+   "ok": 561,
+   "pack_numbering_offsets": 0
+  },
+  "oprm_human": {
+   "alleles": 612,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 401,
+   "examples": [],
+   "ok": 612,
+   "pack_numbering_offsets": 0
+  },
+  "oprx_human": {
+   "alleles": 453,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 371,
+   "examples": [],
+   "ok": 453,
+   "pack_numbering_offsets": 0
+  },
+  "opsb_human": {
+   "alleles": 465,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 346,
+   "examples": [],
+   "ok": 465,
+   "pack_numbering_offsets": 0
+  },
+  "opsd_human": {
+   "alleles": 451,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 349,
+   "examples": [],
+   "ok": 451,
+   "pack_numbering_offsets": 0
+  },
+  "opsg_human": {
+   "alleles": 215,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 365,
+   "examples": [],
+   "ok": 215,
+   "pack_numbering_offsets": 0
+  },
+  "opsr_human": {
+   "alleles": 298,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 365,
+   "examples": [],
+   "ok": 298,
+   "pack_numbering_offsets": 0
+  },
+  "ox1r_human": {
+   "alleles": 556,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 426,
+   "examples": [],
+   "ok": 556,
+   "pack_numbering_offsets": 0
+  },
+  "ox2r_human": {
+   "alleles": 584,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 445,
+   "examples": [],
+   "ok": 584,
+   "pack_numbering_offsets": 0
+  },
+  "oxer1_human": {
+   "alleles": 718,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 424,
+   "checked_under_gnomad_numbering_offset_c": 117,
+   "examples": [],
+   "genomic_outside_current_cds": 59,
+   "ok": 718,
+   "pack_numbering_offsets": 0
+  },
+  "oxgr1_human": {
+   "alleles": 449,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 338,
+   "examples": [],
+   "ok": 449,
+   "pack_numbering_offsets": 0
+  },
+  "oxyr_human": {
+   "alleles": 755,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 390,
+   "examples": [],
+   "ok": 755,
+   "pack_numbering_offsets": 0
+  },
+  "p2ry1_human": {
+   "alleles": 434,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 374,
+   "examples": [],
+   "ok": 434,
+   "pack_numbering_offsets": 0
+  },
+  "p2ry2_human": {
+   "alleles": 758,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 378,
+   "examples": [],
+   "ok": 758,
+   "pack_numbering_offsets": 0
+  },
+  "p2ry4_human": {
+   "alleles": 373,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 366,
+   "examples": [],
+   "ok": 373,
+   "pack_numbering_offsets": 0
+  },
+  "p2ry6_human": {
+   "alleles": 590,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 329,
+   "examples": [],
+   "ok": 590,
+   "pack_numbering_offsets": 0
+  },
+  "p2ry8_human": {
+   "alleles": 526,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 360,
+   "examples": [],
+   "ok": 526,
+   "pack_numbering_offsets": 0
+  },
+  "p2y10_human": {
+   "alleles": 288,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 340,
+   "examples": [],
+   "ok": 288,
+   "pack_numbering_offsets": 0
+  },
+  "p2y11_human": {
+   "alleles": 926,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 375,
+   "examples": [],
+   "ok": 926,
+   "pack_numbering_offsets": 0
+  },
+  "p2y12_human": {
+   "alleles": 409,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 343,
+   "examples": [],
+   "ok": 409,
+   "pack_numbering_offsets": 0
+  },
+  "p2y13_human": {
+   "alleles": 473,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 355,
+   "examples": [],
+   "ok": 473,
+   "pack_numbering_offsets": 0
+  },
+  "p2y14_human": {
+   "alleles": 434,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 339,
+   "examples": [],
+   "ok": 434,
+   "pack_numbering_offsets": 0
+  },
+  "par1_human": {
+   "alleles": 556,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 426,
+   "examples": [],
+   "ok": 556,
+   "pack_numbering_offsets": 0
+  },
+  "par2_human": {
+   "alleles": 530,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 398,
+   "examples": [],
+   "ok": 530,
+   "pack_numbering_offsets": 0
+  },
+  "par3_human": {
+   "alleles": 457,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 375,
+   "examples": [],
+   "ok": 457,
+   "pack_numbering_offsets": 0
+  },
+  "par4_human": {
+   "alleles": 1007,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 386,
+   "examples": [],
+   "ok": 1007,
+   "pack_numbering_offsets": 0
+  },
+  "pd2r2_human": {
+   "alleles": 1182,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 396,
+   "examples": [],
+   "ok": 1182,
+   "pack_numbering_offsets": 0
+  },
+  "pd2r_human": {
+   "alleles": 665,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 360,
+   "examples": [],
+   "ok": 665,
+   "pack_numbering_offsets": 0
+  },
+  "pe2r1_human": {
+   "alleles": 1391,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 403,
+   "examples": [],
+   "ok": 1391,
+   "pack_numbering_offsets": 0
+  },
+  "pe2r2_human": {
+   "alleles": 594,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 359,
+   "examples": [],
+   "ok": 594,
+   "pack_numbering_offsets": 0
+  },
+  "pe2r3_human": {
+   "alleles": 623,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 391,
+   "examples": [],
+   "ok": 623,
+   "pack_numbering_offsets": 0
+  },
+  "pe2r4_human": {
+   "alleles": 640,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 489,
+   "examples": [],
+   "ok": 640,
+   "pack_numbering_offsets": 0
+  },
+  "pf2r_human": {
+   "alleles": 428,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 360,
+   "examples": [],
+   "ok": 428,
+   "pack_numbering_offsets": 0
+  },
+  "pi2r_human": {
+   "alleles": 974,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 387,
+   "examples": [],
+   "ok": 974,
+   "pack_numbering_offsets": 0
+  },
+  "pkr1_human": {
+   "alleles": 624,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 394,
+   "examples": [],
+   "ok": 624,
+   "pack_numbering_offsets": 0
+  },
+  "pkr2_human": {
+   "alleles": 510,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 385,
+   "examples": [],
+   "ok": 510,
+   "pack_numbering_offsets": 0
+  },
+  "prlhr_human": {
+   "alleles": 886,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 371,
+   "examples": [],
+   "ok": 886,
+   "pack_numbering_offsets": 0
+  },
+  "psyr_human": {
+   "alleles": 424,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 338,
+   "examples": [],
+   "ok": 424,
+   "pack_numbering_offsets": 0
+  },
+  "ptafr_human": {
+   "alleles": 370,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 343,
+   "examples": [],
+   "ok": 370,
+   "pack_numbering_offsets": 0
+  },
+  "qrfpr_human": {
+   "alleles": 657,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 432,
+   "examples": [],
+   "ok": 657,
+   "pack_numbering_offsets": 0
+  },
+  "rl3r1_human": {
+   "alleles": 862,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 470,
+   "examples": [],
+   "ok": 862,
+   "pack_numbering_offsets": 0
+  },
+  "rl3r2_human": {
+   "alleles": 533,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 375,
+   "examples": [],
+   "ok": 533,
+   "pack_numbering_offsets": 0
+  },
+  "rxfp2_human": {
+   "alleles": 1041,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 755,
+   "examples": [],
+   "ok": 1041,
+   "pack_numbering_offsets": 0
+  },
+  "s1pr1_human": {
+   "alleles": 372,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 383,
+   "examples": [],
+   "ok": 372,
+   "pack_numbering_offsets": 0
+  },
+  "s1pr2_human": {
+   "alleles": 457,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 354,
+   "examples": [],
+   "ok": 457,
+   "pack_numbering_offsets": 0
+  },
+  "s1pr3_human": {
+   "alleles": 505,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 379,
+   "examples": [],
+   "ok": 505,
+   "pack_numbering_offsets": 0
+  },
+  "s1pr4_human": {
+   "alleles": 859,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 385,
+   "examples": [],
+   "ok": 859,
+   "pack_numbering_offsets": 0
+  },
+  "s1pr5_human": {
+   "alleles": 788,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 399,
+   "examples": [],
+   "ok": 788,
+   "pack_numbering_offsets": 0
+  },
+  "ssr1_human": {
+   "alleles": 641,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 392,
+   "examples": [],
+   "ok": 641,
+   "pack_numbering_offsets": 0
+  },
+  "ssr2_human": {
+   "alleles": 401,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 370,
+   "examples": [],
+   "ok": 401,
+   "pack_numbering_offsets": 0
+  },
+  "ssr3_human": {
+   "alleles": 662,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 419,
+   "examples": [],
+   "ok": 662,
+   "pack_numbering_offsets": 0
+  },
+  "ssr4_human": {
+   "alleles": 897,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 389,
+   "examples": [],
+   "ok": 897,
+   "pack_numbering_offsets": 0
+  },
+  "ssr5_human": {
+   "alleles": 685,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 365,
+   "examples": [],
+   "ok": 685,
+   "pack_numbering_offsets": 0
+  },
+  "sucr1_human": {
+   "alleles": 414,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 335,
+   "examples": [],
+   "ok": 414,
+   "pack_numbering_offsets": 0
+  },
+  "ta2r_human": {
+   "alleles": 641,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 344,
+   "examples": [],
+   "ok": 641,
+   "pack_numbering_offsets": 0
+  },
+  "taar1_human": {
+   "alleles": 499,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 340,
+   "examples": [],
+   "ok": 499,
+   "pack_numbering_offsets": 0
+  },
+  "taar2_human": {
+   "alleles": 550,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 352,
+   "examples": [],
+   "ok": 550,
+   "pack_numbering_offsets": 0
+  },
+  "taar5_human": {
+   "alleles": 567,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 338,
+   "examples": [],
+   "ok": 567,
+   "pack_numbering_offsets": 0
+  },
+  "taar6_human": {
+   "alleles": 565,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 346,
+   "examples": [],
+   "ok": 565,
+   "pack_numbering_offsets": 0
+  },
+  "taar8_human": {
+   "alleles": 518,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 343,
+   "examples": [],
+   "ok": 518,
+   "pack_numbering_offsets": 0
+  },
+  "taar9_human": {
+   "alleles": 547,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 349,
+   "examples": [],
+   "ok": 547,
+   "pack_numbering_offsets": 0
+  },
+  "trfr_human": {
+   "alleles": 474,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 399,
+   "examples": [],
+   "ok": 474,
+   "pack_numbering_offsets": 0
+  },
+  "tshr_human": {
+   "alleles": 977,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 765,
+   "examples": [],
+   "ok": 977,
+   "pack_numbering_offsets": 0
+  },
+  "ur2r_human": {
+   "alleles": 1187,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 390,
+   "examples": [],
+   "ok": 1187,
+   "pack_numbering_offsets": 0
+  },
+  "v1ar_human": {
+   "alleles": 682,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 419,
+   "examples": [],
+   "ok": 682,
+   "pack_numbering_offsets": 0
+  },
+  "v1br_human": {
+   "alleles": 665,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 425,
+   "examples": [],
+   "ok": 665,
+   "pack_numbering_offsets": 0
+  },
+  "v2r_human": {
+   "alleles": 425,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 372,
+   "examples": [],
+   "ok": 425,
+   "pack_numbering_offsets": 0
+  },
+  "xcr1_human": {
+   "alleles": 411,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 334,
+   "examples": [],
+   "ok": 411,
+   "pack_numbering_offsets": 0
+  }
+ },
+ "a_totals": {
+  "alleles": 174755,
+  "genomic_outside_current_cds": 65,
+  "ok": 174755
+ },
+ "b": {
+  "alleles_lifted": 174755,
+  "alleles_tsv_rows": 174755,
+  "forward_ok": 200,
+  "par2_anchor": {
+   "direct": "5-76128909-G-A",
+   "expected": "5-76128909",
+   "ok": true
+  },
+  "ref_differs_in_grch37": 8,
+  "roundtrip_ok": 200,
+  "sample": 200,
+  "unmapped": 99,
+  "unmapped_expected": {
+   "ada2b_human": 7,
+   "opsg_human": 92
+  }
+ },
+ "b2_grch37_transcript_crosscheck": {
+  "agree": 152414,
+  "receptors": 237,
+  "receptors_skipped_transcript_on_patch_scaffold": 1
+ },
+ "c": {
+  "alias_gids_missing": [],
+  "alias_sources_ge1": 283,
+  "cds_length_inconsistent": [],
+  "curated_source_present": 184,
+  "ensembl_cds_present": 283,
+  "ensembl_with_cds": 281,
+  "grch37_cds_identical": 238,
+  "grch37_same_id": 252,
+  "hgnc_present": 283,
+  "map_cds_disagrees": [],
+  "pack_version_differs": [
+   "ccr2_human",
+   "ffar1_human",
+   "gpr17_human",
+   "opn5_human",
+   "oxer1_human",
+   "taar8_human",
+   "taar9_human"
+  ],
+  "pseudogene_gene_only": [
+   "npy6r_human",
+   "taar3_human"
+  ],
+  "receptors": 283,
+  "refseq_nm_resolved": 281,
+  "refseq_nm_unresolved": []
+ },
+ "d": {
+  "ensembl_grch37": {
+   "cds_length_mismatch_partial_cds": 5,
+   "cds_not_translating_to_protein": 0,
+   "examples": [],
+   "genes_with_transcripts": 279,
+   "stop_codon_readthrough_X": 0,
+   "transcripts": 696
+  },
+  "ensembl_grch38": {
+   "cds_length_mismatch_partial_cds": 4,
+   "cds_not_translating_to_protein": 0,
+   "examples": [],
+   "genes_with_transcripts": 281,
+   "stop_codon_readthrough_X": 2,
+   "transcripts": 1797
+  },
+  "independent_checks": {
+   "mane": 10,
+   "map_cds_agree": 43,
+   "map_cds_disagree": 0,
+   "map_cds_transcripts_checked": 30,
+   "requests": {
+    "grch37": 13,
+    "grch38": 45
+   },
+   "vep_agree": 13,
+   "vep_disagree": 0,
+   "vep_no_answer": 0
+  },
+  "ncbi": {
+   "accessions": 1066,
+   "cds_not_translating_to_protein": 0,
+   "examples": [],
+   "stop_codon_readthrough_X": [
+    "NM_001318497.2",
+    "NM_001318853.2"
+   ]
+  },
+  "nm_versions": {
+   "accession_versions": 1069,
+   "by_relation": {
+    "cds_identical": 18,
+    "cds_shifted": 1,
+    "current": 1017,
+    "different": 32,
+    "protein_identical": 1
+   }
+  },
+  "par2_acceptance": {
+   "grch37": "5:76128909 (via NM_005242.6)",
+   "grch38": "5:76833084",
+   "model_aa": "M",
+   "model_residue": 159,
+   "ok": true
+  },
+  "protein_model_map": {
+   "alignments": 5262,
+   "by_kind": {
+    "identical": 3672,
+    "isoform": 915,
+    "offset": 601,
+    "variant": 74
+   },
+   "flags": {
+    "isoform": 915,
+    "offset_length": 585
+   },
+   "isoform_flagged_genes": [
+    "5ht1a_human",
+    "5ht2a_human",
+    "5ht2b_human",
+    "5ht2c_human",
+    "5ht4r_human",
+    "5ht7r_human",
+    "aa1r_human",
+    "aa2ar_human",
+    "aa2br_human",
+    "aa3r_human",
+    "ackr1_human",
+    "ackr2_human",
+    "ackr3_human",
+    "acm1_human",
+    "acm3_human",
+    "acm5_human",
+    "acthr_human",
+    "ada1a_human",
+    "ada1b_human",
+    "ada2b_human",
+    "ada2c_human",
+    "agtr1_human",
+    "bkrb1_human",
+    "bkrb2_human",
+    "c3ar_human",
+    "c5ar1_human",
+    "ccr10_human",
+    "ccr2_human",
+    "ccr3_human",
+    "ccr7_human",
+    "ccr8_human",
+    "ccr9_human",
+    "ccrl2_human",
+    "cltr2_human",
+    "cml1_human",
+    "cml2_human",
+    "cnr1_human",
+    "cx3c1_human",
+    "cxcr2_human",
+    "cxcr3_human",
+    "cxcr4_human",
+    "cxcr5_human",
+    "drd2_human",
+    "drd3_human",
+    "ednra_human",
+    "ednrb_human",
+    "ffar3_human",
+    "ffar4_human",
+    "fpr1_human",
+    "fpr2_human",
+    "fshr_human",
+    "g37l1_human",
+    "galr1_human",
+    "galr2_human",
+    "gasr_human",
+    "ghsr_human",
+    "gnrhr_human",
+    "gp132_human",
+    "gp139_human",
+    "gp141_human",
+    "gp142_human",
+    "gp146_human",
+    "gp153_human",
+    "gp160_human",
+    "gp161_human",
+    "gp162_human",
+    "gp171_human",
+    "gp173_human",
+    "gp176_human",
+    "gp182_human",
+    "gper1_human",
+    "gpr12_human",
+    "gpr17_human",
+    "gpr18_human",
+    "gpr19_human",
+    "gpr27_human",
+    "gpr35_human",
+    "gpr39_human",
+    "gpr55_human",
+    "gpr61_human",
+    "gpr6_human",
+    "gpr75_human",
+    "gpr82_human",
+    "gpr83_human",
+    "gpr84_human",
+    "gpr85_human",
+    "gpr87_human",
+    "hrh1_human",
+    "hrh2_human",
+    "hrh3_human",
+    "hrh4_human",
+    "kissr_human",
+    "lgr4_human",
+    "lgr6_human",
+    "lpar1_human",
+    "lpar2_human",
+    "lpar3_human",
+    "lpar4_human",
+    "lpar6_human",
+    "lshr_human",
+    "lt4r1_human",
+    "lt4r2_human",
+    "mc5r_human",
+    "mchr1_human",
+    "mrgrf_human",
+    "mrgx3_human",
+    "mshr_human",
+    "mtlr_human",
+    "mtr1a_human",
+    "mtr1b_human",
+    "mtr1l_human",
+    "nk1r_human",
+    "nk2r_human",
+    "nmbr_human",
+    "nmur1_human",
+    "nmur2_human",
+    "npff2_human",
+    "npsr1_human",
+    "npy1r_human",
+    "npy5r_human",
+    "ntr1_human",
+    "ntr2_human",
+    "ogr1_human",
+    "opn3_human",
+    "opn4_human",
+    "opn5_human",
+    "oprk_human",
+    "oprm_human",
+    "oprx_human",
+    "opsb_human",
+    "opsg_human",
+    "opsr_human",
+    "ox1r_human",
+    "ox2r_human",
+    "oxer1_human",
+    "oxgr1_human",
+    "oxyr_human",
+    "p2ry6_human",
+    "p2ry8_human",
+    "p2y10_human",
+    "p2y11_human",
+    "p2y12_human",
+    "p2y13_human",
+    "p2y14_human",
+    "par1_human",
+    "par2_human",
+    "par3_human",
+    "par4_human",
+    "pd2r_human",
+    "pe2r2_human",
+    "pe2r3_human",
+    "pe2r4_human",
+    "pf2r_human",
+    "pi2r_human",
+    "pkr2_human",
+    "qrfpr_human",
+    "rxfp2_human",
+    "s1pr1_human",
+    "s1pr5_human",
+    "ssr1_human",
+    "ssr2_human",
+    "ssr5_human",
+    "ta2r_human",
+    "taar2_human",
+    "tshr_human",
+    "v1ar_human",
+    "v2r_human",
+    "xcr1_human"
+   ],
+   "mane_or_pack_transcript_flagged": [
+    "ccr2_human:grch38:ENST00000445132.3:isoform",
+    "gp142_human:grch38:ENST00000582579.6:isoform",
+    "gpr17_human:grch38:ENST00000486700.2:offset_length",
+    "hrh2_human:grch38:ENST00000636584.2:offset_length",
+    "mchr1_human:grch38:ENST00000249016.5:offset_length",
+    "npff2_human:grch38:ENST00000308744.12:offset_length",
+    "oxer1_human:grch38:ENST00000378661.4:offset_length"
+   ]
+  },
+  "refseq_grch37": {
+   "cds_length_differs_from_ncbi": 1,
+   "genes_with_transcripts": 281,
+   "no_ncbi_record": 0,
+   "transcripts": 692
+  },
+  "refseq_grch38": {
+   "cds_length_differs_from_ncbi": 0,
+   "genes_with_transcripts": 281,
+   "no_ncbi_record": 0,
+   "transcripts": 1016
+  },
+  "refseq_grch38_ensembl_vs_ucsc": {
+   "cds_segments_agree": 1008,
+   "disagree": 0,
+   "not_in_ucsc": 8
+  }
+ },
+ "hard_failures": [],
+ "special": {
+  "lpar2_human": {
+   "alleles": 524,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 352,
+   "checked_under_gnomad_numbering_offset_c": 9,
+   "genomic_outside_current_cds": 6,
+   "ok": 524,
+   "pack_numbering_offsets": {
+    "3": 447
+   }
+  },
+  "mchr1_human": {
+   "alleles": 525,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 354,
+   "ok": 525,
+   "pack_numbering_offsets": {
+    "-69": 506
+   }
+  },
+  "npff2_human": {
+   "alleles": 642,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 421,
+   "ok": 642,
+   "pack_numbering_offsets": {
+    "-102": 615
+   }
+  },
+  "oxer1_human": {
+   "alleles": 718,
+   "c_minus_genomic_c": 0,
+   "cds_translation_len": 424,
+   "checked_under_gnomad_numbering_offset_c": 117,
+   "genomic_outside_current_cds": 59,
+   "ok": 718,
+   "pack_numbering_offsets": 0
+  }
+ }
+}

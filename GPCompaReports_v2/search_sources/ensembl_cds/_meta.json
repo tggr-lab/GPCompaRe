@@ -1,0 +1,21 @@
+{
+ "failures": [],
+ "grch37": {
+  "assembly": "GRCh37.p13",
+  "genebuild_last_update": "2013-09",
+  "host": "https://grch37.rest.ensembl.org",
+  "software_release": 116
+ },
+ "grch38": {
+  "assembly": "GRCh38.p14",
+  "genebuild_last_update": "2025-11",
+  "host": "https://rest.ensembl.org",
+  "software_release": 116
+ },
+ "receptors": 283,
+ "requests": {
+  "grch37": 5,
+  "grch38": 17
+ },
+ "with_transcript": 281
+}

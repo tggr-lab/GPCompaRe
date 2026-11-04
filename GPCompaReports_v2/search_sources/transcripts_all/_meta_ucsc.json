@@ -1,0 +1,15 @@
+{
+ "files": {
+  "hg19": {
+   "last_modified": "Wed, 18 Sep 2024 15:29:01 GMT",
+   "sha256": "25d7be987073d8ecadb042da87837bfc469e432ec044353a5f28c8e9fa893238"
+  },
+  "hg38": {
+   "last_modified": "Wed, 13 Aug 2025 15:30:39 GMT",
+   "sha256": "7d87cce75dbc8276f7f8f199d6851e831a2d7060895145cfcef3ca333eb1e611"
+  }
+ },
+ "source": "UCSC Genome Browser ncbiRefSeq tables",
+ "transcripts_grch37": 692,
+ "transcripts_grch38": 1017
+}

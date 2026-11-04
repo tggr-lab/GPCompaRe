@@ -1,0 +1,9 @@
+{
+ "hgnc_last_modified": "2026-10-30T12:40:22.122Z",
+ "hgnc_num_docs": 47090,
+ "licence": "CC0 1.0",
+ "not_found": [],
+ "records": 283,
+ "requests": 288,
+ "source": "HGNC REST (rest.genenames.org), per-symbol fetch"
+}

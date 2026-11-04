@@ -1,0 +1,68 @@
+{
+ "alleles": 174755,
+ "direct_map": 65,
+ "failures": [],
+ "inverted": 1517,
+ "per_receptor": {
+  "5ht2c_human": {
+   "alleles": 409,
+   "direct_map": 0,
+   "inverted": 0,
+   "ref_differs_in_grch37": 2,
+   "unmapped": 0
+  },
+  "ada2b_human": {
+   "alleles": 733,
+   "direct_map": 0,
+   "inverted": 0,
+   "ref_differs_in_grch37": 0,
+   "unmapped": 7
+  },
+  "lpar2_human": {
+   "alleles": 524,
+   "direct_map": 6,
+   "inverted": 0,
+   "ref_differs_in_grch37": 0,
+   "unmapped": 0
+  },
+  "npy4r_human": {
+   "alleles": 852,
+   "direct_map": 0,
+   "inverted": 852,
+   "ref_differs_in_grch37": 4,
+   "unmapped": 0
+  },
+  "opsg_human": {
+   "alleles": 215,
+   "direct_map": 0,
+   "inverted": 0,
+   "ref_differs_in_grch37": 0,
+   "unmapped": 92
+  },
+  "opsr_human": {
+   "alleles": 298,
+   "direct_map": 0,
+   "inverted": 0,
+   "ref_differs_in_grch37": 2,
+   "unmapped": 0
+  },
+  "oxer1_human": {
+   "alleles": 718,
+   "direct_map": 59,
+   "inverted": 0,
+   "ref_differs_in_grch37": 0,
+   "unmapped": 0
+  },
+  "v1br_human": {
+   "alleles": 665,
+   "direct_map": 0,
+   "inverted": 665,
+   "ref_differs_in_grch37": 0,
+   "unmapped": 0
+  }
+ },
+ "ref_differs_in_grch37": 8,
+ "requests_segment_maps": 159,
+ "requests_total": 564,
+ "unmapped": 99
+}
