@@ -534,7 +534,8 @@ def generate_all_reports(env: Environment, store, output_dir, analysis_results=N
                 delta_df, sig_threshold,
                 _load_am_landscape_cache(gid, output_dir),
                 _load_conservation_cache(gid, output_dir),
-                residue_metrics['position'].tolist()))
+                residue_metrics['position'].tolist(),
+                annotation=rx['annotation'], cfr_generics=cfr_generics))
 
         max_increase = float(delta_df['delta_rrcs'].max()) if not delta_df.empty else 0.0
         max_decrease = float(delta_df['delta_rrcs'].min()) if not delta_df.empty else 0.0

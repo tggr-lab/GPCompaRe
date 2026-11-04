@@ -3,7 +3,11 @@
    Until the library arrives, window.Plotly is a small stand-in. The pages only
    ever call newPlot (and chain .then on it), relayout, restyle and
    Plots.resize; the stand-in queues those calls, returns promises, and replays
-   them in order against the real library. The real script is injected when the
+   them against the real library: per chart, in order, each call awaiting the
+   one before it. A second newPlot for a chart whose first is still pending
+   (site.js and a report's own DOMContentLoaded handler both start the charts
+   before the library is there) returns the first call's promise instead of
+   drawing the chart again. The real script is injected when the
    first chart container comes within 800 px of the viewport, or a couple of
    seconds after the page has loaded when the connection is not metered.
    The real library replaces window.Plotly when it loads, so every later call
@@ -15,15 +19,28 @@
   if (window.Plotly) return;
   var SRC = 'https://cdn.plot.ly/plotly-3.3.1.min.js';
   var queue = [], started = false, io = null;
+  var pendingInit = [];            // [element, promise] of newPlot calls waiting for the library
   var shim = { Plots: {} };
+
+  function elementOf(target) {
+    return typeof target === 'string' ? document.getElementById(target) : target;
+  }
 
   function enqueue(group, name) {
     return function () {
       var args = arguments;
+      var target = elementOf(args[0]);
       if (name === 'newPlot' || name === 'react') watch(args[0]);
-      return new Promise(function (resolve, reject) {
-        queue.push({ group: group, name: name, args: args, resolve: resolve, reject: reject });
+      if (name === 'newPlot' && target) {
+        for (var i = 0; i < pendingInit.length; i++) {
+          if (pendingInit[i][0] === target) return pendingInit[i][1];
+        }
+      }
+      var p = new Promise(function (resolve, reject) {
+        queue.push({ group: group, name: name, args: args, target: target, resolve: resolve, reject: reject });
       });
+      if (name === 'newPlot' && target) pendingInit.push([target, p]);
+      return p;
     };
   }
   ['newPlot', 'react', 'relayout', 'restyle', 'update', 'redraw', 'purge', 'addTraces',
@@ -33,18 +50,30 @@
   window.Plotly = shim;
 
   function replay(real) {
-    var calls = queue; queue = [];
+    var calls = queue; queue = []; pendingInit = [];
+    // one chain per chart: its calls run in the order they were made, each after the
+    // previous one has finished; different charts do not wait for each other
+    var chains = [];
+    function chainFor(target) {
+      for (var i = 0; i < chains.length; i++) if (chains[i].target === target) return chains[i];
+      var c = { target: target, tail: Promise.resolve() };
+      chains.push(c);
+      return c;
+    }
     calls.forEach(function (c) {
-      try {
-        var owner = c.group ? real[c.group] : real;
-        Promise.resolve(owner[c.name].apply(owner, c.args)).then(c.resolve, c.reject);
-      } catch (e) { c.reject(e); }
+      var chain = chainFor(c.target || null);
+      chain.tail = chain.tail.then(function () {
+        try {
+          var owner = c.group ? real[c.group] : real;
+          return Promise.resolve(owner[c.name].apply(owner, c.args)).then(c.resolve, c.reject);
+        } catch (e) { c.reject(e); }
+      });
     });
   }
 
   function fail() {
     if (window.Plotly === shim) { try { delete window.Plotly; } catch (e) { window.Plotly = undefined; } }
-    queue = [];
+    queue = []; pendingInit = [];
   }
 
   function load() {

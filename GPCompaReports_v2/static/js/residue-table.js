@@ -7,8 +7,9 @@
                              dRRCS, partner, contact count, numbering)
      #rx-residue-extra       contacts above the receptor's threshold, AlphaMissense mean
                              and conservation per residue (the caches the snake plot's
-                             colour views read)
-     #snake-plot-data        the core functional residue (CFR) view
+                             colour views read), and the CFR flag (the residue's generic
+                             number, as shown here, is among the top cross-receptor CFR
+                             positions, the rule the snake plot uses)
    Sortable, filterable (active-favouring, inactive-favouring, TM helices only) and
    downloadable as CSV. Residue names open the residue drawer (residue-drawer.js). */
 (function () {
@@ -38,7 +39,7 @@
     { key: 'max', label: 'Largest |ΔRRCS|', num: true, tip: 'Largest single contact change at this residue' },
     { key: 'partner', label: 'Partner', num: false, tip: 'The partner residue at the largest change' },
     { key: 'above', label: 'Contacts above threshold', num: true, tip: 'Contacts with |ΔRRCS| at or above this receptor\'s threshold' },
-    { key: 'cfr', label: 'CFR', num: false, tip: 'Core functional residue' },
+    { key: 'cfr', label: 'CFR position', num: false, tip: 'Core functional residue position: this generic position is one of the 30 most recurrent CFR positions across the 283 receptors (the same marks as the snake plot and search)' },
     { key: 'am', label: 'AlphaMissense mean', num: true, tip: 'Mean AlphaMissense score over the 19 substitutions (a prediction): 0 benign-like, 1 pathogenic-like' },
     { key: 'cons', label: 'Conservation', num: true, tip: 'Sequence conservation: 0 variable, 1 conserved' }
   ];
@@ -55,6 +56,7 @@
     var extra = readJSON('rx-residue-extra') || { rows: {} };
     var cfg = readJSON('rx-config') || {};
     var snake = readJSON('snake-plot-data');
+    // Fallback only for a page built before the CFR flag travelled with the table data.
     var cfr = (snake && snake.views && snake.views.cfr && snake.views.cfr.colors) || {};
     var ann = cfg.annotation || {};
     gid = cfg.gid || 'receptor';
@@ -71,7 +73,8 @@
         max: r.max_abs_delta,
         partner: r.partner_at_max || '',
         above: x[0],
-        cfr: cfr[String(r.position)] ? 'Yes' : '',
+        // x[3]: the flag computed at build time from the numbering this table shows
+        cfr: (x.length > 3 ? x[3] : cfr[String(r.position)]) ? 'Yes' : '',
         am: x[1],
         cons: x[2]
       };
@@ -141,9 +144,14 @@
     L: 'Leu', K: 'Lys', M: 'Met', F: 'Phe', P: 'Pro', S: 'Ser', T: 'Thr', W: 'Trp', Y: 'Tyr', V: 'Val'
   };
 
+  // A spreadsheet runs a text cell that starts with = + - @ tab or CR as a formula, so
+  // such text gets the standard leading apostrophe. Genuine numbers (a signed decimal
+  // such as -0.512) are left alone and stay numeric.
+  var PLAIN_NUMBER = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/;
   function csvEscape(v) {
     var s = v === null || v === undefined ? '' : String(v);
-    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    if (/^[=+\-@\t\r]/.test(s) && !PLAIN_NUMBER.test(s)) s = "'" + s;
+    return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   }
 
   // The rows currently shown, in the order shown.

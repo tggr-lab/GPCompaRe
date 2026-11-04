@@ -215,8 +215,9 @@ def test_residue_table_is_closed_empty_and_outside_every_section():
         summary = json.loads(re.search(r'id="residue-summary-data">(.*?)</script>', html, re.S).group(1))
         assert set(data['rows']) == {str(r['position']) for r in summary}
         assert isinstance(data['sig'], float)
-        for n_above, am, cons in data['rows'].values():
+        for n_above, am, cons, *flag in data['rows'].values():
             assert isinstance(n_above, int) and n_above >= 0
+            assert flag in ([], [0], [1])  # 1: a top cross-receptor CFR position (older builds: no flag)
             assert am is None or 0 <= am <= 1
             assert cons is None or 0 <= cons <= 1
     assert seen, 'no report has the residue table'
@@ -278,7 +279,7 @@ def test_residue_table_extras_counts_pairs_at_the_receptors_threshold():
     df = pd.DataFrame({'res1': [1, 1, 2], 'res2': [2, 3, 3], 'delta_rrcs': [2.0, -0.5, -3.0]})
     out = report_extras.residue_table_extras(df, 1.0, {1: 0.4567, 3: 0.9}, {2: 0.25}, [1, 2, 3])
     assert out['sig'] == 1.0
-    assert out['rows'] == {'1': [1, 0.457, None], '2': [2, None, 0.25], '3': [1, 0.9, None]}
+    assert out['rows'] == {'1': [1, 0.457, None, 0], '2': [2, None, 0.25, 0], '3': [1, 0.9, None, 0]}
 
 
 # --------------------------------------------------------------------------
@@ -592,7 +593,7 @@ def test_residue_table_builds_only_when_opened_and_filters_sorts_and_exports(ope
     assert page.locator('#rx-residue-table tbody tr').count() == len(summary)
     heads = page.locator('#rx-residue-table thead th').all_inner_texts()
     assert heads == ['Residue', 'Generic number', 'Segment', 'Net ΔRRCS', 'Largest |ΔRRCS|', 'Partner',
-                     'Contacts above threshold', 'CFR', 'AlphaMissense mean', 'Conservation']
+                     'Contacts above threshold', 'CFR position', 'AlphaMissense mean', 'Conservation']
 
     # a row carries the page's own numbers
     first = page.locator('#rx-residue-table tbody tr').first.locator('td').all_inner_texts()

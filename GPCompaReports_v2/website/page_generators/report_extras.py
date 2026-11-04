@@ -183,13 +183,38 @@ def _json_for_script(obj):
             .replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026'))
 
 
-def residue_table_extras(delta_df, sig_threshold, am_by_pos, cons_by_pos, positions):
-    """{'sig': threshold, 'rows': {str(position): [contacts above threshold, AlphaMissense mean, conservation]}}.
+def cfr_flags(annotation, cfr_generics, positions):
+    """{position: True} for residues whose generic number is among the top
+    cross-receptor CFR positions.
+
+    This is the rule the report snake plot and the search use (a CFR is a
+    position, named by its generic number, that recurs across receptors; it is
+    not a per-receptor contact count). `annotation` is the numbering the
+    residue table shows ({str(pos): [segment, gn]}, the receptor's own pack
+    where there is one), so a residue is flagged by the number it is shown
+    with, not by the annotation layer the snake plot was built from.
+    """
+    out = {}
+    if not cfr_generics:
+        return out
+    for pos in positions:
+        a = (annotation or {}).get(str(int(pos)))
+        gn = (a[1] if a else '') or ''
+        if gn.strip() and gn.strip() in cfr_generics:
+            out[int(pos)] = True
+    return out
+
+
+def residue_table_extras(delta_df, sig_threshold, am_by_pos, cons_by_pos, positions,
+                         annotation=None, cfr_generics=None):
+    """{'sig': threshold, 'rows': {str(position): [contacts above threshold, AlphaMissense mean, conservation, CFR 0/1]}}.
 
     Feeds the opt-in residue table. Nothing is computed here that the page does
-    not already show: the count uses the receptor's own ΔRRCS threshold, and
-    the other two values are the caches the snake plot's AlphaMissense and
-    Conservation views are coloured from (None where a cache has no value).
+    not already show: the count uses the receptor's own ΔRRCS threshold and is
+    taken by residue number from the receptor's own contacts (independent of any
+    annotation layer); the AlphaMissense and Conservation values are the caches
+    the snake plot's colour views read (None where a cache has no value); the
+    CFR flag is cfr_flags() on the table's own numbering.
     """
     above = {}
     if delta_df is not None and not delta_df.empty:
@@ -197,6 +222,7 @@ def residue_table_extras(delta_df, sig_threshold, am_by_pos, cons_by_pos, positi
         for col in ('res1', 'res2'):
             for pos, n in hit[col].astype(int).value_counts().items():
                 above[int(pos)] = above.get(int(pos), 0) + int(n)
+    flags = cfr_flags(annotation, cfr_generics, positions)
     out = {}
     for pos in positions:
         pos = int(pos)
@@ -204,7 +230,8 @@ def residue_table_extras(delta_df, sig_threshold, am_by_pos, cons_by_pos, positi
         cons = (cons_by_pos or {}).get(pos)
         out[str(pos)] = [above.get(pos, 0),
                          None if am is None else round(float(am), 3),
-                         None if cons is None else round(float(cons), 3)]
+                         None if cons is None else round(float(cons), 3),
+                         1 if flags.get(pos) else 0]
     return {'sig': round(float(sig_threshold), 2), 'rows': out}
 
 
@@ -255,6 +282,7 @@ def build_extras(gid, annot_map, residue_metrics, models_root, gene_name=''):
         for r in config['clinvar']
     ]
     return {
+        'annotation': annotation,
         'has_3d': has_3d,
         'studio_url': config['studio'],
         'clinvar': clinvar,
