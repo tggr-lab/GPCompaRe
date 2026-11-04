@@ -360,7 +360,7 @@ G358	5-ht2a	receptor_alias	receptor	5ht2a_human						na	case
 G359	AT1R	receptor_alias	receptor	agtr1_human						na	curated
 G360	rhodopsin	receptor_alias	receptor	opsd_human						na	name
 G361	mu opioid receptor	receptor_alias	receptor	oprm_human						na	name
-G362	V2R	receptor_alias	receptor	v2r_human						na	UniProt name
+G362	V2R	ambiguity	ambiguous	v2r_human					change:*:2:V>R	na	UniProt name V2R (AVPR2) wins; Val2Arg reading matches 11 receptors with Val2
 G363	CXCR4	receptor_alias	receptor	cxcr4_human						na	HGNC
 G364	GPR	ambiguity	ambiguous							na	prefix of many receptors: autocomplete list, no single target (list not enumerated here)
 G365	GLP1R	not_in_resource	not_in_resource							na	class B GPCR, not in the 283 Class A

@@ -25,6 +25,7 @@ from .page_generators.downloads_page import generate_downloads_page
 from .page_generators.info_pages import generate_glossary_page, generate_privacy_page
 from .seo import SITE_URL, write_robots, write_sitemap, write_gene_redirects
 from .page_generators.search_index import generate_search_index
+from .page_generators.search_index_v2 import generate_search_index_v2
 
 
 def select_gpcr_ids(all_ids, limit=None, only=None):
@@ -107,6 +108,8 @@ class SiteGenerator:
         # behaves the same on a partial build (links to unbuilt reports 404).
         print("  Search index...")
         generate_search_index(self.store, self.output_dir)
+        # Search v2 (search2/): Studio packs + search_sources; skipped when the packs are absent.
+        generate_search_index_v2(self.store, self.output_dir)
 
         print("  Statistics page...")
         generate_statistics_page(env, self.store, self.analysis_results, self.output_dir)
