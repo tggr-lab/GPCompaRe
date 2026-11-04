@@ -333,9 +333,15 @@ def test_stop_codon_resolves_to_the_residue_and_says_it_is_not_analysed(open_pag
 
 
 def test_intronic_input_gives_the_not_coding_answer(open_page):
-    page = search_page(open_page, 'F2RL1 c.477+1G>A')
+    # c.82 is the last base of PAR2's first coding exon, so c.82+1 is intronic
+    page = search_page(open_page, 'F2RL1 c.82+1G>A')
     assert 'intron' in results_text(page)
     assert 'Not a coding residue' in results_text(page)
+
+
+def test_an_offset_away_from_an_exon_edge_is_refused(open_page):
+    page = search_page(open_page, 'F2RL1 c.477+1G>A')
+    assert 'not at an exon boundary' in results_text(page)
 
 
 def test_unknown_gene_gets_a_plain_message(open_page):
