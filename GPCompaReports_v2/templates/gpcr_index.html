@@ -25,7 +25,8 @@
 
     <div id="panel-receptors">
     <div class="filter-bar">
-      <input type="text" id="search-input" class="v2-input" placeholder="Search by name, gene, or family…" aria-label="Search GPCRs">
+      <label for="search-input" class="sr-sr-only">Filter this receptor table</label>
+      <input type="text" id="search-input" class="v2-input" placeholder="Filter this receptor table" title="Matches receptor name, gene, protein name and family" autocomplete="off" spellcheck="false">
       <select id="filter-ligand" class="v2-select" aria-label="Filter by ligand type">
         <option value="">All ligand types</option>
       </select>
@@ -39,6 +40,8 @@
       </select>
       <span id="result-count" class="v2-pagination-info"></span>
     </div>
+
+    <p class="browse-search-hint" id="receptor-search-hint" role="status" hidden></p>
 
     <div class="browse-legend">
       <strong>Column guide:</strong>
@@ -71,7 +74,6 @@
       </div>
       <div class="v2-pagination" data-table-pagination="gpcr-table"></div>
     </div>
-    <p class="browse-search-hint" id="receptor-search-hint" hidden></p>
     </div>
 
     <style>
@@ -97,8 +99,39 @@ document.addEventListener('DOMContentLoaded', function() {
     return;
   }
   if (window.Site && Site.initBrowse) {
-    Site.initBrowse({ reportPathPrefix: '../reports/', reportPathSuffix: '.html' });
+    Site.initBrowse({ reportPathPrefix: '../reports/', reportPathSuffix: '.html', metaUrl: '{{ static_prefix }}search2/meta.json' });
   }
+  var input = document.getElementById('search-input');
+  var hint = document.getElementById('receptor-search-hint');
+
+  // When the filter text reads as a variant or a position, offer the search page.
+  // parse() is the search page's own parser, loaded only after the reader types.
+  var kinds = { protein: 1, residue: 1, cdna: 1, genomic: 1, rsid: 1, clinvar: 1, generic: 1 };
+  var parser = null;
+  var token = 0;
+  function showHint(text) {
+    if (!hint) return;
+    if (!text) { hint.hidden = true; hint.textContent = ''; return; }
+    var a = document.createElement('a');
+    a.href = searchUrl + '?q=' + encodeURIComponent(text);
+    a.textContent = 'Search variants and positions for \u201c' + text + '\u201d';
+    hint.textContent = 'This looks like a variant or a position, not a receptor name. ';
+    hint.appendChild(a);
+    hint.hidden = false;
+  }
+  function check() {
+    var text = input ? input.value.trim() : '';
+    var my = ++token;
+    if (!text || !/\d/.test(text)) { showHint(''); return; }
+    if (!parser) parser = import('{{ static_prefix }}static/js/search/parse.js').catch(function() { return null; });
+    parser.then(function(m) {
+      if (my !== token) return;
+      var top = m && m.parse(text)[0];
+      showHint(top && kinds[top.kind] && top.confidence > 0.6 ? text : '');
+    });
+  }
+  if (input) input.addEventListener('input', check);
+
   if (!q) return;
   // ?q= that names no receptor is a variant or position search: hand it over.
   var ql = q.toLowerCase();
@@ -109,19 +142,9 @@ document.addEventListener('DOMContentLoaded', function() {
     window.location.replace(searchUrl + '?q=' + encodeURIComponent(q));
     return;
   }
-  var input = document.getElementById('search-input');
   if (input) {
     input.value = q;
     input.dispatchEvent(new Event('input', { bubbles: true }));
-  }
-  var hint = document.getElementById('receptor-search-hint');
-  if (hint && /\d/.test(q)) {
-    var a = document.createElement('a');
-    a.href = searchUrl + '?q=' + encodeURIComponent(q);
-    a.textContent = 'Search variants and positions for \u201c' + q + '\u201d';
-    hint.textContent = 'Looking for a variant or a position instead? ';
-    hint.appendChild(a);
-    hint.hidden = false;
   }
 });
 </script>

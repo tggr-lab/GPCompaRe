@@ -87,7 +87,9 @@ def test_built_site_links_search_from_every_page():
 
 
 def test_no_em_dashes_in_the_search_ui_copy():
-    for rel in ['templates/search.html', 'static/js/search-ui/render.js', 'static/js/search-ui/suggest.js']:
+    for rel in ['templates/search.html', 'static/js/search-ui/render.js', 'static/js/search-ui/suggest.js',
+                'static/js/search-ui/search-page.js', 'static/js/landing.js', 'static/js/search-box.js',
+                'templates/gpcr_index.html']:
         text = (BASE / rel).read_text(encoding='utf-8')
         # code comments may use them; user-facing strings must not
         strings = re.findall(r"'[^'\n]*—[^'\n]*'|\"[^\"\n]*—[^\"\n]*\"|`[^`]*—[^`]*`", text)
@@ -106,7 +108,7 @@ def test_search_page_hides_the_query_from_the_next_page_and_inputs_are_capped(tm
 
 
 def test_every_search_box_in_the_templates_is_capped():
-    for rel in ['templates/_partials/topbar.html', 'templates/search.html', 'templates/gpcr_index.html']:
+    for rel in ['templates/_partials/topbar.html', 'templates/search.html', 'templates/gpcr_index.html', 'templates/landing.html']:
         text = (BASE / rel).read_text(encoding='utf-8')
         for tag in re.findall(r'<input type="search"[^>]*>', text):
             assert 'maxlength="300"' in tag, (rel, tag)
@@ -116,3 +118,41 @@ def test_privacy_page_says_search_text_is_not_sent():
     text = (BASE / 'templates/privacy.html').read_text(encoding='utf-8')
     assert 'Search queries are processed in your browser and are not sent anywhere' in text
     assert 'page views without the search text' in text
+
+
+def test_landing_hero_is_a_real_search_form():
+    tpl = (BASE / 'templates' / 'landing.html').read_text(encoding='utf-8')
+    form = re.search(r'<form class="search-box"[^>]*>', tpl).group(0)
+    assert 'action="{{ static_prefix }}search/"' in form and 'method="get"' in form and 'data-suggest-host' in form
+    inp = re.search(r'<input type="search" id="search-input"[^>]*>', tpl).group(0)
+    assert 'name="q"' in inp and 'maxlength="300"' in inp
+    assert 'variant' in inp and 'PAR2 M159I' in inp
+    # the old separate receptor-only result list is gone: the shared autocomplete draws the suggestions
+    assert 'id="search-results"' not in tpl
+    js = (BASE / 'static' / 'js' / 'landing.js').read_text(encoding='utf-8')
+    assert 'search-ui/suggest.js' in js and "'?q='" in js
+
+
+def test_browse_text_field_is_a_table_filter_with_a_variant_hint():
+    tpl = (BASE / 'templates' / 'gpcr_index.html').read_text(encoding='utf-8')
+    assert 'Filter this receptor table' in tpl
+    assert 'id="receptor-search-hint"' in tpl and 'Search variants and positions for' in tpl
+    assert "search/parse.js" in tpl and 'search2/meta.json' in tpl
+
+
+def test_search_page_hint_is_split_by_pointer_type():
+    tpl = (BASE / 'templates' / 'search.html').read_text(encoding='utf-8')
+    assert 'class="sr-fine-only">Use the arrow keys' in tpl and 'sr-touch-only' in tpl
+    css = (BASE / 'static' / 'css' / 'search-ui.css').read_text(encoding='utf-8')
+    assert '@media (pointer: fine)' in css
+
+
+def test_notations_are_never_broken_mid_token():
+    css = (BASE / 'static' / 'css' / 'search-ui.css').read_text(encoding='utf-8')
+    assert re.search(r'\.mono, \.sr-notation \{[^}]*white-space: nowrap', css)
+    assert '.sr-cmp-sort { display: flex' in css       # the sort control is shown on phones
+
+
+def test_site_css_has_a_phone_layout_for_the_comparison_table():
+    css = (BASE / 'static' / 'css' / 'search-ui.css').read_text(encoding='utf-8')
+    assert '.sr-table--cmp tr { display: grid' in css

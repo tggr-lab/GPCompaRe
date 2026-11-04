@@ -30,12 +30,12 @@
     </figure>
   </div>
   <div class="hero-search">
-    <label class="search-box" for="search-input">
+    <form class="search-box" action="{{ static_prefix }}search/" method="get" role="search" data-index="{{ static_prefix }}search2/" data-suggest-host>
       <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" class="search-icon"><path fill="currentColor" d="M10.68 11.74a6 6 0 1 1 1.06-1.06l3.04 3.04a.75.75 0 1 1-1.06 1.06l-3.04-3.04zM11.5 7a4.5 4.5 0 1 0-9 0 4.5 4.5 0 0 0 9 0z"/></svg>
-      <input type="text" id="search-input" placeholder="Search {{ total_gpcrs }} GPCRs. Try ADRB2, 5HT2A, CXCR4…" autocomplete="off" spellcheck="false" aria-label="Search GPCRs by name, gene, or family" aria-controls="search-results" aria-autocomplete="list">
+      <input type="search" id="search-input" name="q" maxlength="300" placeholder="Receptor, variant or position, e.g. PAR2 M159I" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Search receptors, variants, residues and genome positions">
       <kbd class="search-kbd" aria-hidden="true">/</kbd>
-    </label>
-    <ul id="search-results" class="search-results" role="listbox" hidden></ul>
+    </form>
+    <p class="search-examples">Try <a href="{{ static_prefix }}search/?q=PAR2%20M159I">PAR2 M159I</a>, <a href="{{ static_prefix }}search/?q=rs115885685">rs115885685</a>, <a href="{{ static_prefix }}search/?q=3.50x50">3.50x50</a> or a receptor name such as ADRB2.</p>
   </div>
 </section>
 

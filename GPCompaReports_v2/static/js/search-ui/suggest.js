@@ -7,7 +7,7 @@
  *
  *   attachSuggest(input, {indexUrl | loader, submit})
  *     indexUrl  absolute URL of the search2/ folder (or `loader`, a shared cached shard loader)
- *     submit    (query) => void; called when a suggestion is picked (default: submit the form)
+ *     submit    (query, item) => void; called when a suggestion is picked (default: submit the form)
  *
  * @module search-ui/suggest
  */
@@ -93,7 +93,7 @@ export function suggestionsFor(text, meta, recent = []) {
     const ranked = [...best.entries()].sort((a, b) => a[1].score - b[1].score || meta.receptors[a[0]].symbol.localeCompare(meta.receptors[b[0]].symbol)).slice(0, 8);
     for (const [idx, v] of ranked) {
       const r = meta.receptors[idx];
-      out.push({ kind: 'receptor', label: v.display, hint: `${r.symbol}, ${r.name}`, query: r.symbol });
+      out.push({ kind: 'receptor', label: v.display, hint: `${r.symbol}, ${r.name}`, query: r.symbol, gid: r.gid });
     }
   }
   // the same query twice is noise
@@ -190,7 +190,7 @@ export function attachSuggest(input, opts = {}) {
     if (!it) return;
     input.value = it.query;
     close();
-    if (opts.submit) opts.submit(it.query);
+    if (opts.submit) opts.submit(it.query, it);
     else if (form) { if (form.requestSubmit) form.requestSubmit(); else form.submit(); }
   }
 

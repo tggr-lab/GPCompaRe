@@ -6,7 +6,10 @@
 import { search } from '../search/resolve.js';
 import { shardsFor } from '../search/shards.js';
 import { makeLoader } from './loader.js';
-import { renderAnswer, renderHelp, renderReleases, notationsText } from './render.js';
+import {
+  renderAnswer, renderHelp, renderReleases, notationsText, evidenceText,
+  renderCompareBody, compareDefaults, compareCsv, compareRows,
+} from './render.js';
 import { attachSuggest, rememberQuery, readRecent, clearRecent } from './suggest.js';
 
 const app = document.getElementById('search-app');
@@ -26,7 +29,7 @@ const opts = {
 const loader = makeLoader(indexUrl);
 
 let run = 0;
-let current = { results: [] };
+let current = { results: [], compare: null, state: null, ctx: {} };
 
 function setStatus(text) { statusEl.textContent = text || ''; }
 
@@ -60,15 +63,16 @@ async function show(q, { remember = true } = {}) {
   const meta = await shardsFor(loader).meta();
   const releases = meta?.releases ?? null;
   const symbolOf = (gid) => meta?.byGid.get(gid)?.symbol ?? gid;
-  const r = renderAnswer(answer, q, { ...opts, releases, symbolOf });
+  const familyOf = (gid) => meta?.byGid.get(gid)?.family;
+  const pageUrl = `${window.location.origin}${window.location.pathname}`;
+  const r = renderAnswer(answer, q, { ...opts, releases, symbolOf, familyOf, pageUrl });
   out.innerHTML = r.html;
   out.removeAttribute('aria-busy');
-  current = { results: r.results };
+  current = { results: r.results, compare: r.compare, state: r.compare ? compareDefaults() : null, ctx: r.ctx };
   setStatus(r.status);
   if (releasesEl && releases) releasesEl.innerHTML = renderReleases(releases).toString();
   if (remember && answer.expect !== 'unrecognised' && answer.results?.length) rememberQuery(q);
   renderRecent();
-  wireTables();
 }
 
 function renderRecent() {
@@ -106,32 +110,89 @@ function go(q, push = true) {
   return show(q);
 }
 
-// ---------------------------------------------------------------------------- table sorting
+// ------------------------------------------------------------ the cross-receptor table
 
-function wireTables() {
-  out.querySelectorAll('table[data-sortable]').forEach((table) => {
-    table.querySelectorAll('button[data-sort-col]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const col = Number(btn.dataset.sortCol);
-        const th = btn.closest('th');
-        const dir = th.getAttribute('aria-sort') === 'ascending' ? 'descending' : 'ascending';
-        table.querySelectorAll('th').forEach((x) => x.setAttribute('aria-sort', 'none'));
-        th.setAttribute('aria-sort', dir);
-        const body = table.tBodies[0];
-        const rows = [...body.rows];
-        const val = (tr) => tr.cells[col].dataset.v;
-        const numeric = rows.every((tr) => val(tr) !== '' && !Number.isNaN(Number(val(tr))));
-        rows.sort((a, b) => {
-          const x = val(a); const y = val(b);
-          const c = numeric ? Number(x) - Number(y) : x.localeCompare(y, 'en', { numeric: true });
-          return dir === 'ascending' ? c : -c;
-        });
-        rows.forEach((tr) => body.append(tr));
-        setStatus(`Sorted by ${btn.textContent}, ${dir}.`);
-      });
-    });
-  });
+function cmpBody() { return out.querySelector('[data-cmp-body]'); }
+
+/** Redraw the table body after a state change; keeps focus on the control that was used. */
+function cmpUpdate(focusSel) {
+  const { compare, state } = current;
+  if (!compare || !state) return;
+  const body = cmpBody();
+  if (!body) return;
+  body.innerHTML = renderCompareBody(compare, state, { reports: opts.reports }).toString();
+  const sortSel = out.querySelector('[data-cmp-sortsel]');
+  if (sortSel) sortSel.value = state.sort;
+  const dir = out.querySelector('[data-cmp-dir]');
+  if (dir) {
+    dir.disabled = state.sort === 'orig';
+    dir.textContent = state.dir === 'desc' ? 'High to low' : 'Low to high';
+    dir.setAttribute('aria-label', `Sort direction: ${state.dir === 'desc' ? 'high to low' : 'low to high'}. Press to reverse.`);
+  }
+  out.querySelectorAll('[data-cmp-group]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.cmpGroup === state.group)));
+  if (focusSel) body.querySelector(focusSel)?.focus();
+  setStatus(`${compareRows(compare, state).length} rows.`);
 }
+
+/** Sort by a column: numbers start high to low, text starts A to Z; the same column again reverses. */
+function cmpSort(key) {
+  const s = current.state;
+  if (s.sort === key) s.dir = s.dir === 'asc' ? 'desc' : 'asc';
+  else {
+    s.sort = key;
+    s.dir = key !== 'orig' && current.compare.cols.find((c) => c.key === key)?.num ? 'desc' : 'asc';
+  }
+  s.page = 1;
+}
+
+function downloadCsv() {
+  const { compare, state } = current;
+  if (!compare) return;
+  const text = compareCsv(compare, state);
+  const slug = (input.value || 'search').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'search';
+  const blob = new Blob([text], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `gpcompare-${slug}.csv`;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  setStatus('Table saved as CSV.');
+}
+
+function onCompareClick(e) {
+  const s = current.state;
+  if (!current.compare || !s) return false;
+  const sort = e.target.closest('[data-cmp-sort]');
+  if (sort) { cmpSort(sort.dataset.cmpSort); cmpUpdate(`[data-cmp-sort="${sort.dataset.cmpSort}"]`); return true; }
+  const pg = e.target.closest('[data-cmp-page]');
+  if (pg) {
+    s.page = Math.max(1, s.page + (pg.dataset.cmpPage === 'next' ? 1 : -1));
+    cmpUpdate(`[data-cmp-page="${pg.dataset.cmpPage}"]:not([disabled])`);
+    return true;
+  }
+  const all = e.target.closest('[data-cmp-all]');
+  if (all) { s.all = all.dataset.cmpAll === '1'; s.page = 1; cmpUpdate('[data-cmp-all]'); return true; }
+  const grp = e.target.closest('[data-cmp-group]');
+  if (grp) { s.group = grp.dataset.cmpGroup; s.page = 1; cmpUpdate(); return true; }
+  const dir = e.target.closest('[data-cmp-dir]');
+  if (dir) { if (s.sort !== 'orig') s.dir = s.dir === 'asc' ? 'desc' : 'asc'; s.page = 1; cmpUpdate(); return true; }
+  if (e.target.closest('[data-cmp-csv]')) { downloadCsv(); return true; }
+  return false;
+}
+
+out.addEventListener('change', (e) => {
+  const s = current.state;
+  if (!current.compare || !s) return;
+  if (e.target.matches('[data-cmp-family]')) { s.family = e.target.value; s.page = 1; cmpUpdate(); }
+  else if (e.target.matches('[data-cmp-sortsel]')) {
+    s.sort = '';
+    cmpSort(e.target.value);
+    cmpUpdate();
+  }
+});
 
 // ------------------------------------------------------------------------------- copy buttons
 
@@ -156,6 +217,7 @@ async function copyText(text) {
 }
 
 out.addEventListener('click', async (e) => {
+  if (onCompareClick(e)) return;
   const a = e.target.closest('a[data-q]');
   if (a && !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button)) {
     e.preventDefault();
@@ -163,9 +225,12 @@ out.addEventListener('click', async (e) => {
     window.scrollTo({ top: 0 });
     return;
   }
-  const c = e.target.closest('[data-copy], [data-copy-notations]');
+  const c = e.target.closest('[data-copy], [data-copy-notations], [data-copy-evidence]');
   if (!c) return;
-  const text = c.dataset.copy ?? notationsText(current.results[Number(c.dataset.copyNotations)]);
+  const text = c.dataset.copy
+    ?? (c.dataset.copyNotations !== undefined
+      ? notationsText(current.results[Number(c.dataset.copyNotations)])
+      : evidenceText(current.results[Number(c.dataset.copyEvidence)], current.ctx));
   const old = c.textContent;
   const ok = await copyText(text);
   c.textContent = ok ? 'Copied' : 'Copy failed';

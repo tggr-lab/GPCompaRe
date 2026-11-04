@@ -1,118 +1,79 @@
-// landing.js: landing-only behaviors, the search teaser.
+// landing.js: landing-only behaviors, the hero search.
 // Theme toggle, tooltips, collapsibles, reveals live in site.js.
+//
+// The hero box is a real search form (action = search/, name = q), so it works without this
+// script. With it: an exact receptor name opens that report; anything else, including a variant
+// or a position, goes to the search page. The suggestion list is the shared autocomplete
+// (search-ui/suggest.js), loaded only when the box is focused or typed in.
 
 (function() {
   'use strict';
 
-  // ------------------ Search teaser ------------------
+  var script = document.currentScript;
+  var base = script && script.src ? script.src.replace(/landing\.js(\?.*)?$/, '') : null;
   var input = document.getElementById('search-input');
-  var resultsList = document.getElementById('search-results');
-  var dataScript = document.getElementById('gpcr-search-data');
+  var form = input && input.form;
+  if (!input || !form) return;
+
   var records = [];
-  try { records = dataScript ? JSON.parse(dataScript.textContent) : []; }
-  catch (e) { records = []; }
+  try {
+    var dataScript = document.getElementById('gpcr-search-data');
+    records = dataScript ? JSON.parse(dataScript.textContent) : [];
+  } catch (e) { records = []; }
 
-  if (input && resultsList && records.length) {
-    var selected = -1;
-    var currentMatches = [];
+  function squash(s) { return String(s || '').toLowerCase().replace(/\s+/g, ''); }
 
-    function rankMatches(query) {
-      if (!query) return [];
-      var q = query.toLowerCase();
-      var scored = [];
-      for (var i = 0; i < records.length; i++) {
-        var r = records[i];
-        var gene = (r.gene_name || '').toLowerCase();
-        var uniprot = (r.uniprot_name || '').toLowerCase();
-        var id = (r.gpcr_id || '').toLowerCase();
-        var fam = (r.receptor_family || '').toLowerCase();
-        var score = -1;
-        if (gene === q || uniprot === q) score = 0;
-        else if (gene.startsWith(q) || uniprot.startsWith(q)) score = 1;
-        else if (gene.indexOf(q) !== -1 || uniprot.indexOf(q) !== -1) score = 2;
-        else if (id.indexOf(q) !== -1) score = 3;
-        else if (fam.indexOf(q) !== -1) score = 4;
-        if (score >= 0) scored.push({ score: score, record: r });
-      }
-      scored.sort(function(a, b) { return a.score - b.score; });
-      return scored.slice(0, 6).map(function(s) { return s.record; });
+  // A receptor report only when the text is exactly a receptor's gene, UniProt name or id.
+  function exactReceptor(q) {
+    var k = squash(q);
+    if (!k) return null;
+    for (var i = 0; i < records.length; i++) {
+      var r = records[i];
+      if (squash(r.gene_name) === k || squash(r.uniprot_name) === k || squash(r.gpcr_id) === k) return r;
     }
-
-    function renderResults() {
-      resultsList.innerHTML = '';
-      if (!currentMatches.length) { resultsList.hidden = true; return; }
-      currentMatches.forEach(function(r, idx) {
-        var li = document.createElement('li');
-        li.setAttribute('role', 'option');
-        li.dataset.id = r.gpcr_id;
-        li.setAttribute('aria-selected', idx === selected ? 'true' : 'false');
-        li.innerHTML =
-          '<span class="result-gene">' + escapeHtml(r.gene_name || r.uniprot_name) + '</span>' +
-          '<span class="result-name">' + escapeHtml(r.uniprot_name) + '</span>' +
-          '<span class="result-fam">' + escapeHtml(r.receptor_family || '') + '</span>';
-        li.addEventListener('mouseenter', function() { selected = idx; updateSelection(); });
-        li.addEventListener('mousedown', function(e) { e.preventDefault(); navigateTo(r.gpcr_id); });
-        resultsList.appendChild(li);
-      });
-      resultsList.hidden = false;
-    }
-
-    function updateSelection() {
-      Array.prototype.forEach.call(resultsList.children, function(li, idx) {
-        li.setAttribute('aria-selected', idx === selected ? 'true' : 'false');
-      });
-    }
-
-    function navigateTo(gpcrId) {
-      if (gpcrId) window.location.href = 'reports/' + gpcrId + '.html';
-    }
-
-    function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, function(c) {
-        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-      });
-    }
-
-    input.addEventListener('input', function() {
-      currentMatches = rankMatches(input.value.trim());
-      selected = currentMatches.length ? 0 : -1;
-      renderResults();
-    });
-
-    input.addEventListener('keydown', function(e) {
-      if (!currentMatches.length && e.key !== 'Escape') return;
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        selected = (selected + 1) % currentMatches.length;
-        updateSelection();
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        selected = (selected - 1 + currentMatches.length) % currentMatches.length;
-        updateSelection();
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        if (selected >= 0 && currentMatches[selected]) navigateTo(currentMatches[selected].gpcr_id);
-      } else if (e.key === 'Escape') {
-        currentMatches = [];
-        selected = -1;
-        renderResults();
-        input.blur();
-      }
-    });
-
-    input.addEventListener('blur', function() {
-      setTimeout(function() { resultsList.hidden = true; }, 120);
-    });
-    input.addEventListener('focus', function() {
-      if (currentMatches.length) resultsList.hidden = false;
-    });
-
-    document.addEventListener('keydown', function(e) {
-      if (e.key !== '/') return;
-      var tag = (document.activeElement && document.activeElement.tagName) || '';
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement.isContentEditable) return;
-      e.preventDefault();
-      input.focus();
-    });
+    return null;
   }
+
+  function openReport(gpcrId) { window.location.href = 'reports/' + gpcrId + '.html'; }
+  function openSearch(q) { window.location.href = form.getAttribute('action') + '?q=' + encodeURIComponent(q); }
+
+  form.addEventListener('submit', function(e) {
+    var q = input.value.trim();
+    if (!q) { e.preventDefault(); return; }
+    var hit = exactReceptor(q);
+    if (hit) { e.preventDefault(); openReport(hit.gpcr_id); }
+    // otherwise the form submits to search/?q=...
+  });
+
+  // clicking anywhere in the box focuses the field
+  form.addEventListener('click', function(e) {
+    if (e.target === form || (e.target.closest && e.target.closest('.search-icon, .search-kbd'))) input.focus();
+  });
+
+  var started = false;
+  function startSuggest() {
+    if (started || !base) return;
+    started = true;
+    import(base + 'search-ui/suggest.js').then(function(m) {
+      var api = m.attachSuggest(input, {
+        indexUrl: new URL(form.getAttribute('data-index'), document.baseURI).href,
+        submit: function(q, item) {
+          var hit = item && item.kind === 'receptor' ? exactReceptor(item.query) : null;
+          if (hit) openReport(hit.gpcr_id); else openSearch(q);
+        }
+      });
+      if (api && document.activeElement === input) api.update();
+    }).catch(function() { started = false; });
+  }
+  input.addEventListener('focus', startSuggest);
+  input.addEventListener('input', startSuggest);
+
+  // "/" jumps to the search box
+  document.addEventListener('keydown', function(e) {
+    if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+    var tag = (document.activeElement && document.activeElement.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (document.activeElement && document.activeElement.isContentEditable)) return;
+    e.preventDefault();
+    input.focus();
+  });
 })();
