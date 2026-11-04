@@ -329,7 +329,7 @@ G327	NM_000406.3(GNRHR):c.523-1G>A	clinvar_noncoding	not_coding	gnrhr_human	175	
 G328	NM_005912.3(MC4R):c.-18T>C	clinvar_noncoding	not_coding	mc4r_human	1	M				na	clinvar_raw=327715 Uncertain significance; nearest residue; src=pack/sources/clinvar/mc4r_human.json.gz:records
 G329	NM_000539.3(RHO):c.*33C>T	clinvar_noncoding	not_coding	opsd_human	348	A				na	clinvar_raw=256381 Benign/Likely benign; nearest residue; src=pack/sources/clinvar/opsd_human.json.gz:records
 G330	NM_001992.5(F2R):c.-69G>A	clinvar_noncoding	not_coding	par1_human	1	M				na	clinvar_raw=3038746 Benign; nearest residue; src=pack/sources/clinvar/par1_human.json.gz:records
-G331	NC_000004.12:g.67756240dup	clinvar_noncoding	not_coding	gnrhr_human						na	clinvar_raw=1205418 Likely benign; residue; src=pack/sources/clinvar/gnrhr_human.json.gz:records; g. dup with no transcript: nearest residue needs exon tables (left blank)
+G331	NC_000004.12:g.67756240dup	clinvar_noncoding	not_coding	gnrhr_human						GRCh38	clinvar_raw=1205418 Likely benign; residue; src=pack/sources/clinvar/gnrhr_human.json.gz:records; g. dup with no transcript: nearest residue needs exon tables (left blank)
 G332	MC4R Y35*	nonmissense	not_in_resource	mc4r_human	35	Y	*			na	stop, short form
 G333	MC4R p.Tyr35X	nonmissense	not_in_resource	mc4r_human	35	Y	*			na	stop, legacy X
 G334	MC4R c.105C>A	nonmissense	not_in_resource	mc4r_human	35	Y	*			na	c. of the nonsense VCV000014318 (NM_005912.3): residue 35; deriving "stop" needs the codon

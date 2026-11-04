@@ -1,0 +1,388 @@
+id	query	top	also
+G001	F2RL1 p.Met159Ile	protein R=F2RL1 p=M159I	
+G002	F2RL1 p.M159I	protein R=F2RL1 p=M159I	
+G003	F2RL1 p.(Met159Ile)	protein R=F2RL1 p=M159I	
+G004	F2RL1 p.(M159I)	protein R=F2RL1 p=M159I	
+G005	F2RL1 M159I	protein R=F2RL1 p=M159I	
+G006	F2RL1 Met159Ile	protein R=F2RL1 p=M159I	
+G007	F2RL1 Met-159-Ile	protein R=F2RL1 p=M159I	
+G008	F2RL1 M159→I	protein R=F2RL1 p=M159I	
+G009	F2RL1 M159>I	protein R=F2RL1 p=M159I	
+G010	F2RL1 159M>I	protein R=F2RL1 p=M159I	
+G011	F2RL1 P.MET159ILE	protein R=F2RL1 p=M159I	
+G012	f2rl1 p.met159ile	protein R=f2rl1 p=M159I	
+G013	F2RL1 P.Met159Ile	protein R=F2RL1 p=M159I	
+G014	PAR2 M159I	protein R=PAR2 p=M159I	
+G015	PAR2:p.Met159Ile	protein R=PAR2 p=M159I	
+G016	PAR2, M159I	protein R=PAR2 p=M159I	
+G017	M159I (PAR2)	protein R=PAR2 p=M159I	
+G018	F2RL1:M159I	protein R=F2RL1 p=M159I	
+G019	PAR-2 M159I	protein R=PAR-2 p=M159I	
+G020	P55085:p.Met159Ile	protein R=P55085 rid=uniprot:P55085 p=M159I	
+G021	PAR2_HUMAN p.Met159Ile	protein R=PAR2_HUMAN rid=entry:PAR2_HUMAN p=M159I	
+G022	  F2RL1    p.Met159Ile  	protein R=F2RL1 p=M159I	
+G023	M159I	protein p=M159I	
+G024	p.Met159Ile	protein p=M159I	
+G025	p.(Met159Ile)	protein p=M159I	
+G026	Met159Ile	protein p=M159I	
+G027	M159	residue p=M159	
+G028	Met159	residue p=M159	
+G029	F2RL1 M159	residue R=F2RL1 p=M159	
+G030	F2RL1 Met159	residue R=F2RL1 p=M159	
+G031	F2RL1 159	residue R=F2RL1 p=?159	
+G032	F2RL1 residue 159	residue R=F2RL1 p=?159	
+G033	PAR2 Met159	residue R=PAR2 p=M159	
+G034	PAR2 p.Met159	residue R=PAR2 p=M159	
+G035	F2RL1 M159A	protein R=F2RL1 p=M159A	
+G036	F2RL1 p.Trp159Ala	protein R=F2RL1 p=W159A	
+G037	F2RL1 M160I	protein R=F2RL1 p=M160I	
+G038	F2RL1 M999I	protein R=F2RL1 p=M999I	
+G039	F2RL1 p.Met159=	protein R=F2RL1 p=M159=	
+G040	F2RL1 p.(Met159=)	protein R=F2RL1 p=M159=	
+G041	F2RL1 p.Met159Ter	protein R=F2RL1 p=M159*	
+G042	F2RL1 M159*	protein R=F2RL1 p=M159*	
+G043	F2RL1 M159X	protein R=F2RL1 p=M159*	
+G044	F2RL1 p.Met159ProfsTer12	protein R=F2RL1 p=M159fs	
+G045	F2RL1 p.Met159del	protein R=F2RL1 p=M159del	
+G046	F2RL1 p.Met159dup	protein R=F2RL1 p=M159dup	
+G047	F2RL1 p.Met159_Tyr160insHis	protein R=F2RL1 p=M159_Y160ins[H]	
+G048	F2RL1 c.477G>A	cdna R=F2RL1 c=cds:477G>A	
+G049	F2RL1 c.477G>T	cdna R=F2RL1 c=cds:477G>T	
+G050	F2RL1 477G>A	cdna R=F2RL1 c=cds:477G>A	protein R=F2RL1 p=G477A
+G051	F2RL1 G477A	protein R=F2RL1 p=G477A	cdna R=F2RL1 c=cds:477G>A
+G052	NM_005242.6:c.477G>A	cdna c=NM_005242.6:cds:477G>A	
+G053	NM_005242:c.477G>A	cdna c=NM_005242:cds:477G>A	
+G054	ENST00000296677.5:c.477G>A	cdna c=ENST00000296677.5:cds:477G>A	
+G055	ENST00000296677:c.477G>T	cdna c=ENST00000296677:cds:477G>T	
+G056	nm_005242.6:C.477g>a	cdna c=NM_005242.6:cds:477G>A	
+G057	NM_005242.6(F2RL1):c.477G>A (p.Met159Ile)	cdna R=F2RL1 p=M159I c=NM_005242.6:cds:477G>A	
+G058	NM_005242.6(F2RL1):c.477G>T (p.Met159Ile)	cdna R=F2RL1 p=M159I c=NM_005242.6:cds:477G>T	
+G059	PAR2 c.477G>A	cdna R=PAR2 c=cds:477G>A	
+G060	NM_005242.5:c.477G>A	cdna c=NM_005242.5:cds:477G>A	
+G061	ENST00000296677.4:c.477G>A	cdna c=ENST00000296677.4:cds:477G>A	
+G062	F2RL1 c.477G>C	cdna R=F2RL1 c=cds:477G>C	
+G063	F2RL1 c.477+1G>A	cdna R=F2RL1 c=intron:477+1G>A	
+G064	F2RL1 c.-23C>T	cdna R=F2RL1 c=5utr:-23C>T	
+G065	F2RL1 c.*45G>A	cdna R=F2RL1 c=3utr:45G>A	
+G066	NM_005242.6(F2RL1):c.1089T>C (p.Ser363=)	cdna R=F2RL1 p=S363= c=NM_005242.6:cds:1089T>C	
+G067	5-76833084-G-A	genomic g=5:76833084:G>A@?/gnomad gnomad=5-76833084-G-A	
+G068	5-76833084-G-T	genomic g=5:76833084:G>T@?/gnomad gnomad=5-76833084-G-T	
+G069	chr5:76833084:G:A	genomic g=5:76833084:G>A@?/gnomad gnomad=5-76833084-G-A	
+G070	chr5_76833084_G_A	genomic g=5:76833084:G>A@?/gnomad gnomad=5-76833084-G-A	
+G071	5:76833084 G>A	genomic g=5:76833084:G>A@?/gnomad gnomad=5-76833084-G-A	
+G072	5 76833084 . G A	genomic g=5:76833084:G>A@?/vcf gnomad=5-76833084-G-A	
+G073	5\t76833084\trs115885685\tG\tT	genomic g=5:76833084:G>T@?/vcf rsid=rs115885685 gnomad=5-76833084-G-T	
+G074	chr5\t76833084\t.\tG\tA\t.\tPASS	genomic g=5:76833084:G>A@?/vcf gnomad=5-76833084-G-A	
+G075	NC_000005.10:g.76833084G>A	genomic g=5:76833084:G>A@GRCh38/hgvs_g gnomad=5-76833084-G-A	
+G076	NC_000005.10:76833083:G:A	genomic g=5:76833084:G>A@GRCh38/spdi gnomad=5-76833084-G-A spdi=NC_000005.10:76833083:G:A	
+G077	NC_000005.10:76833083:G:T	genomic g=5:76833084:G>T@GRCh38/spdi gnomad=5-76833084-G-T spdi=NC_000005.10:76833083:G:T	
+G078	CHR5:76833084:g:a	genomic g=5:76833084:G>A@?/gnomad gnomad=5-76833084-G-A	
+G079	GRCh38 5:76833084 G>A	genomic g=5:76833084:G>A@GRCh38/gnomad gnomad=5-76833084-G-A	
+G080	chr5:76833084	genomic g=5:76833084@?/locus	
+G081	5:76,833,084	genomic g=5:76833084@?/locus	
+G082	chr5:76833084-76833084	genomic g=5:76833084@?/locus	
+G083	5-76833084-G-C	genomic g=5:76833084:G>C@?/gnomad gnomad=5-76833084-G-C	
+G084	5-76833084-A-G	genomic g=5:76833084:A>G@?/gnomad gnomad=5-76833084-A-G	
+G085	5-76128909-G-A	genomic g=5:76128909:G>A@?/gnomad gnomad=5-76128909-G-A	
+G086	5-76128909-G-T	genomic g=5:76128909:G>T@?/gnomad gnomad=5-76128909-G-T	
+G087	chr5:76128909:G:A	genomic g=5:76128909:G>A@?/gnomad gnomad=5-76128909-G-A	
+G088	NC_000005.9:g.76128909G>A	genomic g=5:76128909:G>A@GRCh37/hgvs_g gnomad=5-76128909-G-A	
+G089	hg19 chr5:76128909 G>A	genomic g=5:76128909:G>A@GRCh37/gnomad gnomad=5-76128909-G-A	
+G090	5\t76128909\t.\tG\tT	genomic g=5:76128909:G>T@?/vcf gnomad=5-76128909-G-T	
+G091	chr5:76128909	genomic g=5:76128909@?/locus	
+G092	rs115885685	rsid rsid=rs115885685	
+G093	RS115885685	rsid rsid=rs115885685	
+G094	rs 115885685	rsid rsid=rs115885685	
+G095	F2RL1 rs115885685	rsid R=F2RL1 rsid=rs115885685	
+G096	VCV000718860	clinvar vcv=VCV000718860 variationId=718860	
+G097	VCV000718860.3	clinvar vcv=VCV000718860 variationId=718860	
+G098	ClinVar 718860	clinvar variationId=718860	
+G099	F2RL1 3.36	generic R=F2RL1 gn=3.36	
+G100	F2RL1 3x36	generic R=F2RL1 gn=3x36	
+G101	PAR2 M3.36	generic R=PAR2 gn=3.36/M	
+G102	PAR2 M^3.36	generic R=PAR2 gn=3.36/M	
+G103	PAR2 Met159(3.36)	generic R=PAR2 gn=3.36/M159	
+G104	PAR2 M159^3.36	generic R=PAR2 gn=3.36/M159	
+G105	PAR2 F3.36	generic R=PAR2 gn=3.36/F	
+G106	PAR2 R3.50	generic R=PAR2 gn=3.50/R	
+G107	PAR2	receptor R=PAR2	
+G108	F2RL1	receptor R=F2RL1	
+G109	f2rl1	receptor R=f2rl1	
+G110	PAR-2	receptor R=PAR-2	
+G111	par2	receptor R=par2	
+G112	P55085	receptor R=P55085 rid=uniprot:P55085	residue p=P55085
+G113	PAR2_HUMAN	receptor R=PAR2_HUMAN rid=entry:PAR2_HUMAN	
+G114	ENSG00000164251	receptor R=ENSG00000164251 rid=ensg:ENSG00000164251	
+G115	HGNC:3538	receptor R=HGNC:3538 rid=hgnc:HGNC:3538	
+G116	Gene ID 2150	receptor R=Gene ID 2150 rid=geneid:2150	
+G117	GeneID:2150	receptor R=GeneID:2150 rid=geneid:2150	
+G118	protease-activated receptor 2	receptor R=protease-activated receptor 2	residue R=protease-activated receptor p=?2
+G119	GPR11	receptor R=GPR11	
+G120	ADRB2	receptor R=ADRB2	
+G121	β2AR	receptor R=β2AR	
+G122	B2AR	receptor R=B2AR	
+G123	beta-2	receptor R=beta-2	
+G124	beta2 adrenergic	receptor R=beta2 adrenergic	
+G125	β2-adrenergic receptor	receptor R=β2-adrenergic receptor	
+G126	P07550	receptor R=P07550 rid=uniprot:P07550	
+G127	ADRB2_HUMAN	receptor R=ADRB2_HUMAN rid=entry:ADRB2_HUMAN	
+G128	Β2AR	receptor R=Β2AR	
+G129	ADRB2 p.Arg16Gly	protein R=ADRB2 p=R16G	
+G130	ADRB2 R16G	protein R=ADRB2 p=R16G	
+G131	β2AR R16G	protein R=β2AR p=R16G	
+G132	B2AR p.(Arg16Gly)	protein R=B2AR p=R16G	
+G133	ADRB2 p.Gly16Arg	protein R=ADRB2 p=G16R	
+G134	ADRB2 G16R	protein R=ADRB2 p=G16R	
+G135	rs1042713	rsid rsid=rs1042713	
+G136	ADRB2 p.Gln27Glu	protein R=ADRB2 p=Q27E	
+G137	ADRB2 Q27E	protein R=ADRB2 p=Q27E	
+G138	rs1042714	rsid rsid=rs1042714	
+G139	ADRB2 Arg16	residue R=ADRB2 p=R16	
+G140	5-148206440-G-A	genomic g=5:148206440:G>A@?/gnomad gnomad=5-148206440-G-A	
+G141	NM_000024.6(ADRB2):c.79= (p.Glu27=)	cdna R=ADRB2 p=E27= c=NM_000024.6:cds:79=	
+G142	VCV000017743	clinvar vcv=VCV000017743 variationId=17743	
+G143	NM_000024.6(ADRB2):c.*34del	cdna R=ADRB2 c=NM_000024.6:3utr:34del	
+G144	ADRB2 3.50	generic R=ADRB2 gn=3.50	
+G145	ADRB2 R^3.50	generic R=ADRB2 gn=3.50/R	
+G146	ADRB2 Arg131(3.50)	generic R=ADRB2 gn=3.50/R131	
+G147	ADRB2 R131^3.50	generic R=ADRB2 gn=3.50/R131	
+G148	ADRB2 3.50x50	generic R=ADRB2 gn=3.50x50	
+G149	ADRB2 W6.48	generic R=ADRB2 gn=6.48/W	
+G150	ADRB2 ECL2.50	generic R=ADRB2 gn=45.50	
+G151	ADRB2 8x50	generic R=ADRB2 gn=8x50	
+G152	ADRB2 D2.50	generic R=ADRB2 gn=2.50/D	
+G153	ADRB2 F6.48	generic R=ADRB2 gn=6.48/F	
+G154	ADRB2 Arg130(3.50)	generic R=ADRB2 gn=3.50/R130	
+G155	3.50	generic gn=3.50	
+G156	R3.50	generic gn=3.50/R	
+G157	R^3.50	generic gn=3.50/R	
+G158	6.48	generic gn=6.48	
+G159	F6.48	generic gn=6.48/F	
+G160	3x50	generic gn=3x50	
+G161	45.50	generic gn=45.50	
+G162	ECL2.50	generic gn=45.50	
+G163	8x50	generic gn=8x50	
+G164	7.36x35	generic gn=7.36x35	
+G165	ADRB1 Arg389Gly	protein R=ADRB1 p=R389G	
+G166	ADRB1 p.Gly389Arg	protein R=ADRB1 p=G389R	
+G167	HTR2C Cys23Ser	protein R=HTR2C p=C23S	
+G168	5-HT2C C23S	protein R=5-HT2C p=C23S	
+G169	rs6318	rsid rsid=rs6318	
+G170	FSHR Asn680Ser	protein R=FSHR p=N680S	
+G171	rs6166	rsid rsid=rs6166	
+G172	DRD3 Ser9Gly	protein R=DRD3 p=S9G	
+G173	rs6280	rsid rsid=rs6280	
+G174	10-115805056-G-C	genomic g=10:115805056:G>C@?/gnomad gnomad=10-115805056-G-C	
+G175	PAR2 N30	residue R=PAR2 p=N30	
+G176	PAR2 p.Ser30Gly	protein R=PAR2 p=S30G	
+G177	LPAR2 p.Leu351Phe	protein R=LPAR2 p=L351F	
+G178	ENST00000407877.8:c.1051C>T	cdna c=ENST00000407877.8:cds:1051C>T	
+G179	19-19624261-G-A	genomic g=19:19624261:G>A@?/gnomad gnomad=19-19624261-G-A	
+G180	LPAR2 p.Pro345Thr	protein R=LPAR2 p=P345T	
+G181	ENST00000407877.8:c.1033C>A	cdna c=ENST00000407877.8:cds:1033C>A	
+G182	19-19624279-G-T	genomic g=19:19624279:G>T@?/gnomad gnomad=19-19624279-G-T	
+G183	LPAR2 p.Pro342Thr	protein R=LPAR2 p=P342T	
+G184	LPAR2 p.Val273Gly	protein R=LPAR2 p=V273G	
+G185	LPAR2 p.Ile3Met	protein R=LPAR2 p=I3M	
+G186	NP_001382589.1:p.Val270Gly	protein p=V270G@NP_001382589.1	
+G187	19-19735088-G-T	genomic g=19:19735088:G>T@?/gnomad gnomad=19-19735088-G-T	
+G188	MCHR1 p.Arg248Gln	protein R=MCHR1 p=R248Q	
+G189	MCHR1 p.Arg317Gln	protein R=MCHR1 p=R317Q	
+G190	NP_005288.4:p.Arg248Gln	protein p=R248Q@NP_005288.4	
+G191	NM_005297.4:c.743G>A	cdna c=NM_005297.4:cds:743G>A	
+G192	MCHR1 100	residue R=MCHR1 p=?100	
+G193	NPFFR2 p.Val148Ala	protein R=NPFFR2 p=V148A	
+G194	NPFFR2 p.Val250Ala	protein R=NPFFR2 p=V250A	
+G195	NP_004876.3:p.Val148Ala	protein p=V148A@NP_004876.3	
+G196	NM_004885.3:c.443T>C	cdna c=NM_004885.3:cds:443T>C	
+G197	NPFFR2 100	residue R=NPFFR2 p=?100	
+G198	OXER1 p.Leu407Val	protein R=OXER1 p=L407V	
+G199	NP_683765.2:p.Leu368Val	protein p=L368V@NP_683765.2	
+G200	NP_683765.1:p.Leu407Val	protein p=L407V@NP_683765.1	
+G201	NM_148962.5:c.1102C>G	cdna c=NM_148962.5:cds:1102C>G	
+G202	ENST00000378661.3:c.1219C>G	cdna c=ENST00000378661.3:cds:1219C>G	
+G203	OXER1 p.Leu368Val	protein R=OXER1 p=L368V	
+G204	HRH2 p.Thr367Met	protein R=HRH2 p=T367M	
+G205	5-175707802-C-T	genomic g=5:175707802:C>T@?/gnomad gnomad=5-175707802-C-T	
+G206	FFAR4 R270H	protein R=FFAR4 p=R270H	
+G207	FFAR4 p.Arg254His	protein R=FFAR4 p=R254H	
+G208	rs116454156	rsid rsid=rs116454156	
+G209	GPR3	receptor R=GPR3	
+G210	GPR3 p.Arg222His	protein R=GPR3 p=R222H	
+G211	rs734852	rsid rsid=rs734852	
+G212	GPR4	receptor R=GPR4	
+G213	GPR4 p.Arg306His	protein R=GPR4 p=R306H	
+G214	rs201509344	rsid rsid=rs201509344	
+G215	XCR1	receptor R=XCR1	
+G216	XCR1 p.Ser173Leu	protein R=XCR1 p=S173L	
+G217	rs78405233	rsid rsid=rs78405233	
+G218	GPR31	receptor R=GPR31	
+G219	CXCR1	receptor R=CXCR1	
+G220	X-1466186-C-T	genomic g=X:1466186:C>T@?/gnomad gnomad=X-1466186-C-T	
+G221	Y-1466186-C-T	genomic g=Y:1466186:C>T@?/gnomad gnomad=Y-1466186-C-T	
+G222	chrY:1466186:C:T	genomic g=Y:1466186:C>T@?/gnomad gnomad=Y-1466186-C-T	
+G223	23-1466186-C-T	genomic g=X:1466186:C>T@?/gnomad gnomad=X-1466186-C-T	
+G224	P2RY8 p.Val125Ile	protein R=P2RY8 p=V125I	
+G225	X-1585079-C-T	genomic g=X:1585079:C>T@?/gnomad gnomad=X-1585079-C-T	
+G226	VCV000800347	clinvar vcv=VCV000800347 variationId=800347	
+G227	NPY6R	receptor R=NPY6R	
+G228	NPY6R M1	residue R=NPY6R p=M1	
+G229	NPY6R 3.50	generic R=NPY6R gn=3.50	
+G230	NPY6R p.Met1Val	protein R=NPY6R p=M1V	
+G231	TAAR3P	receptor R=TAAR3P	
+G232	TAAR3P M1	residue R=TAAR3P p=M1	
+G233	TAAR3P 3.50	generic R=TAAR3P gn=3.50	
+G234	TAAR3P p.Met1Val	protein R=TAAR3P p=M1V	
+G235	TAAR3	receptor R=TAAR3	
+G236	NPY6R c.100G>A	cdna R=NPY6R c=cds:100G>A	
+G237	ADRB2 Q26	residue R=ADRB2 p=Q26	
+G238	DRD2 H33	residue R=DRD2 p=H33	
+G239	OPRM1 S78	residue R=OPRM1 p=S78	
+G240	CNR1 N112	residue R=CNR1 p=N112	
+G241	CCR5 I23	residue R=CCR5 p=I23	
+G242	F2R S99	residue R=F2R p=S99	
+G243	OPRM1 p.Asn40Asp	protein R=OPRM1 p=N40D	
+G244	6-154360797-A-G	genomic g=6:154360797:A>G@?/gnomad gnomad=6-154360797-A-G	
+G245	MSHR R151C	protein R=MSHR p=R151C	
+G246	rs4994	rsid rsid=rs4994	
+G247	3-46357717-G-A	genomic g=3:46357717:G>A@?/gnomad gnomad=3-46357717-G-A	
+G248	3-46399208-G-A	genomic g=3:46399208:G>A@?/gnomad gnomad=3-46399208-G-A	
+G249	ENST00000399220.3:c.745G>A	cdna c=ENST00000399220.3:cds:745G>A	
+G250	Q6W5P4:p.N107I	protein R=Q6W5P4 rid=uniprot:Q6W5P4 p=N107I	
+G251	chr18:60372043:C:T	genomic g=18:60372043:C>T@?/gnomad gnomad=18-60372043-C-T	
+G252	18-58039276-C-T	genomic g=18:58039276:C>T@?/gnomad gnomad=18-58039276-C-T	
+G253	CNR1:c.277G>A	cdna R=CNR1 c=cds:277G>A	
+G254	CCR5_HUMAN p.(Leu55Gln)	protein R=CCR5_HUMAN rid=entry:CCR5_HUMAN p=L55Q	
+G255	p.Ser311Cys (DRD2)	protein R=DRD2 p=S311C	
+G256	11-113283484-G-C	genomic g=11:113283484:G>C@?/gnomad gnomad=11-113283484-G-C	
+G257	HTR1A p.Ile28Val	protein R=HTR1A p=I28V	
+G258	5HT2A H452Y	protein R=5HT2A p=H452Y	
+G259	rs2067466	rsid rsid=rs2067466	
+G260	3-11300780-G-C	genomic g=3:11300780:G>C@?/gnomad gnomad=3-11300780-G-C	
+G261	7-137015556-G-A	genomic g=7:137015556:G>A@?/gnomad gnomad=7-137015556-G-A	
+G262	ENST00000234961.7:c.80G>T	cdna c=ENST00000234961.7:cds:80G>T	
+G263	P30556:p.A244S	protein R=P30556 rid=uniprot:P30556 p=A244S	
+G264	3-148459552-G-T	genomic g=3:148459552:G>T@?/gnomad gnomad=3-148459552-G-T	
+G265	chr2:136115771:T:G	genomic g=2:136115771:T>G@?/gnomad gnomad=2-136115771-T-G	
+G266	HCRTR2:c.922A>G	cdna R=HCRTR2 c=cds:922A>G	
+G267	NK1R_HUMAN p.(Val253Met)	protein R=NK1R_HUMAN rid=entry:NK1R_HUMAN p=V253M	
+G268	2-75278553-C-T	genomic g=2:75278553:C>T@?/gnomad gnomad=2-75278553-C-T	
+G269	p.Gly147Ser (ADORA2A)	protein R=ADORA2A p=G147S	
+G270	S1PR1 p.Arg13Gly	protein R=S1PR1 p=R13G	
+G271	GPR35 S294R	protein R=GPR35 p=S294R	
+G272	2-241570249-A-C	genomic g=2:241570249:A>C@?/gnomad gnomad=2-241570249-A-C	
+G273	rs8192552	rsid rsid=rs8192552	
+G274	19-35352183-G-A	genomic g=19:35352183:G>A@?/gnomad gnomad=19-35352183-G-A	
+G275	ENST00000328880.6:c.951G>A	cdna c=ENST00000328880.6:cds:951G>A	
+G276	12-123186880-C-T	genomic g=12:123186880:C>T@?/gnomad gnomad=12-123186880-C-T	
+G277	P21917:p.S284G	protein R=P21917 rid=uniprot:P21917 p=S284G	
+G278	chr3:8767536:C:T	genomic g=3:8767536:C>T@?/gnomad gnomad=3-8767536-C-T	
+G279	CHRM1:c.638G>A	cdna R=CHRM1 c=cds:638G>A	
+G280	11-62677935-C-T	genomic g=11:62677935:C>T@?/gnomad gnomad=11-62677935-C-T	
+G281	PAR1_HUMAN p.(Tyr381Cys)	protein R=PAR1_HUMAN rid=entry:PAR1_HUMAN p=Y381C	
+G282	11-640099-A-G	genomic g=11:640099:A>G@?/gnomad gnomad=11-640099-A-G	
+G283	rs1270454037	rsid rsid=rs1270454037	
+G284	HTR1B p.Ser279Arg	protein R=HTR1B p=S279R	
+G285	c.477G>A	cdna c=cds:477G>A	
+G286	VCV000585134	clinvar vcv=VCV000585134 variationId=585134	
+G287	VCV001098339.5	clinvar vcv=VCV001098339 variationId=1098339	
+G288	ClinVar 974798	clinvar variationId=974798	
+G289	NM_000529.2(MC2R):c.221G>T (p.Ser74Ile)	cdna R=MC2R p=S74I c=NM_000529.2:cds:221G>T	
+G290	ADRA2A p.Leu68Phe	protein R=ADRA2A p=L68F	
+G291	ADA2B T39I	protein R=ADA2B p=T39I	
+G292	10-114044692-C-T	genomic g=10:114044692:C>T@?/gnomad gnomad=10-114044692-C-T	
+G293	NM_000685.5:c.845C>T	cdna c=NM_000685.5:cds:845C>T	
+G294	clinvar:3061926	clinvar variationId=3061926	
+G295	NC_000002.12:218135423:G:A	genomic g=2:218135424:G>A@GRCh38/spdi gnomad=2-218135424-G-A spdi=NC_000002.12:218135423:G:A	
+G296	VCV003900754	clinvar vcv=VCV003900754 variationId=3900754	
+G297	VCV004968707.1	clinvar vcv=VCV004968707 variationId=4968707	
+G298	ClinVar 3601071	clinvar variationId=3601071	
+G299	NM_000145.4(FSHR):c.566C>T (p.Ala189Val)	cdna R=FSHR p=A189V c=NM_000145.4:cds:566C>T	
+G300	CCKBR p.Met234Arg	protein R=CCKBR p=M234R	
+G301	GHSR C173R	protein R=GHSR p=C173R	
+G302	4-67754306-A-T	genomic g=4:67754306:A>T@?/gnomad gnomad=4-67754306-A-T	
+G303	NM_054021.2:c.1098C>A	cdna c=NM_054021.2:cds:1098C>A	
+G304	clinvar:208391	clinvar variationId=208391	
+G305	NC_000019.10:918603:T:C	genomic g=19:918604:T>C@GRCh38/spdi gnomad=19-918604-T-C spdi=NC_000019.10:918603:T:C	
+G306	VCV001321210	clinvar vcv=VCV001321210 variationId=1321210	
+G307	VCV000001828.5	clinvar vcv=VCV000001828 variationId=1828	
+G308	ClinVar 435831	clinvar variationId=435831	
+G309	NM_000539.3(RHO):c.45T>G (p.Asn15Lys)	cdna R=RHO p=N15K c=NM_000539.3:cds:45T>G	
+G310	NM_000539.3(RHO):c.404_405delinsTT (p.Arg135Leu)	cdna R=RHO p=R135L c=NM_000539.3:cds:404_405delinsTT	
+G311	3-129528743-A-C	genomic g=3:129528743:A>C@?/gnomad gnomad=3-129528743-A-C	
+G312	3-129247620-A-G	genomic g=3:129247620:A>G@?/gnomad gnomad=3-129247620-A-G	
+G313	RHO P23H	protein R=RHO p=P23H	
+G314	rhodopsin P23H	protein R=rhodopsin p=P23H	
+G315	TSHR p.Gln90Pro	protein R=TSHR p=Q90P	
+G316	V2R L44F	protein R=V2R p=L44F	
+G317	VCV002590215	clinvar vcv=VCV002590215 variationId=2590215	
+G318	VCV000058096	clinvar vcv=VCV000058096 variationId=58096	
+G319	NM_005912.2(MC4R):c.105C>A (p.Tyr35Ter)	cdna R=MC4R p=Y35* c=NM_005912.2:cds:105C>A	
+G320	NM_000539.3(RHO):c.1030C>T (p.Gln344Ter)	cdna R=RHO p=Q344* c=NM_000539.3:cds:1030C>T	
+G321	NM_000054.7(AVPR2):c.213G>A (p.Trp71Ter)	cdna R=AVPR2 p=W71* c=NM_000054.7:cds:213G>A	
+G322	NM_005912.3(MC4R):c.631_634del (p.Leu211fs)	cdna R=MC4R p=L211fs c=NM_005912.3:cds:631_634del	
+G323	NM_000539.3(RHO):c.789CTG[1] (p.Cys264del)	cdna R=RHO p=C264del c=NM_000539.3:cds:789repeatCTG[1]	
+G324	NM_000539.3(RHO):c.549dup (p.Gln184fs)	cdna R=RHO p=Q184fs c=NM_000539.3:cds:549dup	
+G325	NM_000529.2(MC2R):c.579_581del (p.Tyr193_Val194delinsTer)	cdna R=MC2R p=Y193_V194delins[*] c=NM_000529.2:cds:579_581del	
+G326	NM_000529.2(MC2R):c.318C>T (p.Ile106=)	cdna R=MC2R p=I106= c=NM_000529.2:cds:318C>T	
+G327	NM_000406.3(GNRHR):c.523-1G>A	cdna R=GNRHR c=NM_000406.3:intron:523-1G>A	
+G328	NM_005912.3(MC4R):c.-18T>C	cdna R=MC4R c=NM_005912.3:5utr:-18T>C	
+G329	NM_000539.3(RHO):c.*33C>T	cdna R=RHO c=NM_000539.3:3utr:33C>T	
+G330	NM_001992.5(F2R):c.-69G>A	cdna R=F2R c=NM_001992.5:5utr:-69G>A	
+G331	NC_000004.12:g.67756240dup	genomic g=4:67756240:dup@GRCh38/hgvs_g	
+G332	MC4R Y35*	protein R=MC4R p=Y35*	
+G333	MC4R p.Tyr35X	protein R=MC4R p=Y35*	
+G334	MC4R c.105C>A	cdna R=MC4R c=cds:105C>A	
+G335	CCR5 delta32	protein R=CCR5 p=??del(delta32)	
+G336	rs333	rsid rsid=rs333	
+G337	rs6025	rsid rsid=rs6025	
+G338	M1R	receptor R=M1R	protein p=M1R
+G339	M1	receptor R=M1	residue p=M1
+G340	A2A	receptor R=A2A	protein p=A2=
+G341	A2AR	receptor R=A2AR	
+G342	F2R	receptor R=F2R	protein p=F2R
+G343	P2Y	receptor R=P2Y	protein p=P2Y
+G344	P2Y12	receptor R=P2Y12	
+G345	P2Y1	receptor R=P2Y1	
+G346	D2	receptor R=D2	residue p=D2
+G347	H1	receptor R=H1	residue p=H1
+G348	6 48	generic gn=6.48	
+G349	ADRB2 6 48	generic R=ADRB2 gn=6.48	residue R=ADRB2 p=?6
+G350	159	clinvar variationId=159	receptor R=GeneID:159 rid=geneid:159 | receptor R=HGNC:159 rid=hgnc:HGNC:159
+G351	2150	receptor R=GeneID:2150 rid=geneid:2150	clinvar variationId=2150 | receptor R=HGNC:2150 rid=hgnc:HGNC:2150
+G352	718860	clinvar variationId=718860	receptor R=GeneID:718860 rid=geneid:718860 | receptor R=HGNC:718860 rid=hgnc:HGNC:718860
+G353	3538	clinvar variationId=3538	receptor R=GeneID:3538 rid=geneid:3538 | receptor R=HGNC:3538 rid=hgnc:HGNC:3538
+G354	CB1	receptor R=CB1	
+G355	MOR	receptor R=MOR	
+G356	5-HT1A	receptor R=5-HT1A	
+G357	5HT1A	receptor R=5HT1A	
+G358	5-ht2a	receptor R=5-ht2a	
+G359	AT1R	receptor R=AT1R	
+G360	rhodopsin	receptor R=rhodopsin	
+G361	mu opioid receptor	receptor R=mu opioid receptor	
+G362	V2R	receptor R=V2R	protein p=V2R
+G363	CXCR4	receptor R=CXCR4	
+G364	GPR	receptor R=GPR	
+G365	GLP1R	receptor R=GLP1R	
+G366	GRM5	receptor R=GRM5	
+G367	BRCA1	receptor R=BRCA1	
+G368	GPR26	receptor R=GPR26	
+G369	LGR5	receptor R=LGR5	
+G370	RXFP1	receptor R=RXFP1	
+G371	OPSX	receptor R=OPSX	
+G372	GLP1R p.Arg131Gln	protein R=GLP1R p=R131Q	
+G373	1-1000000-A-G	genomic g=1:1000000:A>G@?/gnomad gnomad=1-1000000-A-G	
+G374		unrecognised	
+G375	   	unrecognised	
+G376	asdf	receptor R=asdf	
+G377	p.	unrecognised	
+G378	rs	unrecognised	
+G379	c.477G>	unrecognised	
+G380	5-76833084-G	unrecognised	
+G381	M0I	unrecognised	
+G382	F2RL1 p.Met159Xyz	unrecognised R=F2RL1	receptor R=F2RL1
+G383	<script>alert(1)</script>	unrecognised	
+G384	1.2.3	unrecognised	
+G385	chr5:	unrecognised	
+G386	GPR999	receptor R=GPR999	
+G387	rs12ab	unrecognised	
