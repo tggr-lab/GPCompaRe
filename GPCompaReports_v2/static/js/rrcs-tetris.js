@@ -1,4 +1,4 @@
-/* RRCS Tetris: an easter egg on the PAR2 report page.
+/* RRCS Tetris: an easter egg on every receptor report page.
    The ΔRRCS histogram turns into a Tetris board whose starting stack is the
    histogram itself (binned into the board's columns). The board is drawn to
    look like the Plotly chart it replaces: same title, axes, grid and bar style,
