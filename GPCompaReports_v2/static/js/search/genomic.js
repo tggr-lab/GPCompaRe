@@ -2,7 +2,7 @@
  * Search v2: genomic notations (pure, no DOM, no network).
  *
  * Reads gnomAD-style ids with any separator (`5-76833084-G-A`, `chr5:76833084:G:A`, `chr5_76833084_G_A`,
- * `5:76833084 G>A`), VCF rows (`5 76833084 . G A`, tabs or spaces, extra columns allowed), HGVS g.
+ * `5:76833084 G>A`, and the VarSome/Alamut `chr5:148206801C>T` with none before the reference base), VCF rows (`5 76833084 . G A`, tabs or spaces, extra columns allowed), HGVS g.
  * (`NC_000005.10:g.76833084G>A`, `chr5:g.76833084G>A`), SPDI (`NC_000005.10:76833083:G:A`, 0-based, read
  * as 1-based), positions (`chr5:76833084`, `5:76,833,084`) and ranges (`chr5:76833084-76833090`).
  * Chromosomes 1-22, X, Y, MT, and PLINK codes 23 (X), 24 (Y), 25 (X, pseudo-autosomal) and 26 (MT).
@@ -161,7 +161,8 @@ export function parseGenomic(s) {
   }
 
   // gnomAD-style id with any separator
-  m = new RegExp(`^${CHROM}\\s*[-:_ ]\\s*${POS}\\s*[-:_ ]\\s*${BASES}\\s*[-:_>/ ]\\s*${BASES}$`, 'i').exec(t);
+  // (the separator before REF is optional: VarSome/Alamut write chr5:148206801C>T)
+  m = new RegExp(`^${CHROM}\\s*[-:_ ]\\s*${POS}\\s*[-:_ ]?\\s*${BASES}\\s*[-:_>/ ]\\s*${BASES}$`, 'i').exec(t);
   if (m) {
     const g = snv(chromOf(m[1]), num(m[2]), m[3], m[4], 'gnomad');
     if (!g) return { malformed: `unknown chromosome "${m[1]}"` };

@@ -30,7 +30,11 @@ Shards (all JSON, compact; the deploy gzips them; sizes are budgeted by tests):
                               ids, protein->model map; NM_ version relations; GRCh38->GRCh37 lift blocks
   cds/<gid>.json              reference bases of every coding exon (GRCh38, plus strand), for codon and
                               reference-base checks
-  generic/<segment>.json      generic number -> [[receptor, pos, aa], ...]
+  generic/<segment>.json      generic number -> columns over the receptors holding it: receptor, pos, aa, segment
+                              and the residue summary (net and largest dRRCS, partner, threshold contacts,
+                              conservation) of cross-receptor light results; see build_generic
+  respos/<NN>.json            the same residue summary for every receptor, in blocks of RESPOS_BLOCK model
+                              positions (NN = (pos - 1) // RESPOS_BLOCK), for bare residues and changes
   rsid/<NN>.json              rs number -> receptor indices (NN = number mod RSID_SHARDS)
   clinvar/<NN>.json           ClinVar Variation ID -> receptor index (single-gene records)
   hgvsc/<NN>.json             gnomAD c. change -> receptor indices (NN = c. position mod HGVSC_SHARDS)
@@ -57,6 +61,7 @@ CFR_TOP = 30  # the report snake plots colour the top 30 CFR positions
 CLINVAR_SHARDS = 32
 HGVSC_SHARDS = 32
 SUBST_SHARDS = 32
+RESPOS_BLOCK = 32  # model positions per respos/ block
 VERSION = 2
 
 HERE = Path(__file__).resolve().parent
@@ -274,22 +279,28 @@ def sources_root():
 # ---------------------------------------------------------------------------------- residues
 
 def _residue_struct(store, gid):
-    """max |dRRCS| and number of threshold-passing contacts per model residue (database data)."""
+    """Per model residue (database data, the report's _compute_residue_metrics rules): max |dRRCS|, the
+    signed dRRCS and partner residue of that largest contact (first in row order on ties, as idxmax),
+    the net dRRCS (signed sum over the residue's contacts, 'Residue net Δ') and the number of
+    threshold-passing contacts."""
     import pandas as pd  # noqa: F401  (store frames)
-    mx, nsig = {}, defaultdict(int)
+    mx, sgn, part, net, nsig = {}, {}, {}, defaultdict(float), defaultdict(int)
     d = store.delta_data.get(gid)
     if d is not None and len(d):
-        for col in ('res1', 'res2'):
-            for res, v in zip(d[col].astype(int), d['delta_rrcs'].abs()):
-                if v > mx.get(res, -1):
-                    mx[res] = float(v)
+        for a, b, v in zip(d['res1'].astype(int), d['res2'].astype(int), d['delta_rrcs'].astype(float)):
+            for res, other in ((a, b), (b, a)) if a != b else ((a, b),):
+                net[res] += v
+                if abs(v) > mx.get(res, -1):
+                    mx[res] = abs(v)
+                    sgn[res] = v
+                    part[res] = other
     s = store.significant_data.get(gid)
     if s is not None and len(s):
         for a, b in zip(s['res1'].astype(int), s['res2'].astype(int)):
             nsig[a] += 1
             if b != a:
                 nsig[b] += 1
-    return mx, nsig
+    return {'max': mx, 'signed': sgn, 'partner': part, 'net': dict(net), 'nsig': nsig}
 
 
 _GN = re.compile(r'^(\d+)\.(\d+)x(\d+)$')
@@ -316,13 +327,14 @@ def _i(x, scale):
     return None if x is None else int(round(float(x) * scale))
 
 
-def build_residues(gid, pack, store, cfr_rank):
+def build_residues(gid, pack, store, cfr_rank, st=None):
     """Every model residue. Columns are per residue (index 0 = residue 1); `cons`, `am` and `dmax` are
     x100 integers (null = no value); `cfr` (rank, top CFR_TOP only) and `nsig` are sparse {pos: value}.
     The rank of every CFR position is in meta.cfrRank by generic number."""
     seq = pack['sequence']
     rows = {r[0]: r for r in pack['residues']}
-    mx, nsig = _residue_struct(store, gid) if store is not None else ({}, {})
+    st = st if st is not None else (_residue_struct(store, gid) if store is not None else None)
+    mx, nsig = (st['max'], st['nsig']) if st else ({}, {})
     cons = pack.get('conservation') or {}
     amm = pack.get('amMean') or {}
     seg_runs, gn, cfr, dmax, ns, cv, am = [], [], {}, [], {}, [], []
@@ -344,6 +356,82 @@ def build_residues(gid, pack, store, cfr_rank):
         am.append(_i(amm.get(str(i)), 100))
     return {'gid': gid, 'aa': seq, 'segments': seg_runs, 'gn': gn_runs(gn), 'cfr': cfr, 'dmax': dmax,
             'nsig': ns, 'cons': cv, 'am': am}
+
+
+def residue_summary(pack, st):
+    """The compact residue summary of cross-receptor light results, per model residue (index 0 = residue 1):
+    [net x10, signed largest dRRCS x10, partner residue, nsig, conservation x10]; net = signed sum of dRRCS
+    over the residue's contacts (the report's 'Residue net Δ'); nulls where the residue has no contact."""
+    cons = pack.get('conservation') or {}
+    out = []
+    for i in range(1, len(pack['sequence']) + 1):
+        c = cons.get(str(i))
+        if st and i in st['max']:
+            out.append([_i(st['net'][i], 10), _i(st['signed'][i], 10), st['partner'][i], st['nsig'].get(i, 0), _i(c, 10)])
+        else:
+            out.append([None, None, None, (st['nsig'].get(i, 0) if st else 0), _i(c, 10)])
+    return out
+
+
+def build_respos(gids, packs, summaries):
+    """respos/<NN>.json: the residue summary of every receptor, in blocks of RESPOS_BLOCK model positions
+    (NN = (pos - 1) // RESPOS_BLOCK). {s: first position, r: [[receptor idx, n, gn runs, segment runs,
+    net[], signed max[], partner offset[], nsig[], cons[]], ...]}: a receptor slice covers positions s..s+n-1;
+    gn runs are [offset, length, display] as gn_runs (offset from s); segment runs [offset, length, name]
+    are given only where the residue has no generic number (a numbered residue's segment follows from its
+    number); partner offset = partner - position."""
+    maxlen = max(len(packs[g]['sequence']) for g in gids)
+    blocks = {}
+    for b0 in range(1, maxlen + 1, RESPOS_BLOCK):
+        rows = []
+        for i, g in enumerate(gids):
+            p = packs[g]
+            n = min(len(p['sequence']), b0 + RESPOS_BLOCK - 1) - b0 + 1
+            if n <= 0:
+                continue
+            res = {r[0]: r for r in p['residues']}
+            ps = range(b0, b0 + n)
+            gn = [((res.get(q) or [0, 0, '', ''])[3] or '') for q in ps]
+            segr = []
+            for k, q in enumerate(ps):
+                sg = '' if gn[k] else ((res.get(q) or [0, 0, ''])[2] or '')
+                if not sg:
+                    continue
+                if segr and segr[-1][2] == sg and segr[-1][0] + segr[-1][1] == k:
+                    segr[-1][1] += 1
+                else:
+                    segr.append([k, 1, sg])
+            sm = [summaries[g][q - 1] for q in ps]
+            rows.append([i, n, [[a - 1, b, d] for a, b, d in gn_runs(gn)], segr, [x[0] for x in sm], [x[1] for x in sm],
+                         [None if x[2] is None else x[2] - q for x, q in zip(sm, ps)], [x[3] for x in sm], [x[4] for x in sm]])
+        blocks['%02d' % ((b0 - 1) // RESPOS_BLOCK)] = {'s': b0, 'r': rows}
+    return blocks
+
+
+def build_generic(gids, packs, summaries):
+    """generic/<segment>.json: generic number -> columns over the receptors that have it:
+    {i: [receptor idx], p: [pos], a: 'aa letters', s: segment (one name, or a list), n: [net], m: [signed max],
+    q: [partner offset], k: [nsig], c: [cons]} (x10 integers as in residue_summary)."""
+    tmp = defaultdict(dict)
+    for i, g in enumerate(gids):
+        seq = packs[g]['sequence']
+        for pos, _aa, seg, gn, _src in packs[g]['residues']:
+            # the residue letter is the model sequence's (README decision 4: the pack residues table disagrees
+            # at OPSR 153/180), so a light result shows what the receptor's card shows
+            if gn:
+                tmp[gn.split('.')[0].split('x')[0]].setdefault(gn, []).append((i, pos, seq[pos - 1], seg, summaries[g][pos - 1]))
+    out = {}
+    for key, by in tmp.items():
+        shard = {}
+        for gn, rows in by.items():
+            segs = [r[3] for r in rows]
+            shard[gn] = {'i': [r[0] for r in rows], 'p': [r[1] for r in rows], 'a': ''.join(r[2] for r in rows),
+                         's': segs[0] if len(set(segs)) == 1 else segs,
+                         'n': [r[4][0] for r in rows], 'm': [r[4][1] for r in rows],
+                         'q': [None if r[4][2] is None else r[4][2] - r[1] for r in rows],
+                         'k': [r[4][3] for r in rows], 'c': [r[4][4] for r in rows]}
+        out[key] = shard
+    return out
 
 
 # ------------------------------------------------------------------------------------ transcripts
@@ -953,6 +1041,15 @@ ALIAS_TIER = {'symbol': 0, 'index_symbol': 0, 'accession': 0, 'entry_name': 0, '
               'gene_synonym': 2, 'alias_name': 2, 'prev_symbol': 3, 'prev_name': 3}
 
 
+def _threshold(store, gid):
+    """The receptor's significance threshold on |dRRCS| (the report's rule, mean + SD, at least 0.2)."""
+    if store is None:
+        return None
+    import pandas as pd
+    from .gpcr_report_helpers import _calc_significance_threshold
+    return round(float(_calc_significance_threshold(store.delta_data.get(gid, pd.DataFrame()))), 3)
+
+
 def build_meta(gids, packs, s, store, lift_blocks=None):
     lift_blocks = lift_blocks or {}
     hgnc = s['hgnc']
@@ -967,7 +1064,7 @@ def build_meta(gids, packs, s, store, lift_blocks=None):
                           u.get('entry_name') or p['meta']['uniprotName'] + '_HUMAN', pname,
                           h.get('hgnc_id'), h.get('entrez_id'), h.get('ensembl_gene_id') or (ens.get(g) or {}).get('ensg'),
                           p['meta']['gene'], p['meta']['family'], len(p['sequence']),
-                          1 if (p.get('variants') or []) else 0])
+                          1 if (p.get('variants') or []) else 0, _threshold(store, g)])
     idx = {g: i for i, g in enumerate(gids)}
     aliases = {}
 
@@ -1098,18 +1195,17 @@ def generate_search_index_v2(store, output_dir, studio=None, sources=None, gids=
         sizes[kind][1] += gz
         files[kind] += 1
 
-    rsid, clin, hgvsc, generic, subst = defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict)
+    rsid, clin, hgvsc, subst = defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict)
+    summaries = {}
     cv_stats = defaultdict(int)
     with_tx, with_bases, with_var = [], [], []
     txindex = {}
     for g in gids:
         p = packs[g]
         i = idx[g]
-        put('residues', f'residues/{g}.json', build_residues(g, p, store, cfr_rank))
-        for pos, aa, seg, gn, _src in p['residues']:
-            if gn:
-                seg_key = gn.split('.')[0].split('x')[0]
-                generic[seg_key].setdefault(gn, []).append([i, pos, aa])
+        st = _residue_struct(store, g) if store is not None else None
+        put('residues', f'residues/{g}.json', build_residues(g, p, store, cfr_rank, st))
+        summaries[g] = residue_summary(p, st)
         shifts = ((p['provenance'].get('cachesRekeyed') or {}).get('shifts') or {})
         up_off = int(next(iter(shifts))) if len(shifts) == 1 else 0
         if (s['ens_cds'].get(g) or {}).get('grch38') or s['tx']['ensembl_grch38'].get(g):
@@ -1179,8 +1275,12 @@ def generate_search_index_v2(store, output_dir, studio=None, sources=None, gids=
         put('hgvsc', f'hgvsc/{k}.json', b)
     for k, b in sorted(subst.items()):
         put('subst', f'subst/{k}.json', b)
+    generic = build_generic(gids, packs, summaries)
     for k, b in sorted(generic.items()):
         put('generic', f'generic/{k}.json', b)
+    respos = build_respos(gids, packs, summaries)
+    for k, b in sorted(respos.items()):
+        put('respos', f'respos/{k}.json', b)
     put('seq', 'seq.json', [packs[g]['sequence'] for g in gids])
     put('txindex', 'txindex.json', {a: [i for i, _ in sorted(d.items(), key=lambda x: (x[1], x[0]))]
                                      for a, d in sorted(txindex.items())})
@@ -1188,7 +1288,7 @@ def generate_search_index_v2(store, output_dir, studio=None, sources=None, gids=
     meta_out = {
         'version': VERSION,
         'receptorFields': ['gid', 'symbol', 'uniprot', 'entry', 'name', 'hgnc', 'geneId', 'ensg', 'packGene',
-                           'family', 'length', 'hasVariants'],
+                           'family', 'length', 'hasVariants', 'threshold'],
         'receptors': meta['receptors'],
         'aliasFields': ['key', 'display', 'receptor', 'tier', 'collision'],
         'aliasTiers': {'0': 'symbol, accession, entry name or id', '1': 'alias symbol or curated common name',
@@ -1197,6 +1297,7 @@ def generate_search_index_v2(store, output_dir, studio=None, sources=None, gids=
         'excluded': meta['excluded'],
         'windows': meta['windows'],
         'shards': {'rsid': RSID_SHARDS, 'clinvar': CLINVAR_SHARDS, 'hgvsc': HGVSC_SHARDS, 'subst': SUBST_SHARDS,
+                   'respos': RESPOS_BLOCK,
                    'generic': sorted(generic, key=lambda x: int(x)), 'transcripts': with_tx, 'cds': with_bases,
                    'variants': with_var},
         'cfrTop': CFR_TOP,

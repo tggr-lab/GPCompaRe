@@ -9,8 +9,9 @@
  * Interpretation (fields present only when they apply):
  * ```
  * {
- *   kind: 'receptor'|'protein'|'residue'|'cdna'|'genomic'|'rsid'|'clinvar'|'generic'|'unrecognised',
+ *   kind: 'receptor'|'protein'|'residue'|'cdna'|'genomic'|'rsid'|'clinvar'|'generic'|'motif'|'unrecognised',
  *   confidence: number,            // 0..1, the list is sorted on it
+ *   query: string,                 // the normalised query this reading came from
  *   why: string,                   // plain-language reason for this reading
  *   flags?: string[],              // e.g. 'possibly-receptor-name', 'rna-coordinate'
  *   receptorTerm?: string,         // the receptor as typed ('PAR2', 'β2AR', 'P55085', 'HGNC:3538')
@@ -20,7 +21,8 @@
  *   cdna?: {coord, transcript?, version?, pos, offset?, region, end?, op, ref, alt, inserted?, repeat?, legacy?},
  *   genomic?: {chrom, pos, end?, ref?, alt?, alts?, op?, inserted?, assemblyHint, accession?, version?, chromCode?, format},
  *   ids?: {rsid?, vcv?, variationId?, rcv?, version?, gnomad?, spdi?},
- *   generic?: {segment, bw, gpcrdb, display, form, residueLetter?, residueNumber?, partial?}
+ *   generic?: {segment, bw, gpcrdb, display, form, residueLetter?, residueNumber?, partial?},
+ *   motif?: {key, name, positions: ['3.49', ...], canonical: {'3.49': 'DE', ...}, note}   // see MOTIFS
  * }
  * ```
  * `change.alt` is the one-letter residue for a missense change and otherwise the class token ('*', '=',
@@ -208,6 +210,49 @@ function readNotation(t, tail) {
   return { readings: out, malformed, exclusive: false };
 }
 
+/**
+ * Class A activation motifs, by Ballesteros-Weinstein generic number. The definitions are the ones the
+ * database's motif analyses use (par_family_dossier/scripts/build_motif_table.py, the paper's ED motif
+ * panel) and the reference set of the CFR supplement: DRY 3.49 to 3.51, CWxP 6.47 to 6.50, PIF 3.40/5.50/
+ * 6.44, NPxxY 7.49 to 7.53, the sodium pocket 2.50/3.39/7.45/7.46/7.49, the ionic lock 3.50 with 6.30, and
+ * the toggle switch W6.48. `canonical` = the residue(s) the motif name fixes (3.49 is D or E).
+ */
+export const MOTIFS = Object.freeze({
+  dry: { name: 'DRY motif', positions: ['3.49', '3.50', '3.51'], canonical: { 3.49: 'DE', '3.50': 'R', 3.51: 'Y' }, note: 'TM3 cytoplasmic end; R3.50 forms the ionic lock with 6.30 in the inactive state' },
+  npxxy: { name: 'NPxxY motif', positions: ['7.49', '7.50', '7.51', '7.52', '7.53'], canonical: { 7.49: 'N', '7.50': 'P', 7.53: 'Y' }, note: 'TM7 cytoplasmic end; Y7.53 reorients on activation' },
+  cwxp: { name: 'CWxP motif', positions: ['6.47', '6.48', '6.49', '6.50'], canonical: { 6.47: 'C', 6.48: 'W', '6.50': 'P' }, note: 'TM6 middle; W6.48 is the toggle switch' },
+  pif: { name: 'PIF motif', positions: ['3.40', '5.50', '6.44'], canonical: { '3.40': 'I', '5.50': 'P', 6.44: 'F' }, note: 'packing interface of TM3, TM5 and TM6 (P5.50, I3.40, F6.44)' },
+  sodium: { name: 'Sodium pocket', positions: ['2.50', '3.39', '7.45', '7.46', '7.49'], canonical: { '2.50': 'D', 3.39: 'S', 7.45: 'N' }, note: 'allosteric Na+ site around D2.50' },
+  ioniclock: { name: 'Ionic lock', positions: ['3.50', '6.30'], canonical: { '3.50': 'R', '6.30': 'DE' }, note: 'R3.50 salt bridge with D/E6.30 in the inactive state' },
+  toggle: { name: 'Toggle switch', positions: ['6.48'], canonical: { 6.48: 'W' }, note: 'W6.48 of the CWxP motif' },
+});
+
+const MOTIF_WORDS = [
+  ['dry', '(?:\\(?[de]\\s*/\\s*[de]\\)?|d\\(e\\)|d)ry'],
+  ['npxxy', 'np(?:xx|\\.\\.|x\\{2\\}|x2)y'],
+  ['cwxp', 'cwxp(?:\\s+toggle(?:\\s+switch)?)?'],
+  ['pif', 'p-?i-?f'],
+  ['sodium', '(?:sodium|na\\+?)\\s*(?:ion\\s*)?(?:binding\\s+)?(?:pocket|site)'],
+  ['ioniclock', 'ionic[\\s-]*lock'],
+  ['toggle', '(?:w6\\.48\\s+)?(?:rotamer\\s+)?toggle[\\s-]*switch'],
+];
+const MOTIF_RE = new RegExp(`^(?:the\\s+)?(?:(.+?)\\s+)?(?:the\\s+)?(${MOTIF_WORDS.map(([, r]) => `(?:${r})`).join('|')})(?:\\s+(?:motif|microswitch|switch))?(?:\\s*(?:\\s(?:in|of|for)\\s|[\\s:,])\\s*(.+?))?$`, 'i');
+
+/** A motif word, alone or with a receptor (`DRY`, `ADRB2 DRY`, `NPxxY in PAR2`, `DRY motif of ADRB2`). */
+function readMotif(text) {
+  const m = MOTIF_RE.exec(text);
+  if (!m) return null;
+  const word = m[2];
+  const hit = MOTIF_WORDS.find(([, r]) => new RegExp(`^(?:${r})$`, 'i').test(word));
+  if (!hit) return null;
+  const strip = (x) => (x ?? '').replace(/^(?:the|motif)\s+|\s+(?:motif|of|in|for)$/gi, '').replace(/'s$/i, '').trim();
+  const head = strip(m[1]);
+  const tail = strip(m[3]);
+  if (head && tail) return null;
+  const key = hit[0];
+  return { key, ...MOTIFS[key], receptorText: head || tail || null };
+}
+
 /** Receptor ranking context: how well a typed term matches a receptor, via ctx. */
 function matchOf(term, matcher) {
   if (!matcher) return { status: 'unknown', matches: undefined };
@@ -233,7 +278,7 @@ function finish(r, confidence, receptor) {
     if (rid) out.receptorId = rid;
     if (receptor?.match?.matches) out.receptorMatches = receptor.match.matches;
   }
-  for (const k of ['change', 'cdna', 'genomic', 'ids', 'generic']) if (r[k]) out[k] = r[k];
+  for (const k of ['change', 'cdna', 'genomic', 'ids', 'generic', 'motif']) if (r[k]) out[k] = r[k];
   if (receptor?.flags) flags.push(...receptor.flags);
   if (flags.length) out.flags = [...new Set(flags)];
   return out;
@@ -293,12 +338,19 @@ function splits(text, matcher) {
  *   'unrecognised' interpretation)
  */
 export function parse(query, ctx) {
-  if (typeof query !== 'string' || query.length <= MAX_QUERY_LENGTH) return parseText(query, ctx);
+  if (typeof query !== 'string' || query.length <= MAX_QUERY_LENGTH) return withQuery(parseText(query, ctx), query);
   const raw = query;
   // the split search below is quadratic in the query length: read only the first MAX_QUERY_LENGTH characters
   let cut = raw.slice(0, MAX_QUERY_LENGTH);
   if (/[\uD800-\uDBFF]$/.test(cut)) cut = cut.slice(0, -1); // never end on half a surrogate pair
-  return parseText(cut, ctx).map((i) => ({ ...i, flags: [...new Set([...(i.flags ?? []), 'query-truncated'])] }));
+  return withQuery(parseText(cut, ctx).map((i) => ({ ...i, flags: [...new Set([...(i.flags ?? []), 'query-truncated'])] })), cut);
+}
+
+/** Every interpretation carries the normalised query it was read from (`query`), for "Did you mean" links. */
+function withQuery(list, raw) {
+  const q = normalizeQuery(typeof raw === 'string' ? raw : '');
+  for (const i of list) i.query = q;
+  return list;
 }
 
 function parseText(query, ctx) {
@@ -306,6 +358,16 @@ function parseText(query, ctx) {
   const matcher = ctx && typeof ctx.matchReceptor === 'function' ? ctx.matchReceptor : null;
   if (!text) return [{ kind: 'unrecognised', confidence: 1, why: 'Nothing was typed.' }];
   const out = [];
+
+  // 0. a motif word (DRY, NPxxY, CWxP, PIF, ionic lock, toggle switch, sodium pocket), alone or with a receptor
+  const motif = readMotif(text);
+  if (motif) {
+    const { receptorText, ...mo } = motif;
+    const r = reading('motif', 1, `Read as the ${mo.name} (generic positions ${mo.positions.join(', ')})${receptorText ? ` of ${receptorText}` : ''}.`, { motif: mo });
+    if (!receptorText) return [finish(r, 0.97)];
+    const match = matchOf(receptorText, matcher);
+    return [finish(r, 0.97, { term: receptorText, rid: parseReceptorId(receptorText), match })];
+  }
 
   // 1. a receptor identifier on its own (UniProt accession, entry name, ENSG, HGNC:, GeneID)
   const rid = parseReceptorId(text);
@@ -441,6 +503,7 @@ export function summarize(i) {
   if (i.ids) {
     for (const k of ['rsid', 'vcv', 'rcv', 'variationId', 'gnomad', 'spdi']) if (i.ids[k] !== undefined) parts.push(`${k}=${i.ids[k]}`);
   }
+  if (i.motif) parts.push(`motif=${i.motif.key}`);
   if (i.generic) {
     const gn = i.generic;
     parts.push(`gn=${gn.display}${gn.residueLetter ? `/${gn.residueLetter}${gn.residueNumber ?? ''}` : ''}`);

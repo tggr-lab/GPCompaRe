@@ -12,7 +12,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { parse, summarize, MAX_QUERY_LENGTH } from '../../static/js/search/parse.js';
+import { parse, summarize, MAX_QUERY_LENGTH, MOTIFS } from '../../static/js/search/parse.js';
 import { normalizeQuery, aliasKey } from '../../static/js/search/normalize.js';
 import { parseProtein, parseGeneric, parseCoding, parseReceptorId, parseClinvar, parseRsid, aaThree } from '../../static/js/search/notation.js';
 import { parseGenomic, ncToChrom, extractAssembly } from '../../static/js/search/genomic.js';
@@ -166,7 +166,7 @@ const top = (q, c) => parse(q, c)[0];
 const topSum = (q, c) => summarize(top(q, c));
 
 describe('interpretation contract', () => {
-  const KINDS = new Set(['receptor', 'protein', 'residue', 'cdna', 'genomic', 'rsid', 'clinvar', 'generic', 'unrecognised']);
+  const KINDS = new Set(['receptor', 'protein', 'residue', 'cdna', 'genomic', 'rsid', 'clinvar', 'generic', 'motif', 'unrecognised']);
   const queries = [...golden.map((r) => unescape(r.query)), 'M1R', 'P2Y', 'ＭＥＴ１５９ＩＬＥ', 'c.477_478insA', null, undefined, 42];
   test('every result is a non-empty, sorted list of well-formed interpretations', () => {
     for (const q of queries) {
@@ -425,5 +425,53 @@ describe('query length cap', () => {
   test('the first 300 characters still parse as usual', () => {
     const out = parse(`PAR2 M159I ${'z'.repeat(5000)}`);
     assert.ok(out[0].flags.includes('query-truncated'));
+  });
+});
+
+// ----------------------------------------------------------------- engine round 2 (review A7, C7)
+
+describe('VarSome / Alamut genomic forms (A7)', () => {
+  test('no separator before the reference base', () => {
+    for (const q of ['chr5:148206801C>T', '5:148206801C>T', 'chr5:148206801 C>T', '5-148206801C-T', 'chr5_148206801C>T']) {
+      assert.equal(topSum(q), 'genomic g=5:148206801:C>T@?/gnomad gnomad=5-148206801-C-T', q);
+    }
+    assert.equal(topSum('chr5:g.148206801C>T'), 'genomic g=5:148206801:C>T@?/hgvs_g gnomad=5-148206801-C-T');
+    assert.equal(topSum('hg19 chr5:148206801C>T'), 'genomic g=5:148206801:C>T@GRCh37/gnomad gnomad=5-148206801-C-T');
+    assert.equal(top('chr5:148206801').kind, 'genomic', 'a locus stays a locus');
+    assert.equal(top('6 48').kind, 'generic', "'6 48' stays generic");
+  });
+});
+
+describe('motif words (C7)', () => {
+  test('motif words alone, with "motif", and with a receptor in front, after "in"/"of", or after', () => {
+    const cases = {
+      DRY: 'motif motif=dry', 'DRY motif': 'motif motif=dry', 'E/DRY': 'motif motif=dry', 'D(E)RY': 'motif motif=dry',
+      NPxxY: 'motif motif=npxxy', NPXXY: 'motif motif=npxxy', CWxP: 'motif motif=cwxp', PIF: 'motif motif=pif',
+      'ionic lock': 'motif motif=ioniclock', 'toggle switch': 'motif motif=toggle', 'sodium pocket': 'motif motif=sodium',
+      'Na+ pocket': 'motif motif=sodium', 'the DRY motif': 'motif motif=dry',
+      'ADRB2 DRY': 'motif R=ADRB2 motif=dry', 'NPxxY in PAR2': 'motif R=PAR2 motif=npxxy',
+      'the DRY motif of ADRB2': 'motif R=ADRB2 motif=dry', 'PAR2 ionic lock': 'motif R=PAR2 motif=ioniclock',
+      'PIF ADRB2': 'motif R=ADRB2 motif=pif',
+    };
+    for (const [q, want] of Object.entries(cases)) assert.equal(topSum(q, ctx), want, q);
+    assert.equal(top('ADRB2 DRY', ctx).receptorMatches[0]?.gid, 'adrb2_human');
+  });
+  test('motif positions are the database definitions', () => {
+    assert.deepEqual(MOTIFS.dry.positions, ['3.49', '3.50', '3.51']);
+    assert.deepEqual(MOTIFS.cwxp.positions, ['6.47', '6.48', '6.49', '6.50']);
+    assert.deepEqual(MOTIFS.pif.positions, ['3.40', '5.50', '6.44']);
+    assert.deepEqual(MOTIFS.npxxy.positions, ['7.49', '7.50', '7.51', '7.52', '7.53']);
+    assert.deepEqual(MOTIFS.sodium.positions, ['2.50', '3.39', '7.45', '7.46', '7.49']);
+    assert.deepEqual(MOTIFS.ioniclock.positions, ['3.50', '6.30']);
+    assert.deepEqual(MOTIFS.toggle.positions, ['6.48']);
+  });
+  test('words that only contain a motif are not motifs', () => {
+    for (const q of ['ERY', 'DRYS', 'PIFF', 'dry6', 'DRY12', 'lock', 'pocket', 'PAR2 M159I']) assert.notEqual(top(q, ctx).kind, 'motif', q);
+  });
+});
+
+describe('every interpretation carries the query', () => {
+  test('query = the normalised text', () => {
+    for (const i of parse('  PAR2   M159I ')) assert.equal(i.query, 'PAR2 M159I');
   });
 });

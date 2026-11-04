@@ -121,6 +121,67 @@ export function decodeResidues(raw, meta) {
   return { gid: raw.gid, seq: raw.aa, length: n, residue, findGeneric };
 }
 
+// ------------------------------------------------------------------------ residue summaries
+
+/** Segment name of a numbered residue from its generic number's segment part ('3' -> TM3, '12' -> ICL1). */
+export const SEGMENT_OF = Object.freeze({
+  1: 'TM1', 2: 'TM2', 3: 'TM3', 4: 'TM4', 5: 'TM5', 6: 'TM6', 7: 'TM7', 8: 'H8',
+  12: 'ICL1', 23: 'ECL1', 34: 'ICL2', 45: 'ECL2', 56: 'ICL3', 67: 'ECL3',
+});
+
+const tenth = (v) => (v === null || v === undefined ? null : v / 10);
+
+/** One residue summary row: {generic, segment, net, dmaxSigned, partner, nsig, cons} (x10 integers decoded). */
+function summaryRow(generic, segment, net, sm, partner, nsig, cons) {
+  return { generic: generic || null, segment: segment || '', net: tenth(net), dmaxSigned: tenth(sm), partner: partner ?? null, nsig: nsig ?? 0, cons: tenth(cons) };
+}
+
+/**
+ * Decoded generic shard: display number -> [{idx, pos, aa, ...summary row}]. Reads the columnar layout
+ * ({i, p, a, s, n, m, q, k, c}) and the earlier row layout ([[idx, pos, aa], ...]).
+ */
+export function decodeGeneric(raw) {
+  const out = {};
+  for (const [disp, v] of Object.entries(raw ?? {})) {
+    if (Array.isArray(v)) {
+      out[disp] = v.map(([idx, pos, aa]) => ({ idx, pos, aa, ...summaryRow(disp, SEGMENT_OF[disp.split('.')[0].split('x')[0]], null, null, null, 0, null) }));
+      continue;
+    }
+    out[disp] = v.i.map((idx, k) => ({
+      idx, pos: v.p[k], aa: v.a[k],
+      ...summaryRow(disp, Array.isArray(v.s) ? v.s[k] : v.s, v.n[k], v.m[k], v.q[k] === null ? null : v.p[k] + v.q[k], v.k[k], v.c[k]),
+    }));
+  }
+  return out;
+}
+
+/**
+ * Decoded respos block (positions s..s+B-1 of every receptor): `at(idx, pos)` -> summary row or null.
+ */
+export function decodeRespos(raw) {
+  const s = raw.s;
+  const by = new Map();
+  for (const [idx, n, gnRuns, segRuns, net, sm, q, k, c] of raw.r) {
+    const gn = new Array(n).fill('');
+    for (const [off, len, disp] of gnRuns) {
+      const m = /^(\d+)\.(\d+)x(\d+)$/.exec(disp);
+      for (let j = 0; j < len; j++) gn[off + j] = j === 0 || !m ? disp : `${m[1]}.${Number(m[2]) + j}x${Number(m[3]) + j}`;
+    }
+    const seg = gn.map((g) => (g ? SEGMENT_OF[g.split('.')[0].split('x')[0]] ?? '' : ''));
+    for (const [off, len, name] of segRuns) for (let j = 0; j < len; j++) seg[off + j] = name;
+    by.set(idx, { n, gn, seg, net, sm, q, k, c });
+  }
+  return {
+    start: s,
+    at(idx, pos) {
+      const e = by.get(idx);
+      const j = pos - s;
+      if (!e || j < 0 || j >= e.n) return null;
+      return summaryRow(e.gn[j], e.seg[j], e.net[j], e.sm[j], e.q[j] === null ? null : pos + e.q[j], e.k[j], e.c[j]);
+    },
+  };
+}
+
 // --------------------------------------------------------------------------------- variants
 
 /**
@@ -223,7 +284,15 @@ export function shardsFor(loader) {
     variants: (gid) => once(`v:${gid}`, async () => { const r = await L(`variants/${gid}.json`); return r ? decodeVariants(r) : null; }),
     transcripts: (gid) => once(`t:${gid}`, () => L(`transcripts/${gid}.json`)),
     bases: (gid) => once(`b:${gid}`, () => L(`cds/${gid}.json`)),
-    generic: (seg) => once(`g:${seg}`, () => L(`generic/${seg}.json`)),
+    generic: (seg) => once(`g:${seg}`, async () => decodeGeneric(await L(`generic/${seg}.json`))),
+    /** Residue summary block holding model position `pos` (all receptors); null for an index without respos/. */
+    respos: async (pos) => {
+      const m = await api.meta();
+      const B = m.shards.respos;
+      if (!B || !(pos >= 1)) return null;
+      const k = String(Math.floor((pos - 1) / B)).padStart(2, '0');
+      return once(`rp:${k}`, async () => { const r = await L(`respos/${k}.json`); return r ? decodeRespos(r) : null; });
+    },
     rsid: async (n) => {
       const m = await api.meta();
       const k = m.shards.rsid;

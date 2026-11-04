@@ -466,3 +466,201 @@ describe('resolver fixes (review findings 2, 4, 8 to 11)', { skip }, () => {
     assert.equal(a.results[0].gid, 'ccr2_human');
   });
 });
+
+// ------------------------------------------------------------------ engine round 2 (review A2, A3, A6/C1, A7, C7)
+
+const counted = () => {
+  const seen = new Set();
+  const f = async (p) => { seen.add(p); return loader(p); };
+  return { f, seen };
+};
+
+describe('A2 transcript and protein versions are never silently substituted', { skip }, () => {
+  test('a version above every known one is answered with the known versions', async () => {
+    for (const [q, acc, want] of [
+      ['NM_005242.999:c.477G>A', 'NM_005242', ['NM_005242.6:c.477G>A']],
+      ['NP_005233.999:p.Met159Ile', 'NP_005233', ['NP_005233.4:p.Met159Ile']],
+      ['ENST00000296677.99:c.477G>A', 'ENST00000296677', ['ENST00000296677.5:c.477G>A', 'ENST00000296677.4:c.477G>A']],
+    ]) {
+      const a = await search(q, loader);
+      assert.equal(a.expect, 'not_in_resource', q);
+      assert.equal(a.results.length, 1);
+      assert.equal(a.results[0].gid, 'par2_human');
+      assert.equal(a.results[0].pos, null, `${q}: no residue is claimed`);
+      assert.ok(a.results[0].notes.some((n) => n.code === 'version_unknown'), q);
+      assert.match(a.message, new RegExp(`${acc}\\.\\d+ is not a known version of ${acc}`));
+      assert.deepEqual(a.alternates.map((x) => x.kind), want.map(() => 'transcript'), q);
+      assert.deepEqual(a.alternates.map((x) => x.query), want, q);
+      for (const alt of a.alternates) {
+        const b = await search(alt.query, loader);
+        assert.equal(b.expect, 'target', alt.query);
+        assert.equal(b.results[0].pos, 159);
+      }
+    }
+  });
+  test('an older version resolves on the current one with a note and a read_on view, not a typed one', async () => {
+    let a = await search('NM_005242.5:c.477G>A', loader);
+    assert.equal(a.expect, 'target');
+    assert.ok(a.results[0].notes.some((n) => n.code === 'version_mismatch' && /NM_005242\.5 is not in our version tables/.test(n.text)));
+    assert.ok(!a.results[0].transcriptViews.some((v) => v.role === 'typed'), 'no typed view for a substituted version');
+    assert.ok(a.results[0].transcriptViews.some((v) => v.role === 'read_on' && v.transcript === 'NM_005242.6' && v.typedAs === 'NM_005242.5'));
+    a = await search('NP_005233.3:p.Met159Ile', loader);
+    assert.equal(a.expect, 'target');
+    assert.ok(a.results[0].notes.some((n) => n.code === 'version_mismatch' && /NP_005233\.3/.test(n.text)));
+  });
+  test('the "typed" view role appears only when a transcript was typed', async () => {
+    for (const q of ['ADRB2 c.491C>T', 'F2RL1 c.477G>A', '5-76833084-G-C', 'chr5:148206801C>T', 'ADRB2 p.Thr164Ile']) {
+      const a = await search(q, loader);
+      assert.ok(POSITIVE_EXPECT.has(a.expect), `${q}: ${a.expect}`);
+      for (const r of a.results) assert.ok(!r.transcriptViews.some((v) => v.role === 'typed'), `${q}: ${JSON.stringify(r.transcriptViews.map((v) => v.role))}`);
+    }
+    const a = await search('ADRB2 c.491C>T', loader);
+    assert.ok(a.results[0].transcriptViews.some((v) => v.role === 'gnomad' && v.c === 'c.491C>T'));
+    for (const q of ['NM_005242.6:c.477G>A', 'ENST00000296677.5:c.477G>A']) {
+      const b = await search(q, loader);
+      assert.ok(b.results[0].transcriptViews.some((v) => v.role === 'typed' && q.startsWith(v.transcript)), q);
+    }
+  });
+});
+
+describe('A3 a reference mismatch keeps the typed change and offers the correction', { skip }, () => {
+  test('PAR2 p.Ala159Ile', async () => {
+    const a = await search('PAR2 p.Ala159Ile', loader);
+    assert.equal(a.expect, 'not_in_resource');
+    assert.deepEqual(a.typed, { ref: 'A', pos: 159, alt: 'I' });
+    assert.match(a.message, /159 is Met/);
+    assert.doesNotMatch(a.message, /not listed/i);
+    const c = a.alternates[0];
+    assert.deepEqual([c.kind, c.gid, c.pos, c.ref, c.alt, c.count, c.observed], ['change', 'par2_human', 159, 'M', 'I', 2, true]);
+    const b = await search(c.query, loader);
+    assert.equal(b.expect, 'target');
+    assert.deepEqual(b.results[0].alleles.map((x) => x.id).sort(), ['5-76833084-G-A', '5-76833084-G-T']);
+  });
+  test('an unrecorded correction says so; a generic mismatch offers the model residue', async () => {
+    let a = await search('F2RL1 p.Trp159Ala', loader);
+    assert.deepEqual(a.typed, { ref: 'W', pos: 159, alt: 'A' });
+    assert.deepEqual([a.alternates[0].kind, a.alternates[0].count, a.alternates[0].observed], ['change', 0, false]);
+    assert.match(a.alternates[0].label, /not recorded/);
+    a = await search('PAR2 F3.36', loader);
+    assert.equal(a.typed.ref, 'F');
+    assert.equal(a.typed.generic, '3.36');
+    assert.deepEqual([a.alternates[0].kind, a.alternates[0].pos, a.alternates[0].ref], ['residue', 159, 'M']);
+    a = await search('F2RL1 M999I', loader);
+    assert.equal(a.alternates.length, 0, 'no correction outside the model');
+  });
+});
+
+describe('A6/C1 cross-receptor results carry a residue summary', { skip }, () => {
+  const SUMMARY_KEYS = ['aa', 'generic', 'segment', 'net', 'dmax', 'dmaxSigned', 'dmaxPartner', 'dmaxPartnerPos', 'nsig', 'threshold', 'cfr', 'cfrRank', 'conservation', 'family'];
+  test('M159I: summary on every receptor, observed counts on each', async () => {
+    const a = await search('M159I', loader);
+    for (const r of a.results) {
+      for (const k of SUMMARY_KEYS) assert.ok(k in r.summary, `${r.gid} summary.${k}`);
+      assert.equal(r.summary.aa, 'M');
+      assert.deepEqual(r.summary.observed, { gnomad: r.alleles.length, clinvar: r.clinvar.length });
+    }
+    const p = a.results.find((r) => r.gid === 'par2_human').summary;
+    assert.deepEqual([p.generic, p.segment, p.dmaxPartner, p.cfr, p.family], ['3.36x36', 'TM3', 'F300', true, 'Proteinase-activated receptors']);
+    assert.equal(p.observed.gnomad, 2);
+    assert.ok(p.dmax > p.threshold && p.nsig >= 1);
+  });
+  test('summaries agree with the full residue card (residues shard) for every receptor at 3.50x50', async () => {
+    const S = shardsFor(loader);
+    const a = await search('3.50x50', loader);
+    assert.equal(a.results.length, 283);
+    for (const r of a.results) {
+      const full = (await S.residues(r.gid)).residue(r.pos);
+      const s = r.summary;
+      assert.equal(s.generic, full.generic, r.gid);
+      assert.equal(s.segment, full.segment, r.gid);
+      assert.equal(s.nsig, full.nsig, r.gid);
+      assert.equal(s.cfrRank, full.cfrRank, r.gid);
+      assert.equal(s.cfr, full.cfr, r.gid);
+      if (full.dmax === null) assert.equal(s.dmax, null, r.gid);
+      else assert.ok(Math.abs(s.dmax - full.dmax) <= 0.051, `${r.gid} dmax ${s.dmax} vs ${full.dmax}`);
+      if (full.conservation !== null) assert.ok(Math.abs(s.conservation - full.conservation) <= 0.051, r.gid);
+    }
+  });
+  test('a full card carries the same summary as the light result', async () => {
+    const light = (await search('M159I', loader)).results.find((r) => r.gid === 'par2_human').summary;
+    const full = (await search('PAR2 M159I', loader)).results[0].summary;
+    const { observed, ...rest } = light;
+    assert.ok(observed);
+    assert.deepEqual(full, rest);
+  });
+  test('3.50x50 loads at most 3 files; a bare residue still at most 10', async () => {
+    let c = counted();
+    await search('3.50x50', c.f);
+    assert.ok(c.seen.size <= 3, [...c.seen].join(', '));
+    c = counted();
+    const a = await search('L100', c.f);
+    assert.ok(c.seen.size <= 10, [...c.seen].join(', '));
+    assert.ok(a.results.every((r) => r.summary && r.summary.aa === 'L'));
+  });
+  test('R3.50 filters to Arg and says so; the other receptors are a separate group', async () => {
+    const a = await search('R3.50', loader);
+    assert.equal(a.expect, 'targets');
+    assert.equal(a.results.length, 269);
+    assert.ok(a.results.every((r) => r.ref === 'R'));
+    assert.deepEqual(a.groups.map((g) => [g.key, g.results.length]), [['match', 269], ['other', 14]]);
+    assert.ok(a.groups[1].results.every((r) => r.ref !== 'R' && r.summary));
+    assert.equal(a.filterNote, '269 of 283 receptors have Arg at 3.50x50; the other 14 are listed separately.');
+    const b = await search('3.50x50', loader);
+    assert.equal(b.filterNote, undefined);
+  });
+});
+
+describe('A7 VarSome / Alamut genomic forms', { skip }, () => {
+  test('chr5:148206801C>T and friends read as the ADRB2 T136I allele (GRCh37)', async () => {
+    for (const q of ['chr5:148206801C>T', 'chr5:148206801 C>T', '5:148206801C>T', 'chr5:g.148206801C>T']) {
+      const a = await search(q, loader);
+      assert.equal(a.expect, 'target', q);
+      assert.equal(a.assembly, 'GRCh37', q);
+      assert.deepEqual([a.results[0].gid, a.results[0].pos, a.results[0].ref, a.results[0].alt], ['adrb2_human', 136, 'T', 'I'], q);
+    }
+    const a = await search('chr5:76833084G>A', loader);
+    assert.equal(a.assembly, 'GRCh38');
+    assert.deepEqual(a.results[0].alleles.map((x) => x.id), ['5-76833084-G-A']);
+  });
+});
+
+describe('C7 motif words', { skip }, () => {
+  test('DRY across receptors: light results grouped by position, motif named', async () => {
+    const c = counted();
+    const a = await search('DRY', c.f);
+    assert.equal(a.expect, 'targets');
+    assert.equal(a.motif.key, 'dry');
+    assert.deepEqual(a.motif.positions, ['3.49', '3.50', '3.51']);
+    assert.match(a.message, /DRY motif/);
+    assert.deepEqual(a.groups.map((g) => g.key), ['3.49', '3.50', '3.51']);
+    assert.equal(a.groups[1].results.length, 283);
+    assert.match(a.groups[1].label, /269 of 283 receptors have Arg/);
+    assert.ok(a.results.every((r) => r.light && r.summary && a.motif.positions.includes(r.generic.split('x')[0])));
+    assert.ok(c.seen.size <= 3, [...c.seen].join(', '));
+  });
+  test('a motif in one receptor gives its residues as full results', async () => {
+    let a = await search('ADRB2 DRY', loader);
+    assert.equal(a.expect, 'targets');
+    assert.deepEqual(a.results.map((r) => [r.gid, r.pos, r.ref]), [['adrb2_human', 130, 'D'], ['adrb2_human', 131, 'R'], ['adrb2_human', 132, 'Y']]);
+    assert.ok(a.results.every((r) => r.residue && r.summary && r.notes.some((n) => n.code === 'motif')));
+    a = await search('NPxxY in PAR2', loader);
+    assert.equal(a.motif.key, 'npxxy');
+    assert.deepEqual(a.results.map((r) => r.residue.bw), ['7.49', '7.50', '7.51', '7.52', '7.53']);
+    assert.ok(a.results.every((r) => r.gid === 'par2_human'));
+  });
+  test('every motif word resolves; positions follow the database definitions', async () => {
+    const want = {
+      CWxP: ['6.47', '6.48', '6.49', '6.50'], PIF: ['3.40', '5.50', '6.44'], NPXXY: ['7.49', '7.50', '7.51', '7.52', '7.53'],
+      'ionic lock': ['3.50', '6.30'], 'toggle switch': ['6.48'], 'sodium pocket': ['2.50', '3.39', '7.45', '7.46', '7.49'],
+      'Na+ pocket': ['2.50', '3.39', '7.45', '7.46', '7.49'], 'DRY motif': ['3.49', '3.50', '3.51'],
+    };
+    for (const [q, pos] of Object.entries(want)) {
+      const a = await search(q, loader);
+      assert.equal(a.expect, 'targets', q);
+      assert.deepEqual(a.motif.positions, pos, q);
+      assert.deepEqual(a.groups.map((g) => g.key), pos, q);
+    }
+    const a = await search('XYZ9 DRY', loader);
+    assert.equal(a.results.length, 0);
+  });
+});

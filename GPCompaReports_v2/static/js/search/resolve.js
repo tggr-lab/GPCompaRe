@@ -15,10 +15,25 @@
  *   expect: 'target'|'targets'|'receptor'|'ambiguous'|'not_coding'|'not_in_resource'|'unrecognised',
  *   results: Result[],          // best first; one for 'target', several for 'targets'
  *   alternates: Alternate[],    // "Did you mean": {kind: 'receptor'|'change'|'residue'|'generic'|'clinvar'|
- *                               //   'gene_id'|'hgnc', gid?: string|'*', pos?, ref?, alt?, display?, id?, count?, label}
+ *                               //   'gene_id'|'hgnc'|'genomic'|'transcript', gid?: string|'*', pos?, ref?, alt?,
+ *                               //   display?, id?, count?, observed?, transcript?, query?, label}
+ *                               //   `query` (optional): a search string reproducing the alternate; use it for links.
+ *                               //   'transcript' = a known version of a typed accession whose version is unknown.
+ *                               //   For a reference mismatch the first alternate is the correction: kind 'change'
+ *                               //   (count = recorded gnomAD alleles + packed ClinVar records, observed = count > 0)
+ *                               //   or kind 'residue' when no missense change is left.
  *   assembly: 'GRCh38'|'GRCh37'|null,   // genomic input: the assembly read (detected or stated)
  *   message: string|null,       // plain-language line for the non-target answers
- *   interpretation: object|null // the parse() interpretation the answer came from
+ *   interpretation: object|null,// the parse() interpretation the answer came from
+ *   groups?: [{key, label, results: Result[]}],   // a display partition. `results` stays the primary list;
+ *                               //   a group may hold results that are not in it (R3.50: key 'match' = the
+ *                               //   receptors with Arg at 3.50x50 = results, key 'other' = the rest). Motifs: one
+ *                               //   group per motif position (key = the BW number).
+ *   filterNote?: string,        // a residue filter on a cross-receptor list, in plain language ('269 of 283
+ *                               //   receptors have Arg at 3.50x50; the other 14 are listed separately.')
+ *   typed?: {ref, pos, alt, generic?},   // reference mismatch: what the reader typed (one letter; alt null for a
+ *                               //   residue). Show it as typed; never present p.<result.ref><pos><result.alt> as theirs.
+ *   motif?: {key, name, positions: string[], canonical: {[bw]: letters}, note}   // motif answers
  * }
  * Result: {
  *   type: 'target'|'receptor'|'not_coding'|'not_in_resource',
@@ -35,7 +50,11 @@
  *   alleles: Allele[],          // gnomAD alleles the query names (all alleles of a substitution)
  *   residueAlleles: Allele[],   // every gnomAD allele at the residue
  *   clinvar: ClinvarRecord[],   // ClinVar records for the query (any class; `packed` = the P/LP set)
- *   transcriptViews: [{role: 'mane'|'mane_ensembl'|'gnomad'|'typed', transcript, protein, c, p, allele?}],
+ *   transcriptViews: [{role: 'mane'|'mane_ensembl'|'gnomad'|'typed'|'read_on', transcript, protein, c, p, allele?}],
+ *                               // 'typed' only when the reader typed that transcript accession; 'read_on' = the
+ *                               // transcript a receptor-named c. or a genomic change was read on, when it is
+ *                               // none of MANE / gnomAD, or the version a typed older version is read on
+ *                               // (then `typedAs` holds the typed accession.version)
  *   genomic: {grch38: string|null, grch37: string|null,   // gnomAD-style ids (or chrom:pos for a locus)
  *             grch37Approximate?: true, grch38Approximate?: true},  // a lift by the nearest block (also a note)
  *   notes: [{code, text}],      // version_mismatch, isoform_mapping, offset_mapping, gnomad_frame,
@@ -43,10 +62,27 @@
  *                               // generic_number_differs, not_coding, not_in_resource, outside_model,
  *                               // no_coding_transcript, assembly_detected, liftover_approximate, par_y,
  *                               // not_exon_boundary, other_frame (the base sits in a model codon the typed
- *                               // transcript does not share), numbering_conflict, locus, ...
- *   releases: {gnomad, clinvar}
+ *                               // transcript does not share), numbering_conflict, locus, version_unknown (a typed
+ *                               // accession version above every known one: answered, never substituted), motif, ...
+ *   releases: {gnomad, clinvar},
+ *   summary?: {                 // every result with a residue (light or full): the compact residue summary
+ *     aa, generic: string|null, segment,
+ *     net: number|null,         // net ΔRRCS = signed sum of ΔRRCS over the residue's contacts (report "Residue net
+ *                               //   Δ"); > 0 active-favouring (red), < 0 inactive-favouring (blue); 0.1 precision
+ *     dmax: number|null, dmaxSigned: number|null,   // largest |ΔRRCS| of one contact, and its signed value (0.1)
+ *     dmaxPartner: string|null, dmaxPartnerPos: number|null,   // that contact's partner ('F300', 300)
+ *     nsig: number,             // contacts with |ΔRRCS| >= the receptor threshold
+ *     threshold: number|null,   // the receptor's |ΔRRCS| threshold (mean + SD, floor 0.2; the report's rule)
+ *     cfr: boolean, cfrRank: number|null,   // top-30 CFR position (snake-plot rule); rank of the generic number
+ *     conservation: number|null,// 0..1, 1 = conserved (0.1 precision)
+ *     family: string|null,
+ *     observed?: {gnomad: number, clinvar: number}   // bare missense changes: records of exactly this change
+ *   }
  * }
  * ```
+ * Light results (`light: true`: bare changes, bare residues, bare generic numbers, bare motifs) have no
+ * residue card, transcript views or residue alleles; their `summary` comes from the generic/ and respos/
+ * shards. A full result's `summary` repeats the same table next to `residue`.
  * Allele and ClinvarRecord are the decoded shard objects of shards.js (decodeVariants).
  *
  * @module search/resolve
@@ -84,7 +120,7 @@ function answer(expect, results = [], extra = {}) {
 }
 
 const POSITIVE = new Set(['target', 'targets', 'receptor', 'ambiguous']);
-const VARIANT_KINDS = new Set(['protein', 'residue', 'cdna', 'genomic', 'rsid', 'clinvar', 'generic']);
+const VARIANT_KINDS = new Set(['protein', 'residue', 'cdna', 'genomic', 'rsid', 'clinvar', 'generic', 'motif']);
 
 /**
  * Resolve interpretations (from parse) to an answer.
@@ -133,11 +169,41 @@ async function resolveOne(ctx, i) {
     case 'rsid': return resolveRsid(ctx, i);
     case 'clinvar': return resolveClinvar(ctx, i);
     case 'generic': return resolveGenericInterp(ctx, i);
+    case 'motif': return resolveMotif(ctx, i);
     default: return null;
   }
 }
 
 // =============================================================================== receptors
+
+/**
+ * The compact residue summary (contract: ENGINE_CONTRACT.md, `summary`) from a decoded generic or respos
+ * row; `seq` is the receptor's model sequence (for the residue and partner letters).
+ */
+function makeSummary(meta, idx, seq, pos, row) {
+  const rec = meta.receptors[idx] ?? {};
+  const g = row?.generic ?? null;
+  const rank = g ? meta.cfrRank?.[g] ?? null : null;
+  const sm = row?.dmaxSigned ?? null;
+  const partner = row?.partner ?? null;
+  return {
+    aa: seq?.[pos - 1] ?? null, generic: g, segment: row?.segment ?? '',
+    net: row?.net ?? null, dmax: sm === null ? null : Math.abs(sm), dmaxSigned: sm,
+    dmaxPartner: partner ? `${seq?.[partner - 1] ?? ''}${partner}` : null, dmaxPartnerPos: partner,
+    nsig: row?.nsig ?? 0, threshold: rec.threshold ?? null,
+    cfr: !!(rank && rank <= (meta.cfrTop ?? 30)), cfrRank: rank,
+    conservation: row?.cons ?? null, family: rec.family ?? null,
+  };
+}
+
+/** Summary of one receptor residue through the respos/ blocks (null for an index without them). */
+async function summaryAt(ctx, gid, pos, seq) {
+  if (!pos) return null;
+  const rec = ctx.meta.byGid.get(gid);
+  const block = rec ? await ctx.S.respos(pos) : null;
+  if (!block) return null;
+  return makeSummary(ctx.meta, rec.idx, seq ?? (await ctx.S.seq())?.[rec.idx], pos, block.at(rec.idx, pos));
+}
 
 function receptorInfo(meta, gid) {
   const r = meta.byGid.get(gid);
@@ -358,7 +424,22 @@ function transcriptViews(gene, pos, ref, alt, alleles, typed) {
     if (a && g) views.push({ role: 'gnomad', transcript: a.transcript, protein: null, assembly: 'GRCh38', c: a.hgvsc, p: a.hgvsp, allele: a.id });
     else if (g && !a) add('gnomad', g, null);
   }
-  if (typed?.tx) add('typed', typed.tx, typed.allele ?? null, typed.c ?? null);
+  if (typed?.tx && !typed.implicit && typed.typedAs) {
+    // the typed version is not held: the change is read on another version, shown as such
+    add('read_on', typed.tx, typed.allele ?? null, typed.c ?? null);
+    const v = views[views.length - 1];
+    if (v?.role === 'read_on') v.typedAs = typed.typedAs;
+  } else if (typed?.tx && !typed.implicit) add('typed', typed.tx, typed.allele ?? null, typed.c ?? null);
+  else if (typed?.tx) {
+    // no transcript was typed (ADRB2 c.491C>T, genomic input): the transcript the change was read on is
+    // shown under its own role, never as "typed"
+    const key = txKey(typed.tx);
+    const have = views.find((v) => v.transcript === key && !v.allele);
+    if (have) { if (!have.c && typed.c) have.c = typed.c; } else if (!views.some((v) => v.transcript === key)) {
+      const role = typed.tx === maneTx(txs, 'refseq') ? 'mane' : typed.tx === maneTx(txs, 'ensembl') ? 'mane_ensembl' : typed.tx === gnomadTx(txs) ? 'gnomad' : 'read_on';
+      add(role, typed.tx, typed.allele ?? null, typed.c ?? null);
+    }
+  }
   return views;
 }
 
@@ -391,6 +472,7 @@ async function makeResult(ctx, gid, pos, o = {}) {
     releases: { gnomad: ctx.meta.releases?.gnomad?.label, clinvar: ctx.meta.releases?.clinvar?.label },
   };
   if (o.alts) r.alts = o.alts;
+  if (pos) r.summary = await summaryAt(ctx, gid, pos, gene.res?.seq);
   return r;
 }
 
@@ -419,6 +501,65 @@ function readingsFor(gene, ch, accession) {
     for (const t of txs.tx) if (t.map && t.src !== 'uniprot') add(3, mapPos(t.map, ch.pos), 'isoform', { tx: t, map: t.map });
   }
   return out;
+}
+
+/**
+ * Every version of a transcript (NM_, ENST, XM_) or protein (NP_, ENSP) accession the index knows for this
+ * gene: [{v, label}] best first (MANE / current GRCh38, then other GRCh38, GRCh37 annotation, harvested
+ * RefSeq versions with their relation).
+ */
+function knownVersions(txs, acc, protein = false) {
+  const A = String(acc).toUpperCase();
+  const out = [];
+  const add = (v, label, rank) => {
+    if (v === null || v === undefined) return;
+    const e = out.find((x) => x.v === v);
+    if (e) { if (rank < e.rank) Object.assign(e, { label, rank }); return; }
+    out.push({ v, label, rank });
+  };
+  for (const t of txs?.tx ?? []) {
+    if (t.src === 'uniprot') continue;
+    const id = protein ? (t.p ?? '') : t.id.split('@')[0];
+    if (id.toUpperCase() !== A) continue;
+    const v = protein ? t.pv : t.v;
+    const what = t.asm === 'GRCh37' ? 'GRCh37 annotation' : t.mane ? 'MANE, current' : 'current';
+    add(v, what, t.asm === 'GRCh37' ? 2 : t.mane ? 0 : 1);
+    if (!protein) for (const w of t.alsoV ?? []) add(w, `same transcript as .${t.v}`, 1);
+  }
+  for (const [nm, e] of Object.entries(txs?.nm ?? {})) {
+    const key = protein ? e.np : nm;
+    if (!key) continue;
+    const [id, v] = key.split('.');
+    if (id.toUpperCase() === A) add(Number(v), String(e.rel ?? '').replace(/_/g, ' '), 3);
+  }
+  return out.sort((a, b) => a.rank - b.rank || b.v - a.v).map(({ v, label }) => ({ v, label }));
+}
+
+/**
+ * A typed accession version the index does not hold: 'older' (below every version known, as in ClinVar
+ * or the literature; read on the current version with a note, its reference base checked) or 'unknown'
+ * (above every known version: never substituted; answered with the known versions as alternates).
+ */
+function versionStatus(known, v) {
+  if (v === null || v === undefined || !known.length) return 'none';
+  if (known.some((k) => k.v === v)) return 'known';
+  return v < Math.max(...known.map((k) => k.v)) ? 'older' : 'unknown';
+}
+
+/** The not_in_resource answer for an unknown accession version, offering the known versions. */
+async function versionUnknownAnswer(ctx, gene, acc, v, known, i) {
+  const label = ctx.meta.byGid.get(gene.gid)?.symbol ?? gene.gid;
+  const list = known.map((k) => `.${k.v} (${k.label})`).join(', ');
+  const msg = `${acc}.${v} is not a known version of ${acc} (${label}). Known versions: ${list}.`;
+  const res = await makeResult(ctx, gene.gid, null, { gene, type: 'not_in_resource', notes: [note('version_unknown', msg)] });
+  const typedText = i?.query ?? '';
+  const re = new RegExp(`${acc.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.${v}(?!\\d)`, 'i');
+  const alternates = known.map((k) => ({
+    kind: 'transcript', gid: gene.gid, transcript: `${acc}.${k.v}`,
+    query: re.test(typedText) ? typedText.replace(re, `${acc}.${k.v}`) : `${acc}.${k.v}`,
+    label: `${acc}.${k.v} (${k.label})`,
+  }));
+  return answer('not_in_resource', [res], { interpretation: i, message: msg, alternates });
 }
 
 function findProtein(txs, accession) {
@@ -497,6 +638,20 @@ async function resolveChange(ctx, gid, ch, i, accession) {
     const res = await makeResult(ctx, gid, null, { gene, type: 'not_in_resource', alt: ch.alt, kind: ch.kind, notes: [note('not_in_resource', `${ch.label ?? 'This variant'} is a ${ch.alt === 'del' ? 'deletion' : 'non-missense change'}; the database analyses single-residue missense changes only.`)] });
     return answer('not_in_resource', [res], { interpretation: i, message: res.notes[0].text });
   }
+  const preNotes = [];
+  if (accession && /^(?:NP|XP)_|^ENSP/i.test(accession)) {
+    // a protein version the index does not hold is never silently replaced
+    const [acc, vs] = accession.toUpperCase().split('.');
+    const v = vs ? Number(vs) : null;
+    const known = knownVersions(gene.txs, acc, true);
+    const st = versionStatus(known, v);
+    if (st === 'unknown') return versionUnknownAnswer(ctx, gene, acc, v, known, i);
+    if (st === 'older') {
+      const cur = known[0];
+      preNotes.push(note('version_mismatch', `${acc}.${v} is not in our version tables; it is older than ${acc}.${cur.v}, on which it is read (the typed residue is checked against it).`));
+      accession = `${acc}.${cur.v}`;
+    }
+  }
   if (accession) {
     // a named protein whose residue has no counterpart in the model (another isoform, or a version not mapped)
     const t = findProtein(gene.txs, accession);
@@ -557,11 +712,15 @@ async function resolveChange(ctx, gid, ch, i, accession) {
     }
     const res = await makeResult(ctx, gid, inModel ? P : null, { gene, type: 'not_in_resource', ref: inModel ? gene.res.seq[P - 1] : null, alt: ch.alt ?? null, kind: ch.kind, notes: [note('reference_mismatch', msg)] });
     if (!inModel) res.ref = null;
-    return answer('not_in_resource', [res], { interpretation: i, message: msg });
+    const out = answer('not_in_resource', [res], { interpretation: i, message: msg });
+    // keep what the reader typed visible, and offer the change on the model's residue as "Did you mean"
+    out.typed = { ref: ch.ref ?? null, pos: ch.pos, alt: ch.kind === 'missense' ? ch.alt : null };
+    if (inModel && ch.ref) out.alternates.push(correctionAlternate(gene, label, P, ch.kind === 'missense' ? ch.alt : null));
+    return out;
   }
 
   const ev = chosen.ev;
-  const notes = [];
+  const notes = [...preNotes];
   if (chosen.how === 'allele_numbering') notes.push(note('offset_mapping', `${proteinText(ch.ref, ch.pos, ch.alt)} is numbered on the gnomAD/ClinVar transcript; it is residue ${chosen.pos} in the model.`));
   if (chosen.how === 'mane' || chosen.how === 'uniprot') notes.push(note('offset_mapping', `Read in ${chosen.how === 'uniprot' ? 'UniProt' : `${txKey(chosen.tx)}`} numbering: residue ${ch.pos} there is residue ${chosen.pos} in the model.`));
   if (chosen.how === 'isoform') notes.push(note('isoform_mapping', `Residue ${ch.pos} of the isoform ${txKey(chosen.tx)} is residue ${chosen.pos} of the model (another protein isoform).`));
@@ -584,6 +743,25 @@ async function resolveChange(ctx, gid, ch, i, accession) {
   const res = await makeResult(ctx, gid, chosen.pos, { gene, ref: ev.ref, alt: ev.alt, kind: 'missense', alleles: ev.alleles, notes });
   if (alternates.length) return answer('ambiguous', [res], { interpretation: i, alternates, message: 'Two numberings fit; the one that names a recorded allele is shown first.' });
   return answer('target', [res], { interpretation: i, alternates });
+}
+
+/**
+ * "Did you mean" for a reference mismatch: the typed change on the model's own residue (kind 'change',
+ * with `count` = recorded gnomAD alleles + packed ClinVar records), or the residue itself when no
+ * missense change is left (no alt typed, or the typed alt is the model residue).
+ */
+function correctionAlternate(gene, label, P, alt) {
+  const model = gene.res.seq[P - 1];
+  if (!alt || alt === model) {
+    return { kind: 'residue', gid: gene.gid, pos: P, ref: model, query: `${label} ${three(model)}${P}`, label: `${label} ${three(model)}${P}` };
+  }
+  const al = (gene.vars?.byPos.get(P) ?? []).filter((a) => a.ref === model && a.alt === alt);
+  const cv = (gene.vars?.clinvar ?? []).filter((c) => c.pos === P && c.ref === model && c.alt === alt && c.packed && !(c.gnomadId && al.some((a) => a.id === c.gnomadId)));
+  const n = al.length + cv.length;
+  const what = proteinText(model, P, alt);
+  const rec = al.length && cv.length ? `${al.length} gnomAD allele${al.length === 1 ? '' : 's'}, ${cv.length} ClinVar record${cv.length === 1 ? '' : 's'}`
+    : al.length ? `${al.length} gnomAD allele${al.length === 1 ? '' : 's'}` : cv.length ? `${cv.length} ClinVar record${cv.length === 1 ? '' : 's'}` : 'not recorded';
+  return { kind: 'change', gid: gene.gid, pos: P, ref: model, alt, count: n, observed: n > 0, query: `${label} ${what}`, label: `${label} ${what} (${rec})` };
 }
 
 function kindText(k) {
@@ -619,6 +797,7 @@ async function resolveBareChange(ctx, i) {
     if (shard) observed = new Set((shard[`${ch.pos}${ch.ref}${ch.alt}`] ?? []).map((idx) => ctx.meta.receptors[idx].gid));
     else observed = new Set(gids);  // an index without subst/: read every variants shard
   }
+  const block = await ctx.S.respos(ch.pos);
   const results = [];
   for (const gid of gids) {
     const rec = ctx.meta.byGid.get(gid);
@@ -634,6 +813,8 @@ async function resolveBareChange(ctx, i) {
       r.clinvar = (vars?.clinvar ?? []).filter((c) => c.pos === ch.pos && c.alt === ch.alt);
       r.observed = r.alleles.length + r.clinvar.length > 0;
     }
+    r.summary = makeSummary(ctx.meta, rec.idx, seqs[rec.idx], ch.pos, block?.at(rec.idx, ch.pos) ?? null);
+    if (ch.kind === 'missense') r.summary.observed = { gnomad: r.alleles.length, clinvar: r.clinvar.length };
     results.push(r);
   }
   // README decision 3: observed substitution first, then a matching reference residue, then symbol
@@ -666,7 +847,10 @@ async function resolveGenericInterp(ctx, i) {
   const notes = [];
   if (g.residueLetter && g.residueLetter !== aa) {
     const msg = `${g.display} is ${three(aa)}${P} in ${label}, not ${three(g.residueLetter)}.`;
-    return answer('not_in_resource', [await makeResult(ctx, gid, P, { gene, type: 'not_in_resource', ref: aa, kind: 'residue', notes: [note('reference_mismatch', msg)] })], { interpretation: i, message: msg });
+    const out = answer('not_in_resource', [await makeResult(ctx, gid, P, { gene, type: 'not_in_resource', ref: aa, kind: 'residue', notes: [note('reference_mismatch', msg)] })], { interpretation: i, message: msg });
+    out.typed = { ref: g.residueLetter, pos: P, alt: null, generic: g.bw ?? g.display };
+    out.alternates.push({ kind: 'residue', gid, pos: P, ref: aa, query: `${label} ${aa}${g.bw ?? g.display}`, label: `${label} ${three(aa)}${P} (${res.generic})` });
+    return out;
   }
   if (g.residueNumber && g.residueNumber !== P) notes.push(note('generic_number_differs', `${res.generic} is residue ${P} in ${label}; residue ${g.residueNumber} is ${three(gene.res.seq[g.residueNumber - 1] ?? '')} (the generic number is used).`));
   return answer('target', [await makeResult(ctx, gid, P, { gene, kind: 'residue', notes })], { interpretation: i });
@@ -675,20 +859,106 @@ async function resolveGenericInterp(ctx, i) {
 async function resolveBareGeneric(ctx, i) {
   const g = i.generic;
   const shard = await ctx.S.generic(g.segment);
-  const results = [];
+  const seqs = await ctx.S.seq();
+  const matching = [];
+  const others = [];
   for (const [disp, rows] of Object.entries(shard ?? {})) {
     const [b, x] = disp.split('x');
     const gx = `${b.split('.')[0]}x${x}`;
     if ((g.bw && g.bw !== b) || (g.gpcrdb && g.gpcrdb !== gx)) continue;
-    for (const [idx, pos, aa] of rows) {
-      if (g.residueLetter && aa !== g.residueLetter) continue;
-      // light results: no residue card, views or alleles (283 receptors); load the receptor for those
-      results.push({ type: 'target', light: true, gid: ctx.meta.receptors[idx].gid, receptor: receptorInfo(ctx.meta, ctx.meta.receptors[idx].gid), pos, ref: aa, alt: null, kind: 'residue', generic: disp, residue: null, alleles: [], residueAlleles: [], clinvar: [], transcriptViews: [], genomic: { grch38: null, grch37: null }, notes: [] });
+    for (const row of rows) {
+      // light results: no residue card, views or alleles (283 receptors); the summary rides along
+      const r = lightResidue(ctx, row.idx, row.pos, row.aa, disp, makeSummary(ctx.meta, row.idx, seqs?.[row.idx], row.pos, row));
+      (g.residueLetter && row.aa !== g.residueLetter ? others : matching).push(r);
     }
   }
-  if (!results.length) return answer('not_in_resource', [], { interpretation: i, message: `No receptor has a residue at ${g.display}${g.residueLetter ? ` with ${three(g.residueLetter)}` : ''}.` });
-  results.sort((a, b) => String(a.receptor.symbol).localeCompare(String(b.receptor.symbol)));
-  return answer('targets', results, { interpretation: i, message: `${results.length} receptors have a residue at ${g.display}. Load a receptor for its full card.` });
+  const bySymbol = (a, b) => String(a.receptor.symbol).localeCompare(String(b.receptor.symbol));
+  matching.sort(bySymbol);
+  others.sort(bySymbol);
+  const where = matching[0]?.generic ?? others[0]?.generic ?? g.display;
+  if (!matching.length) {
+    const msg = `No receptor has a residue at ${g.display}${g.residueLetter ? ` with ${three(g.residueLetter)}` : ''}.`;
+    if (!others.length) return answer('not_in_resource', [], { interpretation: i, message: msg });
+    const a = answer('not_in_resource', [], { interpretation: i, message: `${msg} ${others.length} receptors have another residue there.` });
+    a.groups = [{ key: 'other', label: `Another residue at ${where}`, results: others }];
+    return a;
+  }
+  const a = answer('targets', matching, { interpretation: i, message: `${matching.length} receptors have ${g.residueLetter ? `${three(g.residueLetter)} ` : 'a residue '}at ${where}. Open a receptor for its full card.` });
+  if (g.residueLetter) {
+    const total = matching.length + others.length;
+    a.filterNote = `${matching.length} of ${total} receptors have ${three(g.residueLetter)} at ${where}${others.length ? `; the other ${others.length} ${others.length === 1 ? 'is' : 'are'} listed separately` : ''}.`;
+    a.groups = [{ key: 'match', label: `${three(g.residueLetter)} at ${where}`, results: matching }];
+    if (others.length) a.groups.push({ key: 'other', label: `Another residue at ${where}`, results: others });
+  }
+  return a;
+}
+
+/** A light cross-receptor residue result (no residue card, views or alleles). */
+function lightResidue(ctx, idx, pos, aa, disp, summary) {
+  const gid = ctx.meta.receptors[idx].gid;
+  return {
+    type: 'target', light: true, gid, receptor: receptorInfo(ctx.meta, gid), pos, ref: aa, alt: null, kind: 'residue', generic: disp,
+    residue: null, alleles: [], residueAlleles: [], clinvar: [], transcriptViews: [], genomic: { grch38: null, grch37: null }, notes: [], summary,
+  };
+}
+
+// ================================================================================= motifs
+
+/**
+ * A motif word (parse MOTIFS): the motif's generic positions in every receptor (light results, grouped
+ * by position) or in the named receptor (full residue results). answer.motif names the motif.
+ */
+async function resolveMotif(ctx, i) {
+  const mo = i.motif;
+  const r = receptorsOf(ctx.meta, i);
+  if (r.status === 'none') return unknownReceptor(ctx.meta, r.term, i);
+  const motifInfo = { key: mo.key, name: mo.name, positions: mo.positions, canonical: mo.canonical, note: mo.note };
+  const canon = (bw) => (mo.canonical?.[bw] ? `${mo.canonical[bw].split('').join('/')}` : 'x');
+  const where = `${mo.positions.map((bw) => `${canon(bw)}${bw}`).join(', ')}`;
+  if (r.status === 'absent') {
+    const seqs = await ctx.S.seq();
+    const groups = [];
+    const results = [];
+    for (const bw of mo.positions) {
+      const shard = await ctx.S.generic(bw.split('.')[0]);
+      const rows = [];
+      for (const [disp, list] of Object.entries(shard ?? {})) {
+        if (disp.split('x')[0] !== bw) continue;
+        for (const row of list) rows.push(lightResidue(ctx, row.idx, row.pos, row.aa, disp, makeSummary(ctx.meta, row.idx, seqs?.[row.idx], row.pos, row)));
+      }
+      rows.sort((a, b) => String(a.receptor.symbol).localeCompare(String(b.receptor.symbol)));
+      const want = mo.canonical?.[bw];
+      const nCanon = want ? rows.filter((x) => want.includes(x.ref)).length : null;
+      const disp = rows[0]?.generic ?? bw;
+      groups.push({ key: bw, label: `${canon(bw)}${bw} (${disp})${want ? `: ${nCanon} of ${rows.length} receptors have ${want.split('').map(three).join(' or ')}` : `: ${rows.length} receptors`}`, results: rows });
+      results.push(...rows);
+    }
+    if (!results.length) return answer('not_in_resource', [], { interpretation: i, message: `No receptor has a residue at the ${mo.name} positions.` });
+    const a = answer('targets', results, { interpretation: i, message: `${mo.name} (${where}; ${mo.note}): the residues at these generic positions in every receptor. Open a receptor for its full card.` });
+    a.groups = groups;
+    a.motif = motifInfo;
+    return a;
+  }
+  const results = [];
+  const missing = [];
+  for (const gid of r.gids) {
+    const gene = await loadGene(ctx, gid);
+    const label = ctx.meta.byGid.get(gid)?.symbol ?? gid;
+    for (const bw of mo.positions) {
+      const hits = gene.res?.findGeneric(bw, null) ?? [];
+      if (!hits.length) { missing.push(`${label} ${bw}`); continue; }
+      const P = hits[0];
+      const aa = gene.res.seq[P - 1];
+      const want = mo.canonical?.[bw];
+      const n = [note('motif', `${mo.name}: position ${bw}${want ? want.includes(aa) ? ` (canonical ${three(aa)})` : `, where the motif has ${want.split('').map(three).join(' or ')}; ${label} has ${three(aa)}` : ''}.`)];
+      results.push(await makeResult(ctx, gid, P, { gene, kind: 'residue', notes: n }));
+    }
+  }
+  const who = r.gids.map((g) => ctx.meta.byGid.get(g)?.symbol ?? g).join(', ');
+  if (!results.length) return answer('not_in_resource', [], { interpretation: i, message: `${who} has no residue at the ${mo.name} positions (${where}).` });
+  const a = answer('targets', results, { interpretation: i, message: `${mo.name} of ${who} (${where}; ${mo.note}).${missing.length ? ` No residue at ${missing.join(', ')}.` : ''}` });
+  a.motif = motifInfo;
+  return a;
 }
 
 /** Alternate readings that also resolve (used for '6 48'-style ambiguity). */
@@ -726,6 +996,7 @@ async function codingTarget(ctx, i) {
     const same = txs.tx.filter((t) => t.id.split('@')[0].toUpperCase() === acc && t.src !== 'uniprot');
     const v = cd.version;
     let tx = null;
+    let typedAs = null;  // the typed accession.version when the change is read on another version
     if (v !== null && v !== undefined) {
       // exact version; the gnomAD-frame record wins the shared ENST label (README decision 6)
       tx = same.find((t) => t.v === v && !t.id.includes('@') && t.asm === 'GRCh38') ?? same.find((t) => t.v === v && !t.id.includes('@'))
@@ -738,21 +1009,25 @@ async function codingTarget(ctx, i) {
           if (['current', 'cds_identical'].includes(h.rel) && h.to) {
             const [tid, tv] = h.to.split('.');
             tx = txs.tx.find((t) => t.id === tid && t.v === Number(tv) && t.asm === h.toAsm) ?? txs.tx.find((t) => t.id === tid && t.v === Number(tv));
-            if (tx) notes.push(note('version_mismatch', `${acc}.${v} has the same coding sequence as ${h.to}; read on ${h.to}.`));
+            if (tx) { notes.push(note('version_mismatch', `${acc}.${v} has the same coding sequence as ${h.to}; read on ${h.to}.`)); typedAs = `${acc}.${v}`; }
           }
           if (!tx) return { answer: answer('not_in_resource', [await makeResult(ctx, gid, null, { gene, type: 'not_in_resource', notes: [note('version_mismatch', `${acc}.${v} differs from the current transcripts (${h.rel.replace('_', ' ')}); this version is not mapped.`)] })], { interpretation: i, message: `${acc}.${v} is not mapped: its coding sequence differs from the current version.` }) };
         }
       }
       if (!tx) {
+        // never substitute silently: a version above every known one is answered with the known versions
+        const known = knownVersions(txs, acc);
+        if (versionStatus(known, v) !== 'older') return { answer: await versionUnknownAnswer(ctx, gene, acc, v, known, i) };
         tx = same.find((t) => t.asm === 'GRCh38' && !t.id.includes('@')) ?? same[0];
-        if (tx) notes.push(note('version_mismatch', `${acc}.${v} is not in our tables; read on ${txKey(tx)} (the change is checked against its reference base).`));
+        typedAs = `${acc}.${v}`;
+        if (tx) notes.push(note('version_mismatch', `${acc}.${v} is not in our version tables; it is older than ${acc}.${known[0].v}, on which it is read (the change is checked against its reference base).`));
       }
     } else {
       tx = same.find((t) => t.asm === 'GRCh38' && !t.id.includes('@')) ?? same[0];
       if (tx) notes.push(note('version_mismatch', `No version given; read on ${txKey(tx)}.`));
     }
     if (!tx) return { answer: answer('not_in_resource', [], { interpretation: i, message: `${cd.transcript} is not mapped.` }) };
-    return { gene, tx, notes };
+    return { gene, tx, notes, typedAs };
   }
   const r = receptorsOf(ctx.meta, i);
   if (r.status === 'none') return { answer: unknownReceptor(ctx.meta, r.term, i) };
@@ -785,7 +1060,7 @@ async function resolveCoding(ctx, i) {
   const gid = gene.gid;
   const label = ctx.meta.byGid.get(gid)?.symbol ?? gid;
   const lift = toG38(gene, tx);
-  const typed = { tx };
+  const typed = { tx, implicit: !cd.transcript, typedAs: where.typedAs ?? null };
   const modelOf = (txPos) => mapPos(tx.map, txPos);
   // genomic ids; a GRCh37 transcript gives its GRCh37 position exactly and GRCh38 through the lift
   const gIds = (g0, g38, r, a) => {
@@ -1148,7 +1423,7 @@ async function genomicOnGene(ctx, i, g, gid, assembly, notesIn) {
   const txPos = Math.ceil(c.pos / 3);
   const P = mapPos(tx.map, txPos);
   const base = baseAt(gene.bases, g38);
-  const typed = { tx };
+  const typed = { tx, implicit: true };
   if (!P) {
     const msg = `${g.chrom}:${g.pos} is residue ${txPos} of ${txKey(tx)}, outside the modelled sequence of ${label}.`;
     return answer('not_in_resource', [await makeResult(ctx, gid, null, { gene, type: 'not_in_resource', notes: [...notes, note('outside_model', msg)], typed })], { interpretation: i, message: msg });
@@ -1189,7 +1464,7 @@ async function genomicOnGene(ctx, i, g, gid, assembly, notesIn) {
     const msg = 'This change makes a stop codon; nonsense changes are not analysed here.';
     return answer('not_in_resource', [await makeResult(ctx, gid, P, { gene, type: 'not_in_resource', ref: gene.res.seq[P - 1], alt: '*', kind: 'stop', notes: [...notes, note('not_in_resource', msg)], genomic, clinvar: cv })], { interpretation: i, message: msg });
   }
-  const res = await makeResult(ctx, gid, P, { gene, ref: refAA ?? gene.res.seq[P - 1], alt: altAA, kind: altAA ? 'missense' : 'residue', alleles: [], notes: [...notes, note('not_in_gnomad', 'This substitution is not in gnomAD; the amino-acid change is read from the codon.')], genomic, clinvar: cv.length ? cv : undefined, typed: { tx, c: `c.${c.pos}${tx.strand === 1 ? ref : complement(ref)}>${tx.strand === 1 ? alt : complement(alt)}` } });
+  const res = await makeResult(ctx, gid, P, { gene, ref: refAA ?? gene.res.seq[P - 1], alt: altAA, kind: altAA ? 'missense' : 'residue', alleles: [], notes: [...notes, note('not_in_gnomad', 'This substitution is not in gnomAD; the amino-acid change is read from the codon.')], genomic, clinvar: cv.length ? cv : undefined, typed: { tx, implicit: true, c: `c.${c.pos}${tx.strand === 1 ? ref : complement(ref)}>${tx.strand === 1 ? alt : complement(alt)}` } });
   return answer('target', [res], { interpretation: i });
 }
 

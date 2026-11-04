@@ -409,3 +409,90 @@ def test_clinvar_residue_is_the_codon_of_its_variant(index_dir):
                 bad.append((g, rec['variationId'], rec['gnomadId'], rec['pos'], hit))
     assert bad == []
     assert checked > 20000 and skipped < 20, (checked, skipped)
+
+
+# --------------------------------------------------------------- residue summaries (review A6/C1)
+
+
+@pytest.fixture(scope='module')
+def store():
+    batch = _batch_dir()
+    if not (batch / 'csv_data').exists():
+        pytest.skip('no batch data at %s (set GPCOMPARE_BATCH_DIR)' % batch)
+    from GPCompaReports_v2.analysis.data_loader import GPCRDataStore
+    return GPCRDataStore(batch_dir=batch).load_all()
+
+
+def _respos(index_dir, meta, idx, pos):
+    """Decode one receptor residue from the respos/ blocks: (generic, segment, net, signed max, partner, nsig, cons)."""
+    B = meta['shards']['respos']
+    blk = _load(index_dir, 'respos/%02d.json' % ((pos - 1) // B))
+    for i, n, gn_runs, seg_runs, net, sm, q, k, c in blk['r']:
+        if i != idx:
+            continue
+        j = pos - blk['s']
+        assert 0 <= j < n
+        gn = ''
+        for off, ln, disp in gn_runs:
+            if off <= j < off + ln:
+                s_, bw, x = disp.replace('x', '.').split('.')
+                gn = disp if j == off else '%s.%dx%d' % (s_, int(bw) + j - off, int(x) + j - off)
+        seg = next((name for off, ln, name in seg_runs if off <= j < off + ln), None)
+        return gn, seg, net[j], sm[j], None if q[j] is None else pos + q[j], k[j], c[j]
+    return None
+
+
+def test_residue_summary_matches_the_report_metrics(index_dir, store):
+    """net dRRCS, the largest contact and its partner are the report's _compute_residue_metrics numbers;
+    the threshold is the report's per-receptor rule and nsig counts the contacts above it."""
+    from GPCompaReports_v2.website.page_generators import gpcr_report_helpers as h
+    meta = _load(index_dir, 'meta.json')
+    F = meta['receptorFields']
+    recs = [dict(zip(F, r)) for r in meta['receptors']]
+    rng = random.Random(7)
+    picks = ['par2_human', 'adrb2_human', 'gpr3_human'] + rng.sample([r['gid'] for r in recs], 12)
+    for gid in picks:
+        idx = next(i for i, r in enumerate(recs) if r['gid'] == gid)
+        d = store.delta_data.get(gid)
+        assert recs[idx]['threshold'] == round(float(h._calc_significance_threshold(d)), 3), gid
+        m = h._compute_residue_metrics(d, {})
+        for row in m.itertuples():
+            got = _respos(index_dir, meta, idx, int(row.position))
+            assert got is not None, (gid, row.position)
+            _, _, net, sm, partner, nsig, _ = got
+            assert net == int(round(row.active_minus_inactive * 10)), (gid, row.position)
+            assert sm == int(round(row.max_signed_delta * 10)), (gid, row.position)
+            assert '%d' % partner == row.partner_at_max[1:], (gid, row.position, partner, row.partner_at_max)
+        sig = store.significant_data.get(gid)
+        th = recs[idx]['threshold']
+        assert len(sig) == int((d['delta_rrcs'].abs() >= th - 0.0005).sum()), gid
+
+
+def test_respos_and_generic_cover_every_residue(index_dir):
+    meta = _load(index_dir, 'meta.json')
+    F = meta['receptorFields']
+    recs = [dict(zip(F, r)) for r in meta['receptors']]
+    seqs = _load(index_dir, 'seq.json')
+    B = meta['shards']['respos']
+    seen = 0
+    for f in sorted((index_dir / 'respos').glob('*.json')):
+        blk = _load(index_dir, 'respos/' + f.name)
+        assert (blk['s'] - 1) % B == 0 and int(f.stem) == (blk['s'] - 1) // B
+        for i, n, *cols in blk['r']:
+            assert n == min(len(seqs[i]), blk['s'] + B - 1) - blk['s'] + 1
+            for col in cols[2:]:
+                assert len(col) == n
+            seen += n
+    assert seen == sum(len(s) for s in seqs)
+    n_generic = 0
+    for f in (index_dir / 'generic').glob('*.json'):
+        for disp, v in _load(index_dir, 'generic/' + f.name).items():
+            n = len(v['i'])
+            assert len(v['p']) == n and len(v['a']) == n and all(len(v[k]) == n for k in 'nmqkc'), disp
+            for i, p, a in zip(v['i'], v['p'], v['a']):
+                assert seqs[i][p - 1] == a
+                got = _respos(index_dir, meta, i, p)
+                assert got[0] == disp
+            n_generic += n
+    assert n_generic > 60000
+    assert len(_load(index_dir, 'generic/3.json')['3.50x50']['i']) == len(recs) == 283
