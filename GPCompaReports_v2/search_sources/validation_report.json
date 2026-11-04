@@ -2372,16 +2372,15 @@
    "ok": true
   },
   "protein_model_map": {
-   "alignments": 5262,
+   "alignments": 5543,
    "by_kind": {
-    "identical": 3672,
-    "isoform": 915,
-    "offset": 601,
-    "variant": 74
+    "blocks": 1464,
+    "identical": 4000,
+    "none": 79
    },
    "flags": {
-    "isoform": 915,
-    "offset_length": 585
+    "none": 79,
+    "partial": 1464
    },
    "isoform_flagged_genes": [
     "5ht1a_human",
@@ -2488,6 +2487,7 @@
     "lt4r2_human",
     "mc5r_human",
     "mchr1_human",
+    "mrgre_human",
     "mrgrf_human",
     "mrgx3_human",
     "mshr_human",
@@ -2554,13 +2554,13 @@
     "xcr1_human"
    ],
    "mane_or_pack_transcript_flagged": [
-    "ccr2_human:grch38:ENST00000445132.3:isoform",
-    "gp142_human:grch38:ENST00000582579.6:isoform",
-    "gpr17_human:grch38:ENST00000486700.2:offset_length",
-    "hrh2_human:grch38:ENST00000636584.2:offset_length",
-    "mchr1_human:grch38:ENST00000249016.5:offset_length",
-    "npff2_human:grch38:ENST00000308744.12:offset_length",
-    "oxer1_human:grch38:ENST00000378661.4:offset_length"
+    "ccr2_human:grch38:ENST00000445132.3:partial",
+    "gp142_human:grch38:ENST00000582579.6:partial",
+    "gpr17_human:grch38:ENST00000486700.2:partial",
+    "hrh2_human:grch38:ENST00000636584.2:partial",
+    "mchr1_human:grch38:ENST00000249016.5:partial",
+    "npff2_human:grch38:ENST00000308744.12:partial",
+    "oxer1_human:grch38:ENST00000378661.4:partial"
    ]
   },
   "refseq_grch37": {

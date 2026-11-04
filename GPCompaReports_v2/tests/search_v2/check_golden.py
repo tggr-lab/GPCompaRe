@@ -172,7 +172,7 @@ def main():
             if v is not None and ref:
                 if v[1] != ref:
                     err(rid, f'allele {a} ref {v[1]} != {ref}')
-                if v[2] not in alts:
+                if alts and v[2] not in alts:   # a locus row (no alt) lists every allele at the base
                     err(rid, f'allele {a} alt {v[2]} not in {alts}')
         # rows naming a substitution with gnomAD orientation: alleles must be all alleles of it unless allele-specific
         if exp == 'target' and alleles and len(alts) == 1 and gl:

@@ -238,6 +238,13 @@ export function shardsFor(loader) {
       const shard = String(id % m.shards.clinvar).padStart(2, '0');
       return once(`cv:${shard}`, async () => (await L(`clinvar/${shard}.json`)) ?? {});
     },
+    /** Observed substitutions at model position `pos`: {'<pos><ref><alt>': [receptor idx]} (gnomAD or ClinVar). */
+    subst: async (pos) => {
+      const m = await api.meta();
+      if (!m.shards.subst) return null;
+      const shard = String(pos % m.shards.subst).padStart(2, '0');
+      return once(`su:${shard}`, async () => (await L(`subst/${shard}.json`)) ?? {});
+    },
     hgvsc: async (cpos) => {
       const m = await api.meta();
       const shard = String(cpos % m.shards.hgvsc).padStart(2, '0');

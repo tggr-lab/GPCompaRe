@@ -18,7 +18,7 @@ import { join, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { search } from '../../static/js/search/resolve.js';
 import { shardsFor } from '../../static/js/search/shards.js';
-import { cToG, gToC, lift38to37 } from '../../static/js/search/txmap.js';
+import { cToG, gToC, lift38to37, mapPos, unmapPos, codonAt, translate, cText } from '../../static/js/search/txmap.js';
 
 const here = (name) => new URL(name, import.meta.url);
 const BASE = resolvePath(fileURLToPath(new URL('../..', import.meta.url)));
@@ -240,8 +240,12 @@ describe('property: every notation of an allele reaches the same residue', { ski
         checked += 1;
         // a GRCh37 id whose coordinate is also a recorded allele on GRCh38: GRCh38 wins, GRCh37 is offered
         if (q === a.id37 && ans.alternates.some((x) => x.kind === 'genomic' && x.assembly === 'GRCh37' && x.gid === rec.gid && x.pos === a.pos && x.allele === a.id)) continue;
+        // a shifted receptor's hgvsp that is also a stored allele in model numbering: the other reading is offered
+        if (q === `${rec.symbol} ${a.hgvsp}` && ans.expect === 'ambiguous' && ans.alternates.some((x) => x.kind === 'change' && x.gid === rec.gid && x.pos === a.pos)) continue;
         if (!hit || !POSITIVE_EXPECT.has(ans.expect)) { failures.push(`${q} -> ${ans.expect} ${ans.results.map((r) => `${r.gid}:${r.pos}`).join(',')} (want ${rec.gid}:${a.pos}) ${ans.message ?? ''}`); continue; }
         if (q !== `${rec.symbol} ${a.hgvsp}` && !hit.alleles.some((x) => x.id === a.id)) failures.push(`${q}: allele ${a.id} missing`);
+        // the c. codon map and the allele never disagree (review 2026-11-04: the resolver would trust the allele)
+        if (hit.notes?.some((n) => n.code === 'numbering_conflict')) failures.push(`${q}: numbering conflict`);
       }
     }
     assert.ok(checked > 3 * N, `queries checked: ${checked}`);
@@ -276,5 +280,189 @@ describe('ClinVar records by accession', { skip }, () => {
     assert.equal(packed, 488);
     assert.ok(others > 300, `other records checked: ${others}`);
     assert.deepEqual(failures.slice(0, 20), []);
+  });
+});
+
+// ------------------------------------------------------------- review 2026-11-04 (codon maps and resolver)
+
+describe('transcript -> model maps from shared genomic codons (review finding 1)', { skip }, () => {
+  test('every gnomAD allele x every transcript holding it: map, c./p. and codon agree (both assemblies)', async () => {
+    const S = shardsFor(loader);
+    const meta = await S.meta();
+    const C = { A: 'T', C: 'G', G: 'C', T: 'A' };
+    let n38 = 0; let n37 = 0; let mapped = 0; let aaChecked = 0;
+    const bad = [];
+    for (const rec of meta.receptors) {
+      const v = await S.variants(rec.gid);
+      const t = await S.transcripts(rec.gid);
+      const bases = await S.bases(rec.gid);
+      if (!v || !t || !v.alleles.length) continue;
+      for (const tx of t.tx) {
+        if (tx.src === 'uniprot' || !tx.map || !tx.cds.length) continue;
+        const sameChrom = String(tx.chrom) === String(v.chrom) || (tx.chrom === 'Y' && v.chrom === 'X');
+        if (tx.asm === 'GRCh38' && !sameChrom) continue;
+        for (const a of v.alleles) {
+          let g = a.g38; let r = a.ref38; let al = a.alt38;
+          if (tx.asm === 'GRCh37') {
+            const m = /^([^-]+)-(\d+)-([ACGT])-([ACGT])$/.exec(a.id37 ?? '');
+            if (!m || m[1] !== String(tx.chrom)) continue;
+            g = Number(m[2]); r = m[3]; al = m[4];
+          }
+          const c = gToC(tx, g);
+          const back = unmapPos(tx.map, a.pos);
+          const inCds = c && c.region === 'cds' && !c.offset;
+          if (!inCds) {
+            if (back !== null && c) bad.push(`${rec.gid} ${tx.id}.${tx.v} ${tx.asm} ${a.id}: residue ${a.pos} maps to tx ${back} but the allele is at c.${cText(c)}`);
+            continue;
+          }
+          if (tx.asm === 'GRCh38') n38 += 1; else n37 += 1;
+          const tp = Math.ceil(c.pos / 3);
+          const P = mapPos(tx.map, tp);
+          if (P === null) { if (back !== null) bad.push(`${rec.gid} ${tx.id}.${tx.v} ${a.id}: model ${a.pos} -> tx ${back}, allele in tx ${tp}`); continue; }
+          mapped += 1;
+          if (P !== a.pos || back !== tp) { bad.push(`${rec.gid} ${tx.id}.${tx.v} ${tx.asm} ${a.id}: tx ${tp} -> model ${P}, allele at ${a.pos}`); continue; }
+          if (tx.asm === 'GRCh38') {
+            // genomic truth: the transcript's codon on the reference genome
+            const cod = codonAt(tx, tp, bases);
+            if (!cod.codon) continue;
+            const k = (c.pos - 1) % 3;
+            const ab = tx.strand === 1 ? al : C[al];
+            aaChecked += 1;
+            const ra = translate(cod.codon); const aa = translate(cod.codon.slice(0, k) + ab + cod.codon.slice(k + 1));
+            if (ra !== a.ref || aa !== a.alt) bad.push(`${rec.gid} ${tx.id}.${tx.v} ${a.id}: codon ${cod.codon} reads ${ra}>${aa}, allele ${a.ref}>${a.alt}`);
+          }
+        }
+      }
+    }
+    if (process.env.SEARCH2_VERBOSE) console.log({ n38, n37, mapped, aaChecked, bad: bad.length });
+    assert.deepEqual(bad.slice(0, 20), [], `${bad.length} disagreements`);
+    assert.ok(n38 > 1000000 && mapped > 1000000 && aaChecked > 1000000, `${n38} GRCh38, ${n37} GRCh37, ${mapped} mapped, ${aaChecked} codons`);
+    assert.ok(n37 > 300000, `GRCh37 checks: ${n37}`);
+  });
+
+  test('allele views: p. only where the allele is in that transcript\'s CDS; no allele contradicts its codon map', async () => {
+    const S = shardsFor(loader);
+    const meta = await S.meta();
+    let seed = 20261104;
+    const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+    const bad = [];
+    let views = 0;
+    for (let k = 0; k < 400; k++) {
+      const rec = meta.receptors[Math.floor(rnd() * meta.receptors.length)];
+      const v = await S.variants(rec.gid);
+      if (!v?.alleles.length) continue;
+      const a = v.alleles[Math.floor(rnd() * v.alleles.length)];
+      const ans = await search(a.id, loader);
+      const r = ans.results.find((x) => x.gid === rec.gid && x.pos === a.pos);
+      if (!r) { bad.push(`${a.id}: no result at ${rec.gid}:${a.pos}`); continue; }
+      if (r.notes.some((n) => n.code === 'numbering_conflict')) bad.push(`${a.id}: numbering conflict`);
+      for (const w of r.transcriptViews) {
+        if (!w.allele || w.role === 'gnomad') continue;
+        views += 1;
+        const m = /^c\.(\d+)[ACGT]>[ACGT]$/.exec(w.c ?? '');
+        const pm = /^p\.[A-Z][a-z]{2}(\d+)/.exec(w.p ?? '');
+        if (pm && (!m || Math.ceil(Number(m[1]) / 3) !== Number(pm[1]))) bad.push(`${a.id} ${w.transcript}: ${w.c} with ${w.p}`);
+        if (m && !w.p) bad.push(`${a.id} ${w.transcript}: ${w.c} in the CDS but no p.`);
+      }
+    }
+    assert.ok(views > 400, `views checked: ${views}`);
+    assert.deepEqual(bad.slice(0, 20), []);
+  });
+
+  test('the review repros', async () => {
+    let a = await search('NM_001331076.1:c.18C>T', loader);   // GPR142 MANE p.Cys6= (was residue 49)
+    assert.notEqual(a.results[0]?.pos, 49);
+    assert.ok(a.message.includes('p.Cys6='), a.message);
+    assert.equal(a.results[0].pos, 112);   // the same base is in the model's Arg112 codon (gnomAD p.Arg112Trp)
+    a = await search('GPR142 p.Cys6Ser', loader);
+    assert.notEqual(a.results[0]?.pos, 49);
+    assert.match(a.message, /no counterpart/);
+    a = await search('VCV3855089', loader);
+    assert.equal(a.results[0].pos, 112);
+    assert.ok(a.results[0].notes.some((n) => n.code === 'other_frame'));
+    a = await search('ENST00000612998.1:c.323A>G', loader);   // HTR2A: the old 1-aa block [108, 224, 1]
+    assert.equal(a.expect, 'not_in_resource');
+    assert.equal(a.results[0].pos, null);
+    assert.match(a.message, /Residue 108 of ENST00000612998\.1 has no counterpart/);
+    for (const q of ['VCV3427503', 'VCV3427504', 'VCV2535411', 'VCV4465344']) {   // PTGER3 NM_198718.2 C-terminus
+      a = await search(q, loader);
+      assert.equal(a.results[0].pos, null, q);
+    }
+    a = await search('3-46359723-C-T', loader);   // CCR2 p.Pro330Ser: in the MANE 3'UTR
+    const mane = a.results[0].transcriptViews.find((w) => w.role === 'mane');
+    assert.equal(mane.c, 'c.*1113C>T');
+    assert.equal(mane.p, null);
+  });
+});
+
+describe('resolver fixes (review findings 2, 4, 8 to 11)', { skip }, () => {
+  test('intronic offsets must start at an exon edge', async () => {
+    let a = await search('F2RL1 c.477+1G>A', loader);
+    assert.equal(a.expect, 'not_in_resource');
+    assert.match(a.message, /c\.477 is not at an exon boundary of ENST00000296677\.5/);
+    a = await search('NM_005242.6:c.82+1G>A', loader);
+    assert.equal(a.expect, 'not_coding');
+    assert.equal(a.results[0].pos, 28);
+    assert.equal(a.results[0].genomic.grch38, '5:76819265');
+    a = await search('NM_005242.6:c.83-1G>A', loader);
+    assert.equal(a.expect, 'not_coding');
+    assert.equal(a.results[0].genomic.grch38, '5:76832689');
+    a = await search('NM_005242.6:c.83+1G>A', loader);
+    assert.equal(a.expect, 'not_in_resource');
+  });
+
+  test('bare residues and changes load at most 10 files', async () => {
+    for (const q of ['Met1', 'p.Met1Val', 'L100', 'M159I']) {
+      const seen = new Set();
+      const counting = async (p) => { seen.add(p); return loader(p); };
+      const a = await search(q, counting);
+      assert.equal(a.expect, 'targets', q);
+      if (q !== 'M159I') assert.ok(seen.size <= 10, `${q}: ${seen.size} files (${[...seen].join(', ')})`);
+      assert.ok(a.results.every((r) => r.light), q);
+    }
+    const a = await search('M159I', loader);
+    assert.ok(a.results[0].observed && a.results[0].alleles.length, 'observed receptors first, with alleles');
+  });
+
+  test('a multi-alt VCF row resolves every alternate', async () => {
+    let a = await search('5 76833084 . G A,T', loader);
+    assert.equal(a.expect, 'target');
+    assert.deepEqual(a.results[0].alleles.map((x) => x.id).sort(), ['5-76833084-G-A', '5-76833084-G-T']);
+    a = await search('5\t76833084\t.\tG\tA,C', loader);   // G>C is p.Met159Ile too (ATG>ATC), not in gnomAD
+    assert.equal(a.results.length, 1);
+    assert.deepEqual(a.results[0].alleles.map((x) => x.id), ['5-76833084-G-A']);
+  });
+
+  test('a locus names no change', async () => {
+    const a = await search('5:76833085', loader);
+    const r = a.results[0];
+    assert.equal(r.pos, 160);
+    assert.equal(r.alt, null);
+    assert.equal(r.kind, 'residue');
+    assert.deepEqual(r.alleles.map((x) => x.id), ['5-76833085-T-C']);
+    assert.ok(r.notes.some((n) => n.code === 'locus'));
+  });
+
+  test('an approximate GRCh37 position is flagged', async () => {
+    const a = await search('NM_005242.6:c.82+1G>A', loader);
+    const r = a.results[0];
+    assert.equal(r.genomic.grch37Approximate, true);
+    assert.ok(r.notes.some((n) => n.code === 'liftover_approximate'));
+    const b = await search('F2RL1 p.Met159Ile', loader);
+    assert.ok(!b.results[0].genomic.grch37Approximate);
+  });
+
+  test('c. reference swap like p., family and isoform names', async () => {
+    let a = await search('NM_000024.6:c.46A>G', loader);   // literature ADRB2 Arg16Gly
+    assert.equal(a.expect, 'target');
+    assert.deepEqual([a.results[0].pos, a.results[0].ref, a.results[0].alt], [16, 'G', 'R']);
+    assert.deepEqual(a.results[0].alleles.map((x) => x.id), ['5-148826877-G-A']);
+    assert.ok(a.results[0].notes.some((n) => n.code === 'reference_swap'));
+    a = await search('5-HT2', loader);
+    assert.equal(a.expect, 'ambiguous');
+    assert.deepEqual(a.results.map((r) => r.gid).sort(), ['5ht2a_human', '5ht2b_human', '5ht2c_human']);
+    a = await search('CCR2B', loader);
+    assert.equal(a.expect, 'receptor');
+    assert.equal(a.results[0].gid, 'ccr2_human');
   });
 });

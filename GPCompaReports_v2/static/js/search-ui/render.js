@@ -89,7 +89,7 @@ const WARN_NOTES = new Set([
 export function queryFor(r, interp) {
   const sym = r.receptor?.symbol ?? r.gid;
   if (r.type === 'receptor') return sym;
-  if (r.light) return `${sym} ${interp?.generic?.display ?? ''}`.trim();
+  if (r.light && interp?.generic) return `${sym} ${interp.generic.display ?? ''}`.trim();
   if (r.alt && r.kind === 'missense') return `${sym} ${hgvsP(r)}`;
   if (r.pos) return `${sym} ${three(r.ref)}${r.pos}`;
   return sym;

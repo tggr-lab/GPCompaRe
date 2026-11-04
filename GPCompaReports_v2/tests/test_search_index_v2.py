@@ -123,12 +123,16 @@ def test_shifted_numbering_maps(index_dir):
         return next(r for r in t['tx'] if r['id'] == ident and r.get('v') == v and r['asm'] == 'GRCh38'
                     and r.get('frame') == frame)
 
-    assert tx('lpar2_human', 'ENST00000407877', 8, 'gnomad')['map'] == ['+', -3]   # gnomAD frame, pack = gnomAD - 3
-    assert tx('lpar2_human', 'NM_001395660', 1)['map'] == ['=']                     # MANE = pack
-    assert tx('oxer1_human', 'ENST00000378661', 3, 'gnomad')['map'] == ['=']        # gnomAD .3 = pack
-    assert tx('oxer1_human', 'NM_148962', 5)['map'][:2] == ['+', 39]
-    assert tx('mchr1_human', 'NM_005297', 4)['map'][:2] == ['+', 69]
-    assert tx('npff2_human', 'NM_004885', 3)['map'][:2] == ['+', 102]
+    # maps come from shared genomic codons: ['='] or exact blocks [[tx_start, model_start, n]]
+    assert tx('lpar2_human', 'ENST00000407877', 8, 'gnomad')['map'] == ['b', [[4, 1, 348]]]   # pack = gnomAD - 3
+    assert tx('lpar2_human', 'NM_001395660', 1)['map'] == ['=']                                # MANE = pack
+    assert tx('oxer1_human', 'ENST00000378661', 3, 'gnomad')['map'] == ['=']                   # gnomAD .3 = pack
+    assert tx('oxer1_human', 'NM_148962', 5)['map'] == ['b', [[1, 40, 384]]]                   # MANE = pack - 39
+    assert tx('mchr1_human', 'NM_005297', 4)['map'] == ['b', [[1, 70, 353]]]                   # MANE = pack - 69
+    assert tx('npff2_human', 'NM_004885', 3)['map'] == ['b', [[1, 103, 420]]]                  # MANE = pack - 102
+    # review 2026-11-04: MANE of GPR142 and CCR2 share codons with the model only where the exons do
+    assert tx('gp142_human', 'NM_001331076', 1)['map'] == ['b', [[33, 121, 342]]]
+    assert tx('ccr2_human', 'NM_001123396', 4)['map'] == ['b', [[1, 1, 313]]]
     for gid in ('ccr2_human', 'gp142_human', 'gpr17_human'):
         assert _load(index_dir, 'transcripts/%s.json' % gid)['nmUsable'] is False, gid
     # the gnomAD frames are 9 and 117 nt longer than today's CDS
@@ -287,3 +291,121 @@ def test_alias_keys_match_the_js_normaliser(index_dir):
     keys = {row[0]: row for row in meta['aliases']}
     for k in ('f2rl1', 'par2', 'p55085', 'hgnc3538', 'geneid2150', 'beta2ar', 'gpr3', 'xcr1'):
         assert k in keys, k
+
+
+# ------------------------------------------------------------- transcript -> model residue maps (codons)
+
+def _codon_sources():
+    """Every GRCh38 transcript's own CDS sequence: {(gid, id, version): cds} (Ensembl cds_seq, NCBI RefSeq)."""
+    src = v2.sources_root() / 'transcripts_all'
+    out = {}
+    for g, lst in v2._gz(src / 'ensembl_grch38.json.gz').items():
+        for t in lst:
+            if t.get('cds_seq'):
+                out[(g, t['id'], int(t['version']))] = t['cds_seq'].upper()
+    ncbi = v2._gz(src / 'ncbi_cds.json.gz')
+    for g, lst in v2._gz(src / 'refseq_grch38.json.gz').items():
+        for t in lst:
+            n = ncbi.get(t['accession'])
+            if n:
+                acc, _, ver = t['accession'].partition('.')
+                out[(g, acc, int(ver))] = n['cds_seq'].upper()
+    return out
+
+
+def _unmap(m, q):
+    if m[0] == '=':
+        return q
+    for ts, ms, n in m[1]:
+        if ms <= q < ms + n:
+            return ts + (q - ms)
+    return None
+
+
+def test_every_allele_on_every_transcript_agrees_with_its_codon(index_dir):
+    """Review 2026-11-04 finding 1: for every gnomAD allele x every GRCh38 transcript whose CDS holds its
+    position, the c./p. read through the transcript's map agrees with the codon in that transcript's own CDS,
+    and a mapped residue is the allele's model residue. Zero disagreements."""
+    meta = _load(index_dir, 'meta.json')
+    cds_of = _codon_sources()
+    checks = mapped = unmapped = seq_differs = 0
+    bad = []
+    for i in meta['shards']['transcripts']:
+        g = meta['receptors'][i][0]
+        p = _pack(g)
+        if not p['variants']:
+            continue
+        t = _load(index_dir, 'transcripts/%s.json' % g)
+        txs = [r for r in t['tx'] if r['asm'] == 'GRCh38' and r['src'] != 'uniprot' and r.get('map') is not None]
+        for r in txs:
+            tx = _tx(r)
+            seq = cds_of.get((g, r['id'].split('@')[0], r['v'])) if r.get('frame') != 'gnomad' else None
+            for v in p['variants']:
+                ch, gp, gr, ga = v[11].split('-')
+                if str(r['chrom']) != ch and not (r['chrom'] == 'Y' and ch == 'X'):
+                    continue
+                c = v2.g_to_c(tx, int(gp))
+                back = _unmap(r['map'], v[0])
+                if not c or c['region'] != 'cds' or c['offset']:
+                    if back is not None and c is not None and _cds_has(tx, back):
+                        bad.append((g, r['id'], r['v'], v[11], 'residue mapped but the allele is outside its codon'))
+                    continue
+                checks += 1
+                tp = (c['pos'] + 2) // 3
+                mp = v2.map_pos(r['map'], tp)
+                if mp is None:
+                    unmapped += 1
+                    if back is not None:
+                        bad.append((g, r['id'], r['v'], v[11], 'model residue maps to %s, allele is in %s' % (back, tp)))
+                    continue
+                mapped += 1
+                if mp != v[0] or back != tp:
+                    bad.append((g, r['id'], r['v'], v[11], 'tx %d -> model %s, allele at %d' % (tp, mp, v[0])))
+                    continue
+                if seq:
+                    cod = seq[3 * tp - 3:3 * tp]
+                    k = (c['pos'] - 1) % 3
+                    rb = gr if r['strand'] == 1 else gr.translate(v2.COMP)
+                    ab = ga if r['strand'] == 1 else ga.translate(v2.COMP)
+                    if cod[k] != rb:
+                        seq_differs += 1   # the transcript sequence differs from the genome at this base
+                        continue
+                    ref_aa, alt_aa = v2.CODON.get(cod), v2.CODON.get(cod[:k] + ab + cod[k + 1:])
+                    if (ref_aa, alt_aa) != (v[1], v[2]):
+                        bad.append((g, r['id'], r['v'], v[11], 'codon %s gives %s>%s, allele says %s>%s' % (cod, ref_aa, alt_aa, v[1], v[2])))
+    assert bad[:20] == [], len(bad)
+    assert checks > 1000000 and mapped > 900000, (checks, mapped, unmapped)
+    assert seq_differs < 50, seq_differs
+
+
+def _cds_has(tx, tp):
+    return 3 * tp <= tx['len']
+
+
+def test_clinvar_residue_is_the_codon_of_its_variant(index_dir):
+    """Every ClinVar record placed on a residue with a GRCh38 SNV lies inside that model residue's codon."""
+    meta = _load(index_dir, 'meta.json')
+    mcod = v2._gz(v2.sources_root() / 'transcripts_all' / 'model_codons.json.gz')
+    checked = skipped = 0
+    bad = []
+    for g, *_ in meta['receptors']:
+        g2m, chrom = v2.model_g38(mcod.get(g))
+        have = {m for m, _k, _s in g2m.values()}
+        v = _load(index_dir, 'variants/%s.json' % g)
+        F = v['clinvar']['fields']
+        for row in v['clinvar']['rows']:
+            rec = dict(zip(F, row))
+            if not rec['pos'] or not rec['gnomadId']:
+                continue
+            ch, gp, *_ = rec['gnomadId'].split('-')
+            if ch == 'Y' and 10001 <= int(gp) <= 2781479:   # PAR1 (P2RY8): same coordinates as X
+                ch = 'X'
+            if rec['pos'] not in have:   # mchr1/npff2 N-terminus: no GRCh38 codon in the model
+                skipped += 1
+                continue
+            checked += 1
+            hit = g2m.get(int(gp))
+            if ch != chrom or not hit or hit[0] != rec['pos']:
+                bad.append((g, rec['variationId'], rec['gnomadId'], rec['pos'], hit))
+    assert bad == []
+    assert checked > 20000 and skipped < 20, (checked, skipped)

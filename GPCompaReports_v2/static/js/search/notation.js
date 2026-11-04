@@ -238,7 +238,7 @@ function cpos(sign, num, osign, onum) {
   const n = Number(num);
   if (!Number.isInteger(n) || (n === 0 && !onum)) return null;
   const out = { pos: sign === '-' ? -n : n, region: sign === '-' ? '5utr' : sign === '*' ? '3utr' : 'cds' };
-  if (onum) { out.offset = osign === '-' ? -Number(onum) : Number(onum); out.region = 'intron'; }
+  if (onum) { out.offset = osign === '-' ? -Number(onum) : Number(onum); out.anchorRegion = out.region; out.region = 'intron'; }
   return out;
 }
 
@@ -246,7 +246,7 @@ function cpos(sign, num, osign, onum) {
  * A c., n. or r. change, with the prefix: `c.477G>A`, `C.477g>a`, `c.477+1G>A`, `c.-23C>T`, `c.*45G>A`,
  * `c.79=`, `c.549dup`, `c.631_634del`, `c.404_405delinsTT`, `c.789CTG[1]`, `n.123A>G`, `r.477g>a`.
  * Positions keep their sign: `c.-23` is pos -23 in region '5utr', `c.*45` is pos 45 in region '3utr',
- * `c.477+1` is pos 477, offset +1, region 'intron'.
+ * `c.477+1` is pos 477, offset +1, region 'intron' (anchorRegion 'cds'; `c.*45-2` has anchorRegion '3utr').
  *
  * @param {string} s
  * @returns {null | {malformed: string} | {coord: 'c'|'n'|'r', pos: number, offset?: number, region: string,

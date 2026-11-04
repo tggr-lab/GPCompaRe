@@ -34,6 +34,8 @@ Shards (all JSON, compact; the deploy gzips them; sizes are budgeted by tests):
   rsid/<NN>.json              rs number -> receptor indices (NN = number mod RSID_SHARDS)
   clinvar/<NN>.json           ClinVar Variation ID -> receptor index (single-gene records)
   hgvsc/<NN>.json             gnomAD c. change -> receptor indices (NN = c. position mod HGVSC_SHARDS)
+  subst/<NN>.json             observed substitution '<pos><ref><alt>' (model numbering; gnomAD allele or ClinVar
+                              missense record) -> receptor indices (NN = pos mod SUBST_SHARDS), for bare changes
 
 Cheapest way to build only this index (about 30 s, no report pages):
     .venv-test/bin/python -m GPCompaReports_v2.website.page_generators.search_index_v2 \
@@ -54,6 +56,7 @@ RSID_SHARDS = 64
 CFR_TOP = 30  # the report snake plots colour the top 30 CFR positions
 CLINVAR_SHARDS = 32
 HGVSC_SHARDS = 32
+SUBST_SHARDS = 32
 VERSION = 2
 
 HERE = Path(__file__).resolve().parent
@@ -376,18 +379,16 @@ def _tx_record(src, asm, t, gid, extra=None):
 
 
 def _map_of(a):
-    """Compact protein->model map: ['=' ] identity, ['+', off] offset, ['b', blocks] block list."""
+    """Compact transcript->model residue map from a shared-genomic-codon map (build_transcript_map.py):
+    ['='] a bijection (every transcript residue is the same model residue), ['b', [[tx_start, model_start, n], ...]]
+    an exact block list (residues outside the blocks have no counterpart in the model; ['b', []] = none)."""
     if a is None:
         return None
-    if a['kind'] in ('identical', 'variant'):
-        out = ['=']
-    elif a['kind'] == 'offset':
-        out = ['+', a['offset']]
-    else:
-        out = ['b', a['blocks']]
-    if a.get('flag'):
-        out.append(a['flag'])
-    return out
+    if a['kind'] == 'identical':
+        return ['=']
+    if a['kind'] == 'offset':   # not written by the codon builder; kept for older caches
+        return ['b', [[1, 1 + a['offset'], a['len_tx']]]] if a['offset'] >= 0 else ['b', [[1 - a['offset'], 1, a['len_tx'] + a['offset']]]]
+    return ['b', [list(b) for b in a.get('blocks') or []]]
 
 
 def map_pos(m, p):
@@ -402,13 +403,6 @@ def map_pos(m, p):
         if ts <= p < ts + n:
             return ms + (p - ts)
     return None
-
-
-def _frame_map(m):
-    """The pack's own gnomAD position map (lpar2: offset -3; oxer1: offset 0)."""
-    if m and m.get('kind') == 'offset' and m.get('offset'):
-        return ['+', int(m['offset'])]
-    return ['=']
 
 
 def build_transcripts(gid, src, ens_cds, pmap, nmv, ncbi, seg_maps, direct_maps, pack, uniprot_offset):
@@ -458,7 +452,7 @@ def build_transcripts(gid, src, ens_cds, pmap, nmv, ncbi, seg_maps, direct_maps,
             tx = make_tx(pack_tx['strand'], segs, ex + [[ext[0], ext[1]]])
             frame = dict(pack_tx)
             frame.update({'cds': tx['segs'], 'ex': tx['exons'], 'v': int(gver), 'frame': 'gnomad',
-                          'map': _frame_map(gnomad_tx.get('mapping'))})
+                          'map': _map_of(pm.get('gnomad_frame'))})
             for k in ('mane', 'canon', 'p', 'pv', 'id_note'):
                 frame.pop(k, None)  # today's ENSP is in the current frame, not gnomAD's
             if int(gver) == pack_tx['v']:
@@ -471,7 +465,11 @@ def build_transcripts(gid, src, ens_cds, pmap, nmv, ncbi, seg_maps, direct_maps,
             pack_tx.setdefault('alsoV', []).append(int(gver))
     # UniProt canonical numbering as a pseudo protein
     up = pack['meta']['uniprotId']
-    recs.append({'src': 'uniprot', 'asm': None, 'id': up, 'p': up, 'map': ['+', uniprot_offset] if uniprot_offset else ['=']})
+    # model = UniProt + uniprot_offset over the model's length (lpar2: UniProt 4..351 = model 1..348)
+    L = len(pack['sequence'])
+    up_map = ['='] if not uniprot_offset else (
+        ['b', [[1 - uniprot_offset, 1, L]]] if uniprot_offset < 0 else ['b', [[1, 1 + uniprot_offset, L - uniprot_offset]]])
+    recs.append({'src': 'uniprot', 'asm': None, 'id': up, 'p': up, 'map': up_map})
     # harvested NM_ versions that are not current on a host
     have = {(r['id'], r.get('v')) for r in recs}
     nm = {}
@@ -736,8 +734,57 @@ def _cv_class_code(desc):
     return None
 
 
-def build_clinvar(gid, raw, pack, pmap, nmv, tx_maps):
+# RefSeq accession versions of the GRCh38 primary chromosomes (ClinVar SPDI is on GRCh38)
+GRCH38_NC = {'1': 11, '2': 12, '3': 12, '4': 12, '5': 10, '6': 12, '7': 14, '8': 11, '9': 12, '10': 11, '11': 10,
+             '12': 12, '13': 11, '14': 9, '15': 10, '16': 10, '17': 11, '18': 10, '19': 10, '20': 11, '21': 9,
+             '22': 11, 'X': 11, 'Y': 10}
+
+
+def model_g38(mcod_gene):
+    """{GRCh38 position: (model residue, base index 0-2 in its codon, strand)} over the model's own codons
+    (build_transcript_map.py), and the chromosome."""
+    m = (mcod_gene or {}).get('GRCh38') or {}
+    out = {}
+    for lo, hi, cs, ce, st in m.get('segs') or []:
+        for c in range(cs, ce + 1):
+            out[lo + (c - cs) if st == 1 else hi - (c - cs)] = ((c + 2) // 3, (c - 1) % 3, st)
+    return out, m.get('chrom')
+
+
+def model_codon_change(g2m, bases, g, alt):
+    """(ref aa, alt aa) of a GRCh38 SNV inside a model codon, from the reference bases; None if a base is missing."""
+    m, k, st = g2m[g]
+    pos = {v[1]: q for q, v in g2m.items() if v[0] == m}
+    if len(pos) != 3:
+        return None
+    bs = [base_at(bases, pos[j]) for j in range(3)]
+    if None in bs:
+        return None
+    codon = ''.join(b if st == 1 else b.translate(COMP) for b in bs)
+    a = alt if st == 1 else alt.translate(COMP)
+    return CODON.get(codon), CODON.get(codon[:k] + a + codon[k + 1:])
+
+
+def spdi_g38(spdi):
+    """(chrom, first affected GRCh38 position, deleted, inserted) of a GRCh38 SPDI, else None."""
+    m = re.match(r'^NC_0*(\d+)\.(\d+):(\d+):([ACGTN]*):([ACGTN]*)$', spdi or '')
+    if not m:
+        return None
+    ch = {'23': 'X', '24': 'Y'}.get(m.group(1), m.group(1))
+    if GRCH38_NC.get(ch) != int(m.group(2)):
+        return None
+    g = int(m.group(3)) + 1
+    if ch == 'Y' and 10001 <= g <= 2781479:   # PAR1: GRCh38 gives Y the X coordinates
+        ch = 'X'
+    return ch, g, m.group(4), m.group(5)
+
+
+def build_clinvar(gid, raw, pack, pmap, nmv, tx_maps, mcod_gene=None, stats=None, bases=None):
     """Every single-gene ClinVar record of the gene, mapped to a model residue where it has one.
+
+    The residue is the model residue whose genomic codon (GRCh38) holds the record's variant (its SPDI); a record
+    whose variant lies outside every model codon has no residue. Records without a GRCh38 SPDI are placed through
+    their title's p. on the title transcript (shared-codon maps). Packed P/LP records keep the pack's residue.
 
     Row: [variationId, accession, title, classification, stars, conditions, nm, gnomadId (GRCh38 SNV),
           pos, ref (model residue), alt (one letter or class token), kind, packed (1 = the database's P/LP
@@ -746,6 +793,9 @@ def build_clinvar(gid, raw, pack, pmap, nmv, tx_maps):
     seq = pack['sequence']
     packed = {r[5]: r for r in (pack.get('clinvar') or [])}
     pm = pmap.get(gid, {})
+    g2m, mchrom = model_g38(mcod_gene)
+    placed = {v[0] for v in g2m.values()}   # model residues with a GRCh38 codon
+    stats = stats if stats is not None else defaultdict(int)
     rows = []
     symbols = {s_.upper() for s_ in (raw.get('acceptedSymbols') or [raw.get('symbol') or ''])}
     for rec in raw.get('records', []):
@@ -792,8 +842,36 @@ def build_clinvar(gid, raw, pack, pmap, nmv, tx_maps):
                     pos = mp
             elif not p:
                 kind = 'noncoding' if re.search(r'c\.[-*]|c\.\d+[+-]\d', tm.group(3)) else 'other'
+        # a substitution: the model codon that holds the variant decides the residue; an indel keeps its title's
+        # (3'-shifted, HGVS) residue and falls back to the codon of its first affected base
+        sp = spdi_g38(spdi)
+        if sp and mchrom and sp[0] == mchrom and (sp[2] or sp[3]):
+            snv = len(sp[2]) == len(sp[3]) == 1
+            mg = g2m.get(sp[1] if sp[2] else sp[1] - 1)   # an insertion: the base before it
+            if snv and not (mg is None and pos is not None and pos not in placed):
+                # (a title residue that has no GRCh38 codon in the model, mchr1/npff2 N-terminus, is kept)
+                if pos is not None and (mg or (None,))[0] != pos:
+                    stats['clinvar_snv_title_vs_genomic_codon_disagree'] += 1
+                    stats.setdefault('examples', []).append('%s VCV%s %s' % (gid, vid, title[:60]))
+                title_pos = pos
+                pos = mg[0] if mg else None
+                if mg:
+                    stats['clinvar_snv_placed_by_genomic_codon'] += 1
+                    if (title_pos != pos or kind not in ('missense', 'synonymous', 'stop')) and bases:
+                        # the title's residue is not this codon (UTR, another isoform or frame): read the model codon
+                        ch_ = model_codon_change(g2m, bases, sp[1], sp[3])
+                        if ch_ and ch_[0] and ch_[1]:
+                            alt, kind = ('=', 'synonymous') if ch_[0] == ch_[1] else (
+                                ('*', 'stop') if ch_[1] == '*' else (ch_[1], 'missense'))
+                            stats['clinvar_snv_change_read_from_model_codon'] += 1
+            elif pos is None and mg:
+                pos = mg[0]
+                stats['clinvar_indel_placed_by_first_base'] += 1
         pk = packed.get(vid)
         if pk:
+            if pos is not None and pos != pk[0]:
+                stats['clinvar_packed_vs_genomic_codon_disagree'] += 1
+                stats.setdefault('examples', []).append('packed %s VCV%s %s pack %s codon %s' % (gid, vid, title[:50], pk[0], pos))
             pos, alt, kind = pk[0], pk[2], 'missense'
             if not gnomad_id and pk[17]:
                 gnomad_id = pk[17]
@@ -841,6 +919,7 @@ def load_sources(sdir):
         'tx': src,
         'ncbi': _gz(t / 'ncbi_cds.json.gz'),
         'pmap': _gz(t / 'protein_model_map.json.gz'),
+        'mcod': _gz(t / 'model_codons.json.gz'),
         'nmv': _gz(t / 'nm_versions.json.gz'),
         'ens_cds': _gz(sdir / 'ensembl_cds' / 'transcripts.json.gz'),
         'seg_maps': _gz(sdir / 'grch37' / 'segment_maps.json.gz'),
@@ -861,6 +940,13 @@ def load_grch37_alleles(sdir):
                 out[r['gid']][r['variant_id_grch38']] = (ch, int(p), r37, a37)
     return out
 
+
+EXTRA_ALIASES = {
+    '5-HT2': ('5ht2a_human', '5ht2b_human', '5ht2c_human'),   # the 5-HT2 family (IUPHAR)
+    '5-HT1': ('5ht1a_human', '5ht1b_human', '5ht1d_human', '5ht1e_human', '5ht1f_human'),
+    'CCR2B': ('ccr2_human',),   # CCR2 isoform B, the main isoform (and the gnomAD transcript); widely used name
+    'CCR2A': ('ccr2_human',),   # CCR2 isoform A (the MANE transcript)
+}
 
 ALIAS_TIER = {'symbol': 0, 'index_symbol': 0, 'accession': 0, 'entry_name': 0, 'gid': 0,
               'curated': 1, 'alias_symbol': 1, 'entry_prefix': 1, 'hgnc_name': 1, 'protein_name': 2,
@@ -902,6 +988,12 @@ def build_meta(gids, packs, s, store, lift_blocks=None):
     for r in s['aliases']:
         if r['gid'] in idx:
             add(r['alias'], r['gid'], r['kind'], r['collision'])
+    # names in common use that the sources lack or give to one member only (curated tier outranks UniProt's
+    # historical "5-HT-2" for HTR2A, so "5-HT2" names the three 5-HT2 subtypes)
+    for display, members in EXTRA_ALIASES.items():
+        for g in members:
+            if g in idx:
+                add(display, g, 'curated')
     for g, rec in zip(gids, receptors):
         add(g, g, 'gid')
         add(g.replace('_human', ''), g, 'curated')
@@ -1006,7 +1098,8 @@ def generate_search_index_v2(store, output_dir, studio=None, sources=None, gids=
         sizes[kind][1] += gz
         files[kind] += 1
 
-    rsid, clin, hgvsc, generic = defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict)
+    rsid, clin, hgvsc, generic, subst = defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict), defaultdict(dict)
+    cv_stats = defaultdict(int)
     with_tx, with_bases, with_var = [], [], []
     txindex = {}
     for g in gids:
@@ -1044,7 +1137,7 @@ def generate_search_index_v2(store, output_dir, studio=None, sources=None, gids=
         f = cv_dir / f'{g}.json.gz'
         if f.exists():
             raw = _gz(f)
-        cv_rows = build_clinvar(g, raw, p, s['pmap'], s['nmv'], None)
+        cv_rows = build_clinvar(g, raw, p, s['pmap'], s['nmv'], None, s['mcod'].get(g), cv_stats, b)
         strand = ((s['ens_cds'].get(g) or {}).get('grch38') or {}).get('strand', 1)
         v = build_variants(g, p, g37.get(g, {}), cv_rows, strand)
         put('variants', f'variants/{g}.json', v)
@@ -1062,6 +1155,13 @@ def generate_search_index_v2(store, output_dir, studio=None, sources=None, gids=
                     lst.append(i)
         for row in cv_rows:
             clin['%02d' % (row[0] % CLINVAR_SHARDS)][str(row[0])] = i
+        # observed substitutions (gnomAD alleles, ClinVar missense records) for cross-receptor bare changes
+        seen = {(x[0], x[1], x[2]) for x in (p.get('variants') or [])}
+        seen |= {(row[8], row[9], row[10]) for row in cv_rows if row[8] and row[11] == 'missense' and row[10] in AM_ALPHABET}
+        for pos, r_, a_ in seen:
+            lst = subst['%02d' % (pos % SUBST_SHARDS)].setdefault('%d%s%s' % (pos, r_, a_), [])
+            if i not in lst:
+                lst.append(i)
 
     meta = build_meta(gids, packs, s, store, lift_blocks)
     for k, b in sorted(rsid.items()):
@@ -1077,6 +1177,8 @@ def generate_search_index_v2(store, output_dir, studio=None, sources=None, gids=
         put('clinvar', f'clinvar/{k}.json', b)
     for k, b in sorted(hgvsc.items()):
         put('hgvsc', f'hgvsc/{k}.json', b)
+    for k, b in sorted(subst.items()):
+        put('subst', f'subst/{k}.json', b)
     for k, b in sorted(generic.items()):
         put('generic', f'generic/{k}.json', b)
     put('seq', 'seq.json', [packs[g]['sequence'] for g in gids])
@@ -1094,7 +1196,7 @@ def generate_search_index_v2(store, output_dir, studio=None, sources=None, gids=
         'aliases': meta['aliases'],
         'excluded': meta['excluded'],
         'windows': meta['windows'],
-        'shards': {'rsid': RSID_SHARDS, 'clinvar': CLINVAR_SHARDS, 'hgvsc': HGVSC_SHARDS,
+        'shards': {'rsid': RSID_SHARDS, 'clinvar': CLINVAR_SHARDS, 'hgvsc': HGVSC_SHARDS, 'subst': SUBST_SHARDS,
                    'generic': sorted(generic, key=lambda x: int(x)), 'transcripts': with_tx, 'cds': with_bases,
                    'variants': with_var},
         'cfrTop': CFR_TOP,
@@ -1104,6 +1206,9 @@ def generate_search_index_v2(store, output_dir, studio=None, sources=None, gids=
     }
     put('meta', 'meta.json', meta_out)
     total = [sum(v[0] for v in sizes.values()), sum(v[1] for v in sizes.values())]
+    if not quiet and cv_stats:
+        ex = cv_stats.pop('examples', [])
+        print('  ClinVar placement: %s%s' % (dict(sorted(cv_stats.items())), ''.join('\n    ' + e for e in ex[:20])))
     if not quiet:
         print('  Generated: search2/ (%d receptors; %.0f KB raw, %.0f KB gzip: %s)' % (
             len(gids), total[0] / 1024, total[1] / 1024,

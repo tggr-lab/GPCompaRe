@@ -6,7 +6,8 @@
  * A transcript record from `transcripts/<gid>.json`:
  *   {id, v, src: 'ensembl'|'refseq'|'uniprot', asm: 'GRCh38'|'GRCh37', chrom, strand: 1|-1,
  *    ex: [[lo, hi], ...] ascending genomic exons, cds: [[gLo, gHi, cStart, cEnd], ...] by c.,
- *    p?, pv?, mane?, canon?, frame?: 'gnomad', map?: ['='] | ['+', offset] | ['b', [[txStart, modelStart, n]]]}
+ *    p?, pv?, mane?, canon?, frame?: 'gnomad', map?: ['='] | ['b', [[txStart, modelStart, n]]]}
+ * The map pairs a transcript residue with a model residue only when both codons sit on the same genomic bases.
  *
  * c. positions follow HGVS: CDS 1..L ('cds'), `c.-n` ('5utr', pos -n), `c.*n` ('3utr', pos n), and an
  * intronic offset from the nearest exon edge (`c.477+1`: pos 477, offset 1).
@@ -74,6 +75,40 @@ export function cToG(tx, pos, offset = 0, region = 'cds') {
   return g === null ? null : g + (offset || 0) * tx.strand;
 }
 
+/**
+ * Is an intronic HGVS position valid? `c.477+1` needs c.477 to be the last base of an exon (in transcript
+ * order, not the last exon) and `c.523-1` needs c.523 to be the first base of an exon (not the first exon);
+ * the offset must stay inside the intron. Same for UTR anchors (`c.-15+3`, `c.*45-2`).
+ *
+ * @param {object} tx transcript record
+ * @param {number} pos anchor position (negative for 5'UTR, positive with anchorRegion '3utr' for c.*n)
+ * @param {number} offset intronic offset (non-zero)
+ * @param {string} anchorRegion 'cds' | '5utr' | '3utr'
+ * @returns {{ok: boolean, g: number|null, why?: string}} g = the anchor's genomic position
+ */
+export function intronAnchor(tx, pos, offset, anchorRegion = 'cds') {
+  const g = cToG(tx, pos, 0, anchorRegion);
+  if (g === null) return { ok: false, g: null, why: 'outside' };
+  const tex = txExons(tx);
+  const k = tex.findIndex(([a, b]) => a <= g && g <= b);
+  if (k < 0) return { ok: false, g, why: 'outside' };
+  const [a, b] = tex[k];
+  const start5 = tx.strand === 1 ? a : b;  // exon's first base in transcript order
+  const end3 = tx.strand === 1 ? b : a;    // exon's last base in transcript order
+  if (offset > 0) {
+    if (g !== end3 || k === tex.length - 1) return { ok: false, g, why: 'not_exon_end' };
+    const next = tex[k + 1];
+    const intron = tx.strand === 1 ? next[0] - b - 1 : a - next[1] - 1;
+    if (offset > intron) return { ok: false, g, why: 'beyond_intron' };
+  } else if (offset < 0) {
+    if (g !== start5 || k === 0) return { ok: false, g, why: 'not_exon_start' };
+    const prev = tex[k - 1];
+    const intron = tx.strand === 1 ? a - prev[1] - 1 : prev[0] - b - 1;
+    if (-offset > intron) return { ok: false, g, why: 'beyond_intron' };
+  }
+  return { ok: true, g };
+}
+
 function exonicC(tx, g) {
   for (const s of tx.cds) {
     if (s[0] <= g && g <= s[1]) return { pos: s[2] + (tx.strand === 1 ? g - s[0] : s[1] - g), region: 'cds' };
@@ -120,7 +155,12 @@ export function cText(c) {
   return base + off;
 }
 
-/** Protein position through a compact map (['='], ['+', off], ['b', blocks]); null when unaligned. */
+/**
+ * Protein position through a compact map; null when the residue has no counterpart. Maps come from shared
+ * genomic codons (search_sources/build_transcript_map.py): ['='] = every transcript residue is the same model
+ * residue; ['b', [[txStart, modelStart, n], ...]] = exact blocks (outside them: no shared codon). ['+', off] is
+ * only read for older indexes.
+ */
 export function mapPos(m, p) {
   if (!m || p === null || p === undefined) return null;
   if (m[0] === '=') return p;
