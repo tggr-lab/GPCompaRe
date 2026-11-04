@@ -65,6 +65,7 @@
 <link rel="stylesheet" href="{{ static_prefix }}static/css/primer/primitives.css">
 <link rel="stylesheet" href="{{ static_prefix }}static/css/primer/primitives-dark.css">
 <link rel="stylesheet" href="{{ static_prefix }}static/css/site.css">
+<link rel="stylesheet" href="{{ static_prefix }}static/css/search-ui.css">
 {% for css in (extra_css or []) %}
 <link rel="stylesheet" href="{{ static_prefix }}{{ css }}">
 {% endfor %}
@@ -89,6 +90,7 @@
 {% include "_partials/footer.html" %}
 
 <script src="{{ static_prefix }}static/js/site.js" defer></script>
+<script src="{{ static_prefix }}static/js/search-box.js" defer></script>
 <script src="{{ static_prefix }}static/js/glossary-data.js" defer></script>
 <script src="{{ static_prefix }}static/js/glossary.js" defer></script>
 {% block scripts %}{% endblock %}

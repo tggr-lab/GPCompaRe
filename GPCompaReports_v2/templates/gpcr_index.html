@@ -16,32 +16,14 @@
       <p class="section-sub">Search and filter receptor reports. Open a receptor to inspect its contact changes, residue-level summaries, variants, and downloadable tables.</p>
     </header>
 
-    <div class="search-modes" role="tablist" aria-label="What to search">
-      <button type="button" role="tab" id="tab-receptors" aria-controls="panel-receptors" aria-selected="true">Receptors</button>
-      <button type="button" role="tab" id="tab-variants" aria-controls="panel-variants" aria-selected="false" tabindex="-1">Variants and positions</button>
-    </div>
+    <form class="browse-search-link" action="{{ static_prefix }}search/" method="get" role="search" data-search-index="{{ static_prefix }}search2/" data-suggest-host>
+      <label for="browse-vsearch">Looking for a variant, a residue or a genome position?</label>
+      <input type="search" id="browse-vsearch" name="q" class="v2-input" placeholder="e.g. PAR2 M159I, rs115885685, 5-76833084-G-A, 3.50x50" aria-describedby="browse-vsearch-help" spellcheck="false" autocapitalize="off" autocomplete="off">
+      <button type="submit" class="btn btn-primary">Search</button>
+      <span class="sr-hint" id="browse-vsearch-help">Any notation works: protein or coding changes, GRCh37 or GRCh38 positions, rsIDs, ClinVar records, generic numbers. The table below lists receptors.</span>
+    </form>
 
-    <div id="panel-variants" role="tabpanel" aria-labelledby="tab-variants" hidden>
-      <form class="vsearch-form" id="vsearch-form" role="search" autocomplete="off">
-        <input type="search" id="vsearch-input" name="q" class="v2-input" placeholder="e.g. F2RL1 M159I, rs115885685, 6.48x48" aria-label="Search variants and generic positions" aria-describedby="vsearch-help" spellcheck="false" autocapitalize="off">
-        <button type="submit" class="btn btn-primary">Search</button>
-      </form>
-      <div class="vsearch-help" id="vsearch-help">
-        <p><b>Variant</b>: a gene or receptor name with a protein change, such as <code>ADRB2 p.Arg16Gly</code> or <code>PAR2 M159I</code>; an rsID; or a gnomAD variant ID such as <code>5-76833084-G-A</code>. Results come from each receptor's variant table.</p>
-        <p><b>Position</b>: a GPCRdb generic number such as <code>6.48x48</code>, <code>6.48</code> or <code>3.50x50</code> lists every receptor with a residue there, using the numbering of the snake plots.</p>
-        <p class="vsearch-examples">Try:
-          <button type="button" class="vsearch-chip" data-q="F2RL1 M159I">F2RL1 M159I</button>
-          <button type="button" class="vsearch-chip" data-q="rs115885685">rs115885685</button>
-          <button type="button" class="vsearch-chip" data-q="5-76833084-G-A">5-76833084-G-A</button>
-          <button type="button" class="vsearch-chip" data-q="6.48x48">6.48x48</button>
-          <button type="button" class="vsearch-chip" data-q="3.50x50">3.50x50</button>
-        </p>
-      </div>
-      <div class="vsearch-status" id="vsearch-status" role="status" aria-live="polite"></div>
-      <div id="vsearch-results"></div>
-    </div>
-
-    <div id="panel-receptors" role="tabpanel" aria-labelledby="tab-receptors">
+    <div id="panel-receptors">
     <div class="filter-bar">
       <input type="text" id="search-input" class="v2-input" placeholder="Search by name, gene, or family…" aria-label="Search GPCRs">
       <select id="filter-ligand" class="v2-select" aria-label="Filter by ligand type">
@@ -89,7 +71,7 @@
       </div>
       <div class="v2-pagination" data-table-pagination="gpcr-table"></div>
     </div>
-    <p class="vsearch-hint" id="receptor-search-hint" hidden></p>
+    <p class="browse-search-hint" id="receptor-search-hint" hidden></p>
     </div>
 
     <style>
@@ -104,14 +86,42 @@
 <script>
 window.GPCR_DATA = {{ gpcr_json | safe }};
 </script>
-<script src="{{ static_prefix }}static/js/search.js" defer></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  var searchUrl = '{{ static_prefix }}search/';
+  var params = new URLSearchParams(window.location.search);
+  var q = (params.get('q') || '').trim();
+  // Links from the old variant search (?mode=variants&q=...) go to the search page.
+  if (params.get('mode') === 'variants') {
+    window.location.replace(searchUrl + (q ? '?q=' + encodeURIComponent(q) : ''));
+    return;
+  }
   if (window.Site && Site.initBrowse) {
     Site.initBrowse({ reportPathPrefix: '../reports/', reportPathSuffix: '.html' });
   }
-  if (window.SiteSearch) {
-    SiteSearch.init({ indexBase: '{{ static_prefix }}search/', reportPathPrefix: '../reports/' });
+  if (!q) return;
+  // ?q= that names no receptor is a variant or position search: hand it over.
+  var ql = q.toLowerCase();
+  var matches = (window.GPCR_DATA || []).some(function(d) {
+    return (d.uniprot_name + ' ' + d.gene_name + ' ' + d.receptor_family + ' ' + d.gpcr_id).toLowerCase().indexOf(ql) !== -1;
+  });
+  if (!matches) {
+    window.location.replace(searchUrl + '?q=' + encodeURIComponent(q));
+    return;
+  }
+  var input = document.getElementById('search-input');
+  if (input) {
+    input.value = q;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  var hint = document.getElementById('receptor-search-hint');
+  if (hint && /\d/.test(q)) {
+    var a = document.createElement('a');
+    a.href = searchUrl + '?q=' + encodeURIComponent(q);
+    a.textContent = 'Search variants and positions for \u201c' + q + '\u201d';
+    hint.textContent = 'Looking for a variant or a position instead? ';
+    hint.appendChild(a);
+    hint.hidden = false;
   }
 });
 </script>

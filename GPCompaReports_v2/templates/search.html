@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{{ static_prefix }}index.html">Home</a>
+  <span class="breadcrumbs-sep">/</span>
+  <span class="breadcrumbs-current">Search</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="search-section">
+  <div class="section-inner-wide">
+    <div id="search-app" data-index="{{ static_prefix }}search2/" data-reports="{{ static_prefix }}reports/" data-studio="{{ static_prefix }}studio/">
+      <header class="section-head">
+        <h1>Search</h1>
+        <p class="section-sub">Type a receptor, a residue or a variant in any notation: a protein change, a coding change on any transcript, a position on GRCh37 or GRCh38, an rsID, a ClinVar record or a generic residue number.</p>
+      </header>
+
+      <form class="sr-form" id="search-form" action="index.html" method="get" role="search" data-suggest-host>
+        <label for="search-input" class="sr-sr-only">Search receptors, variants, residues and genome positions</label>
+        <input type="search" id="search-input" name="q" class="v2-input" placeholder="e.g. PAR2 M159I, NM_005242.6:c.477G>A, rs115885685, 3.50x50" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="search-hint">
+        <button type="submit" class="btn btn-primary">Search</button>
+      </form>
+      <p class="sr-hint" id="search-hint">Use the arrow keys to move through suggestions and Enter to choose one.</p>
+      <div class="sr-recent" id="search-recent" hidden></div>
+
+      <div class="sr-status" id="search-status" role="status" aria-live="polite"></div>
+      <div id="search-results" aria-live="polite">
+        <noscript>
+          <div class="sr-message sr-message--info">Search needs JavaScript. Without it, open a receptor report from the list below, or use the <a href="{{ static_prefix }}browse/index.html">Browse page</a>.</div>
+          <h2 class="sr-h2">All {{ receptors|length }} receptor reports</h2>
+          <ul class="sr-plain-list">
+            {% for gid, name, gene in receptors %}<li><a href="{{ static_prefix }}reports/{{ gid }}.html">{{ name }}{% if gene and gene|upper != name|upper %} ({{ gene }}){% endif %}</a></li>
+            {% endfor %}
+          </ul>
+        </noscript>
+      </div>
+
+      <div id="search-releases" class="sr-releases-wrap"></div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ static_prefix }}static/js/search-ui/search-page.js"></script>
+{% endblock %}

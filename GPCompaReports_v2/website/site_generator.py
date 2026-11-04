@@ -26,6 +26,7 @@ from .page_generators.info_pages import generate_glossary_page, generate_privacy
 from .seo import SITE_URL, write_robots, write_sitemap, write_gene_redirects
 from .page_generators.search_index import generate_search_index
 from .page_generators.search_index_v2 import generate_search_index_v2
+from .page_generators.search_page import generate_search_page
 
 
 def select_gpcr_ids(all_ids, limit=None, only=None):
@@ -110,6 +111,7 @@ class SiteGenerator:
         generate_search_index(self.store, self.output_dir)
         # Search v2 (search2/): Studio packs + search_sources; skipped when the packs are absent.
         generate_search_index_v2(self.store, self.output_dir)
+        generate_search_page(env, self.store, self.output_dir)
 
         print("  Statistics page...")
         generate_statistics_page(env, self.store, self.analysis_results, self.output_dir)
