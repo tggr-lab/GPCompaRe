@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block head %}
-<script src="https://cdn.plot.ly/plotly-3.3.1.min.js"></script>
+{% include "_partials/plotly-lazy.html" %}
 {% endblock %}
 
 {% block breadcrumbs %}

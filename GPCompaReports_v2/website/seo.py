@@ -16,19 +16,34 @@ STATIC_PAGES = ['', 'browse/index.html', 'statistics.html', 'glossary.html',
                 'downloads.html', 'contact.html', 'privacy.html']
 
 
-def report_description(info, sig_threshold, n_pairs):
-    """Per-receptor meta description: gene, family, pairs, threshold."""
+def report_title(info, protein_name=''):
+    """<title> of a report: 'ADRB2 · Beta-2 adrenergic receptor · GPCompaRe'."""
+    name = info['uniprot_name']
+    if protein_name and protein_name.strip().upper() != name.upper():
+        return '%s · %s · GPCompaRe' % (name, protein_name.strip())
+    return '%s · GPCompaRe' % name
+
+
+def report_description(info, sig_threshold, n_pairs, protein_name=''):
+    """Per-receptor meta description: symbol, protein name, family, what the
+    page shows, pair count and threshold."""
     name = info['uniprot_name']
     gene = (info.get('gene_name') or '').strip()
     family = (info.get('receptor_family') or '').strip()
+    protein = (protein_name or '').strip()
+    head = name
+    if protein and protein.upper() != name.upper():
+        head += ', ' + protein
     bits = []
     if gene and gene.upper() != name.upper():
         bits.append('gene ' + gene)
     if family:
         bits.append(family + ' family')
-    head = '%s (%s)' % (name, ', '.join(bits)) if bits else name
-    return ('%s: active versus inactive residue contact changes in AlphaFold-Multistate models '
-            'of this human Class A GPCR. %s contact pairs; receptor threshold |ΔRRCS| ≥ %.2f.'
+    if bits:
+        head += ' (%s)' % ', '.join(bits)
+    return ('%s: residue contacts that change between the active and inactive AlphaFold-Multistate '
+            'models of this human Class A GPCR, with a snake plot, 3D view and variants. '
+            '%s contact pairs; receptor threshold |ΔRRCS| ≥ %.2f.'
             % (head, format(n_pairs, ','), sig_threshold))
 
 

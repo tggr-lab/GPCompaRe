@@ -141,7 +141,8 @@ def test_the_clinvar_section_is_release_labelled_and_has_a_plain_note_when_empty
         block = _extra(html, 'sec-clinvar')
         if not block:
             continue
-        assert re.search(r'<summary>ClinVar \d{4}-\d{2}-\d{2}: ', block), path.stem
+        assert re.search(r'<summary>(\d+ records? in|No pathogenic or likely pathogenic missense records in) ClinVar \d{4}-\d{2}-\d{2}</summary>', block), path.stem
+        assert 'ClinVar pathogenic or likely pathogenic missense records</h2>' in block, path.stem
         assert 'release ' in block and 'NCBI ClinVar' in block
         cfg = _config(html)
         if cfg['clinvar']:
@@ -152,7 +153,8 @@ def test_the_clinvar_section_is_release_labelled_and_has_a_plain_note_when_empty
                 assert record['vcv'] in block
         else:
             seen_empty = True
-            assert 'No germline pathogenic or likely pathogenic missense records' in block
+            assert re.search(r'<summary>No pathogenic or likely pathogenic missense records in ClinVar \d{4}-\d{2}-\d{2}</summary>', block)
+            assert 'use the ClinVar search above' in block
     if not (seen_records and seen_empty):
         pytest.skip('this build does not hold both a receptor with ClinVar records and one without')
 

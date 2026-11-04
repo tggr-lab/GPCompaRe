@@ -183,7 +183,36 @@ def _json_for_script(obj):
             .replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026'))
 
 
-def build_extras(gid, annot_map, residue_metrics, models_root):
+def residue_table_extras(delta_df, sig_threshold, am_by_pos, cons_by_pos, positions):
+    """{'sig': threshold, 'rows': {str(position): [contacts above threshold, AlphaMissense mean, conservation]}}.
+
+    Feeds the opt-in residue table. Nothing is computed here that the page does
+    not already show: the count uses the receptor's own ΔRRCS threshold, and
+    the other two values are the caches the snake plot's AlphaMissense and
+    Conservation views are coloured from (None where a cache has no value).
+    """
+    above = {}
+    if delta_df is not None and not delta_df.empty:
+        hit = delta_df[delta_df['delta_rrcs'].abs() >= sig_threshold]
+        for col in ('res1', 'res2'):
+            for pos, n in hit[col].astype(int).value_counts().items():
+                above[int(pos)] = above.get(int(pos), 0) + int(n)
+    out = {}
+    for pos in positions:
+        pos = int(pos)
+        am = (am_by_pos or {}).get(pos)
+        cons = (cons_by_pos or {}).get(pos)
+        out[str(pos)] = [above.get(pos, 0),
+                         None if am is None else round(float(am), 3),
+                         None if cons is None else round(float(cons), 3)]
+    return {'sig': round(float(sig_threshold), 2), 'rows': out}
+
+
+def json_for_script(obj):
+    return _json_for_script(obj)
+
+
+def build_extras(gid, annot_map, residue_metrics, models_root, gene_name=''):
     """Template context for one report: the `rx` dict.
 
     residue_metrics: the report's per-residue DataFrame (may be empty).
@@ -215,6 +244,10 @@ def build_extras(gid, annot_map, residue_metrics, models_root):
         'segments': segment_ranges(annotation),
         'annotation': annotation,
         'clinvar': (clinvar['records'] if clinvar else []),
+        # null when the build has no ClinVar data: the drawer then says nothing about ClinVar
+        'clinvarLabel': clinvar_label(clinvar) if clinvar else None,
+        'clinvarScope': CLINVAR_SCOPE,
+        'gene': gene_name or '',
     }
     # JS needs only a few fields per record
     config['clinvar'] = [
@@ -228,6 +261,9 @@ def build_extras(gid, annot_map, residue_metrics, models_root):
         'config_json': _json_for_script(config),
     }
 
+
+#: What the ClinVar section and the drawer count: said wherever they say "no records".
+CLINVAR_SCOPE = 'pathogenic or likely pathogenic missense records'
 
 _RELEASE_RE = re.compile(r'^\d{4}-\d{2}-\d{2}$')
 

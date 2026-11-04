@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block head %}
-<script src="https://cdn.plot.ly/plotly-3.3.1.min.js"></script>
+{% include "_partials/plotly-lazy.html" %}
 <link rel="stylesheet" href="{{ static_prefix }}static/css/v3.css">
 <link rel="stylesheet" href="{{ static_prefix }}static/css/report-extras.css">
 {% endblock %}
@@ -23,7 +23,10 @@
     {# -------------- Header -------------- #}
     <header class="report-header">
       <div class="report-header-main">
-        <h1 class="report-title">{{ uniprot_name }}</h1>
+        <div class="report-title-row">
+          <h1 class="report-title">{{ uniprot_name }}</h1>
+          {% if protein_name and protein_name|upper != uniprot_name|upper %}<span class="report-protein-name">{{ protein_name }}</span>{% endif %}
+        </div>
         <div class="report-meta">
           <span class="report-meta-item"><span class="report-meta-label">Gene</span> <strong>{{ gene_name }}</strong></span>
           <span class="report-meta-item"><span class="report-meta-label">Family</span> <strong>{{ receptor_family }}</strong></span>
@@ -51,11 +54,11 @@
         <div class="report-stat-num">{{ significant_changes }}</div>
         <div class="report-stat-label">Above-threshold changes</div>
       </div>
-      <div class="report-stat" data-tooltip="Largest positive ΔRRCS: contact strengthened most in active state">
+      <div class="report-stat report-stat-up" data-tooltip="Largest positive ΔRRCS: contact strengthened most in active state">
         <div class="report-stat-num">{{ "%.2f"|format(max_increase) }}</div>
         <div class="report-stat-label">Max Increase</div>
       </div>
-      <div class="report-stat report-stat-accent" data-tooltip="Largest negative ΔRRCS: contact weakened most in active state">
+      <div class="report-stat report-stat-down" data-tooltip="Largest negative ΔRRCS: contact weakened most in active state">
         <div class="report-stat-num">{{ "%.2f"|format(max_decrease) }}</div>
         <div class="report-stat-label">Max Decrease</div>
       </div>
@@ -121,7 +124,7 @@
 
     {# -------------- 3D view: opt-in, outside every report section, loads nothing until asked -------------- #}
     {% if rx.has_3d %}
-    <section class="report-extra" id="sec-3d" aria-labelledby="rx-3d-title">
+    <section class="report-extra" id="sec-3d" data-nav-title="3D view" aria-labelledby="rx-3d-title">
       <header class="report-section-head"><h2 id="rx-3d-title">3D view</h2></header>
       <div class="rx-actions">
         <button type="button" class="btn btn-sm" id="rx-3d-toggle" aria-expanded="false" aria-controls="rx-3d-panel">Show 3D view</button>
@@ -356,10 +359,13 @@
     {# -------------- ClinVar P/LP missense records: opt-in (collapsed), outside every report section -------------- #}
     {% if rx.clinvar is not none %}
     {% set cv = rx.clinvar.records %}
-    <section class="report-extra" id="sec-clinvar" aria-labelledby="rx-clinvar-title">
-      <header class="report-section-head"><h2 id="rx-clinvar-title">ClinVar</h2></header>
+    <section class="report-extra" id="sec-clinvar" data-nav-title="ClinVar" aria-labelledby="rx-clinvar-title">
+      <header class="report-section-head"><h2 id="rx-clinvar-title">ClinVar {{ rx_clinvar_scope|e }}</h2></header>
+      <div class="rx-actions">
+        <a class="btn btn-ghost btn-sm" id="rx-clinvar-search" href="{{ static_prefix }}search/?q={{ gene_name|urlencode }}" data-tooltip="All ClinVar records for this gene, including uncertain significance and benign">Search all ClinVar records for {{ gene_name|e }}</a>
+      </div>
       <details class="rx-details" id="rx-clinvar">
-        <summary>{{ rx_clinvar_label|e }}: {% if cv %}{{ cv|length }} record{{ '' if cv|length == 1 else 's' }}{% else %}no records{% endif %}</summary>
+        <summary>{% if cv %}{{ cv|length }} record{{ '' if cv|length == 1 else 's' }} in {{ rx_clinvar_label|e }}{% else %}No {{ rx_clinvar_scope|e }} in {{ rx_clinvar_label|e }}{% endif %}</summary>
         {% if cv %}
         <div class="v2-table-wrap">
           <div class="v2-table-scroll">
@@ -392,11 +398,23 @@
           </div>
         </div>
         {% else %}
-        <p class="rx-none">No germline pathogenic or likely pathogenic missense records for this receptor in {{ rx_clinvar_label|e }}.</p>
+        <p class="rx-none">Uncertain, conflicting and benign records are not listed here: use the ClinVar search above.</p>
         {% endif %}
         <p class="rx-attr">Source: <a href="https://www.ncbi.nlm.nih.gov/clinvar/" target="_blank" rel="noopener">NCBI ClinVar</a>, release {{ rx.clinvar.release|e }}. {{ rx.clinvar.scope[:1]|upper|e }}{{ rx.clinvar.scope[1:]|e }}.</p>
       </details>
     </section>
+    {% endif %}
+
+    {# -------------- Residue table: opt-in, collapsed, built by residue-table.js only when opened -------------- #}
+    {% if rx_residue_json %}
+    <section class="report-extra" id="sec-residues" data-nav-title="Residue table" aria-labelledby="rx-residues-title">
+      <header class="report-section-head"><h2 id="rx-residues-title">Residue table</h2></header>
+      <details class="rx-details" id="rx-residues">
+        <summary>One row per residue in a contact pair, sortable, with CSV download</summary>
+        <div id="rx-residues-mount"></div>
+      </details>
+    </section>
+    <script type="application/json" id="rx-residue-extra">{{ rx_residue_json | safe }}</script>
     {% endif %}
 
     {# -------------- Complete RRCS (top 1000) -------------- #}
@@ -819,13 +837,25 @@ document.addEventListener('DOMContentLoaded', function() {
     return isDark() ? gd.data[1].meta.colors_dark : gd.data[1].meta.colors_light;
   }
 
+  var pendingView = null, pendingTimer = null;
   function applyView(view) {
     btns.forEach(function(b) {
       var on = b.getAttribute('data-tm-view') === view;
       b.classList.toggle('active', on);
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
-    if (typeof Plotly === 'undefined' || !el.dataset.chartRendered) return;
+    if (typeof Plotly === 'undefined') return;
+    if (!el.dataset.chartRendered) {
+      // The chart is drawn when it nears the screen: apply the chosen view then.
+      pendingView = view;
+      if (!pendingTimer) pendingTimer = setInterval(function () {
+        if (typeof Plotly === 'undefined') { clearInterval(pendingTimer); pendingTimer = null; return; }
+        if (!el.dataset.chartRendered) return;
+        clearInterval(pendingTimer); pendingTimer = null;
+        applyView(pendingView);
+      }, 250);
+      return;
+    }
     if (view === 'directional') {
       var colors = directionalColors();
       if (colors) Plotly.restyle(chartId, { 'marker.color': [colors] }, [1]);
@@ -1244,4 +1274,5 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="{{ static_prefix }}static/js/v3-deeplink.js" defer></script>
 <script src="{{ static_prefix }}static/js/residue-drawer.js" defer></script>
 <script src="{{ static_prefix }}static/js/viewer3d.js" defer></script>
+<script src="{{ static_prefix }}static/js/residue-table.js" defer></script>
 {% endblock %}

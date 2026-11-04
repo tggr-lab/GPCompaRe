@@ -1,0 +1,84 @@
+{# Plotly, loaded when a chart is about to be seen instead of blocking first paint.
+
+   Until the library arrives, window.Plotly is a small stand-in. The pages only
+   ever call newPlot (and chain .then on it), relayout, restyle and
+   Plots.resize; the stand-in queues those calls, returns promises, and replays
+   them in order against the real library. The real script is injected when the
+   first chart container comes within 800 px of the viewport, or a couple of
+   seconds after the page has loaded when the connection is not metered.
+   The real library replaces window.Plotly when it loads, so every later call
+   goes straight to it. If it cannot be loaded, the stand-in removes itself and
+   the page behaves as it did when the script tag failed (no charts, no errors).
+   Nothing here touches the markup or the chart data of a report section. #}
+<script>
+(function () {
+  if (window.Plotly) return;
+  var SRC = 'https://cdn.plot.ly/plotly-3.3.1.min.js';
+  var queue = [], started = false, io = null;
+  var shim = { Plots: {} };
+
+  function enqueue(group, name) {
+    return function () {
+      var args = arguments;
+      if (name === 'newPlot' || name === 'react') watch(args[0]);
+      return new Promise(function (resolve, reject) {
+        queue.push({ group: group, name: name, args: args, resolve: resolve, reject: reject });
+      });
+    };
+  }
+  ['newPlot', 'react', 'relayout', 'restyle', 'update', 'redraw', 'purge', 'addTraces',
+   'deleteTraces', 'moveTraces', 'extendTraces', 'prependTraces', 'animate', 'toImage',
+   'downloadImage', 'setPlotConfig'].forEach(function (n) { shim[n] = enqueue(null, n); });
+  ['resize', 'purge'].forEach(function (n) { shim.Plots[n] = enqueue('Plots', n); });
+  window.Plotly = shim;
+
+  function replay(real) {
+    var calls = queue; queue = [];
+    calls.forEach(function (c) {
+      try {
+        var owner = c.group ? real[c.group] : real;
+        Promise.resolve(owner[c.name].apply(owner, c.args)).then(c.resolve, c.reject);
+      } catch (e) { c.reject(e); }
+    });
+  }
+
+  function fail() {
+    if (window.Plotly === shim) { try { delete window.Plotly; } catch (e) { window.Plotly = undefined; } }
+    queue = [];
+  }
+
+  function load() {
+    if (started) return;
+    started = true;
+    if (io) { io.disconnect(); io = null; }
+    var s = document.createElement('script');
+    s.src = SRC;
+    s.async = true;
+    s.onload = function () {
+      if (window.Plotly && window.Plotly !== shim) replay(window.Plotly); else fail();
+    };
+    s.onerror = fail;
+    document.head.appendChild(s);
+  }
+
+  function watch(target) {
+    if (started) return;
+    var el = typeof target === 'string' ? document.getElementById(target) : target;
+    if (!el || !('IntersectionObserver' in window)) { if (!el) load(); return; }
+    if (!io) {
+      io = new IntersectionObserver(function (entries) {
+        for (var i = 0; i < entries.length; i++) if (entries[i].isIntersecting) { load(); return; }
+      }, { rootMargin: '800px 0px' });
+    }
+    io.observe(el);
+  }
+
+  window.addEventListener('load', function () {
+    var c = navigator.connection;
+    if (c && c.saveData) return;
+    setTimeout(function () {
+      if (window.requestIdleCallback) requestIdleCallback(load, { timeout: 4000 }); else load();
+    }, 2000);
+  });
+})();
+</script>

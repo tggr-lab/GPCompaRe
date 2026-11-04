@@ -1,5 +1,5 @@
-/* v3-nav.js — sticky section nav for report pages.
-   Builds itself from [data-section-title] so adding a section needs no JS change.
+/* v3-nav.js: sticky section nav for report pages.
+   Builds itself from [data-section-title] (report sections) and [data-nav-title] (opt-in blocks), so adding a section needs no JS change.
    Navigation is wayfinding, not content: this is always on. */
 (function () {
   'use strict';
@@ -7,8 +7,12 @@
 
   function build() {
     buildCompactToggle();
-    var sections = document.querySelectorAll('.report-section[data-section-title]');
+    // The approved report sections, plus the opt-in blocks that name themselves with
+    // data-nav-title (3D view, ClinVar). A link only scrolls: nothing is opened or loaded.
+    var sections = Array.prototype.slice.call(document.querySelectorAll(
+      '.report-section[data-section-title], .report-extra[data-nav-title]'));
     if (sections.length < 2) return;
+    function titleOf(sec) { return sec.dataset.sectionTitle || sec.dataset.navTitle; }
 
     var nav = document.createElement('nav');
     nav.className = 'v3-secnav';
@@ -18,10 +22,10 @@
     nav.appendChild(list);
 
     var links = [];
-    Array.prototype.forEach.call(sections, function (sec) {
+    sections.forEach(function (sec) {
       var a = document.createElement('a');
       a.href = '#' + sec.id;
-      a.textContent = sec.dataset.sectionTitle;
+      a.textContent = titleOf(sec);
       a.dataset.target = sec.id;
       list.appendChild(a);
       links.push(a);
@@ -32,19 +36,40 @@
     if (!host || !anchor) return;
     anchor.parentNode.insertBefore(nav, anchor.nextSibling);
 
-    if (!('IntersectionObserver' in window)) return;
-    var seen = {};
-    var obs = new IntersectionObserver(function (entries) {
-      entries.forEach(function (e) { seen[e.target.id] = e.isIntersecting; });
+    // The current section is the last one whose top has reached the line just under the
+    // sticky chrome. (An intersection band picked the first section it touched, which
+    // kept "Snake plot" lit while the short 3D block above the next table was on screen.)
+    var ticking = false;
+    function update() {
+      ticking = false;
+      var line = nav.getBoundingClientRect().bottom + 48;
       var activeId = null;
-      Array.prototype.forEach.call(sections, function (sec) {
-        if (!activeId && seen[sec.id]) activeId = sec.id;
+      sections.forEach(function (sec) {
+        if (sec.getBoundingClientRect().top <= line) activeId = sec.id;
       });
       links.forEach(function (a) {
         a.classList.toggle('on', a.dataset.target === activeId);
+        if (a.dataset.target === activeId) a.setAttribute('aria-current', 'location');
+        else a.removeAttribute('aria-current');
       });
-    }, { rootMargin: '-80px 0px -70% 0px' });
-    Array.prototype.forEach.call(sections, function (s) { obs.observe(s); });
+      // keep the lit link visible in the sideways-scrolling pill row (phones)
+      var on = list.querySelector('a.on');
+      if (on) {
+        var lo = on.offsetLeft - list.offsetLeft, hi = lo + on.offsetWidth;
+        if (lo < list.scrollLeft + 8) list.scrollLeft = Math.max(0, lo - 16);
+        else if (hi > list.scrollLeft + list.clientWidth - 8) list.scrollLeft = hi - list.clientWidth + 16;
+      }
+    }
+    function schedule() {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(update);
+    }
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    window.addEventListener('load', schedule);
+    document.addEventListener('toggle', schedule, true);
+    update();
   }
 
   var COMPACT_KEY = 'gpcompare-compact';

@@ -7,7 +7,10 @@ patches (CFR from cross-GPCR analysis, AlphaMissense categorical buckets,
 ConSurf-palette conservation with per-protein quantile binning).
 """
 
+import csv
+import gzip
 import json
+import re
 from pathlib import Path
 
 import numpy as np
@@ -17,7 +20,36 @@ from jinja2 import Environment
 from . import gpcr_report_helpers as v1
 from . import report_extras
 from ..plotly_theming import theme_overrides
-from ..seo import report_description
+from ..seo import report_description, report_title
+
+
+_UNIPROT_NAMES = Path(__file__).resolve().parent.parent.parent / 'search_sources' / 'uniprot' / 'uniprot_names.tsv.gz'
+_protein_names_cache = None
+
+
+def recommended_name(protein_names):
+    """UniProt's recommended name: the text before the first ' (' of the
+    protein_names field (alternative names and short names follow in brackets)."""
+    return re.sub(r'\s*[(\[].*$', '', protein_names or '').strip()
+
+
+def load_protein_names(path=None):
+    """{UniProt accession: recommended protein name} from the search sources'
+    UniProt snapshot (CC BY 4.0). Empty dict if the file is missing."""
+    global _protein_names_cache
+    if path is None and _protein_names_cache is not None:
+        return _protein_names_cache
+    src = Path(path) if path else _UNIPROT_NAMES
+    names = {}
+    if src.is_file():
+        with gzip.open(src, 'rt', encoding='utf-8') as fh:
+            for row in csv.DictReader(fh, delimiter='\t'):
+                name = recommended_name(row.get('protein_names'))
+                if row.get('accession') and name:
+                    names[row['accession']] = name
+    if path is None:
+        _protein_names_cache = names
+    return names
 
 
 def _load_conservation_cache(gpcr_id, output_dir):
@@ -428,6 +460,7 @@ def generate_all_reports(env: Environment, store, output_dir, analysis_results=N
     layout_light_json = json.dumps(light, separators=(',', ':'))
     layout_dark_json = json.dumps(dark, separators=(',', ':'))
 
+    protein_names = load_protein_names()
     cfr_generics = _cfr_generic_numbers(analysis_results)
     models_root = report_extras.models_dir()
 
@@ -492,10 +525,21 @@ def generate_all_reports(env: Environment, store, output_dir, analysis_results=N
                 am_landscape_cache=am_cache,
             )
 
-        rx = report_extras.build_extras(gid, annot_map, residue_metrics, models_root)
+        rx = report_extras.build_extras(gid, annot_map, residue_metrics, models_root,
+                                        gene_name=info.get('gene_name') or '')
+        if residue_metrics.empty:
+            rx_residue_json = ''
+        else:
+            rx_residue_json = report_extras.json_for_script(report_extras.residue_table_extras(
+                delta_df, sig_threshold,
+                _load_am_landscape_cache(gid, output_dir),
+                _load_conservation_cache(gid, output_dir),
+                residue_metrics['position'].tolist()))
 
         max_increase = float(delta_df['delta_rrcs'].max()) if not delta_df.empty else 0.0
         max_decrease = float(delta_df['delta_rrcs'].min()) if not delta_df.empty else 0.0
+
+        protein_name = protein_names.get(info.get('uniprot_id') or '', '')
 
         html = template.render(
             static_prefix='../',
@@ -505,9 +549,10 @@ def generate_all_reports(env: Environment, store, output_dir, analysis_results=N
             nav_stats_url='../statistics.html',
             nav_downloads_url='../downloads.html',
             nav_contact_url='../contact.html',
-            page_title=f"{info['uniprot_name']} · GPCompaRe",
+            page_title=report_title(info, protein_name),
             page_path=f'reports/{gid}.html',
-            page_description=report_description(info, sig_threshold, len(delta_df)),
+            page_description=report_description(info, sig_threshold, len(delta_df), protein_name),
+            protein_name=protein_name,
             total_gpcrs=total,
             uniprot_name=info['uniprot_name'],
             gene_name=info['gene_name'],
@@ -545,7 +590,9 @@ def generate_all_reports(env: Environment, store, output_dir, analysis_results=N
             rrcs_stats=rrcs_stats,
             residue_summary_json=residue_summary_json,
             rx=rx,
+            rx_residue_json=rx_residue_json,
             rx_clinvar_label=report_extras.clinvar_label(rx['clinvar']),
+            rx_clinvar_scope=report_extras.CLINVAR_SCOPE,
             layout_light_json=layout_light_json,
             layout_dark_json=layout_dark_json,
         )

@@ -702,7 +702,8 @@ def test_3d_view_draws_a_webgl_canvas_with_the_attribution_beside_it(open_extra)
       var gl = c.getContext('webgl2') || c.getContext('webgl');
       return !!gl;
     })()"""), 'the canvas has no WebGL context'
-    assert 'RMSD' in page.inner_text('#rx-3d-status')
+    status = page.inner_text('#rx-3d-status')
+    assert re.fullmatch(r'Superposed on \d+ Cα atoms \(all residues\)', status), status
     section = page.inner_text('#sec-3d')
     for needle in ('CC BY 4.0', 'Heo L, Feig M', 'Mol*', 'AlphaFold-Multistate'):
         assert needle in section, 'attribution lacks %r' % needle
@@ -741,15 +742,18 @@ def test_clicking_a_snake_residue_opens_the_drawer_and_focuses_the_3d_view(open_
     assert page.errors == [] and _console_errors(page) == [], (page.errors, _console_errors(page))
 
 
-def test_a_table_cell_opens_the_drawer_and_a_deep_link_does_not(open_extra):
+def test_a_table_cell_and_a_res_link_open_the_drawer_and_a_section_link_does_not(open_extra):
     gid = _pick_report('par2_human', 'id="variants-table"', 'id="snake-plot-data"')
     assert gid, 'no report with a variants table'
-    # a landing on #res= selects the residue on the plot but leaves the drawer closed
+    # a landing on #res= (the search page writes these) selects the residue on the plot and
+    # opens the drawer on it; without #res= the drawer stays closed
     probe = open_extra(gid)
     n = _snake_residue(probe)
     page = open_extra(gid, '#res=%d' % n)
     assert page.evaluate('window.SnakeAPI.getSelectedResidue()') == n
-    assert page.locator('#rx-drawer').is_hidden(), 'a #res= landing must not open the drawer'
+    expect(page.locator('#rx-drawer')).to_be_visible()
+    assert page.inner_text('#rx-drawer-title').endswith(str(n))
+    assert open_extra(gid, '#sec=sec-changes').locator('#rx-drawer').is_hidden()
 
     page = open_extra(gid)
     cell = page.locator('#variants-table tbody tr:not([hidden]) td:nth-child(1)').first
@@ -784,7 +788,7 @@ def test_the_clinvar_section_is_collapsed_and_toggles(open_extra):
     details = page.locator('#rx-clinvar')
     assert details.get_attribute('open') is None, 'the ClinVar section must start collapsed'
     assert page.locator('#clinvar-table').is_hidden()
-    assert re.search(r'ClinVar \d{4}-\d{2}-\d{2}: \d+ records?', page.inner_text('#rx-clinvar summary'))
+    assert re.fullmatch(r'\d+ records? in ClinVar \d{4}-\d{2}-\d{2}', page.inner_text('#rx-clinvar summary').strip())
 
     page.locator('#rx-clinvar summary').click()
     expect(page.locator('#clinvar-table')).to_be_visible()
@@ -807,4 +811,6 @@ def test_the_clinvar_section_is_collapsed_and_toggles(open_extra):
     page.locator('#rx-clinvar summary').click()
     note = page.locator('#rx-clinvar .rx-none')
     expect(note).to_be_visible()
-    assert 'No germline pathogenic or likely pathogenic missense records' in note.inner_text()
+    assert 'use the ClinVar search above' in note.inner_text()
+    assert re.fullmatch(r'No pathogenic or likely pathogenic missense records in ClinVar \d{4}-\d{2}-\d{2}',
+                        page.inner_text('#rx-clinvar summary').strip())

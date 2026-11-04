@@ -1,7 +1,8 @@
 /* v3-deeplink.js — put snake-plot state in the URL hash so a link can point at a view.
    Grammar: #view=cfr&min=0.5&max=3&dir=active&sec=sec-changes
    Focus (written by the Browse page search, read only):
-     res=159        select residue 159 on the snake plot and show its contact arcs
+     res=159        select residue 159 on the snake plot and show its contact arcs;
+                    residue-drawer.js then opens the residue drawer on it
      vq=p.Met159Ile prefill the variants table search box, filtering the table
    Reading the hash changes what is displayed but adds nothing to the page;
    without these keys the page opens exactly as it always did. */
