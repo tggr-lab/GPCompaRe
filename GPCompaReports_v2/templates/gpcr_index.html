@@ -18,7 +18,7 @@
 
     <form class="browse-search-link" action="{{ static_prefix }}search/" method="get" role="search" data-search-index="{{ static_prefix }}search2/" data-suggest-host>
       <label for="browse-vsearch">Looking for a variant, a residue or a genome position?</label>
-      <input type="search" id="browse-vsearch" name="q" class="v2-input" placeholder="e.g. PAR2 M159I, rs115885685, 5-76833084-G-A, 3.50x50" aria-describedby="browse-vsearch-help" spellcheck="false" autocapitalize="off" autocomplete="off">
+      <input type="search" id="browse-vsearch" name="q" maxlength="300" class="v2-input" placeholder="e.g. PAR2 M159I, rs115885685, 5-76833084-G-A, 3.50x50" aria-describedby="browse-vsearch-help" spellcheck="false" autocapitalize="off" autocomplete="off">
       <button type="submit" class="btn btn-primary">Search</button>
       <span class="sr-hint" id="browse-vsearch-help">Any notation works: protein or coding changes, GRCh37 or GRCh38 positions, rsIDs, ClinVar records, generic numbers. The table below lists receptors.</span>
     </form>

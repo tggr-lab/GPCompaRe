@@ -21,6 +21,8 @@ STATES = ('active', 'inactive')
 ALLOWED = {'.css', '.gif', '.gz', '.html', '.ico', '.jpg', '.js', '.json', '.mjs', '.nojekyll',
            '.png', '.svg', '.ttf', '.txt', '.wasm', '.webp', '.woff', '.woff2', '.xml'}
 EXCLUDED_DIRS = ('data', 'poster', 'dossier')
+# the embed demo takes ?active=/?inactive=/?base= URLs from the address bar, so it is not shipped
+EXCLUDED_FILES = ('studio/embed/demo.html',)
 SECRET_NAME = re.compile(r'(^\.env|\.pem$|\.key$|id_rsa|credential|secret|\.docx?$|\.xlsx?$|\.pptx?$|'
                          r'\.pdb$|\.cif$|\.map$|\.bak$|\.pyc$|\.sqlite|\.db$)', re.I)
 PRIVATE_TEXT = re.compile(rb'/home/yamir|yamamir|/run/media/|/media/yamir|file:///|'
@@ -111,6 +113,9 @@ def main(stage):
     for name in EXCLUDED_DIRS:
         if (stage / name).exists():
             fails.append('excluded directory is present: /%s/' % name)
+    for rel in EXCLUDED_FILES:
+        if (stage / rel).exists():
+            fails.append('excluded file is present: /%s' % rel)
     if total > MAX_SITE:
         fails.append('site is %.0f MiB, over the Pages limit' % (total / 2**20))
     for rel in ('.nojekyll', 'index.html', 'statistics.html', 'sitemap.xml', 'studio/index.html',

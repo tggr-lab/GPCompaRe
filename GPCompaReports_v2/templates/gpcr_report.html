@@ -125,7 +125,7 @@
       <header class="report-section-head"><h2 id="rx-3d-title">3D view</h2></header>
       <div class="rx-actions">
         <button type="button" class="btn btn-sm" id="rx-3d-toggle" aria-expanded="false" aria-controls="rx-3d-panel">Show 3D view</button>
-        <a class="btn btn-ghost btn-sm" href="{{ rx.studio_url }}" data-tooltip="Open this model pair in GPCompaRe Studio">Open in Studio</a>
+        <a class="btn btn-ghost btn-sm" href="{{ rx.studio_url|e }}" data-tooltip="Open this model pair in GPCompaRe Studio">Open in Studio</a>
       </div>
       <div class="rx-3d-panel" id="rx-3d-panel" hidden>
         <div class="rx-3d-tools">
@@ -137,7 +137,7 @@
           <button type="button" class="btn btn-ghost btn-sm" id="rx-3d-whole">Whole receptor</button>
           <span class="rx-3d-status" id="rx-3d-status" role="status" aria-live="polite"></span>
         </div>
-        <div class="rx-3d-pane" id="rx-3d-pane" role="group" aria-label="Active and inactive models of {{ uniprot_name }}, superposed"></div>
+        <div class="rx-3d-pane" id="rx-3d-pane" role="group" aria-label="Active and inactive models of {{ uniprot_name|e }}, superposed"></div>
         <p class="rx-caption">Colour: net ΔRRCS per residue. <span class="is-active">Red:</span> stronger in active. <span class="is-inactive">Blue:</span> stronger in inactive.</p>
       </div>
       <p class="rx-attr">
@@ -359,7 +359,7 @@
     <section class="report-extra" id="sec-clinvar" aria-labelledby="rx-clinvar-title">
       <header class="report-section-head"><h2 id="rx-clinvar-title">ClinVar</h2></header>
       <details class="rx-details" id="rx-clinvar">
-        <summary>{{ rx_clinvar_label }}: {% if cv %}{{ cv|length }} record{{ '' if cv|length == 1 else 's' }}{% else %}no records{% endif %}</summary>
+        <summary>{{ rx_clinvar_label|e }}: {% if cv %}{{ cv|length }} record{{ '' if cv|length == 1 else 's' }}{% else %}no records{% endif %}</summary>
         {% if cv %}
         <div class="v2-table-wrap">
           <div class="v2-table-scroll">
@@ -378,13 +378,13 @@
               <tbody>
               {% for r in cv %}
                 <tr>
-                  <td><button type="button" class="rx-res-link" data-rx-res="{{ r.pos }}">{{ r.aa3 }}{{ r.pos }}</button>{% if r.differs %} <small class="muted">(model residue differs)</small>{% endif %}</td>
-                  <td class="mono">{{ r.gn or '-' }}</td>
-                  <td>{{ r.hgvsp }}</td>
-                  <td>{{ r.cls }}</td>
-                  <td class="rx-stars" role="img" aria-label="{{ r.stars }} of 4 stars" data-tooltip="{{ r.review }}">{{ r.stars_text }}</td>
-                  <td>{{ r.conditions | join('; ') if r.conditions else '-' }}</td>
-                  <td class="mono"><a href="https://www.ncbi.nlm.nih.gov/clinvar/variation/{{ r.vid }}/" target="_blank" rel="noopener">{{ r.vcv }}</a></td>
+                  <td><button type="button" class="rx-res-link" data-rx-res="{{ r.pos|e }}">{{ r.aa3|e }}{{ r.pos|e }}</button>{% if r.differs %} <small class="muted">(model residue differs)</small>{% endif %}</td>
+                  <td class="mono">{{ (r.gn or '-')|e }}</td>
+                  <td>{{ r.hgvsp|e }}</td>
+                  <td>{{ r.cls|e }}</td>
+                  <td class="rx-stars" role="img" aria-label="{{ r.stars|e }} of 4 stars" data-tooltip="{{ r.review|e }}">{{ r.stars_text|e }}</td>
+                  <td>{{ (r.conditions | join('; ') if r.conditions else '-') | e }}</td>
+                  <td class="mono"><a href="https://www.ncbi.nlm.nih.gov/clinvar/variation/{{ r.vid|e }}/" target="_blank" rel="noopener">{{ r.vcv|e }}</a></td>
                 </tr>
               {% endfor %}
               </tbody>
@@ -392,9 +392,9 @@
           </div>
         </div>
         {% else %}
-        <p class="rx-none">No germline pathogenic or likely pathogenic missense records for this receptor in {{ rx_clinvar_label }}.</p>
+        <p class="rx-none">No germline pathogenic or likely pathogenic missense records for this receptor in {{ rx_clinvar_label|e }}.</p>
         {% endif %}
-        <p class="rx-attr">Source: <a href="https://www.ncbi.nlm.nih.gov/clinvar/" target="_blank" rel="noopener">NCBI ClinVar</a>, release {{ rx.clinvar.release }}. {{ rx.clinvar.scope[:1]|upper }}{{ rx.clinvar.scope[1:] }}.</p>
+        <p class="rx-attr">Source: <a href="https://www.ncbi.nlm.nih.gov/clinvar/" target="_blank" rel="noopener">NCBI ClinVar</a>, release {{ rx.clinvar.release|e }}. {{ rx.clinvar.scope[:1]|upper|e }}{{ rx.clinvar.scope[1:]|e }}.</p>
       </details>
     </section>
     {% endif %}

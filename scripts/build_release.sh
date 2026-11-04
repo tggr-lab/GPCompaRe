@@ -87,6 +87,9 @@ rsync -a --delete \
   "$BUILD/" "$STAGE/"
 mkdir -p "$STAGE/studio"
 rsync -a --delete "${STUDIO_DIST%/}/" "$STAGE/studio/"
+# the embed demo loads any model URL given in its query string: do not ship it (NOTICE.txt and
+# THIRD_PARTY_NOTICES.txt stay)
+rm -f "$STAGE/studio/embed/demo.html"
 echo "==> Hosting the GPCRdb models (gzipped, bytes unmodified)..."
 "$PY" "$ROOT/scripts/stage_models.py" --src "$MODELS_DIR" --reports "$STAGE/reports" \
   --out "$STAGE/models" --index "$STAGE/studio/pack/index.json"

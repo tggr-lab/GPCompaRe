@@ -92,3 +92,27 @@ def test_no_em_dashes_in_the_search_ui_copy():
         # code comments may use them; user-facing strings must not
         strings = re.findall(r"'[^'\n]*—[^'\n]*'|\"[^\"\n]*—[^\"\n]*\"|`[^`]*—[^`]*`", text)
         assert not strings, (rel, strings[:2])
+
+
+def test_search_page_hides_the_query_from_the_next_page_and_inputs_are_capped(tmp_path):
+    html = _render(tmp_path)
+    # a result link opened from /search/?q=... must see only the origin as its referrer
+    assert '<meta name="referrer" content="strict-origin">' in html
+    # analytics takes its path from the canonical link, which has no ?q=
+    assert '<link rel="canonical" href="%ssearch/">' % SITE_URL in html
+    inputs = re.findall(r'<input type="search"[^>]*>', html)
+    assert len(inputs) == 3  # top bar, drawer, page
+    assert all('maxlength="300"' in i for i in inputs), inputs
+
+
+def test_every_search_box_in_the_templates_is_capped():
+    for rel in ['templates/_partials/topbar.html', 'templates/search.html', 'templates/gpcr_index.html']:
+        text = (BASE / rel).read_text(encoding='utf-8')
+        for tag in re.findall(r'<input type="search"[^>]*>', text):
+            assert 'maxlength="300"' in tag, (rel, tag)
+
+
+def test_privacy_page_says_search_text_is_not_sent():
+    text = (BASE / 'templates/privacy.html').read_text(encoding='utf-8')
+    assert 'Search queries are processed in your browser and are not sent anywhere' in text
+    assert 'page views without the search text' in text

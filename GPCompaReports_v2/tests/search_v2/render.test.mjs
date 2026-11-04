@@ -69,3 +69,26 @@ test('autocomplete suggests receptors, generic numbers and recent queries', { sk
   assert.deepEqual(suggestionsFor('', meta, ['PAR2 M159I']).map((s) => s.query), ['PAR2 M159I']);
   assert.ok(suggestionsFor('par2 m', meta, ['PAR2 M159I'])[0].kind === 'recent');
 });
+
+test('"Did you mean" for a genomic alternate re-reads the typed coordinate on the other assembly', async () => {
+  const { alternateQuery } = await import('../../static/js/search-ui/render.js');
+  const { parse } = await import('../../static/js/search/parse.js');
+  const interp = parse('5-76833084-G-A')[0];
+  const q38 = alternateQuery({ kind: 'genomic', assembly: 'GRCh37', gid: 'x', label: 'Read on GRCh37: X' }, (g) => g, interp);
+  assert.equal(q38, '5-76833084-G-A GRCh37');
+  const back = parse(q38)[0];
+  assert.equal(back.kind, 'genomic');
+  assert.equal(back.genomic.assemblyHint, 'GRCh37');
+  assert.equal(back.genomic.pos, 76833084);
+  // a position without alleles
+  const pos = parse('5:76833084')[0];
+  const q = alternateQuery({ kind: 'genomic', assembly: 'GRCh38', label: 'Read on GRCh38' }, (g) => g, pos);
+  assert.equal(parse(q)[0].genomic.assemblyHint, 'GRCh38');
+  // with no interpretation the link falls back to the label rather than throwing
+  assert.equal(alternateQuery({ kind: 'genomic', assembly: 'GRCh38', label: 'L' }, (g) => g), 'L');
+});
+
+test('a query over the limit gets a visible notice', () => {
+  const out = renderAnswer({ expect: 'unrecognised', results: [], alternates: [], interpretation: { kind: 'unrecognised', flags: ['query-truncated'] } }, 'x'.repeat(400), OPTS);
+  assert.match(out.html, /Only the first 300 characters were read\./);
+});

@@ -12,7 +12,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { parse, summarize } from '../../static/js/search/parse.js';
+import { parse, summarize, MAX_QUERY_LENGTH } from '../../static/js/search/parse.js';
 import { normalizeQuery, aliasKey } from '../../static/js/search/normalize.js';
 import { parseProtein, parseGeneric, parseCoding, parseReceptorId, parseClinvar, parseRsid, aaThree } from '../../static/js/search/notation.js';
 import { parseGenomic, ncToChrom, extractAssembly } from '../../static/js/search/genomic.js';
@@ -395,5 +395,35 @@ describe('ranking rules', () => {
   test('a bare integer is never a residue without a receptor', () => {
     assert.ok(parse('159', ctx).every((i) => !i.change));
     assert.equal(topSum('F2RL1 159', ctx), 'residue R=F2RL1 p=?159');
+  });
+});
+
+// ------------------------------------------------------------------------------ query length cap
+
+describe('query length cap', () => {
+  const nasty = [
+    'PAR2 M159I '.repeat(2000),
+    'a b,'.repeat(5000),
+    `${'x'.repeat(10000)} ${'y'.repeat(10000)}`,
+    ':'.repeat(20000),
+  ];
+  test('a 20k-character query parses in under 50 ms and says it was cut', () => {
+    for (const q of nasty) {
+      assert.ok(q.length >= 20000);
+      const t0 = performance.now();
+      const out = parse(q);
+      const ms = performance.now() - t0;
+      assert.ok(ms < 50, `${ms.toFixed(1)} ms for ${q.slice(0, 20)}`);
+      assert.ok(out.every((i) => i.flags?.includes('query-truncated')));
+    }
+  });
+  test('a query of exactly the limit is read whole, without the flag', () => {
+    const out = parse(`PAR2 M159I${' '.repeat(MAX_QUERY_LENGTH - 10)}`);
+    assert.ok(!out[0].flags?.includes('query-truncated'));
+    assert.equal(parse(`PAR2 M159I${' '.repeat(MAX_QUERY_LENGTH)}`)[0].flags?.includes('query-truncated'), true);
+  });
+  test('the first 300 characters still parse as usual', () => {
+    const out = parse(`PAR2 M159I ${'z'.repeat(5000)}`);
+    assert.ok(out[0].flags.includes('query-truncated'));
   });
 });

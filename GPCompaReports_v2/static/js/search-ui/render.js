@@ -12,6 +12,8 @@
  */
 
 import { three } from '../search/shards.js';
+import { gnomadIdOf } from '../search/genomic.js';
+import { MAX_QUERY_LENGTH } from '../search/parse.js';
 
 // ------------------------------------------------------------------------------ html helper
 
@@ -94,7 +96,7 @@ export function queryFor(r, interp) {
 }
 
 /** Link target for an alternate ("Did you mean"). */
-export function alternateQuery(a, symbolOf) {
+export function alternateQuery(a, symbolOf, interp) {
   const sym = a.gid && a.gid !== '*' ? (symbolOf?.(a.gid) ?? a.gid) : '';
   switch (a.kind) {
     case 'receptor': return sym || a.display || a.label;
@@ -102,6 +104,12 @@ export function alternateQuery(a, symbolOf) {
     case 'residue': return `${sym} ${three(a.ref ?? a.aa)}${a.pos}`.trim();
     case 'generic': return a.display;
     case 'clinvar': return `VCV${String(a.id).padStart(9, '0')}`;
+    case 'genomic': {
+      // the same coordinate the reader typed, read on the other assembly
+      const g = interp?.genomic;
+      if (!g || !a.assembly) return a.label;
+      return `${gnomadIdOf(g) ?? `${g.chrom}:${g.pos}`} ${a.assembly}`;
+    }
     case 'hgnc': return String(a.id);
     case 'gene_id': return `GeneID:${a.id}`;
     default: return a.display ?? a.label;
@@ -192,11 +200,12 @@ export function readAsText(answer, query) {
 }
 
 function alternatesBlock(answer, symbolOf, base) {
+  const interp = answer.interpretation;
   const alts = answer.alternates ?? [];
   if (!alts.length) return '';
   return html`<div class="sr-did-you-mean"><span class="sr-label">Did you mean</span>
     <ul class="sr-alt-list">${alts.map((a) => {
-      const q = alternateQuery(a, symbolOf);
+      const q = alternateQuery(a, symbolOf, interp);
       return html`<li><a href="${base}?q=${encodeURIComponent(q)}" data-q="${q}">${a.label ?? q}</a></li>`;
     })}</ul></div>`;
 }
@@ -521,6 +530,10 @@ export function renderAnswer(answer, query, o) {
   const reading = readAsText(answer, query);
   const statusBits = [];
   let out = '';
+
+  if (String(query ?? '').length > MAX_QUERY_LENGTH || answer.interpretation?.flags?.includes('query-truncated')) {
+    out += html`<div class="sr-message sr-message--info" role="note">Only the first ${MAX_QUERY_LENGTH} characters were read.</div>`.s;
+  }
 
   if (reading && !(answer.interpretation?.kind === 'receptor' && !rs.length)) {
     out += html`<section class="sr-read" aria-label="How the query was read"><p class="sr-read-line"><span class="sr-label">I read this as</span> <strong>${reading}</strong>${answer.assembly ? html` <span class="sr-badge">${answer.assembly}</span>` : ''}</p>

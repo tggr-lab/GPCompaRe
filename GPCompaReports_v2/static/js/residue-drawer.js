@@ -68,12 +68,21 @@
           (variantIndex[p] = variantIndex[p] || []).push({
             hgvsp: c[1].textContent.trim(),
             af: c[3].textContent.trim(),
-            am: c[7].textContent.trim()
+            amScore: c[6].textContent.trim(),
+            amClass: c[7].textContent.trim()
           });
         });
       }
     }
     return variantIndex[pos] || [];
+  }
+
+  // AlphaMissense class (and score, when the report has one), labelled
+  function amText(v) {
+    var has = function (x) { return x && x !== '-'; };
+    if (!has(v.amClass) && !has(v.amScore)) return '';
+    return ' · AlphaMissense: ' + (has(v.amClass) ? v.amClass.toLowerCase() : '') +
+      (has(v.amScore) ? (has(v.amClass) ? ' (' + v.amScore + ')' : v.amScore) : '');
   }
 
   function fmtSigned(v) { return (v >= 0 ? '+' : '') + v.toFixed(2); }
@@ -117,7 +126,7 @@
     if (vars.length) {
       var ul = el('ul');
       vars.forEach(function (v) {
-        ul.appendChild(el('li', null, v.hgvsp + ' · AF ' + v.af + (v.am && v.am !== '-' ? ' · ' + v.am : '')));
+        ul.appendChild(el('li', null, v.hgvsp + ' · AF ' + v.af + amText(v)));
       });
       bodyEl.appendChild(ul);
     } else {

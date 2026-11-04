@@ -569,3 +569,33 @@ def test_search_page_is_keyboard_operable(open_page):
     # every example chip and action is a link or button reachable by Tab
     page.keyboard.press('Tab')
     assert page.evaluate("document.activeElement.tagName") in ('BUTTON', 'A', 'INPUT')
+
+
+def test_search_text_does_not_reach_the_next_page_as_its_referrer(open_page, server):
+    page = search_page(open_page, 'F2RL1 p.Met159Ile')
+    assert 'q=' in page.url
+    link = page.locator('.sr-card a[href*="reports/"]').first
+    expect(link).to_be_visible()
+    link.click()
+    page.wait_for_load_state('load')
+    assert '/reports/' in page.url
+    assert page.evaluate('document.referrer') == server + '/'
+    assert 'Met159' not in page.evaluate('document.referrer')
+
+
+def test_every_search_box_has_a_length_cap(open_page):
+    page = open_page('/search/')
+    caps = page.eval_on_selector_all('input[type=search]', 'els => els.map(e => e.maxLength)')
+    assert caps and all(c == 300 for c in caps), caps
+    browse = open_page('/browse/')
+    caps = browse.eval_on_selector_all('input[type=search]', 'els => els.map(e => e.maxLength)')
+    assert caps and all(c == 300 for c in caps), caps
+
+
+def test_a_very_long_query_is_cut_and_says_so(open_page):
+    import time
+    t0 = time.time()
+    page = search_page(open_page, 'PAR2 M159I ' + 'x' * 20000)
+    assert time.time() - t0 < 10
+    assert 'Only the first 300 characters were read' in results_text(page)
+    assert page.errors == []

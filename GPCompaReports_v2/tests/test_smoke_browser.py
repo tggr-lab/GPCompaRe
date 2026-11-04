@@ -759,6 +759,16 @@ def test_a_table_cell_opens_the_drawer_and_a_deep_link_does_not(open_extra):
     expect(page.locator('#rx-drawer')).to_be_visible()
     assert str(pos) in page.inner_text('#rx-drawer-title')
     assert 'Variants in this report' in page.inner_text('#rx-drawer-body')
+    # the AlphaMissense class is labelled, never a bare word after the allele frequency
+    items = page.locator('#rx-drawer-body li').all_inner_texts()
+    am = [t for t in items if 'AF ' in t]
+    assert am, items
+    for t in am:
+        tail = t.split('AF ', 1)[1]
+        if 'AlphaMissense' not in tail:
+            assert not re.search(r'\b(benign|pathogenic|ambiguous)\b', tail, re.I), t
+    assert any('AlphaMissense: ' in t for t in am), am
+    assert '\u2014' not in page.inner_text('#rx-drawer-body')
     page.click('#rx-drawer-close')
     expect(page.locator('#rx-drawer')).to_be_hidden()
     assert page.errors == [] and _console_errors(page) == [], (page.errors, _console_errors(page))

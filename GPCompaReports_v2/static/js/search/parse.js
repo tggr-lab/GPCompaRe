@@ -43,6 +43,9 @@ import { parseGenomic, extractAssembly } from './genomic.js';
 
 export { normalizeQuery } from './normalize.js';
 
+/** Longest query that is parsed; anything beyond it is ignored and the interpretation carries the flag 'query-truncated'. */
+export const MAX_QUERY_LENGTH = 300;
+
 /** @typedef {{matchReceptor?: (term: string) => Array<{gid: string, exact: boolean}>}} ParseContext */
 
 const TX = /^((?:NM|NR|XM|XR|NG)_\d+|ENST\d{11}|LRG_\d+(?:t\d+)?)(?:\.(\d+))?(?:\s*\(\s*([^()]+?)\s*\))?\s*:\s*(.+)$/i;
@@ -290,6 +293,15 @@ function splits(text, matcher) {
  *   'unrecognised' interpretation)
  */
 export function parse(query, ctx) {
+  if (typeof query !== 'string' || query.length <= MAX_QUERY_LENGTH) return parseText(query, ctx);
+  const raw = query;
+  // the split search below is quadratic in the query length: read only the first MAX_QUERY_LENGTH characters
+  let cut = raw.slice(0, MAX_QUERY_LENGTH);
+  if (/[\uD800-\uDBFF]$/.test(cut)) cut = cut.slice(0, -1); // never end on half a surrogate pair
+  return parseText(cut, ctx).map((i) => ({ ...i, flags: [...new Set([...(i.flags ?? []), 'query-truncated'])] }));
+}
+
+function parseText(query, ctx) {
   const text = normalizeQuery(query);
   const matcher = ctx && typeof ctx.matchReceptor === 'function' ? ctx.matchReceptor : null;
   if (!text) return [{ kind: 'unrecognised', confidence: 1, why: 'Nothing was typed.' }];

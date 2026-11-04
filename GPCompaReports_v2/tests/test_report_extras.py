@@ -407,9 +407,45 @@ def test_the_release_script_hosts_models_and_keeps_the_exclusions():
     assert build.index('stage_models.py') < build.index('check_stage.py')
     for path in ('/data/', '/poster/', '/dossier/'):
         assert "--exclude='%s'" % path in build
+    assert 'rm -f "$STAGE/studio/embed/demo.html"' in build
+    assert build.index('rm -f "$STAGE/studio/embed/demo.html"') < build.index('check_stage.py')
+
+
+def test_check_stage_fails_when_the_embed_demo_is_staged(tmp_path, capsys):
+    check_stage = _load_script('check_stage')
+    assert check_stage.EXCLUDED_FILES == ('studio/embed/demo.html',)
+    stage = tmp_path / 'stage'
+    (stage / 'studio' / 'embed').mkdir(parents=True)
+    (stage / 'studio' / 'embed' / 'demo.html').write_text('<html></html>')
+    (stage / 'studio' / 'embed' / 'NOTICE.txt').write_text('x')
+    assert check_stage.main(stage) == 1
+    assert 'excluded file is present: /studio/embed/demo.html' in capsys.readouterr().out
 
 
 def test_stage_models_cli_runs():
     out = subprocess.run([sys.executable, str(ROOT / 'scripts' / 'stage_models.py'), '--help'],
                          capture_output=True, text=True)
     assert out.returncode == 0 and '--index' in out.stdout
+
+
+def test_clinvar_block_escapes_pack_text_although_the_report_environment_does_not_autoescape():
+    # website/site_generator.py builds the Jinja environment without autoescape (the frozen report
+    # sections rely on that), so the new ClinVar block escapes every value itself.
+    import jinja2
+    src = (BASE / 'templates' / 'gpcr_report.html').read_text(encoding='utf-8')
+    start = src.index('{% if rx.clinvar is not none %}')
+    end = src.index('{% endif %}', src.index('rx-attr', start)) + len('{% endif %}')
+    nasty = '<script>alert(1)</script>&"\''
+    rx = {'clinvar': {
+        'release': nasty, 'scope': nasty,
+        'records': [{'pos': 5, 'aa3': 'Met', 'gn': nasty, 'hgvsp': nasty, 'cls': nasty, 'stars': 2,
+                     'stars_text': nasty, 'review': nasty, 'conditions': [nasty, 'x" onmouseover="y'],
+                     'vid': 1, 'vcv': nasty, 'differs': False}]}}
+    env = jinja2.Environment()  # autoescape off, as in the site generator
+    out = env.from_string(src[start:end]).render(rx=rx, rx_clinvar_label=nasty)
+    assert '<script>' not in out and '</script>' not in out
+    assert 'x" onmouseover="y' not in out
+    assert '&lt;script&gt;alert(1)&lt;/script&gt;&amp;&#34;&#39;' in out
+    # the tooltip attribute stays inside its quotes
+    tip = re.search(r'role="img"[^>]*data-tooltip="([^"]*)"', out).group(1)
+    assert '&#34;' in tip and '<' not in tip
