@@ -178,14 +178,14 @@
     </section>
 
     {# ---- D. Variant Correlation ---- #}
+    {# AlphaMissense numbers: the corrected supplement analysis (Fig. S4, S5, Table S7), from
+       data/supplement_2026-11-05b/ via manuscript_stats.load_am_comparison. Unrounded in the data;
+       rounded once here. tests/test_statistics_am_section.py pins them. #}
     <section class="analysis-section reveal" aria-labelledby="sec-d">
       <header class="section-head">
         <h2 id="sec-d" data-tooltip="How genetic variants correlate with conformational change and pathogenicity, comparing the {{ cfr_top_n }} top-ranked class-wide CFR positions (by CFR score) with other generic-numbered positions">D. Variant Correlation</h2>
         <p class="section-sub">
-          Variant analyses include 279 receptors. NPY6R and TAAR3 lack protein-coding missense
-          annotations because they are annotated as pseudogene loci. GP182 and P2RY8 are excluded
-          from the current variant dataset because their identifiers were not successfully
-          resolved during data collection.
+          This AlphaMissense comparison uses {{ am.receptors if am else 276 }} receptors, excluding GPR3, GPR4 and XCR1 because of mismatched annotations in the original inputs. The corrected analysis places alleles on model residue numbering.
         </p>
       </header>
 
@@ -196,25 +196,23 @@
            data-chart-layout-dark='{{ layout_dark_json }}'></div>
       {% endif %}
 
-      {% if fig3_or %}
-      <div class="callout callout-accent">
-        <div class="callout-head">AlphaMissense pathogenicity at the {{ cfr_top_n }} top-ranked CFR positions</div>
+      {% if am %}
+      <div class="callout callout-accent" id="am-comparison">
+        <div class="callout-head">AlphaMissense pathogenicity at the top {{ cfr_top_n }} positions by CFR score</div>
         <p>
-          Among decisive AlphaMissense predictions, <strong>{{ "%.1f"|format(fig3_decisive.recurrent) }}%</strong>
-          were classified as pathogenic at the {{ cfr_top_n }} top-ranked class-wide CFR positions (by CFR score),
-          compared with <strong>{{ "%.1f"|format(fig3_decisive.other) }}%</strong> at other
+          Among decisive AlphaMissense predictions, <strong>{{ "%.1f"|format(am.decisive_pct.top) }}%</strong>
+          of substitutions at the top {{ cfr_top_n }} positions by CFR score were classified as pathogenic,
+          compared with <strong>{{ "%.1f"|format(am.decisive_pct.other) }}%</strong> at other
           generic-numbered positions: odds ratio
-          <strong>{{ "%.2f"|format(fig3_or) }}</strong>
-          (95% CI {{ "%.2f"|format(fig3_ci_low) }} to {{ "%.2f"|format(fig3_ci_high) }}).
-          {% if fig3_adjusted %}
-          Adjusting for conservation reduces the odds ratio to
-          <strong>{{ "%.2f"|format(fig3_adjusted.odds_ratio) }}</strong>
-          (95% CI {{ "%.2f"|format(fig3_adjusted.ci_low) }} to {{ "%.2f"|format(fig3_adjusted.ci_high) }}).
-          {% endif %}
+          <strong>{{ "%.2f"|format(am.odds_ratio[0]) }}</strong>
+          (95% CI {{ "%.2f"|format(am.odds_ratio[1]) }} to {{ "%.2f"|format(am.odds_ratio[2]) }}).
+          After stratification by conservation the odds ratio is
+          <strong>{{ "%.2f"|format(am.conservation_adjusted[0]) }}</strong>
+          (95% CI {{ "%.2f"|format(am.conservation_adjusted[1]) }} to {{ "%.2f"|format(am.conservation_adjusted[2]) }}).
         </p>
         <p>
-          Ambiguous predictions are shown in the chart but excluded from the odds ratio.
-          {% for g in fig3_groups %}{{ g.label }}: n = {{ "{:,}".format(g.n) }}{% if not loop.last %}. {% else %}.{% endif %}{% endfor %}
+          Ambiguous predictions are shown in the chart but excluded from the odds ratio and the percentages.
+          {% for g in am.groups %}{{ g.label }}: {{ "{:,}".format(g.n) }} scored substitutions, {{ "{:,}".format(g.decisive) }} decisive ({{ "{:,}".format(g.pathogenic_n) }} pathogenic, {{ "{:,}".format(g.benign_n) }} benign) and {{ "{:,}".format(g.ambiguous_n) }} ambiguous.{% if not loop.last %} {% endif %}{% endfor %}
           The comparison group is every other generic-numbered position, which includes recurrent
           positions ranked below the cutoff.
         </p>
@@ -222,6 +220,7 @@
           This association supports recurrence as a variant-prioritisation feature. It does not
           establish pathogenicity.
         </p>
+        <aside class="fine-print">Source: Supplementary Figure S4 and Table S7 (unique substitutions; Woolf 95% CI; Mantel-Haenszel odds ratio over conservation quintiles of eligible decisive calls, Robins-Breslow-Greenland 95% CI). Alleles are the {{ data_versions.sources.gnomad_batch.label }} records behind the paper (batch layer).</aside>
       </div>
       {% endif %}
 
@@ -230,6 +229,12 @@
            id="chart-conservation"
            data-chart-layout-light='{{ layout_light_json }}'
            data-chart-layout-dark='{{ layout_dark_json }}'></div>
+      <aside class="fine-print">
+        The conservation chart uses the site's own variant layer, which covers 279 receptors. NPY6R and TAAR3 lack protein-coding missense
+        annotations because they are annotated as pseudogene loci. GP182 and P2RY8 are excluded
+        from the current variant dataset because their identifiers were not successfully
+        resolved during data collection.
+      </aside>
       {% endif %}
 
     </section>

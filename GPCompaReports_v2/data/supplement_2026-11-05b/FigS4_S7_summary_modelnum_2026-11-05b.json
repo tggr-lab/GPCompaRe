@@ -1,0 +1,92 @@
+{
+ "source": "/home/yamir/research/tggr_gpcr_ready_for_the final_draft/figures_overhaul/figure3/fig3_audit_variants_complete_modelnum_2026-11-05b.tsv",
+ "all_rows_incl_gpr3_gpr4_xcr1": {
+  "cells": [
+   4135,
+   2095,
+   4115,
+   5355
+  ],
+  "pct_cfr": 66.37239165329053,
+  "pct_other": 43.45300950369588,
+  "n_cfr": 7354,
+  "n_other": 11148,
+  "receptors": 279,
+  "or": [
+   2.568509179699394,
+   2.4034135480753527,
+   2.7449455843681614
+  ],
+  "mh_conservation": [
+   1.5227953967664982,
+   1.4081971067831478,
+   1.6467196312528227
+  ],
+  "decisive_cfr": 6230,
+  "decisive_other": 9470,
+  "ambiguous_cfr": 1124,
+  "ambiguous_other": 1678
+ },
+ "without_gpr3_gpr4_xcr1": {
+  "cells": [
+   4117,
+   2038,
+   4085,
+   5284
+  ],
+  "pct_cfr": 66.88870836718115,
+  "pct_other": 43.6012381257338,
+  "n_cfr": 7268,
+  "n_other": 11040,
+  "receptors": 276,
+  "or": [
+   2.6130482881554022,
+   2.4437734585335593,
+   2.794048414098574
+  ],
+  "mh_conservation": [
+   1.5417564832855577,
+   1.424849004273285,
+   1.668256107576393
+  ],
+  "decisive_cfr": 6155,
+  "decisive_other": 9369,
+  "ambiguous_cfr": 1113,
+  "ambiguous_other": 1671
+ },
+ "dropped_rows": {
+  "gpr3_human": [
+   1,
+   16,
+   7,
+   14
+  ],
+  "gpr4_human": [
+   6,
+   15,
+   4,
+   23
+  ],
+  "xcr1_human": [
+   11,
+   26,
+   19,
+   34
+  ]
+ },
+ "figS5_eligible_decisive_without_gpr3_gpr4_xcr1": {
+  "cells": [
+   4117,
+   2038,
+   4085,
+   5279
+  ],
+  "n": 15519,
+  "or": [
+   2.6105756837949223,
+   2.441448480413871,
+   2.7914188873918153
+  ]
+ },
+ "precision": "full (unrounded floats; round once at display)"
+}

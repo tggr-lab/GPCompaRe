@@ -144,22 +144,23 @@ def test_the_pair_table_matches_the_submitted_pairs():
 
 
 @needs_build
-def test_the_enrichment_values_match_figure_3():
+def test_the_enrichment_values_match_the_corrected_supplement():
+    """Section D reads the corrected supplement summary (data/supplement_2026-11-05b/), not the
+    retired August figure3_enrichment.json. Full checks: tests/test_statistics_am_section.py."""
+    from GPCompaReports_v2.analysis.manuscript_stats import load_am_comparison
     html = STATS.read_text(encoding='utf-8')
-    fig3 = json.loads((DATA_DIR / 'figure3_enrichment.json').read_text(encoding='utf-8'))
-    a = fig3['panel_a']
-    adj = fig3['conservation_adjusted']
+    am = load_am_comparison()
     required = [
-        '%.1f%%' % a['decisive_pathogenic_pct']['recurrent'],
-        '%.1f%%' % a['decisive_pathogenic_pct']['other'],
-        '%.2f' % a['odds_ratio'],
-        '%.2f' % a['ci_low'],
-        '%.2f' % a['ci_high'],
-        '%.2f' % adj['odds_ratio'],
+        '%.1f%%' % am['decisive_pct']['top'],
+        '%.1f%%' % am['decisive_pct']['other'],
+        '%.2f' % am['odds_ratio'][0],
+        '%.2f' % am['odds_ratio'][1],
+        '%.2f' % am['odds_ratio'][2],
+        '%.2f' % am['conservation_adjusted'][0],
     ]
     for value in required:
         assert value in html, (
-            'the enrichment section does not show %s from Figure 3' % value)
+            'the enrichment section does not show %s from the corrected summary' % value)
 
 
 @needs_build

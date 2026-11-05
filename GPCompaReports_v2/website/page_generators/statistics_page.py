@@ -53,15 +53,13 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
     cfr_network_data = ([] if pairs is None
                         else pairs.head(NETWORK_ROWS_SHOWN).to_dict('records'))
 
-    # Figure 3 of the manuscript. The site no longer displays its own
-    # chi-square: the published analysis compares the recurrent positions
-    # against other generic-numbered positions on decisive predictions only,
-    # which is a different contingency table from the one the site can build.
-    fig3 = manuscript.get('figure3', {})
-    panel_a = fig3.get('panel_a', {})
-    fig3_groups = panel_a.get('groups', [])
-    fig3_decisive = panel_a.get('decisive_pathogenic_pct', {})
-    fig3_adjusted = fig3.get('conservation_adjusted', {})
+    # Section D: the corrected AlphaMissense comparison of the supplement (Fig. S4, Fig. S5, Table S7;
+    # 276 receptors, alleles on model residue numbering), read from
+    # data/supplement_2026-11-05b/ by manuscript_stats.load_am_comparison. The retired August
+    # figure3_enrichment.json values are not shown. The site does not display its own chi-square:
+    # the analysis compares the top 50 positions by CFR score against other generic-numbered
+    # positions on decisive predictions only, a different table from the one the site can build.
+    am = manuscript.get('am_comparison') or {}
 
     # There is deliberately no per-variant table here. The published
     # enrichment result (Figure 3) is an aggregate over AlphaMissense classes;
@@ -89,12 +87,7 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
         charts=charts,
         cfr_table=cfr_table_data,
         cfr_network=cfr_network_data,
-        fig3_groups=fig3_groups,
-        fig3_decisive=fig3_decisive,
-        fig3_or=panel_a.get('odds_ratio'),
-        fig3_ci_low=panel_a.get('ci_low'),
-        fig3_ci_high=panel_a.get('ci_high'),
-        fig3_adjusted=fig3_adjusted,
+        am=am,
         cfr_top_n=CFR_TOP_N,
         cfr_total_positions=manuscript.get('n_recurrent_positions', 0),
         cfr_network_total=manuscript.get('n_pairs_universe', 0),

@@ -27,7 +27,7 @@ Figure 3 values in `figure3_enrichment.json` were transcribed from
 | `S3_top50_recurrent_cfr_positions.csv` | S3 | 50 | Top 50 recurrent CFR positions by composite CFR score, in the submitted order |
 | `S4_all_recurrent_positions.csv` | S4 | 368 | Complete catalogue of recurrent positions (CFR in at least 3 receptors) |
 | `S5_top20_recurrent_cfr_pairs.csv` | S5 | 20 | Top 20 recurrent CFR-CFR contact pairs |
-| `figure3_enrichment.json` | n/a | n/a | Figure 3 pathogenicity values, odds ratio and conservation-adjusted result |
+| `figure3_enrichment.json` | n/a | n/a | Retired 2026-11-05 for the enrichment section (see `../supplement_2026-11-05b/PROVENANCE.md`); still read for `n_pairs_universe` only |
 
 ## Why these and not the site's own computation
 

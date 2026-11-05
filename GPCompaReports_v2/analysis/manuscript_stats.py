@@ -39,7 +39,14 @@ DATA_DIR = pathlib.Path(__file__).resolve().parent.parent / 'data' / 'manuscript
 TOP50_CSV = DATA_DIR / 'S3_top50_recurrent_cfr_positions.csv'
 ALL_CSV = DATA_DIR / 'S4_all_recurrent_positions.csv'
 PAIRS_CSV = DATA_DIR / 'S5_top20_recurrent_cfr_pairs.csv'
-FIG3_JSON = DATA_DIR / 'figure3_enrichment.json'
+FIG3_JSON = DATA_DIR / 'figure3_enrichment.json'   # retired for section D; read only for n_pairs_universe
+
+#: Section D (AlphaMissense comparison): the corrected supplement summary, a byte copy of
+#: 02_supplement/source_tables/FigS4_S7_summary_modelnum_2026-11-05b.json (see its PROVENANCE.md).
+#: Full-precision floats; the page rounds once, at display.
+AM_DIR = DATA_DIR.parent / 'supplement_2026-11-05b'
+AM_SUMMARY_JSON = AM_DIR / 'FigS4_S7_summary_modelnum_2026-11-05b.json'
+AM_GROUP_LABELS = ('Top 50 positions by CFR score', 'Other generic-numbered positions')
 
 #: Class colours, unchanged from the previous enrichment chart.
 AM_COLORS = {'Pathogenic': '#E8820C', 'Ambiguous': '#F0C27A', 'Benign': '#008080'}
@@ -74,12 +81,40 @@ def class_cfr_set(ranks=None):
     return {g for g, r in ranks.items() if r <= CFR_TOP_N}
 
 
+def load_am_comparison(path=None):
+    """Section D numbers from the corrected supplement summary (276 receptors), unrounded.
+
+    groups: scored substitutions (including ambiguous) with pathogenic / ambiguous / benign counts and their
+    shares of all scored; decisive_pct: percent pathogenic among decisive calls; odds_ratio and
+    conservation_adjusted: [estimate, CI low, CI high].
+    """
+    s = json.loads(_require(path or AM_SUMMARY_JSON).read_text(encoding='utf-8'))['without_gpr3_gpr4_xcr1']
+    a, b, c, d = s['cells']
+    groups = []
+    for label, path_, amb, ben, n in ((AM_GROUP_LABELS[0], a, s['ambiguous_cfr'], b, s['n_cfr']),
+                                      (AM_GROUP_LABELS[1], c, s['ambiguous_other'], d, s['n_other'])):
+        if path_ + amb + ben != n:
+            raise ValueError('AlphaMissense summary counts do not add up for %s' % label)
+        groups.append({'label': label, 'n': n, 'decisive': path_ + ben,
+                       'pathogenic_n': path_, 'ambiguous_n': amb, 'benign_n': ben,
+                       'pathogenic': 100.0 * path_ / n, 'ambiguous': 100.0 * amb / n, 'benign': 100.0 * ben / n})
+    return {
+        'receptors': s['receptors'],
+        'cells': [a, b, c, d],
+        'groups': groups,
+        'decisive_pct': {'top': s['pct_cfr'], 'other': s['pct_other']},
+        'odds_ratio': s['or'],
+        'conservation_adjusted': s['mh_conservation'],
+    }
+
+
 def load_manuscript_stats():
     """Everything the statistics page needs, straight from the submitted tables."""
     top50 = pd.read_csv(_require(TOP50_CSV))
     all_positions = pd.read_csv(_require(ALL_CSV))
     pairs = pd.read_csv(_require(PAIRS_CSV))
     figure3 = json.loads(_require(FIG3_JSON).read_text(encoding='utf-8'))
+    am = load_am_comparison()
 
     if len(top50) != CFR_TOP_N:
         raise ValueError(
@@ -95,11 +130,11 @@ def load_manuscript_stats():
         'top50': top50,
         'all_positions': all_positions,
         'pairs': pairs,
-        'figure3': figure3,
+        'am_comparison': am,
         'n_recurrent_positions': len(all_positions),
         'n_pairs_universe': figure3.get('n_pairs_universe'),
         'fig_recurrence_dotplot': make_recurrence_dotplot(top50),
-        'fig_enrichment_bar': make_enrichment_bar(figure3),
+        'fig_enrichment_bar': make_enrichment_bar(am),
     }
 
 
@@ -127,13 +162,13 @@ def make_recurrence_dotplot(top50):
     return fig
 
 
-def make_enrichment_bar(figure3):
-    """Figure 3a: AlphaMissense class composition, recurrent against the rest.
+def make_enrichment_bar(am):
+    """AlphaMissense class composition at the top 50 positions by CFR score and at other generic-numbered positions.
 
-    Ambiguous predictions are drawn but excluded from the odds ratio, exactly
-    as the published figure does.
+    Corrected supplement analysis (Fig. S4a, 276 receptors). Bars are shares of all scored substitutions;
+    ambiguous predictions are drawn but excluded from the odds ratio.
     """
-    groups = figure3['panel_a']['groups']
+    groups = am['groups']
     if not groups:
         return go.Figure()
     labels = ['%s<br>n = %s' % (g['label'], format(g['n'], ',')) for g in groups]
@@ -144,15 +179,16 @@ def make_enrichment_bar(figure3):
             name=cls, x=labels, y=[g[key] for g in groups],
             marker_color=AM_COLORS[cls],
             text=['%.1f%%' % g[key] for g in groups],
+            customdata=[g[key + '_n'] for g in groups],
+            hovertemplate='%{x}<br>' + cls + ': %{customdata:,} (%{y:.1f}%)<extra></extra>',
             textposition='inside',
         ))
-    a = figure3['panel_a']
     fig.update_layout(
         barmode='stack',
-        title=('AlphaMissense class at the top %d recurrent positions and at '
+        title=('AlphaMissense class at the top %d positions by CFR score and at '
                'other generic-numbered positions (odds ratio %.2f)'
-               % (CFR_TOP_N, a['odds_ratio'])),
-        yaxis_title='Share of annotated missense substitutions (%)',
+               % (CFR_TOP_N, am['odds_ratio'][0])),
+        yaxis_title='Share of scored missense substitutions (%)',
         height=450,
     )
     return fig
