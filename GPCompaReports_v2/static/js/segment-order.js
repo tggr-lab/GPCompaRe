@@ -25,12 +25,12 @@
 
   var KEY = 'gpc-segment-order';
   var HELIX = ['TM1', 'TM2', 'TM3', 'TM4', 'TM5', 'TM6', 'TM7', 'H8'];
-  var LOOPS = ['ICL1', 'ICL2', 'ICL3', 'ECL1', 'ECL2', 'ECL3'];
+  var LOOPS = ['ICL1', 'ICL2', 'ICL3', 'ICL4', 'ECL1', 'ECL2', 'ECL3'];  // ICL4: the TM7 to H8 linker some receptors have
   var TERMINI = ['N-term', 'C-term'];
   var ORDERS = {
     helices: HELIX.concat(LOOPS, TERMINI),
     sequence: ['N-term', 'TM1', 'ICL1', 'TM2', 'ECL1', 'TM3', 'ICL2', 'TM4', 'ECL2', 'TM5',
-               'ICL3', 'TM6', 'ECL3', 'TM7', 'H8', 'C-term']
+               'ICL3', 'TM6', 'ECL3', 'TM7', 'ICL4', 'H8', 'C-term']
   };
   var LABELS = { helix: 'Helices', rest: 'Loops and termini' };
 

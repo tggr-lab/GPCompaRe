@@ -18,9 +18,9 @@ from .test_report_v3 import (BLOCKED, BUILD_DIR, DESKTOP, PHONE, PLOTLY_JS, REPO
                              needs_plotly, server)
 
 HELIX = ['TM1', 'TM2', 'TM3', 'TM4', 'TM5', 'TM6', 'TM7', 'H8']
-HELICES_FIRST = HELIX + ['ICL1', 'ICL2', 'ICL3', 'ECL1', 'ECL2', 'ECL3', 'N-term', 'C-term']
+HELICES_FIRST = HELIX + ['ICL1', 'ICL2', 'ICL3', 'ICL4', 'ECL1', 'ECL2', 'ECL3', 'N-term', 'C-term']
 SEQUENCE = ['N-term', 'TM1', 'ICL1', 'TM2', 'ECL1', 'TM3', 'ICL2', 'TM4', 'ECL2', 'TM5',
-            'ICL3', 'TM6', 'ECL3', 'TM7', 'H8', 'C-term']
+            'ICL3', 'TM6', 'ECL3', 'TM7', 'ICL4', 'H8', 'C-term']
 STATS = BUILD_DIR / 'statistics.html'
 needs_stats = pytest.mark.skipif(not STATS.is_file(), reason='no statistics page at %s' % BUILD_DIR)
 

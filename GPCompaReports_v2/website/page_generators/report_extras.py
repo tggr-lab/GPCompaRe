@@ -241,12 +241,12 @@ def json_for_script(obj):
 
 # Segments in receptor order, for the summary block.
 SEGMENT_ORDER = ['N-term', 'TM1', 'ICL1', 'TM2', 'ECL1', 'TM3', 'ICL2', 'TM4', 'ECL2',
-                 'TM5', 'ICL3', 'TM6', 'ECL3', 'TM7', 'H8', 'C-term']
+                 'TM5', 'ICL3', 'TM6', 'ECL3', 'TM7', 'ICL4', 'H8', 'C-term']
 HELICES = {'TM1', 'TM2', 'TM3', 'TM4', 'TM5', 'TM6', 'TM7', 'H8'}
 # The site's default display order ("Helices first", static/js/segment-order.js keeps the
 # same list): the helices together, then the loops, then the termini.
 HELICES_FIRST_ORDER = ['TM1', 'TM2', 'TM3', 'TM4', 'TM5', 'TM6', 'TM7', 'H8',
-                       'ICL1', 'ICL2', 'ICL3', 'ECL1', 'ECL2', 'ECL3', 'N-term', 'C-term']
+                       'ICL1', 'ICL2', 'ICL3', 'ICL4', 'ECL1', 'ECL2', 'ECL3', 'N-term', 'C-term']
 
 
 def _aa3(name):
