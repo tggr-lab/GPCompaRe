@@ -299,6 +299,12 @@
   }
 
   // ------------------------------------------------------------------ selection
+  // A hidden bar comes back when the reader picks the current selection again on purpose
+  // from a table row, a chart point or a ClinVar row; otherwise the only way to see it again
+  // was to choose something else first. (A summary chip toggles: the chosen chip again
+  // clears, and once more selects and shows the bar.) Echoes from the snake plot and the
+  // drawer, and the hash, never bring it back.
+  var DELIBERATE = { table: 1, chart: 1, clinvar: 1 };
   function same(res, pair) {
     if (res !== state.res) return false;
     if (!pair && !state.pair) return true;
@@ -322,7 +328,7 @@
     // page and in the hash). A deliberate pick of the same residue later selects it alone.
     if (state.pair && state.pair.a === pos && pairEcho && pairEcho.pos === pos &&
         Date.now() < pairEcho.until && (source === 'snake' || source === 'drawer')) { paintAll(); return; }
-    if (state.res === pos && !state.pair) { paintAll(); return; }
+    if (state.res === pos && !state.pair) { if (DELIBERATE[source]) dismissed = false; paintAll(); return; }
     state.res = pos;
     state.pair = null;
     dismissed = false;
@@ -338,7 +344,7 @@
     opts = opts || {};
     if ([a, b].some(function (x) { return typeof x !== 'number' || isNaN(x); })) return;
     if (typeof delta !== 'number' || isNaN(delta)) delta = deltaOf(a, b);
-    if (same(a, { a: a, b: b })) { paintAll(); return; }
+    if (same(a, { a: a, b: b })) { if (DELIBERATE[source]) dismissed = false; paintAll(); return; }
     state.res = a;
     state.pair = { a: a, b: b, delta: delta };
     pairEcho = { pos: a, until: Date.now() + 600 };
@@ -521,6 +527,8 @@
   }
   function scrollTo(node) {
     if (!node || !node.scrollIntoView) return;
+    // a target inside a section folded by Compact view: open that section first
+    if (window.V3Nav && window.V3Nav.reveal) window.V3Nav.reveal(node);
     // on a phone the drawer is a bottom sheet over the page: close it so the target is seen
     if (window.innerWidth <= 720 && window.ReportExtras && window.ReportExtras.close) {
       var drawer = document.getElementById('rx-drawer');

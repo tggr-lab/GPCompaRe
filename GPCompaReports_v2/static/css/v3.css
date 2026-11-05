@@ -41,15 +41,61 @@
 .v3-toolbar { display: flex; gap: var(--s-2); flex-wrap: wrap; margin: 0 0 var(--s-5); }
 .v3-toggle.on { background: var(--bgColor-accent-muted); color: var(--fgColor-accent); border-color: var(--fgColor-accent); }
 
-.report-section.v3-folded > *:not(.report-section-head) { display: none; }
+/* !important: blocks that carry an inline display (the TM breakdown heading row in
+   Visualizations) otherwise stayed on screen inside a folded section. */
+.report-section.v3-folded > *:not(.report-section-head) { display: none !important; }
 /* #snake-plot-container carries `display: flex` from an id selector in site.css,
    which outranks the attribute rule above, so the plot survived Compact view while
    its legend and controls were hidden: an approved figure rendered without its key.
    Match on the id here so the fold actually folds it. */
 .report-section.v3-folded #snake-plot-container,
 .report-section.v3-folded #snake-legend { display: none; }
+/* the line under the variant table describes the table, so it folds with it */
+.report-section.v3-folded + .fine-print.rx-variants-fine { display: none; }
 .report-section.v3-folded { padding-bottom: var(--s-2); }
 .report-section.v3-folded .report-section-head { margin-bottom: 0; cursor: pointer; }
-.report-section.v3-folded .report-section-head::after {
-  content: '▸'; margin-left: var(--s-2); color: var(--fgColor-muted); font-size: 12px;
+
+/* Compact view only: the heading row carries its Show / Hide button. */
+.report-section-head.v3-foldable { display: flex; align-items: flex-start; gap: var(--s-3); }
+.report-section-head.v3-foldable > :first-child { flex: 1 1 auto; min-width: 0; }
+.v3-fold-btn {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 2px;
+  color: var(--fgColor-accent);
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--r-pill);
+  padding: 4px 12px;
+  font-size: 13px;
+  line-height: 1.3;
+  white-space: nowrap;
 }
+.v3-fold-btn:hover { background: var(--bgColor-accent-muted); border-color: var(--fgColor-accent); }
+.v3-fold-btn:focus-visible { outline: 2px solid var(--fgColor-accent); outline-offset: 2px; }
+.v3-fold-icon {
+  width: 0; height: 0;
+  border-left: 5px solid currentColor;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transition: transform var(--t-fast, 120ms);
+}
+.v3-fold-btn[aria-expanded="true"] .v3-fold-icon { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) { .v3-fold-icon { transition: none; } }
+
+/* "Expand all" at the end of the sticky section menu, while any section is folded */
+.v3-secnav { display: flex; align-items: center; gap: var(--s-2); }
+.v3-secnav-list { flex: 1 1 auto; min-width: 0; }
+.v3-secnav-expand {
+  flex: 0 0 auto;
+  font: inherit; font-size: 13px; font-weight: 600;
+  color: var(--fgColor-accent);
+  background: var(--bgColor-accent-muted);
+  border: 1px solid var(--fgColor-accent);
+  border-radius: var(--r-pill);
+  padding: 3px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.v3-secnav-expand[hidden] { display: none; }
+.v3-secnav-expand:focus-visible { outline: 2px solid var(--fgColor-accent); outline-offset: 2px; }
+@media print { .v3-fold-btn, .v3-secnav-expand { display: none !important; } }
