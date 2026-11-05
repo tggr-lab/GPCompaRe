@@ -567,7 +567,8 @@ def test_detail_shard_pairs_are_the_threshold_passing_contacts_of_the_batch(inde
         d = _load(index_dir, 'detail/%s.json' % g)
         rows = _significant(g)
         want = sorted(([int(r['res1']), int(r['res2']), int(round(float(r['delta_rrcs']) * 100)),
-                        int(round(float(r['active_rrcs']) * 100)), int(round(float(r['inactive_rrcs']) * 100))] for r in rows),
+                        int(round(float(r['active_rrcs']) * 100)), int(round(float(r['inactive_rrcs']) * 100)),
+                        (1 if float(r['active_rrcs']) > 0 else 0) | (2 if float(r['inactive_rrcs']) > 0 else 0)] for r in rows),
                       key=lambda p: (-abs(p[2]), p[0], p[1]))
         assert d['pairs'] == want, g
         res = _load(index_dir, 'residues/%s.json' % g)
@@ -577,6 +578,64 @@ def test_detail_shard_pairs_are_the_threshold_passing_contacts_of_the_batch(inde
             for q in ({a, b}):
                 counts[str(q)] = counts.get(str(q), 0) + 1
         assert counts == res['nsig'], g
+
+
+PRESENCE_GOLDEN = BASE / 'tests' / 'search_v2' / 'contact_presence_golden.tsv'
+
+
+def _presence_golden():
+    import csv
+    lines = [l for l in PRESENCE_GOLDEN.read_text().splitlines() if l and not l.startswith('#')]
+    return list(csv.DictReader(lines, delimiter='\t'))
+
+
+def test_detail_pairs_carry_endpoint_presence_from_unrounded_rrcs(index_dir):
+    """Contact absence is never read from a rounded value: every pair carries which model has the contact
+    (RRCS > 0 before rounding). Across the 283 receptors, exactly the golden 32 endpoints are positive yet
+    round to 0.00 (RXFP2 364-483: active RRCS 0.0026, stored x100 as 0, flagged present)."""
+    meta = _load(index_dir, 'meta.json')
+    found = set()
+    for g, *_ in meta['receptors']:
+        rows = {(int(r['res1']), int(r['res2'])): r for r in _significant(g)}
+        for p in _load(index_dir, 'detail/%s.json' % g)['pairs']:
+            assert len(p) == 6, (g, p)
+            r = rows[(p[0], p[1])]
+            act, inact = float(r['active_rrcs']), float(r['inactive_rrcs'])
+            assert p[5] == v2.contact_presence(act, inact) == ((1 if act > 0 else 0) | (2 if inact > 0 else 0)), (g, p)
+            assert p[5] in (1, 2, 3), (g, p)  # a threshold-passing pair is a contact in at least one model
+            if act > 0 and p[3] == 0:
+                found.add((g, p[0], p[1], 'active'))
+            if inact > 0 and p[4] == 0:
+                found.add((g, p[0], p[1], 'inactive'))
+    golden = {(r['gid'], int(r['res1']), int(r['res2']), r['small_endpoint']) for r in _presence_golden()}
+    assert len(golden) == 32
+    assert found == golden
+    rx = {(p[0], p[1]): p for p in _load(index_dir, 'detail/rxfp2_human.json')['pairs']}
+    assert rx[(364, 483)] == [364, 483, -849, 0, 849, 3]
+    assert rx[(182, 206)][3] == 0 and rx[(182, 206)][5] == 3
+
+
+def test_residue_mean_alphamissense_class_is_from_the_unrounded_mean(index_dir):
+    """residues/ `amc`: the class of each residue's mean AlphaMissense before x100 rounding. 5HT1A 232 has mean
+    0.5646 (stored 56): likely pathogenic (> 0.564), not ambiguous; 416 has 0.3371 (stored 34): likely benign."""
+    meta = _load(index_dir, 'meta.json')
+    moved = 0
+    for g, *_ in meta['receptors']:
+        res = _load(index_dir, 'residues/%s.json' % g)
+        amm = _pack(g).get('amMean') or {}
+        assert len(res['amc']) == len(res['aa']), g
+        for i, k in enumerate(res['amc']):
+            m = amm.get(str(i + 1))
+            want = '-' if m is None else ('B' if m < 0.34 else 'P' if m > 0.564 else 'A')
+            assert k == want, (g, i + 1, m, k)
+            if m is not None:
+                x = res['am'][i] / 100
+                if ('B' if x < 0.34 else 'P' if x > 0.564 else 'A') != k:
+                    moved += 1
+    assert moved > 0, 'some rounded means cross a cutoff, so the class must come from the unrounded mean'
+    r = _load(index_dir, 'residues/5ht1a_human.json')
+    assert (r['am'][231], r['amc'][231]) == (56, 'P')
+    assert (r['am'][415], r['amc'][415]) == (34, 'B')
 
 
 def test_detail_shards_cover_every_receptor_and_stay_small(index_dir):

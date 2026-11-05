@@ -46,7 +46,7 @@
  *   alt: string|null,           // one letter for missense; '*', '=', 'fs', 'del', 'dup', 'ins', 'delins' else
  *   alts?: string[],            // several substitutions (one rsID, a locus)
  *   kind: 'missense'|'residue'|'stop'|'synonymous'|'frameshift'|'indel'|...,
- *   residue: {pos, aa, segment, generic, bw, gpcrdb, cfr, cfrRank, dmax, nsig, conservation, amMean}|null,
+ *   residue: {pos, aa, segment, generic, bw, gpcrdb, cfr, cfrRank, dmax, nsig, conservation, amMean, amMeanClass}|null,
  *   alleles: Allele[],          // gnomAD alleles the query names (all alleles of a substitution)
  *   residueAlleles: Allele[],   // every gnomAD allele at the residue
  *   clinvar: ClinvarRecord[],   // ClinVar records for the query (any class; `packed` = the P/LP set)
@@ -77,14 +77,16 @@
  *                               // residue (detail/ shard; null when the pack has none; absent for an index without detail/)
  *   amThis?: {am, amClass},     // the prediction for this missense change (also for changes with no gnomAD allele)
  *   contacts?: [{a, b, partnerPos, partnerAa, partnerGeneric, partnerSegment, partnerCfr, partnerCfrRank, partnerMotifs: string[],
- *               delta, active, inactive}],
+ *               delta, active, inactive, activePresent, inactivePresent}],
  *                               // the residue's threshold-passing contacts, largest |ΔRRCS| first (the report's
- *                               // pair list); [] when it has none; absent for an index without detail/
+ *                               // pair list); [] when it has none; absent for an index without detail/. active and
+ *                               // inactive are RRCS rounded to 0.01; *Present say whether that model has the contact
+ *                               // (RRCS > 0 before rounding), so 0.00 with activePresent is a small positive score
  *   motifs?: [{key, name, position, canonical, required, carried, note}],   // Class A motifs (parse MOTIFS) holding the
  *                               // residue's BW number; [] when none; `canonical` = the letters the motif fixes there (null at
  *                               // a variable position, `required` false); `carried` = the receptor has every fixed residue
  *   rank?: {rank: number|null, of: number, withContact: number},   // the residue's place in its receptor by largest |ΔRRCS|
- *   track?: {length, segments: [[name, from, to]], cfr: number[], am: (number|null)[], dmax: (number|null)[],
+ *   track?: {length, segments: [[name, from, to]], cfr: number[], am: (number|null)[], amClass: (string|null)[], dmax: (number|null)[],
  *           alleles: number[], clinvar: number[]},   // the receptor map (residues/ + variants/ shards): CFR positions,
  *                               // mean AlphaMissense and |ΔRRCS| max per residue (index 0 = residue 1), residues with records
  *   cfrHood?: {pos, at, rank, group, connected: [...], near: [...], touch: [...]|null},   // full results with a residue
@@ -587,7 +589,7 @@ async function makeResult(ctx, gid, pos, o = {}) {
         const o2 = gene.res?.residue(other);
         return { a: p.a, b: p.b, partnerPos: other, partnerAa: o2?.aa ?? null, partnerGeneric: o2?.generic || null, partnerSegment: o2?.segment || null,
           partnerCfr: !!o2?.cfr, partnerCfrRank: o2?.cfrRank ?? null, partnerMotifs: motifsAt(o2?.bw, gene.res).filter((m) => m.carried !== false && m.required).map((m) => m.name),
-          delta: p.delta, active: p.active, inactive: p.inactive };
+          delta: p.delta, active: p.active, inactive: p.inactive, activePresent: p.activePresent, inactivePresent: p.inactivePresent };
       });
     }
     // how the residue relates to the receptor's CFR positions (at, connected, near in sequence, in contact)

@@ -52,7 +52,7 @@ export function cfrNeighbourhood(res, det) {
   for (const c of det?.pairs ?? []) {
     if (c.a === c.b) continue;
     for (const [me, other] of [[c.a, c.b], [c.b, c.a]]) {
-      if (cfr.has(other)) add(connected, me, { ...cfr.get(other), delta: c.delta, active: c.active, inactive: c.inactive, a: c.a, b: c.b });
+      if (cfr.has(other)) add(connected, me, { ...cfr.get(other), delta: c.delta, active: c.active, inactive: c.inactive, activePresent: c.activePresent, inactivePresent: c.inactivePresent, a: c.a, b: c.b });
     }
   }
   const hasTouch = Array.isArray(det?.cfrContacts);

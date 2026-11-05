@@ -80,9 +80,22 @@ export function makeMatcher(meta) {
   };
 }
 
+// ------------------------------------------------------------------------- AlphaMissense
+
+const AM_CLASS = { B: 'benign', A: 'ambiguous', P: 'pathogenic' };
+/**
+ * AlphaMissense class of a x1000 score: likely benign < 0.34, ambiguous 0.34 to 0.564, likely pathogenic > 0.564.
+ * Only a fallback: the index carries the source class wherever rounding moves a score onto or across a cutoff.
+ */
+const amClassOf = (v) => (v < 340 ? 'benign' : v > 564 ? 'pathogenic' : 'ambiguous');
+
 // --------------------------------------------------------------------------------- residues
 
-/** Decoded residue shard: residue(pos) -> {pos, aa, segment, generic, bw, gpcrdb, cfrRank, dmax, nsig, cons, am}. */
+/**
+ * Decoded residue shard: residue(pos) -> {pos, aa, segment, generic, bw, gpcrdb, cfrRank, dmax, nsig, conservation,
+ * amMean, amMeanClass}. amMeanClass is the AlphaMissense class of the unrounded residue mean (`amc`); an older index
+ * without `amc` falls back to the class of the rounded mean.
+ */
 export function decodeResidues(raw, meta) {
   const n = raw.aa.length;
   const seg = new Array(n + 1).fill('');
@@ -93,6 +106,12 @@ export function decodeResidues(raw, meta) {
     for (let k = 0; k < len; k++) gn[start + k] = k === 0 || !m ? disp : `${m[1]}.${Number(m[2]) + k}x${Number(m[3]) + k}`;
   }
   const scale = (v) => (v === null || v === undefined ? null : v / 100);
+  const amcAt = (i) => {
+    const k = raw.amc?.[i];
+    if (k !== undefined) return AM_CLASS[k] ?? null;
+    const v = raw.am[i];
+    return v === null || v === undefined ? null : amClassOf(v * 10);
+  };
   const residue = (pos) => {
     if (!(pos >= 1 && pos <= n)) return null;
     const g = gn[pos];
@@ -104,7 +123,7 @@ export function decodeResidues(raw, meta) {
       cfrRank: g && meta?.cfrRank?.[g] ? meta.cfrRank[g] : null,
       cfr: !!raw.cfr[String(pos)],
       dmax: scale(raw.dmax[pos - 1]), nsig: raw.nsig[String(pos)] ?? 0,
-      conservation: scale(raw.cons[pos - 1]), amMean: scale(raw.am[pos - 1]),
+      conservation: scale(raw.cons[pos - 1]), amMean: scale(raw.am[pos - 1]), amMeanClass: amcAt(pos - 1),
     };
   };
   const findGeneric = (bw, gpcrdb) => {
@@ -118,12 +137,13 @@ export function decodeResidues(raw, meta) {
     }
     return out;
   };
-  /** The receptor map's data: segment runs, CFR positions, per-residue mean AlphaMissense (0..1) and |ΔRRCS| max. */
+  /** The receptor map's data: segment runs, CFR positions, per-residue mean AlphaMissense (0..1) with its class, and |ΔRRCS| max. */
   const track = () => ({
     length: n,
     segments: raw.segments.map(([name, a, b]) => [name, a, b]),
     cfr: Object.keys(raw.cfr).map(Number).sort((a, b) => a - b),
     am: raw.am.map(scale),
+    amClass: raw.am.map((_, i) => amcAt(i)),
     dmax: raw.dmax.map(scale),
   });
   return { gid: raw.gid, seq: raw.aa, length: n, residue, findGeneric, track };
@@ -260,14 +280,14 @@ export function decodeVariants(raw) {
 
 // --------------------------------------------------------------------------------- detail
 
-const AM_CLASS = { B: 'benign', A: 'ambiguous', P: 'pathogenic' };
-/** AlphaMissense class of a x1000 score (likely benign below 0.34, likely pathogenic above 0.564). */
-const amClassOf = (v) => (v < 340 ? 'benign' : v > 564 ? 'pathogenic' : 'ambiguous');
-
 /**
  * Decoded detail shard (loaded only for a full residue card):
  *   amAt(pos) -> {[alt]: {am, amClass}} over every substitution at the residue, or null without predictions
- *   contactsOf(pos) -> [{a, b, delta, active, inactive}] the residue's threshold-passing contacts, largest |ΔRRCS| first
+ *   contactsOf(pos) -> [{a, b, delta, active, inactive, activePresent, inactivePresent}] the residue's threshold-passing
+ *                  contacts, largest |ΔRRCS| first. active/inactive are RRCS rounded to 0.01; activePresent and
+ *                  inactivePresent say whether the model has the contact at all (RRCS > 0 before rounding: a score
+ *                  of 0.0026 shows as 0.00 but is present). An older index without the presence element falls back
+ *                  to the rounded values.
  *   pairs -> every threshold-passing pair of the receptor
  *   cfrContacts -> [{a, b, delta}] the other modelled contacts (RRCS > 0 in either model, below the threshold) that
  *                  have a residue at a CFR position; null for an index built without them (`cfrc`)
@@ -286,7 +306,11 @@ export function decodeDetail(raw, alphabet = 'ACDEFGHIKLMNPQRSTVWY') {
     });
     return Object.keys(out).length ? out : null;
   };
-  const pairs = (raw.pairs ?? []).map(([a, b, d, act, inact]) => ({ a, b, delta: d / 100, active: act / 100, inactive: inact / 100 }));
+  const pairs = (raw.pairs ?? []).map(([a, b, d, act, inact, pres]) => ({
+    a, b, delta: d / 100, active: act / 100, inactive: inact / 100,
+    activePresent: pres === undefined ? act > 0 : (pres & 1) === 1,
+    inactivePresent: pres === undefined ? inact > 0 : (pres & 2) === 2,
+  }));
   const byPos = new Map();
   for (const p of pairs) {
     for (const q of (p.a === p.b ? [p.a] : [p.a, p.b])) {

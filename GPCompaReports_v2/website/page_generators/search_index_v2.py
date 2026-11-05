@@ -24,7 +24,8 @@ Shards (all JSON, compact; the deploy gzips them; sizes are budgeted by tests):
   txindex.json                transcript and protein accession (ENST, ENSP, NM_, NP_, XM_, XP_; no version) ->
                               [receptor idx], the gene it is MANE or model-identical for first (LTB4R/LTB4R2 share some)
   residues/<gid>.json         every model residue: aa, segment, generic number, CFR rank, max |dRRCS|,
-                              threshold-passing contacts, conservation, mean AlphaMissense
+                              threshold-passing contacts, conservation, mean AlphaMissense and its class
+                              (from the unrounded mean)
   variants/<gid>.json         gnomAD alleles (columnar), dropped alleles, ClinVar records (all classes), and
                               `rt`: one '1' or '0' per allele, '1' when the allele (gnomAD variant id) is a
                               row of the report page's own variant table (the same pack alleles at residues
@@ -45,8 +46,8 @@ Shards (all JSON, compact; the deploy gzips them; sizes are budgeted by tests):
                               missense record) -> receptor indices (NN = pos mod SUBST_SHARDS), for bare changes
   detail/<gid>.json           loaded only when a full residue card opens: the AlphaMissense prediction of every
                               substitution at every residue (x1000, AM_ALPHABET order) and the receptor's
-                              threshold-passing contact pairs with their dRRCS and RRCS values, and the
-                              below-threshold contacts of the CFR residues (`cfrc`); see build_detail
+                              threshold-passing contact pairs with their dRRCS and RRCS values and which
+                              model has the contact (from the unrounded RRCS), and the below-threshold contacts of the CFR residues (`cfrc`); see build_detail
 
 Cheapest way to build only this index (about 30 s, no report pages):
     .venv-test/bin/python -m GPCompaReports_v2.website.page_generators.search_index_v2 \
@@ -334,7 +335,9 @@ def _i(x, scale):
 
 def build_residues(gid, pack, store, cfr_rank, st=None):
     """Every model residue. Columns are per residue (index 0 = residue 1); `cons`, `am` and `dmax` are
-    x100 integers (null = no value); `cfr` (rank, top CFR_TOP only) and `nsig` are sparse {pos: value}.
+    x100 integers (null = no value); `amc` is one AlphaMissense class letter per residue (B, A, P; '-' = no
+    score) of the residue mean before rounding, so a mean such as 0.5646 (x100 = 56) stays likely pathogenic;
+    `cfr` (rank, top CFR_TOP only) and `nsig` are sparse {pos: value}.
     The rank of every CFR position is in meta.cfrRank by generic number."""
     seq = pack['sequence']
     rows = {r[0]: r for r in pack['residues']}
@@ -342,7 +345,7 @@ def build_residues(gid, pack, store, cfr_rank, st=None):
     mx, nsig = (st['max'], st['nsig']) if st else ({}, {})
     cons = pack.get('conservation') or {}
     amm = pack.get('amMean') or {}
-    seg_runs, gn, cfr, dmax, ns, cv, am = [], [], {}, [], {}, [], []
+    seg_runs, gn, cfr, dmax, ns, cv, am, amc = [], [], {}, [], {}, [], [], []
     for i in range(1, len(seq) + 1):
         r = rows.get(i)
         seg = r[2] if r else ''
@@ -358,9 +361,28 @@ def build_residues(gid, pack, store, cfr_rank, st=None):
         if nsig.get(i):
             ns[str(i)] = nsig[i]
         cv.append(_i(cons.get(str(i)), 100))
-        am.append(_i(amm.get(str(i)), 100))
+        m = amm.get(str(i))
+        am.append(_i(m, 100))
+        amc.append(_am_class_of_score(m))
     return {'gid': gid, 'aa': seq, 'segments': seg_runs, 'gn': gn_runs(gn), 'cfr': cfr, 'dmax': dmax,
-            'nsig': ns, 'cons': cv, 'am': am}
+            'nsig': ns, 'cons': cv, 'am': am, 'amc': ''.join(amc)}
+
+
+def _am_class_of_score(x):
+    """AlphaMissense class of an unrounded 0..1 score: likely benign below 0.34, likely pathogenic above 0.564,
+    ambiguous from 0.34 to 0.564 inclusive (Cheng et al. 2023; the AlphaMissense README)."""
+    if x is None:
+        return '-'
+    x = float(x)
+    return 'B' if x < 0.34 else ('P' if x > 0.564 else 'A')
+
+
+def contact_presence(active, inactive):
+    """Endpoint presence of a contact from the unrounded RRCS values: bit 1 = a contact in the active model
+    (active RRCS > 0), bit 2 = a contact in the inactive model. 32 threshold-passing pairs have a positive
+    endpoint below 0.005 that rounds to 0.00 (RXFP2 364-483: active RRCS 0.0026), so absence is never read
+    from the rounded values."""
+    return (1 if float(active) > 0 else 0) | (2 if float(inactive) > 0 else 0)
 
 
 def _am_class(x1000):
@@ -379,7 +401,9 @@ def build_detail(gid, pack, store, st=None, cfr_pos=()):
     amx   {pos: 20 class letters} only where the pack's class differs from the cutoff rule applied to the x1000
           score (a score such as 0.5641 rounds onto the cutoff); elsewhere the class follows from the score
     pairs the receptor's threshold-passing contact pairs (store.significant_data, the pairs the report page lists):
-          [res1, res2, dRRCS x100, active RRCS x100, inactive RRCS x100], largest |dRRCS| first
+          [res1, res2, dRRCS x100, active RRCS x100, inactive RRCS x100, presence], largest |dRRCS| first;
+          presence (contact_presence) is from the unrounded RRCS: 1 = contact in the active model, 2 = in the
+          inactive model, 3 = both, so a small positive score that rounds to 0 is not read as no contact
     cfrc  every other modelled contact (RRCS > 0 in either model, store.delta_data) with a residue at a CFR position
           (`cfr_pos`: the residues/ `cfr` positions, top CFR_TOP): [res1, res2, dRRCS x100], ordered by res1, res2.
           With `pairs` it gives every modelled contact of a CFR residue, for "in contact with a CFR" (search card
@@ -404,7 +428,7 @@ def build_detail(gid, pack, store, st=None, cfr_pos=()):
     if s is not None and len(s):
         for a, b, d, act, inact in zip(s['res1'].astype(int), s['res2'].astype(int), s['delta_rrcs'].astype(float),
                                        s['active_rrcs'].astype(float), s['inactive_rrcs'].astype(float)):
-            pairs.append([int(a), int(b), _i(d, 100), _i(act, 100), _i(inact, 100)])
+            pairs.append([int(a), int(b), _i(d, 100), _i(act, 100), _i(inact, 100), contact_presence(act, inact)])
         pairs.sort(key=lambda p: (-abs(p[2]), p[0], p[1]))
     cfrc = []
     d = store.delta_data.get(gid) if store is not None and cfr_pos else None
