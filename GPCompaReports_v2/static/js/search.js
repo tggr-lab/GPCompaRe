@@ -451,7 +451,7 @@
     if (c.type === 'unknown' || c.type === 'unknown-change') {
       setStatus(c.receptor
         ? 'Could not read <strong>' + esc(c.text) + '</strong> as a protein change. Use a form like <code>M159I</code>, <code>p.Met159Ile</code>, <code>159</code> or <code>c.477G&gt;A</code>.'
-        : 'Not recognised. Search a gene or receptor with a change (<code>F2RL1 M159I</code>), an rsID, a gnomAD variant ID or a generic number (<code>6.48x48</code>). Receptor names and families are searched on the Receptors tab.');
+        : 'Not recognized. Search a gene or receptor with a change (<code>F2RL1 M159I</code>), an rsID, a gnomAD variant ID or a generic number (<code>6.48x48</code>). Receptor names and families are searched on the Receptors tab.');
       return;
     }
     setStatus('Searching\u2026');

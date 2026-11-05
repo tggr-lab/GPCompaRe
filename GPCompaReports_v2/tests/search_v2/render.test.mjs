@@ -576,7 +576,7 @@ test('the comparison legend and the motif note are fine print under the table', 
 test('a non-P/LP ClinVar record shows its gnomAD allele and AlphaMissense, as its rsID does', { skip }, async () => {
   for (const [q, af, am] of [['VCV000014312', '0.078', '0.192'], ['VCV000256813', '0.024', '0.082']]) {
     const out = renderAnswer(await search(q, loader), q, OPTS).html;
-    assert.ok(!/not analysed here|This exact change is not listed|not available in this index/.test(out), `${q}: ${out.slice(0, 400)}`);
+    assert.ok(!/not analyzed here|This exact change is not listed|not available in this index/.test(out), `${q}: ${out.slice(0, 400)}`);
     assert.ok(out.includes(am), `${q}: AlphaMissense ${am}`);
     assert.ok(out.includes(af), `${q}: frequency ${af}`);
     assert.ok(out.includes(q), `${q}: the record is listed`);

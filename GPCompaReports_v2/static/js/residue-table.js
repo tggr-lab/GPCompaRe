@@ -230,9 +230,9 @@
     var group = el('div', 'rx-rt-filters');
     group.setAttribute('role', 'group');
     group.setAttribute('aria-label', 'Filter residues');
-    var fa = filterButton('Active-favouring', function () { return state.direction === 'active'; },
+    var fa = filterButton('Active-favoring', function () { return state.direction === 'active'; },
       function () { state.direction = state.direction === 'active' ? '' : 'active'; });
-    var fi = filterButton('Inactive-favouring', function () { return state.direction === 'inactive'; },
+    var fi = filterButton('Inactive-favoring', function () { return state.direction === 'inactive'; },
       function () { state.direction = state.direction === 'inactive' ? '' : 'inactive'; });
     var ft = filterButton('TM helices only', function () { return state.tm; },
       function () { state.tm = !state.tm; });

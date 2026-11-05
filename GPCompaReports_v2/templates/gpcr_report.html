@@ -131,7 +131,7 @@
       <p>Built from the RRCS results on this page: the contact pairs whose |ΔRRCS| is at or above this receptor's threshold, grouped by the segment of each residue (a pair between two segments counts for both). The bars show the sum of ΔRRCS in each direction, scaled to the largest segment; the number is how many such pairs touch the segment. Open a segment to see its largest changes. Choosing a pair marks it on the snake plot, in the tables, in the charts and in the 3D view.</p>
       <p>The one-line answer and the "Largest changes" list cover the helices TM1 to TM7 and H8, where the models are best constrained.{% if rx_summary.n_tail %} {{ rx_summary.n_tail }} of the {{ rx_summary.pairs_all|length }} largest changes overall involve a loop or a terminus; "Include loops and termini" lists them, marked loop or tail. Treat those with more caution.{% else %} None of the {{ rx_summary.pairs_all|length }} largest changes overall involves a loop or a terminus.{% endif %}</p>
       <p>Segment order: "Helices first" lists TM1 to TM7 and H8 together, then the loops, then the termini. "Sequence" follows the chain from the N-terminus. The models are most reliable in the helices. The choice applies to every segment list and chart on the site and in the Studio, and is remembered in this browser.</p>
-      <p class="gpc-understanding-link">For an explanation of the scores and colours, see <a href="#sec-understanding" data-open-section="sec-understanding">Understanding the results</a>.</p>
+      <p class="gpc-understanding-link">For an explanation of the scores and colors, see <a href="#sec-understanding" data-open-section="sec-understanding">Understanding the results</a>.</p>
       {% endcall %}
     </section>
     {% endif %}
@@ -142,7 +142,7 @@
       <header class="report-section-head"><h2>Interactive snake plot</h2></header>
       <div class="callout">
         <p>
-          Each circle is one residue, laid out as in GPCRdb. The buttons recolour the residues by a data layer.
+          Each circle is one residue, laid out as in GPCRdb. The buttons recolor the residues by a data layer.
           The arcs are the contact pairs at or above this receptor's threshold, within the selected filters; open a loop to show its contacts.
           Hover a residue to see its partners, click it to select it across the page, and click an ICL or ECL label to open or close that loop.
         </p>
@@ -213,14 +213,14 @@
           <span class="rx-3d-status" id="rx-3d-status" role="status" aria-live="polite"></span>
         </div>
         <div class="rx-3d-pane" id="rx-3d-pane" role="group" aria-label="Active and inactive models of {{ uniprot_name|e }}, superposed"></div>
-        <p class="rx-caption">Colour: net ΔRRCS per residue. <span class="is-active">Red:</span> stronger in the active model. <span class="is-inactive">Blue:</span> stronger in the inactive model.</p>
+        <p class="rx-caption">Color: net ΔRRCS per residue. <span class="is-active">Red:</span> stronger in the active model. <span class="is-inactive">Blue:</span> stronger in the inactive model.</p>
       </div>
       <aside class="fine-print rx-attr">
         {%- set _models_label = data_versions.sources.gpcrdb_models.label %}
         Models: <a href="https://gpcrdb.org" target="_blank" rel="noopener">GPCRdb</a> {{ _models_label[7:] if _models_label.startswith('GPCRdb ') else _models_label }},
         <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.
         Heo L, Feig M. <a href="https://doi.org/10.1002/prot.26382" target="_blank" rel="noopener">Multi-state modeling of G-protein coupled receptors at experimental accuracy</a>. Proteins 90:1873-1885 (2022).
-        Viewer: <a href="https://molstar.org" target="_blank" rel="noopener">Mol*</a> (MIT licence).
+        Viewer: <a href="https://molstar.org" target="_blank" rel="noopener">Mol*</a> (MIT license).
         <a href="{{ static_prefix }}static/notices/models-and-viewer.txt">Notices</a>
       </aside>
     </section>

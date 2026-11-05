@@ -184,7 +184,7 @@
       setResidueColour(box.checked);
     });
     check.appendChild(box);
-    check.appendChild(document.createTextNode('Colour residues by net ΔRRCS'));
+    check.appendChild(document.createTextNode('Color residues by net ΔRRCS'));
     group.appendChild(check);
     if (tools) {
       var status = document.getElementById('rx-3d-status');

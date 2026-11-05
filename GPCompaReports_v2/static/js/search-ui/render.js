@@ -782,7 +782,7 @@ function contactsTable(r, o) {
     const d = direction(c.delta);
     const kind = segmentKind(c.partnerSegment);
     return html`<tr>
-      <td data-label="Partner">${intLink(L.residueUrl(o, r.gid, c.partnerPos), partnerName(c), { cls: 'mono', title: 'Report at this residue' })}${c.partnerGeneric || c.partnerSegment ? html` <span class="sr-sub">${[c.partnerGeneric, c.partnerSegment].filter(Boolean).join(', ')}</span>` : ''}${kind ? html` <span class="sr-badge sr-badge--muted" title="${kind === 'terminus' ? 'A residue in a terminus' : 'A residue in a loop'}: loops and termini are less reliably modelled">${kind}</span>` : ''}${partnerBadges(c)}</td>
+      <td data-label="Partner">${intLink(L.residueUrl(o, r.gid, c.partnerPos), partnerName(c), { cls: 'mono', title: 'Report at this residue' })}${c.partnerGeneric || c.partnerSegment ? html` <span class="sr-sub">${[c.partnerGeneric, c.partnerSegment].filter(Boolean).join(', ')}</span>` : ''}${kind ? html` <span class="sr-badge sr-badge--muted" title="${kind === 'terminus' ? 'A residue in a terminus' : 'A residue in a loop'}: loops and termini are less reliably modeled">${kind}</span>` : ''}${partnerBadges(c)}</td>
       <td class="num" data-label="ΔRRCS"><span class="sr-net sr-net--${d.cls}">${signed(c.delta)}</span><span class="sr-sr-only"> (${d.word})</span></td>
       <td class="num" data-label="Active RRCS">${fmtRrcs(c.active, contactPresence(c).active)}</td>
       <td class="num" data-label="Inactive RRCS">${fmtRrcs(c.inactive, contactPresence(c).inactive)}</td>
@@ -916,7 +916,7 @@ function cfrHoodBlock(r, o) {
       : (h.connected.length ? 'no other contact with a CFR residue in either model' : 'no contact with a CFR residue in either model')}</li>`);
   }
   return html`<div class="sr-cfrhood" data-cfrhood="${h.group ?? 'none'}">
-    <h5 class="sr-subhead">CFR neighbourhood</h5>
+    <h5 class="sr-subhead">CFR neighborhood</h5>
     <p class="sr-sub sr-cfrhood-set">${cfrSetText(o.cfrTop)} ${term(o, 'cfr', 'What is a CFR?')}</p>
     <ul class="sr-cfrhood-list">${items}</ul>
     ${finePrint(html`<p>${CFR_GROUP_LABEL.connected}: ${CFR_GROUP_DEF.connected} ${CFR_GROUP_LABEL.near}: ${CFR_GROUP_DEF.near} ${CFR_GROUP_LABEL.touch}: ${CFR_GROUP_DEF.touch} These describe the two models, not the effect of a variant. <span class="sr-net sr-net--active">Red, positive</span> ΔRRCS: stronger in the active model; <span class="sr-net sr-net--inactive">blue, negative</span>: stronger in the inactive model.</p>`, { cls: 'sr-cfrhood-note' })}
@@ -1012,7 +1012,7 @@ export function summarySentences(r, o = {}) {
 }
 
 /** Research-use note, one sentence, shown under the summary and in the evidence text. */
-export const RESEARCH_NOTE = 'Research use only. This card summarises database records and computational predictions; it is not a clinical classification and ACMG criteria are not applied.';
+export const RESEARCH_NOTE = 'Research use only. This card summarizes database records and computational predictions; it is not a clinical classification and ACMG criteria are not applied.';
 /** The same, as the one line of fine print on the card. */
 export const RESEARCH_NOTE_SHORT = 'Research use only: not a clinical classification; ACMG criteria are not applied.';
 
@@ -1273,7 +1273,7 @@ export function receptorMap(r, o) {
       <rect class="sr-map-hit" data-map-hit="${idx}" x="0" y="${Y.cfr - 8}" width="${W}" height="${Y.cv + 8 - (Y.cfr - 8)}" fill="transparent"><title>Click a position to search it</title></rect>
     </svg>
     <figcaption class="sr-map-legend">
-      <ul class="sr-map-keys"><li><span class="sr-map-key sr-map-key--helix" aria-hidden="true"></span>helix</li><li><span class="sr-map-key sr-map-key--loop" aria-hidden="true"></span>loop or terminus</li><li><span class="sr-map-key sr-map-key--cfr" aria-hidden="true"></span>CFR position</li>${partners.size ? html`<li><span class="sr-map-key sr-map-key--cfr-partner" aria-hidden="true"></span>CFR connected to ${three(r.residue?.aa ?? r.ref)}${r.pos}</li>` : ''}<li><span class="sr-map-key sr-map-key--arc-active" aria-hidden="true"></span><span class="sr-map-key sr-map-key--arc-inactive" aria-hidden="true"></span>contact, stronger in the active / inactive model</li><li><span class="sr-map-key sr-map-key--am" aria-hidden="true"></span>mean AlphaMissense per residue (class colours)</li><li><span class="sr-map-key sr-map-key--tick" aria-hidden="true"></span>gnomAD allele (upper) and ClinVar record (lower)</li></ul>
+      <ul class="sr-map-keys"><li><span class="sr-map-key sr-map-key--helix" aria-hidden="true"></span>helix</li><li><span class="sr-map-key sr-map-key--loop" aria-hidden="true"></span>loop or terminus</li><li><span class="sr-map-key sr-map-key--cfr" aria-hidden="true"></span>CFR position</li>${partners.size ? html`<li><span class="sr-map-key sr-map-key--cfr-partner" aria-hidden="true"></span>CFR connected to ${three(r.residue?.aa ?? r.ref)}${r.pos}</li>` : ''}<li><span class="sr-map-key sr-map-key--arc-active" aria-hidden="true"></span><span class="sr-map-key sr-map-key--arc-inactive" aria-hidden="true"></span>contact, stronger in the active / inactive model</li><li><span class="sr-map-key sr-map-key--am" aria-hidden="true"></span>mean AlphaMissense per residue (class colors)</li><li><span class="sr-map-key sr-map-key--tick" aria-hidden="true"></span>gnomAD allele (upper) and ClinVar record (lower)</li></ul>
       <form class="sr-map-go" data-map-go="${idx}"><label>Residue <input type="number" class="v2-input" name="pos" min="1" max="${n}" value="${r.pos}" inputmode="numeric"></label> <button type="submit" class="btn btn-ghost btn-sm">Search</button> ${intLink(L.residueUrl(o, r.gid, r.pos), `${res} in the report`, { cls: 'btn btn-ghost btn-sm', title: 'Report at this residue' })}<span class="sr-sub sr-map-hint">Click the track to search a position.</span></form>
     </figcaption>
   </figure>`;
@@ -1435,7 +1435,7 @@ export function evidenceText(r, ctx = {}) {
     L.push('In the GPCompaRe database:');
     L.push(`  Numbering: ${x.generic ? `${x.generic} (BW ${x.bw}, GPCRdb ${x.gpcrdb}), ${x.segment}` : `no generic number (${x.segment || 'outside the helices'})`}`);
     L.push(`  Core functional residue (class-wide): ${x.cfr ? `yes, ${cfrOneOf(ctx.cfrTop)}, rank ${f.cfrRank}` : (f.cfrRank ? `no, its generic position ranks ${f.cfrRank} by CFR score` : 'not ranked (no generic number)')}`);
-    if (r.cfrHood) L.push(`  CFR neighbourhood (a CFR is ${cfrOneOf(ctx.cfrTop)}): ${cfrHoodSentence(r) ?? 'at a CFR position, no other relation'}`);
+    if (r.cfrHood) L.push(`  CFR neighborhood (a CFR is ${cfrOneOf(ctx.cfrTop)}): ${cfrHoodSentence(r) ?? 'at a CFR position, no other relation'}`);
     if (r.motifs) { const ms = r.motifs.filter((m) => m.key !== 'xmy' || m.carried !== false); L.push(`  Motif: ${ms.length ? ms.map((m) => `${m.name} (position ${m.position}${!m.required ? ', the variable x' : m.canonical ? `, canonical ${m.canonical.split('').map(three).join(' or ')}` : ''}${m.carried === false ? '; not carried in full by this receptor' : ''}${m.key === 'xmy' ? `; ${m.note}` : ''})`).join('; ') : 'not a motif position'}`); }
     L.push(`  Largest contact change: ${f.dmax === null ? 'no contacts' : `|dRRCS| ${f.dmax.toFixed(2)}${f.threshold !== null ? `, receptor threshold ${f.threshold.toFixed(2)}` : ''}${f.partner ? `, with ${f.partner}` : ''}`}`);
     if (f.net !== null) L.push(`  Net dRRCS: ${signed(f.net, 1)}: ${netSentence(f.net, { value: false })}`);
@@ -1603,7 +1603,7 @@ function card(r, o, idx) {
   const sub = subjectOf(r, o);
   const { fix, mismatch } = sub;
   const noResidue = !r.pos && r.type === 'not_in_resource'; // e.g. an unknown transcript version: nothing to show but the note
-  const status = r.type === 'not_in_resource' && !mismatch && !noResidue ? html`<span class="sr-badge sr-badge--muted">not analysed here</span>` : '';
+  const status = r.type === 'not_in_resource' && !mismatch && !noResidue ? html`<span class="sr-badge sr-badge--muted">not analyzed here</span>` : '';
   const hasEvidence = !noResidue && r.type !== 'not_coding' && !(r.type === 'not_in_resource' && !r.residue);
   // the notations open on a single card; with several cards on the page they start folded
   const refsOpen = (o.cardCount ?? 1) <= 1;
@@ -1867,7 +1867,7 @@ export function renderCfrListBody(model, state, o = {}) {
   const oo = { ...o, reports: o.reports ?? model.reports };
   return html`${cfrChips(model, state)}
     ${total ? html`<div class="sr-table-wrap"><table class="sr-table sr-table--multi sr-table--cmp sr-table--cfr" data-cfr-table>
-    <caption class="sr-sr-only">${total} variants of ${model.symbol} at residues in the CFR neighbourhood. Column headings with buttons sort the table.</caption>
+    <caption class="sr-sr-only">${total} variants of ${model.symbol} at residues in the CFR neighborhood. Column headings with buttons sort the table.</caption>
     <thead><tr>${model.cols.map((c) => html`<th scope="col"${c.sort ? html` aria-sort="${ariaSort(c)}"` : ''} class="${c.num ? 'num' : ''}">${c.sort ? html`<button type="button" data-cfr-sort="${c.key}">${c.label}</button>` : c.label}</th>`)}</tr></thead>
     <tbody>${slice.map((row) => html`<tr data-cfr-row="${row.group}">${model.cols.map((c) => html`<td data-label="${c.label}" class="sr-c-${c.key}${c.num ? ' num' : ''}">${cfrCell(c, row, model, oo)}</td>`)}</tr>`)}</tbody></table></div>`
     : html`<p class="sr-message sr-message--info">No variant matches these filters.</p>`}
@@ -2279,7 +2279,7 @@ export function renderAnswer(answer, query, o) {
     } else {
       statusBits.push(`${rs.length} ${rs.length === 1 ? 'result' : 'results'}`);
       const motif = motifBlock(answer.motif);
-      if (rs.length === 1 && rs[0].cfrList) { cfr = cfrListModel(rs[0], o); statusBits.push(`${cfr.rows.length} variants in the CFR neighbourhood`); }
+      if (rs.length === 1 && rs[0].cfrList) { cfr = cfrListModel(rs[0], o); statusBits.push(`${cfr.rows.length} variants in the CFR neighborhood`); }
       const co = { ...ro, cardCount: rs.length, cfrModel: cfr };
       out += html`<section class="sr-results" aria-label="Results">${motif}${rs.map((r, i) => (r.type === 'receptor' ? receptorCard(r, co, i) : card(r, co, i)))}</section>`.s;
     }

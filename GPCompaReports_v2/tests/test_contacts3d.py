@@ -11,7 +11,7 @@ tests drive a built report in headless Chromium (software WebGL is enough):
   * a pair chosen elsewhere (gpc:select-pair, as a table fires it) is framed
     and labelled with the table's ΔRRCS;
   * a click in 3D fires gpc:select-pair or gpc:select-residue with source '3d';
-  * the cartoon is a calm grey while contacts draw; "Colour residues by net
+  * the cartoon is a calm grey while contacts draw; "Color residues by net
     ΔRRCS" brings the residue colours and their caption back;
   * gpc:3d-ready fires; no console errors; no horizontal scroll at phone width.
 

@@ -134,6 +134,8 @@ const PAR1 = { GRCh38: [10001, 2781479], GRCh37: [60001, 2699520] };
 const FLANK = 10000;
 
 const note = (code, text) => ({ code, text });
+/** A pack's reason for a dropped allele, in the site's American spelling (packs built before 2026-11-05 say "modelled"). */
+const dropReason = (r) => String(r).replace(/\bmodelled\b/g, 'modeled');
 
 /** Meta and the receptor matcher for parse(), cached per loader. */
 export async function context(loader) {
@@ -855,7 +857,7 @@ async function resolveChange(ctx, gid, ch, i, accession) {
     const typed = proteinText(ch.ref, ch.pos, ch.kind === 'missense' ? ch.alt : null);
     const drop = gene.vars?.dropped.find((d) => d[1] === typed);
     if (drop) {
-      const res = await makeResult(ctx, gid, null, { gene, type: 'not_in_resource', ref: ch.ref, alt: ch.alt, kind: ch.kind, notes: [note('outside_model', `${label} ${typed} (gnomAD ${drop[0]}): ${drop[2]}.`)] });
+      const res = await makeResult(ctx, gid, null, { gene, type: 'not_in_resource', ref: ch.ref, alt: ch.alt, kind: ch.kind, notes: [note('outside_model', `${label} ${typed} (gnomAD ${drop[0]}): ${dropReason(drop[2])}.`)] });
       res.genomic = { grch38: drop[0], grch37: null };
       return answer('not_in_resource', [res], { interpretation: i, message: res.notes[0].text });
     }
@@ -899,7 +901,7 @@ async function resolveChange(ctx, gid, ch, i, accession) {
   if (ev.typedTxRef) notes.push(note('model_conflict', `The model has ${three(ev.model)} at ${chosen.pos}; the reference genome transcript has ${three(ch.ref)}.`));
 
   if (NONMISSENSE.has(ch.kind)) {
-    const res = await makeResult(ctx, gid, chosen.pos, { gene, type: 'not_in_resource', ref: gene.res.seq[chosen.pos - 1], alt: ch.alt, kind: ch.kind, notes: [...notes, note('not_in_resource', `${kindText(ch.kind)} changes are not analysed here; the residue is shown.`)] });
+    const res = await makeResult(ctx, gid, chosen.pos, { gene, type: 'not_in_resource', ref: gene.res.seq[chosen.pos - 1], alt: ch.alt, kind: ch.kind, notes: [...notes, note('not_in_resource', `${kindText(ch.kind)} changes are not analyzed here; the residue is shown.`)] });
     return answer('not_in_resource', [res], { interpretation: i, message: res.notes[res.notes.length - 1].text, alternates });
   }
   if (ch.kind === 'residue') {
@@ -986,7 +988,7 @@ async function resolveBareChange(ctx, i) {
   }
   // README decision 3: observed substitution first, then a matching reference residue, then symbol
   results.sort((a, b) => (!!b.observed - !!a.observed) || String(a.receptor.symbol).localeCompare(String(b.receptor.symbol)));
-  if (NONMISSENSE.has(ch.kind)) return answer('not_in_resource', results, { interpretation: i, message: `${kindText(ch.kind)} changes are not analysed here.` });
+  if (NONMISSENSE.has(ch.kind)) return answer('not_in_resource', results, { interpretation: i, message: `${kindText(ch.kind)} changes are not analyzed here.` });
   const nObs = results.filter((r) => r.observed).length;
   const what = ch.kind === 'missense' ? `${proteinText(ch.ref, ch.pos, ch.alt)}` : `${three(ch.ref)}${ch.pos}`;
   const msg = `${results.length} receptor${results.length === 1 ? ' has' : 's have'} ${three(ch.ref)} at position ${ch.pos}${ch.kind === 'missense' ? `; ${what} is recorded (gnomAD or ClinVar) in ${nObs}` : ''}. Open a receptor for its full card.`;
@@ -1304,7 +1306,7 @@ async function resolveCoding(ctx, i) {
       const res = await makeResult(ctx, gid, Pc, { gene, ref: i.change.ref, alt, kind, notes: [...notes, note('multi_nucleotide', 'A multi-nucleotide change giving a single missense substitution.')], typed });
       return answer('target', [res], { interpretation: i });
     }
-    const msg = `${kindText(kind)} changes are not analysed here; the residue is shown.`;
+    const msg = `${kindText(kind)} changes are not analyzed here; the residue is shown.`;
     const res = await makeResult(ctx, gid, Pc, { gene, type: 'not_in_resource', ref: Pc ? gene.res.seq[Pc - 1] : null, alt, kind, notes: [...notes, note('not_in_resource', msg)], typed });
     return answer('not_in_resource', [res], { interpretation: i, message: msg });
   }
@@ -1386,13 +1388,13 @@ async function resolveCoding(ctx, i) {
   typed.c = `c.${cd.pos}${sub.ref}>${sub.alt}`;
   if (altAA === ref || altAA === null && refAA === null) {
     if (altAA === ref) {
-      const msg = 'This change is synonymous; synonymous changes are not analysed here.';
+      const msg = 'This change is synonymous; synonymous changes are not analyzed here.';
       const res = await makeResult(ctx, gid, P2, { gene, type: 'not_in_resource', ref: gene.res.seq[P2 - 1], alt: '=', kind: 'synonymous', notes: [...notes, note('not_in_resource', msg)], typed, genomic });
       return answer('not_in_resource', [res], { interpretation: i, message: msg });
     }
   }
   if (altAA === '*') {
-    const msg = 'This change makes a stop codon; nonsense changes are not analysed here.';
+    const msg = 'This change makes a stop codon; nonsense changes are not analyzed here.';
     const res = await makeResult(ctx, gid, P2, { gene, type: 'not_in_resource', ref: gene.res.seq[P2 - 1], alt: '*', kind: 'stop', notes: [...notes, note('not_in_resource', msg)], typed, genomic });
     return answer('not_in_resource', [res], { interpretation: i, message: msg });
   }
@@ -1562,7 +1564,7 @@ async function genomicOnGene(ctx, i, g, gid, assembly, notesIn) {
     }
     const dropped = gene.vars?.dropped.find((d) => d[0] === `${g.chrom}-${g38}-${ref}-${alt}`);
     if (dropped) {
-      const msg = `${label} ${dropped[1]} (${dropped[0]}): ${dropped[2]}.`;
+      const msg = `${label} ${dropped[1]} (${dropped[0]}): ${dropReason(dropped[2])}.`;
       const res = await makeResult(ctx, gid, null, { gene, type: 'not_in_resource', notes: [...notes, note('outside_model', msg)], genomic: { grch38: dropped[0], grch37: null } });
       return answer('not_in_resource', [res], { interpretation: i, message: msg });
     }
@@ -1593,7 +1595,7 @@ async function genomicOnGene(ctx, i, g, gid, assembly, notesIn) {
   const base = baseAt(gene.bases, g38);
   const typed = { tx, implicit: true };
   if (!P) {
-    const msg = `${g.chrom}:${g.pos} is residue ${txPos} of ${txKey(tx)}, outside the modelled sequence of ${label}.`;
+    const msg = `${g.chrom}:${g.pos} is residue ${txPos} of ${txKey(tx)}, outside the modeled sequence of ${label}.`;
     return answer('not_in_resource', [await makeResult(ctx, gid, null, { gene, type: 'not_in_resource', notes: [...notes, note('outside_model', msg)], typed })], { interpretation: i, message: msg });
   }
   if (ref && base && ref.length === 1 && ref !== base) {
@@ -1602,7 +1604,7 @@ async function genomicOnGene(ctx, i, g, gid, assembly, notesIn) {
     return answer('not_in_resource', [res], { interpretation: i, message: msg });
   }
   if (g.op && g.op !== 'sub') {
-    const msg = 'Insertions, deletions and duplications are not analysed here; the residue is shown.';
+    const msg = 'Insertions, deletions and duplications are not analyzed here; the residue is shown.';
     const res = await makeResult(ctx, gid, P, { gene, type: 'not_in_resource', ref: gene.res.seq[P - 1], alt: g.op, kind: 'indel', notes: [...notes, note('not_in_resource', msg)] });
     return answer('not_in_resource', [res], { interpretation: i, message: msg });
   }
@@ -1625,11 +1627,11 @@ async function genomicOnGene(ctx, i, g, gid, assembly, notesIn) {
   const cv = (gene.vars?.clinvar ?? []).filter((r) => r.gnomadId === genomic.grch38);
   if (cv.length) notes.push(note('clinvar_only', 'In ClinVar, not in gnomAD.'));
   if (altAA === refAA && altAA) {
-    const msg = 'This change is synonymous; synonymous changes are not analysed here.';
+    const msg = 'This change is synonymous; synonymous changes are not analyzed here.';
     return answer('not_in_resource', [await makeResult(ctx, gid, P, { gene, type: 'not_in_resource', ref: gene.res.seq[P - 1], alt: '=', kind: 'synonymous', notes: [...notes, note('not_in_resource', msg)], genomic, clinvar: cv })], { interpretation: i, message: msg });
   }
   if (altAA === '*') {
-    const msg = 'This change makes a stop codon; nonsense changes are not analysed here.';
+    const msg = 'This change makes a stop codon; nonsense changes are not analyzed here.';
     return answer('not_in_resource', [await makeResult(ctx, gid, P, { gene, type: 'not_in_resource', ref: gene.res.seq[P - 1], alt: '*', kind: 'stop', notes: [...notes, note('not_in_resource', msg)], genomic, clinvar: cv })], { interpretation: i, message: msg });
   }
   const res = await makeResult(ctx, gid, P, { gene, ref: refAA ?? gene.res.seq[P - 1], alt: altAA, kind: altAA ? 'missense' : 'residue', alleles: [], notes: [...notes, note('not_in_gnomad', 'This substitution is not in gnomAD; the amino-acid change is read from the codon.')], genomic, clinvar: cv.length ? cv : undefined, typed: { tx, implicit: true, c: `c.${c.pos}${tx.strand === 1 ? ref : complement(ref)}>${tx.strand === 1 ? alt : complement(alt)}` } });
@@ -1717,7 +1719,7 @@ async function clinvarAnswer(ctx, hit, i) {
   }
   if (c.pos) {
     // a non-missense record (stop, synonymous, indel, splice...) on a model residue
-    const msg = `ClinVar ${c.accession} is ${c.title} (${cls}). ${kindText(c.kind)} changes are not analysed here; the residue is shown.`;
+    const msg = `ClinVar ${c.accession} is ${c.title} (${cls}). ${kindText(c.kind)} changes are not analyzed here; the residue is shown.`;
     const res = await makeResult(ctx, gid, c.pos, { gene, type: 'not_in_resource', ref: gene.res.seq[c.pos - 1], alt: c.alt, kind: c.kind, clinvar: [c], notes: [...notes, note('not_in_resource', msg)] });
     return answer('not_in_resource', [res], { interpretation: i, message: msg });
   }

@@ -65,7 +65,7 @@
         "pattern": "<div id=\"snake-plot-container\">",
         "times": 1
       },
-      "after": "          Each circle is one residue, laid out as in GPCRdb. The buttons recolour the residues by a data layer.\n          The arcs are the contact pairs at or above this receptor's threshold, within the selected filters; open a loop to show its contacts.\n          Hover a residue to see its partners, click it to select it across the page, and click an ICL or ECL label to open or close that loop.",
+      "after": "          Each circle is one residue, laid out as in GPCRdb. The buttons recolor the residues by a data layer.\n          The arcs are the contact pairs at or above this receptor's threshold, within the selected filters; open a loop to show its contacts.\n          Hover a residue to see its partners, click it to select it across the page, and click an ICL or ECL label to open or close that loop.",
       "before": "          <strong>GPCRdb-style topology.</strong> Use the view buttons to recolor residues by data layer.\n          Toggle contact links to overlay above-threshold residue-residue contacts. Click ICL or ECL\n          labels to expand or collapse loop regions."
     },
     {

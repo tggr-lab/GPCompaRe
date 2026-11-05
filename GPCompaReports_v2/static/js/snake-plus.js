@@ -1143,7 +1143,7 @@
       foot.appendChild(clr);
     }
     ui.grid.appendChild(foot);
-    ui.gridNote.textContent = 'How many of the above-threshold contacts join each pair of helices (a cell on the diagonal: within one helix). Red: the sum of their ΔRRCS favours the active model; blue: the inactive model. Choose a cell to show only those arcs.';
+    ui.gridNote.textContent = 'How many of the above-threshold contacts join each pair of helices (a cell on the diagonal: within one helix). Red: the sum of their ΔRRCS favors the active model; blue: the inactive model. Choose a cell to show only those arcs.';
   }
   function hotSegments(pair) {
     for (var k in arcEls) {
@@ -1437,7 +1437,7 @@
     var toolbar = section.querySelector('.snake-plot-toolbar');
     if (head && head.parentNode === section) head.insertAdjacentElement('afterend', container);
     var row = el('div', 'sp-colour-by');
-    var lab = el('label', 'sp-lab', 'Colour by');
+    var lab = el('label', 'sp-lab', 'Color by');
     lab.htmlFor = 'sp-colour-by';
     var sel = el('select', 'sp-select');
     sel.id = 'sp-colour-by';

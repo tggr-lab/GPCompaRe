@@ -305,7 +305,7 @@ def test_a_clinvar_record_that_is_not_pathogenic_shows_its_gnomad_allele(open_pa
     for needle in ('16-89919709-C-T', '0.192', 'VCV000014312'):
         assert needle in v, needle
         assert needle in texts['rs1805007'] and needle in texts['MC1R Arg151Cys'], needle
-    for absent in ('not analysed here', 'This exact change is not listed', 'not available in this index'):
+    for absent in ('not analyzed here', 'This exact change is not listed', 'not available in this index'):
         assert absent not in v, absent
 
 
@@ -364,7 +364,7 @@ def test_rsid_with_two_alleles_lists_both(open_page):
 
 def test_stop_codon_resolves_to_the_residue_and_says_it_is_not_analysed(open_page):
     page = search_page(open_page, 'F2RL1 p.Met159Ter')
-    assert 'Nonsense' in results_text(page) and 'not analysed' in results_text(page)
+    assert 'Nonsense' in results_text(page) and 'not analyzed' in results_text(page)
     assert 'Met159' in page.locator('.sr-card-title').first.inner_text()
 
 

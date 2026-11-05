@@ -65,18 +65,18 @@ GLOSSARY = [
                     'loss (blue) of contact at that residue.',
          match=[_L + r'Signed sum' + _R, _L + r'Residue net Δ']),
     dict(id='maxdelta', group='Contact scores', term='Largest single contact, Residue max Δ',
-         definition="The one contact of a residue with the largest |ΔRRCS|, coloured by that contact's sign.",
+         definition="The one contact of a residue with the largest |ΔRRCS|, colored by that contact's sign.",
          match=[_L + r'Largest single contact' + _R, _L + r'Residue max Δ']),
     dict(id='sd', group='Contact scores', term='Std Dev, σ', full='standard deviation',
          definition='How widely values spread around their mean.',
          match=[_L + r'Std Dev' + _R]),
     dict(id='angstrom', group='Contact scores', term='Å', full='ångström',
-         definition='A tenth of a nanometre; atoms in contact sit about 3 to 4.6 Å apart.',
+         definition='A tenth of a nanometer; atoms in contact sit about 3 to 4.6 Å apart.',
          match=[]),
 
     # ---- the models ----
     dict(id='models', group='The models', term='Active model, inactive model',
-         definition='Two computer predictions of the same receptor, one in the active (signalling) state and one '
+         definition='Two computer predictions of the same receptor, one in the active (signaling) state and one '
                     'in the inactive state. They are models, not experimental structures.',
          match=[_L + r'(?:[Aa]ctive|[Ii]nactive) models?' + _R, _L + r'Active vs inactive' + _R]),
     dict(id='multistate', group='The models', term='AlphaFold-Multistate',
@@ -166,7 +166,7 @@ GLOSSARY = [
          definition=_motifs.motif('xmy')['definition'],
          match=[_L + r'xMY' + _R]),
     dict(id='cfrscore', group='Statistics page', term='CFR score',
-         definition="The mean of a position's normalised recurrence (how many receptors) and normalised mean "
+         definition="The mean of a position's normalized recurrence (how many receptors) and normalized mean "
                     '|ΔRRCS|; it orders the CFR table.',
          match=[_L + r'CFR score' + _R]),
     dict(id='ligand', group='The receptor', term='Ligand type',
@@ -199,7 +199,7 @@ GLOSSARY = [
                     'replaced by cysteine, and c.451C>T is the DNA letter change behind it.',
          match=[_L + r'(?:Protein|DNA) change' + _R]),
     dict(id='rsid', group='Variants', term='dbSNP, rsID',
-         definition="A variant's identifier in dbSNP, NCBI's catalogue of genetic variants, such as rs1042713.",
+         definition="A variant's identifier in dbSNP, NCBI's catalog of genetic variants, such as rs1042713.",
          match=[_L + r'dbSNP' + _R]),
     dict(id='am', group='Variants', term='AlphaMissense, AM',
          definition='A machine-learning prediction of how likely one amino-acid change is to harm the protein, from '

@@ -56,7 +56,7 @@ def test_additions_outside_the_frozen_sections():
     for path in _pages():
         html = path.read_text(encoding='utf-8')
         bodies = ''.join(SECTION_RE.findall(html))
-        assert 'For an explanation of the scores and colours, see <a href="#sec-understanding" data-open-section="sec-understanding">Understanding the results</a>.' in html or 'id="sec-summary"' not in html
+        assert 'For an explanation of the scores and colors, see <a href="#sec-understanding" data-open-section="sec-understanding">Understanding the results</a>.' in html or 'id="sec-summary"' not in html
         if 'id="tm-summary-table"' in html:
             fine = 'This table uses partial annotations from residues in contact pairs with |ΔRRCS| ≥ 3.0. It does not summarize every residue in each helix.'
             assert fine in html and fine not in bodies, path.stem

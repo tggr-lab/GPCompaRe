@@ -588,7 +588,7 @@ def test_keyboard_moves_along_the_chain_and_selects(open_report):
 
 def test_phone_layout_puts_the_plot_under_its_heading(open_report):
     """Below 640 px (approved 2026-11-05): the plot comes straight under the heading and its "About
-    this plot", the view buttons become one "Colour by" menu, the filters, legend and tools fold
+    this plot", the view buttons become one "Color by" menu, the filters, legend and tools fold
     into "Filters and tools", and the plot opens zoomed on TM3 to TM6 with the minimap."""
     page = open_report(MAIN, viewport=PHONE, touch=True)
     order = page.evaluate("""Array.from(document.getElementById('sec-snake').children).map(n => n.id || n.className)""")

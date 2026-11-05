@@ -160,7 +160,7 @@ def test_landing_prose_sits_in_fine_print_and_keeps_the_limitation_statement():
 def test_statistics_text_is_untouched_by_the_presentation_changes():
     html = (BUILD_DIR / 'statistics.html').read_text(encoding='utf-8')
     for needle in ('The box plots compare groups with a Kruskal-Wallis test.', 'What are Core Functional Residues (CFRs)?',
-                   'Where these cross-receptor numbers come from.', 'This association supports the CFR score as a feature for prioritising variants.'):
+                   'Where these cross-receptor numbers come from.', 'This association supports the CFR score as a feature for prioritizing variants.'):
         assert needle in html, needle
 
 
