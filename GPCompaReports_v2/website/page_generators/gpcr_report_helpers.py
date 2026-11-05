@@ -22,6 +22,7 @@ import plotly.express as px
 from jinja2 import Environment
 
 from ..format_helpers import MISSING, fmt_sci, fmt_decimal
+from .. import snake_bake
 
 # Optional ouroboros import for snake plot generation
 try:
@@ -135,6 +136,9 @@ def _prepare_snake_plot(gpcr_id, delta_df, var_df, sig_threshold):
 
         svg = _inject_svg_tooltips(svg)
         svg = _inject_svg_viewbox(svg)
+        # helix labels, membrane sides, x.50 marks and the fitted viewBox (approved 2026-11-05);
+        # a label that would lie on a residue raises instead of being drawn (snake_bake.SnakeBakeError)
+        svg, _record = snake_bake.bake(svg)
 
         builder = SnakePlotDataBuilder(
             delta_matrix=delta_df,
@@ -144,6 +148,8 @@ def _prepare_snake_plot(gpcr_id, delta_df, var_df, sig_threshold):
         )
         json_data = builder.to_json(positions)
         return svg, json_data
+    except snake_bake.SnakeBakeError:
+        raise
     except Exception as e:
         print(f"  WARNING: no snake plot for {gpcr_id}: {e}")
         return None, None
