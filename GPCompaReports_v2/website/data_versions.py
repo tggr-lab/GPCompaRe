@@ -23,7 +23,7 @@ _SEARCH_FIELDS = {
     'refseq': ('label', 'fetched'),
     'hgnc': ('label', 'fetched'),
     'uniprot': ('label', 'fetched'),
-    'alphamissense': ('label',),
+    'alphamissense': ('label', 'record'),
     'conservation': ('label', 'fetched'),
     'gpcrdb_numbering': ('label', 'fetched'),
 }

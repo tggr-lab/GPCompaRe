@@ -225,7 +225,11 @@ async function summaryAt(ctx, gid, pos, seq) {
 
 function receptorInfo(meta, gid) {
   const r = meta.byGid.get(gid);
-  return r ? { gid, symbol: r.symbol, uniprot: r.uniprot, entry: r.entry, name: r.name, idx: r.idx } : { gid };
+  if (!r) return { gid };
+  const o = { gid, symbol: r.symbol, uniprot: r.uniprot, entry: r.entry, name: r.name, idx: r.idx };
+  // gene identifiers, for the links of the result cards (absent from an older index)
+  for (const k of ['hgnc', 'geneId', 'ensg']) if (r[k]) o[k] = r[k];
+  return o;
 }
 
 /** Which receptors an interpretation names: {gids, status: 'exact'|'prefix'|'none'|'absent', term}. */
