@@ -62,7 +62,6 @@ export function fmtAf(af) {
   if (af < 0.1) return String(Number(af.toPrecision(2)));
   return String(Number(af.toFixed(3)));
 }
-const fmt2 = (x) => (x === null || x === undefined ? 'n/a' : x.toFixed(2));
 /** Allele AlphaMissense scores print with 3 decimals, as on the report pages (the index keeps 3; the residue mean is kept at 2). */
 export const AM_DECIMALS = 3;
 export const fmtAm = (x) => (x === null || x === undefined ? 'n/a' : x.toFixed(AM_DECIMALS));
@@ -315,10 +314,16 @@ function copyBtn(text, label) {
   return html`<button type="button" class="sr-copy" data-copy="${text}" aria-label="Copy ${label ?? text}" title="Copy">Copy</button>`;
 }
 
+/** AlphaMissense's own class words: the index keeps benign | ambiguous | pathogenic. */
+export const AM_CLASS_LABEL = { benign: 'likely benign', ambiguous: 'ambiguous', pathogenic: 'likely pathogenic' };
+export const amClassLabel = (c) => AM_CLASS_LABEL[c] ?? (c ?? '');
+
 function amCell(a) {
   if (a.am === null || a.am === undefined) return html`<span class="sr-na">no score</span>`;
-  return html`${fmtAm(a.am)} <span class="sr-sub">${a.amClass ?? ''}</span>`;
+  return html`${fmtAm(a.am)} <span class="sr-sub">${amClassLabel(a.amClass)}</span>`;
 }
+
+const sourceWord = (s) => (s === 'exome' ? 'exomes' : s === 'genome' ? 'genomes' : null);
 
 export function allelesTable(alleles, { caption }) {
   return html`<div class="sr-table-wrap"><table class="sr-table">
@@ -328,7 +333,7 @@ export function allelesTable(alleles, { caption }) {
       <td class="mono" data-label="gnomAD allele (GRCh38)">${a.id}${a.id37 ? html`<br><span class="sr-sub">GRCh37 <span class="mono">${a.id37}</span></span>` : ''}</td>
       <td data-label="Change"><span class="mono">${a.hgvsc ?? ''}</span>${a.hgvsc ? html`<br>` : ''}<span class="sr-sub mono">${a.hgvsp ?? ''}</span>${a.conflict ? html` <span class="sr-badge sr-badge--warn" title="The model has the other residue here">model differs</span>` : ''}</td>
       <td class="mono" data-label="rsID">${a.rsids?.length ? a.rsids.join(', ') : 'none'}</td>
-      <td class="num" data-label="Allele count">${fmtInt(a.ac)}<span class="sr-sub"> of ${fmtInt(a.an)}</span></td>
+      <td class="num" data-label="Allele count">${fmtInt(a.ac)}<span class="sr-sub"> of ${fmtInt(a.an)}${sourceWord(a.source) ? html`, ${sourceWord(a.source)}` : ''}</span></td>
       <td class="num" data-label="Frequency">${fmtAf(a.af)}</td>
       <td class="num" data-label="Homozygotes">${fmtInt(a.hom)}</td>
       <td data-label="AlphaMissense prediction">${amCell(a)}</td></tr>`)}</tbody></table></div>`;
@@ -346,7 +351,7 @@ function modelText(r) {
 export function leadReason(r, i) {
   if (hasNote(r, 'offset_mapping')) return 'the transcript you typed numbers this residue differently from the model';
   if (hasNote(r, 'isoform_mapping')) return 'mapped from another isoform of this receptor';
-  if (hasNote(r, 'version_mismatch')) return 'the transcript version differs from the one in this database';
+  if (hasNote(r, 'version_mismatch')) return 'the transcript version differs from the one in the GPCompaRe database';
   if (hasNote(r, 'typed_residue_differs')) return 'the residue you typed differs from the model residue';
   if (hasNote(r, 'other_frame')) return 'the base sits in a codon that the transcript you typed does not share';
   if (hasNote(r, 'reference_swap')) return 'reference and alternate residue were read the other way round';
@@ -446,17 +451,82 @@ const sourceName = (label) => String(label ?? '').split(' ')[0] || String(label 
 const NUM_WORDS = { 2: 'two', 3: 'three' };
 
 /**
- * Why a missense change with no gnomAD allele has no AlphaMissense prediction here, when the reason is the
- * codon: the index takes predictions from gnomAD alleles, each a single nucleotide substitution, so a change
- * that needs two or three substitutions can never carry one. Null for a one-substitution change.
+ * Why a missense change has no gnomAD allele, when the reason is the codon: gnomAD alleles are single
+ * nucleotide substitutions, so a change that needs two or three can never be one of them. Null for a
+ * one-substitution change. (The AlphaMissense prediction is per amino-acid substitution and does not depend
+ * on this; the card reads it from the per-residue table.)
  */
-export function amUnavailableReason(r) {
+export function codonReason(r) {
   const n = r?.codon?.steps?.[r.alt];
   if (!(n > 1)) return null;
-  return `This change needs ${NUM_WORDS[n]} nucleotide substitutions in its codon (${r.codon.codon}), and this index takes AlphaMissense predictions from gnomAD alleles, each of which changes a single nucleotide.`;
+  return `This change needs ${NUM_WORDS[n]} nucleotide substitutions in its codon (${r.codon.codon}); gnomAD alleles each change a single nucleotide, so no allele can carry it.`;
+}
+export const amUnavailableReason = codonReason;
+
+/** The brand text of the database, as it reads in sentences. */
+export const DB_NAME = 'the GPCompaRe database';
+
+/**
+ * A collapsible evidence section of a card: a <details> whose summary carries the heading, open by default for
+ * the decision-relevant evidence. `key` is the data-sec hook for tests and styles.
+ */
+function section(key, title, sub, body, { open = true } = {}) {
+  return html`<details class="sr-sec" data-sec="${key}"${open ? raw(' open') : ''}>
+    <summary><h4 class="sr-sec-title">${title}</h4>${sub ? html` <span class="sr-sub">${sub}</span>` : ''}</summary>
+    <div class="sr-sec-body">${body}</div></details>`;
 }
 
-function gnomadRow(r, releases, mismatch) {
+const cell = (k, v) => html`<div class="sr-fact"><dt>${k}</dt><dd>${v}</dd></div>`;
+const HELICES = new Set(['TM1', 'TM2', 'TM3', 'TM4', 'TM5', 'TM6', 'TM7', 'H8']);
+/** '' for a helix residue, 'terminus' for N- or C-term, 'loop' otherwise (the report's tail rule). */
+export const segmentKind = (seg) => (!seg || HELICES.has(seg) ? '' : (seg === 'N-term' || seg === 'C-term' ? 'terminus' : 'loop'));
+
+// ------------------------------------------------------------------------------ identifiers
+
+/** The "Identifiers" section: gene, HGVS on every transcript held, genome ids on both assemblies, rsID, ClinVar. */
+function identifiersSection(r, sub, o, open) {
+  const rec = r.receptor ?? {};
+  const rows = [];
+  const mono = (s, label) => html`<span class="mono">${s}</span> ${copyBtn(s, label ?? s)}`;
+  const entry = String(rec.entry ?? '').replace(/_HUMAN$/, '');
+  rows.push(['Gene', html`<strong>${rec.symbol ?? r.gid}</strong> ${copyBtn(rec.symbol ?? r.gid, 'gene symbol')}${rec.uniprot ? html` <span class="sr-sub">UniProt ${rec.uniprot}${entry && entry.toUpperCase() !== String(rec.symbol).toUpperCase() ? ` (${entry})` : ''}</span> ${copyBtn(rec.uniprot, 'UniProt accession')}` : ''}`]);
+  const modelRes = `${three(r.residue?.aa ?? r.ref)}${r.pos}`;
+  if (sub.mismatch) rows.push(['Model residue', html`${mono(modelRes)} <span class="sr-sub">the typed ${sub.what} is not checkable here</span>`]);
+  else if (sub.change && r.kind === 'missense') rows.push(['Protein change, model numbering', html`${mono(hgvsP(r))} <span class="sr-sub">(${r.ref}${r.pos}${r.alt})</span>`]);
+  else if (sub.change) rows.push(['Change, model numbering', mono(hgvsP(r))]);
+  else rows.push(['Residue, model numbering', mono(modelRes)]);
+  // one row per transcript role; the notations of every allele that shares the role go together
+  const byRole = new Map();
+  for (const t of r.transcriptViews ?? []) {
+    const items = [];
+    if (t.c) items.push(`${t.transcript}:${t.c}`);
+    if (t.protein && t.p) items.push(`${t.protein}:${t.p}`);
+    if (!items.length) continue;
+    const k = roleLabel(t);
+    if (!byRole.has(k)) byRole.set(k, []);
+    for (const s of items) if (!byRole.get(k).includes(s)) byRole.get(k).push(s);
+  }
+  for (const [k, items] of byRole) rows.push([k, html`<span class="sr-id-list">${items.map((s) => html`<span class="sr-id-item">${mono(s)}</span>`)}</span>`]);
+  const g = r.genomic ?? {};
+  const alleles = r.alleles ?? [];
+  const approx = (flag) => (flag ? html` <span class="sr-badge sr-badge--warn" title="Lifted by the nearest alignment block, not checked base by base">approximate</span>` : '');
+  const ids38 = alleles.length ? alleles.map((a) => a.id) : (g.grch38 ? [g.grch38] : []);
+  const ids37 = alleles.length ? alleles.map((a) => a.id37).filter(Boolean) : (g.grch37 ? [g.grch37] : []);
+  if (ids38.length) rows.push(['GRCh38 (hg38)', html`<span class="sr-id-list">${ids38.map((s) => html`<span class="sr-id-item">${mono(s)}${approx(g.grch38Approximate)}</span>`)}</span>`]);
+  if (ids37.length || ids38.length) rows.push(['GRCh37 (hg19)', ids37.length ? html`<span class="sr-id-list">${ids37.map((s) => html`<span class="sr-id-item">${mono(s)}${approx(g.grch37Approximate)}</span>`)}</span>` : html`<span class="sr-na">not mapped</span>`]);
+  const rsids = [...new Set(alleles.flatMap((a) => a.rsids ?? []))];
+  if (alleles.length) rows.push(['rsID', rsids.length ? html`<span class="sr-id-list">${rsids.map((s) => html`<span class="sr-id-item">${mono(s)}</span>`)}</span>` : html`<span class="sr-na">none</span>`]);
+  const cv = (r.clinvar ?? []);
+  if (cv.length) rows.push(['ClinVar', html`<span class="sr-id-list">${cv.map((c) => html`<span class="sr-id-item"><a class="mono" href="${c.url}" target="_blank" rel="noopener noreferrer">${c.accession}<span class="sr-sr-only"> (opens ClinVar in a new tab)</span></a> ${copyBtn(c.accession)}</span>`)}</span>`]);
+  const body = html`<dl class="sr-ids">${rows.map(([k, v]) => html`<div class="sr-id"><dt>${k}</dt><dd>${v}</dd></div>`)}</dl>
+    ${ids38.length ? html`<p class="sr-sub">Genome ids read chromosome-position-reference-alternate on the forward strand.</p>` : ''}
+    ${notationsDetails(r, sub.mismatch)}`;
+  return section('ids', 'Identifiers', 'gene, transcripts, genome, rsID, ClinVar', body, { open });
+}
+
+// ------------------------------------------------------------------------------- population
+
+function populationSection(r, releases, mismatch) {
   const alleles = r.alleles ?? [];
   const resid = r.residueAlleles ?? [];
   const names = new Set(alleles.map((a) => a.id));
@@ -469,8 +539,7 @@ function gnomadRow(r, releases, mismatch) {
     // the residue is not the one typed: nothing is claimed about the typed change
     body = html`<p>Not looked up: the residue you typed is not the model residue.</p>`;
   } else if (r.kind === 'missense' && r.alt) {
-    body = html`<p>This exact change is not listed in ${label}.</p>
-      <p>AlphaMissense prediction for it: not available in this index.${amUnavailableReason(r) ? ` ${amUnavailableReason(r)}` : ''}${r.residue?.amMean != null ? html` The <strong>mean</strong> AlphaMissense prediction over all possible substitutions at this residue is <strong>${fmt2(r.residue.amMean)}</strong>.` : ''}</p>`;
+    body = html`<p>This exact change is not listed in ${label}.${codonReason(r) ? html` <span class="sr-sub">${codonReason(r)}</span>` : ''}</p>`;
   } else if (!resid.length) {
     body = html`<p>No ${label} missense allele at this residue.</p>`;
   } else body = '';
@@ -478,24 +547,122 @@ function gnomadRow(r, releases, mismatch) {
   const more = others.length
     ? html`<details class="sr-more"><summary>${alleles.length ? 'Other' : 'All'} ${others.length} ${label} missense allele${others.length === 1 ? '' : 's'} at ${where}</summary>${allelesTable(others, { caption: `Other ${label} alleles at this residue` })}</details>`
     : '';
-  return html`<div class="sr-row"><h4>${sourceName(label)}</h4><div>${body}${more}</div></div>`;
+  return section('population', 'Population evidence', label, html`${body}${more}`);
 }
 
-function clinvarRow(r, releases, mismatch = false) {
+// --------------------------------------------------------------------------------- clinical
+
+function clinvarRecord(c) {
+  const facts = [];
+  if (c.scv) facts.push(`${c.scv} ${c.scv === 1 ? 'submission' : 'submissions'}`);
+  if (c.evaluated) facts.push(`last evaluated ${c.evaluated}`);
+  return html`<li>
+        <a href="${c.url}" target="_blank" rel="noopener noreferrer">${c.accession}<span class="sr-sr-only"> (opens ClinVar in a new tab)</span></a>
+        <span class="sr-badge">${c.classification || 'no classification'}</span> ${stars(c.stars)}${facts.length ? html` <span class="sr-sub">${facts.join(', ')}</span>` : ''}
+        ${c.conditions?.length ? html`<div class="sr-sub">${c.conditions.join('; ')}</div>` : ''}
+        <div class="sr-sub">${c.title}</div></li>`;
+}
+
+function clinicalSection(r, releases, mismatch = false) {
   const recs = r.clinvar ?? [];
   const label = r.releases?.clinvar ?? releases?.clinvar?.label ?? 'ClinVar';
   const at = mismatch && r.pos ? `the model residue ${three(r.residue?.aa ?? r.ref)}${r.pos}` : null;
   const body = recs.length
-    ? html`${at ? html`<p class="sr-sub">Records at ${at}, not of the change you typed:</p>` : ''}<ul class="sr-list">${recs.map((c) => html`<li>
-        <a href="${c.url}" target="_blank" rel="noopener noreferrer">${c.accession}<span class="sr-sr-only"> (opens ClinVar in a new tab)</span></a>
-        <span class="sr-badge">${c.classification}</span> ${stars(c.stars)}
-        ${c.conditions?.length ? html`<div class="sr-sub">${c.conditions.join('; ')}</div>` : ''}
-        <div class="sr-sub">${c.title}</div></li>`)}</ul>`
+    ? html`${at ? html`<p class="sr-sub">Records at ${at}, not of the change you typed:</p>` : ''}<ul class="sr-list">${recs.map(clinvarRecord)}</ul>`
     : html`<p>${at ? `No ClinVar record at ${at}.` : 'No ClinVar record matches this query.'}</p>`;
-  return html`<div class="sr-row"><h4>${sourceName(label)}</h4><div>${body}</div></div>`;
+  return section('clinical', 'Clinical evidence', label, body);
 }
 
-function factsRow(r) {
+// ---------------------------------------------------------------------------- computational
+
+/** The AlphaMissense prediction the card is about: the change's own, else the first allele's. Null when none. */
+export function amForChange(r, sub) {
+  if (sub?.mismatch) return null;
+  if (r.amThis && r.amThis.am !== null && r.amThis.am !== undefined) return r.amThis;
+  const a = (r.alleles ?? []).find((x) => x.am !== null && x.am !== undefined);
+  return a ? { am: a.am, amClass: a.amClass } : null;
+}
+
+/** Every substitution at the residue, one cell each, the card's own change marked. */
+function amStrip(r, sub) {
+  const all = r.amAll;
+  if (all === undefined) return '';
+  const res = `${three(r.residue?.aa ?? r.ref)}${r.pos}`;
+  if (!all) return html`<p>No AlphaMissense prediction at ${res}.</p>`;
+  const mark = !sub.mismatch && r.kind === 'missense' ? r.alt : null;
+  const letters = Object.keys(all).sort();
+  return html`<div class="sr-am-all">
+    <p class="sr-sub">AlphaMissense prediction for every substitution at ${res}${sub.mismatch ? ' (the model residue)' : ''}:</p>
+    <ol class="sr-am-strip" aria-label="AlphaMissense prediction for every substitution at ${res}">${letters.map((a) => {
+      const v = all[a];
+      const me = a === mark;
+      return html`<li class="sr-am-cell sr-am--${v.amClass}${me ? ' is-this' : ''}"${me ? raw(' aria-current="true"') : ''} title="${three(a)}: ${fmtAm(v.am)}, ${amClassLabel(v.amClass)}"><span class="sr-am-aa">${three(a)}</span><span class="sr-am-score">${fmtAm(v.am)}</span><span class="sr-sr-only"> ${amClassLabel(v.amClass)}${me ? ' (this change)' : ''}</span></li>`;
+    })}</ol></div>`;
+}
+
+function computationalSection(r, sub) {
+  const f = residueFacts(r);
+  const am = amForChange(r, sub);
+  let amThis;
+  if (sub.mismatch) amThis = html`<span class="sr-na">not shown: the typed ${sub.what} is not the model residue</span>`;
+  else if (am) amThis = html`<strong>${fmtAm(am.am)}</strong> <span class="sr-am-class">${amClassLabel(am.amClass)}</span> <span class="sr-badge sr-badge--muted" title="A computational prediction, not an observation">prediction</span>`;
+  else if (r.kind === 'missense' && r.alt) amThis = html`<span class="sr-na">not available in this index</span>`;
+  else amThis = html`<span class="sr-na">not a missense change</span>`;
+  const body = html`<dl class="sr-facts">
+    ${r.alt || sub.mismatch ? cell('AlphaMissense, this change', amThis) : ''}
+    ${cell('AlphaMissense, residue mean', f.amMean === null ? html`<span class="sr-na">not available</span>` : f.amMean.toFixed(2))}
+    ${cell('Conservation', f.conservation === null ? html`<span class="sr-na">not available</span>` : f.conservation.toFixed(2))}
+  </dl>${amStrip(r, sub)}`;
+  return section('computational', 'Computational predictions', 'AlphaMissense, conservation', body);
+}
+
+// --------------------------------------------------------------------------------- structure
+
+/** Plain words for one contact: what the two models show, never what the variant does. */
+export function contactMeaning(c) {
+  if (c.inactive === 0 && c.active > 0) return 'forms in the active model: no contact in the inactive model';
+  if (c.active === 0 && c.inactive > 0) return 'present in the inactive model only: lost in the active model';
+  if (c.delta > 0) return 'present in both models, stronger in the active model';
+  if (c.delta < 0) return 'present in both models, stronger in the inactive model';
+  return 'present in both models, unchanged';
+}
+
+const partnerName = (c) => `${c.partnerAa ? three(c.partnerAa) : ''}${c.partnerPos}`;
+
+function contactsTable(r, o) {
+  const list = r.contacts;
+  const thr = residueFacts(r).threshold;
+  const thrText = thr === null ? 'this receptor’s threshold' : `this receptor’s threshold (|ΔRRCS| ≥ ${thr.toFixed(2)})`;
+  if (list === undefined) return html`<p class="sr-na">The contact list is not available in this index.</p>`;
+  if (!list.length) return html`<p>This residue takes part in no contact above ${thrText}.</p>`;
+  const rows = list.map((c) => {
+    const d = direction(c.delta);
+    const kind = segmentKind(c.partnerSegment);
+    return html`<tr>
+      <td data-label="Partner"><span class="mono">${partnerName(c)}</span>${c.partnerGeneric || c.partnerSegment ? html` <span class="sr-sub">${[c.partnerGeneric, c.partnerSegment].filter(Boolean).join(', ')}</span>` : ''}${kind ? html` <span class="sr-badge sr-badge--muted" title="${kind === 'terminus' ? 'A residue in a terminus' : 'A residue in a loop'}: loops and termini are less reliably modelled">${kind}</span>` : ''}</td>
+      <td class="num" data-label="ΔRRCS"><span class="sr-net sr-net--${d.cls}">${signed(c.delta)}</span><span class="sr-sr-only"> (${d.word})</span></td>
+      <td class="num" data-label="Active RRCS">${c.active.toFixed(2)}</td>
+      <td class="num" data-label="Inactive RRCS">${c.inactive.toFixed(2)}</td>
+      <td data-label="What the models show">${contactMeaning(c)}</td>
+      <td data-label="Report"><a href="${o.reports}${r.gid}.html#pair=${c.a}-${c.b}">pair ${c.a}-${c.b}</a></td></tr>`;
+  });
+  return html`<p class="sr-sub">${list.length} contact${list.length === 1 ? '' : 's'} above ${thrText}, largest |ΔRRCS| first.</p>
+    <div class="sr-table-wrap"><table class="sr-table sr-table--contacts">
+    <caption class="sr-sr-only">Contacts of this residue above the threshold</caption>
+    <thead><tr><th scope="col">Partner</th><th scope="col" class="num">ΔRRCS</th><th scope="col" class="num">Active RRCS</th><th scope="col" class="num">Inactive RRCS</th><th scope="col">What the models show</th><th scope="col">Report</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>
+    ${finePrint(html`<p><span class="sr-net sr-net--active">Red, positive</span>: stronger in the active model. <span class="sr-net sr-net--inactive">Blue, negative</span>: stronger in the inactive model. RRCS is the residue-residue contact score of each AlphaFold-Multistate model.</p>`, { cls: 'sr-contacts-legend' })}`;
+}
+
+function motifsCell(r) {
+  const ms = r.motifs;
+  if (ms === undefined) return '';
+  if (!ms.length) return cell('Motif', html`<span class="sr-na">not a motif position</span>`);
+  const aa = r.residue?.aa ?? r.ref;
+  return cell('Motif', html`${ms.map((m, i) => html`${i ? raw(', ') : ''}<strong>${m.name}</strong> <span class="sr-sub">position ${m.position}${m.canonical ? (m.canonical.includes(aa) ? `, canonical ${three(aa)}` : `, canonical ${m.canonical.split('').map(three).join(' or ')}; this receptor has ${three(aa)}`) : ''}</span>`)}`);
+}
+
+function structureSection(r, o) {
   const x = r.residue;
   if (!x) return '';
   const f = residueFacts(r);
@@ -505,16 +672,88 @@ function factsRow(r) {
   const largest = f.dmax === null
     ? html`<span class="sr-na">no contacts</span>`
     : html`|ΔRRCS| ${f.dmax.toFixed(2)}${f.partner ? html`<span class="sr-sub">, with ${f.partner}</span>` : ''}`;
-  const cell = (k, v) => html`<div class="sr-fact"><dt>${k}</dt><dd>${v}</dd></div>`;
-  return html`<div class="sr-row"><h4>In this database</h4><div><dl class="sr-facts">
+  const body = html`<dl class="sr-facts">
+    ${cell('Numbering', html`${x.generic ? html`<span class="mono">${x.generic}</span> ` : ''}${x.bw ? html`<span class="sr-sub">BW ${x.bw}, GPCRdb ${x.gpcrdb}, ${x.segment}</span>` : html`<span class="sr-na">no generic number (${x.segment || 'outside the helices'})</span>`}`)}
     ${cell('Core functional residue (CFR), class-wide', cfr)}
+    ${motifsCell(r)}
     ${cell('Largest contact change', largest)}
-    ${f.net !== null ? cell('Net ΔRRCS over this residue\u2019s contacts', netHtml(f.net)) : ''}
+    ${f.net !== null ? cell('Net ΔRRCS over this residue’s contacts', netHtml(f.net)) : ''}
     ${cell('Contacts above this receptor’s threshold', f.nsig ?? 0)}
-    ${cell('Conservation', f.conservation === null ? html`<span class="sr-na">not available</span>` : f.conservation.toFixed(2))}
-    ${cell('AlphaMissense, residue mean', f.amMean === null ? html`<span class="sr-na">not available</span>` : f.amMean.toFixed(2))}
-    ${cell('Numbering', html`${x.generic ? html`<span class="mono">${x.generic}</span> ` : ''}${x.bw ? html`<span class="sr-sub">BW ${x.bw}, GPCRdb ${x.gpcrdb}</span>` : html`<span class="sr-na">no generic number (outside the helices)</span>`}`)}
-  </dl></div></div>`;
+  </dl>
+  <h5 class="sr-subhead">Important contacts</h5>
+  ${contactsTable(r, o)}`;
+  return section('structure', `In ${DB_NAME}`, 'generic number, CFR, motif, contacts', body);
+}
+
+// --------------------------------------------------------------------------- evidence summary
+
+/** 'Ionic lock' reads 'ionic lock' inside a sentence; acronym names (DRY, NPxxY) keep their case. */
+const motifPhrase = (name) => (/^[A-Z][a-z]/.test(name) ? name[0].toLowerCase() + name.slice(1) : name);
+const dirText = (d) => (d > 0 ? 'stronger in the active model' : d < 0 ? 'stronger in the inactive model' : 'unchanged');
+
+/**
+ * The plain-language evidence summary at the top of a card, as sentences (no markup): what the change is,
+ * the population, clinical and computational evidence, and what the models show. On a reference mismatch the
+ * typed change is reported as not checkable and the rest is about the model residue.
+ */
+export function summarySentences(r, o = {}) {
+  const S = [];
+  if (!r.pos) return S;
+  const sub = subjectOf(r, o);
+  const f = residueFacts(r);
+  const x = r.residue;
+  const sym = r.receptor?.symbol ?? r.gid;
+  const res = `${three(x?.aa ?? r.ref)}${r.pos}`;
+  const where = x?.generic ? `${x.generic}, ${x.segment}` : (x?.segment ? `${x.segment}, no generic number` : '');
+  if (sub.mismatch) S.push(`${sub.unverifiable}. What follows is about the model residue ${res}${where ? ` (${where})` : ''}.`);
+  else if (sub.change && r.kind === 'missense') S.push(`${sym} ${hgvsP(r)} (${r.ref}${r.pos}${r.alt}) is a missense change at residue ${res}${where ? ` (${where})` : ''}.`);
+  else if (sub.change) S.push(`${sym} ${hgvsP(r)} is a ${kindLabel(r.kind).toLowerCase()} at residue ${res}${where ? ` (${where})` : ''}; the predictions and contacts below describe the residue, not this change.`);
+  else S.push(`${sym} residue ${res}${where ? ` (${where})` : ''}.`);
+  const gl = r.releases?.gnomad ?? o.releases?.gnomad?.label ?? 'gnomAD';
+  const alleles = r.alleles ?? [];
+  if (alleles.length) {
+    const one = (a) => `allele frequency ${fmtAf(a.af)} (${fmtInt(a.ac)} of ${fmtInt(a.an)} alleles, ${fmtInt(a.hom)} ${a.hom === 1 ? 'homozygote' : 'homozygotes'}${sourceWord(a.source) ? `, ${sourceWord(a.source)}` : ''})`;
+    S.push(alleles.length === 1 ? `${gl}: ${one(alleles[0])}.` : `${gl}: ${alleles.length} alleles give this change: ${alleles.map((a) => `${a.id} ${one(a)}`).join('; ')}.`);
+  } else if (!sub.mismatch && r.kind === 'missense' && r.alt) S.push(`Not listed in ${gl}.`);
+  else if (!sub.mismatch && (r.residueAlleles ?? []).length) S.push(`${gl}: ${r.residueAlleles.length} missense allele${r.residueAlleles.length === 1 ? '' : 's'} at this residue.`);
+  const cl = r.releases?.clinvar ?? o.releases?.clinvar?.label ?? 'ClinVar';
+  const cv = r.clinvar ?? [];
+  if (cv.length && !sub.mismatch) {
+    const c = cv[0];
+    const bits = [`${c.stars ?? 0} of 4 review stars`];
+    if (c.scv) bits.push(`${c.scv} ${c.scv === 1 ? 'submission' : 'submissions'}`);
+    S.push(`${cl}: ${c.classification || 'no classification'} (${bits.join(', ')})${c.conditions?.length ? `, ${c.conditions.slice(0, 2).join('; ')}${c.conditions.length > 2 ? ' and more' : ''}` : ''}${cv.length > 1 ? `; ${cv.length - 1} more ${cv.length === 2 ? 'record' : 'records'}` : ''}.`);
+  } else if (!sub.mismatch) S.push(`No ${cl} record for this ${sub.change ? 'change' : 'residue'}.`);
+  const am = amForChange(r, sub);
+  const cons = f.conservation === null ? '' : ` Conservation at the residue: ${f.conservation.toFixed(2)} on a 0 to 1 scale.`;
+  if (am) S.push(`AlphaMissense predicts ${amClassLabel(am.amClass)} (score ${fmtAm(am.am)}); this is a prediction, not an observation.${cons}`);
+  else if (!sub.mismatch && r.kind === 'missense' && r.alt) S.push(`AlphaMissense prediction for this change: not available.${cons}`);
+  else if (cons) S.push(cons.trim());
+  if (x) {
+    const parts = [];
+    if (x.cfr) parts.push(`a core functional residue (CFR, class-wide rank ${f.cfrRank})`);
+    if (r.motifs?.length) parts.push(`part of the ${r.motifs.map((m) => motifPhrase(m.name)).join(' and the ')}`);
+    let contacts;
+    if (r.contacts === undefined) contacts = 'its contact list is not available in this index';
+    else if (!r.contacts.length) contacts = 'it takes part in no contact above the receptor’s threshold';
+    else {
+      const t = r.contacts[0];
+      contacts = `it takes part in ${r.contacts.length} contact${r.contacts.length === 1 ? '' : 's'} above the receptor’s threshold; the largest, with ${partnerName(t)}${t.partnerGeneric ? ` (${t.partnerGeneric})` : ''}, is ${dirText(t.delta)} (ΔRRCS ${signed(t.delta)})`;
+    }
+    S.push(`In the GPCompaRe models, ${res} is ${parts.length ? `${parts.join(' and ')}; ` : 'not a CFR; '}${contacts}.`);
+  }
+  return S;
+}
+
+/** Research-use note, one sentence, shown under the summary and in the evidence text. */
+export const RESEARCH_NOTE = 'Research use only. This card summarises database records and computational predictions; it is not a clinical classification and ACMG criteria are not applied.';
+
+function summaryBlock(r, o) {
+  const S = summarySentences(r, o);
+  if (!S.length) return '';
+  return html`<div class="sr-summary"><h4 class="sr-sr-only">Evidence summary</h4>
+    <p class="sr-summary-text">${S.map((s, i) => html`${i ? raw(' ') : ''}<span class="sr-sentence">${s}</span>`)}</p>
+    ${finePrint(html`<p>${RESEARCH_NOTE}</p>`, { cls: 'sr-research-note' })}</div>`;
 }
 
 // --------------------------------------------------------------- copy buttons' text
@@ -566,7 +805,7 @@ function releaseLines(r, rel) {
   const l = (k) => rel?.[k]?.label;
   const bits = [r.releases?.gnomad ?? l('gnomad'), r.releases?.clinvar ?? l('clinvar'),
     rel?.ensembl ? `${l('ensembl')} (${rel.ensembl.grch38}, ${rel.ensembl.grch37})` : null,
-    l('refseq'), l('alphamissense'), l('hgnc'), l('uniprot'), l('database')].filter(Boolean);
+    l('refseq'), l('alphamissense'), l('conservation'), l('gpcrdb_numbering'), l('hgnc'), l('uniprot'), l('database')].filter(Boolean);
   return [...new Set(bits)];
 }
 
@@ -593,6 +832,11 @@ export function evidenceText(r, ctx = {}) {
   if (ctx.reading) L.push(`Interpretation: ${ctx.reading}`);
   L.push(`Receptor: ${recFull(r.receptor)}`);
   const sub = subjectOf(r, ctx);
+  const S = summarySentences(r, ctx);
+  if (S.length) {
+    L.push('Evidence summary:');
+    for (const t of S) L.push(`  ${t}`);
+  }
   if (r.pos) {
     // a reference mismatch: the typed change is the subject and cannot be checked; the model residue is separate
     if (sub.mismatch) L.push(`Typed ${sub.what}: ${sub.unverifiable}.`);
@@ -626,13 +870,12 @@ export function evidenceText(r, ctx = {}) {
   if (alleles.length) {
     L.push(`${gl} alleles for this change:`);
     for (const a of alleles) {
-      L.push(`  ${a.id} ${a.hgvsc ?? ''} ${a.hgvsp ?? ''}; ${a.rsids?.length ? a.rsids.join(', ') : 'no rsID'}; allele count ${fmtInt(a.ac)} of ${fmtInt(a.an)}; allele frequency ${fmtAf(a.af)}; homozygotes ${fmtInt(a.hom)}; AlphaMissense prediction ${a.am == null ? 'not available' : `${fmtAm(a.am)}${a.amClass ? ` (${a.amClass})` : ''}`}`.replace(/\s+;/g, ';'));
+      L.push(`  ${a.id} ${a.hgvsc ?? ''} ${a.hgvsp ?? ''}; ${a.rsids?.length ? a.rsids.join(', ') : 'no rsID'}; allele count ${fmtInt(a.ac)} of ${fmtInt(a.an)}; allele frequency ${fmtAf(a.af)}; homozygotes ${fmtInt(a.hom)}; AlphaMissense prediction ${a.am == null ? 'not available' : `${fmtAm(a.am)}${a.amClass ? ` (${amClassLabel(a.amClass)})` : ''}`}`.replace(/\s+;/g, ';'));
     }
   } else if (sub.mismatch) {
     L.push(`${gl}: the typed ${sub.what} was not looked up, because ${sub.what === 'change' ? 'its residue is' : 'it is'} not the model residue.`);
   } else if (r.alt && r.kind === 'missense' && r.pos) {
-    L.push(`${gl}: this exact change is not listed.`);
-    if (amUnavailableReason(r)) L.push(`AlphaMissense prediction: not available. ${amUnavailableReason(r)}`);
+    L.push(`${gl}: this exact change is not listed.${codonReason(r) ? ` ${codonReason(r)}` : ''}`);
   }
   const nOther = (r.residueAlleles ?? []).filter((a) => !alleles.some((b) => b.id === a.id)).length;
   const at = sub.mismatch ? `the model residue ${sub.modelRes}` : 'this residue';
@@ -640,17 +883,31 @@ export function evidenceText(r, ctx = {}) {
   const cl = r.releases?.clinvar ?? ctx.releases?.clinvar?.label ?? 'ClinVar';
   if ((r.clinvar ?? []).length) {
     L.push(sub.mismatch ? `${cl} records at ${at} (not of the typed ${sub.what}):` : `${cl} records:`);
-    for (const c of r.clinvar) L.push(`  ${c.accession}: ${c.classification}, ${c.stars ?? 0} of 4 review stars${c.conditions?.length ? `; ${c.conditions.join('; ')}` : ''}; ${c.url}`);
+    for (const c of r.clinvar) L.push(`  ${c.accession}: ${c.classification || 'no classification'}, ${c.stars ?? 0} of 4 review stars${c.scv ? `, ${c.scv} ${c.scv === 1 ? 'submission' : 'submissions'}` : ''}${c.evaluated ? `, last evaluated ${c.evaluated}` : ''}${c.conditions?.length ? `; ${c.conditions.join('; ')}` : ''}; ${c.url}`);
   } else if (sub.mismatch) L.push(`${cl}: no record at ${at}.`);
   else if (r.pos) L.push(`${cl}: no record matches this query.`);
   if (x) {
-    L.push('In this database:');
+    L.push('Computational predictions (AlphaMissense is a prediction, not an observation):');
+    const am = amForChange(r, sub);
+    if (sub.mismatch) L.push(`  AlphaMissense, typed ${sub.what}: not shown (not the model residue)`);
+    else if (am) L.push(`  AlphaMissense, this change: ${fmtAm(am.am)} (${amClassLabel(am.amClass)})`);
+    else if (r.alt && r.kind === 'missense') L.push('  AlphaMissense, this change: not available');
+    L.push(`  AlphaMissense, residue mean: ${f.amMean === null ? 'not available' : f.amMean.toFixed(2)}`);
+    if (r.amAll) L.push(`  AlphaMissense, every substitution at ${sub.modelRes}: ${Object.keys(r.amAll).sort().map((a) => `${three(a)} ${fmtAm(r.amAll[a].am)} (${amClassLabel(r.amAll[a].amClass)})`).join('; ')}`);
+    L.push(`  Conservation: ${f.conservation === null ? 'not available' : `${f.conservation.toFixed(2)} on a 0 to 1 scale`}`);
+    L.push('In the GPCompaRe database:');
+    L.push(`  Numbering: ${x.generic ? `${x.generic} (BW ${x.bw}, GPCRdb ${x.gpcrdb}), ${x.segment}` : `no generic number (${x.segment || 'outside the helices'})`}`);
     L.push(`  Core functional residue (class-wide): ${x.cfr ? `yes, rank ${f.cfrRank} of the class-wide positions` : (f.cfrRank ? `no, its generic position ranks ${f.cfrRank}` : 'not ranked (no generic number)')}`);
+    if (r.motifs) L.push(`  Motif: ${r.motifs.length ? r.motifs.map((m) => `${m.name} (position ${m.position}${m.canonical ? `, canonical ${m.canonical.split('').map(three).join(' or ')}` : ''})`).join('; ') : 'not a motif position'}`);
     L.push(`  Largest contact change: ${f.dmax === null ? 'no contacts' : `|dRRCS| ${f.dmax.toFixed(2)}${f.threshold !== null ? `, receptor threshold ${f.threshold.toFixed(2)}` : ''}${f.partner ? `, with ${f.partner}` : ''}`}`);
     if (f.net !== null) L.push(`  Net dRRCS: ${signed(f.net, 1)} (${direction(f.net).word}; red = active, blue = inactive)`);
     L.push(`  Contacts above this receptor's threshold: ${f.nsig ?? 0}`);
-    L.push(`  Conservation: ${f.conservation === null ? 'not available' : `${f.conservation.toFixed(2)} on a 0 to 1 scale`}`);
-    L.push(`  AlphaMissense prediction, residue mean: ${f.amMean === null ? 'not available' : f.amMean.toFixed(2)}`);
+    if (r.contacts === undefined) L.push('  Contact list: not available in this index');
+    else if (!r.contacts.length) L.push('  Contact list: this residue takes part in no contact above the threshold');
+    else {
+      L.push('  Contacts, largest |dRRCS| first (dRRCS; active RRCS; inactive RRCS; what the models show):');
+      for (const c of r.contacts) L.push(`    ${partnerName(c)}${c.partnerGeneric ? ` (${c.partnerGeneric}, ${c.partnerSegment})` : (c.partnerSegment ? ` (${c.partnerSegment})` : '')}: dRRCS ${signed(c.delta)}; active ${c.active.toFixed(2)}; inactive ${c.inactive.toFixed(2)}; ${contactMeaning(c)}; report pair ${c.a}-${c.b}`);
+    }
   }
   if ((r.notes ?? []).length) {
     L.push('Warnings and notes:');
@@ -661,6 +918,7 @@ export function evidenceText(r, ctx = {}) {
     const rec = n === null || n === undefined ? '' : (n ? ` (${n} ${n === 1 ? 'record' : 'records'} in gnomAD or ClinVar)` : ' (not recorded in gnomAD or ClinVar)');
     L.push(`Suggested correction (a suggestion only; check that it is what you meant): ${sub.fix.query}${rec}`);
   }
+  L.push(`Note: ${RESEARCH_NOTE}`);
   const rl = releaseLines(r, ctx.releases);
   if (rl.length) L.push(`Data releases: ${rl.join('; ')}`);
   L.push(`Search link: ${ctx.pageUrl ?? 'search/'}?q=${encodeURIComponent(q)}`);
@@ -806,6 +1064,9 @@ function card(r, o, idx) {
   const { fix, mismatch } = sub;
   const noResidue = !r.pos && r.type === 'not_in_resource'; // e.g. an unknown transcript version: nothing to show but the note
   const status = r.type === 'not_in_resource' && !mismatch && !noResidue ? html`<span class="sr-badge sr-badge--muted">not analysed here</span>` : '';
+  const hasEvidence = !noResidue && r.type !== 'not_coding' && !(r.type === 'not_in_resource' && !r.residue);
+  // the identifiers open on a single card; with several cards on the page they start folded
+  const idsOpen = (o.cardCount ?? 1) <= 1;
   return html`<article class="sr-card sr-card--${r.type}" aria-labelledby="sr-card-${idx}">
     <header class="sr-card-head">
       <h3 id="sr-card-${idx}" class="sr-card-title">${title}${r.pos ? html`<span class="sr-dot" aria-hidden="true">·</span>${mismatch ? html`<span class="sr-sub">model residue </span>` : ''}<span class="mono">${three(r.residue?.aa ?? r.ref)}${r.pos}</span>` : ''}${x?.generic ? html`<span class="sr-dot" aria-hidden="true">·</span><span class="mono" title="Generic residue number">${x.generic}</span>` : ''}${x?.segment ? html`<span class="sr-dot" aria-hidden="true">·</span><span class="sr-nowrap">${x.segment}</span>` : ''}</h3>
@@ -814,9 +1075,12 @@ function card(r, o, idx) {
     ${leadLine(r, o)}
     ${notesBlock(r.notes)}
     ${fixBlock(fix, o)}
-    ${noResidue ? '' : html`${r.type === 'not_coding' || r.type === 'not_in_resource' && !r.residue ? '' : gnomadRow(r, o.releases, mismatch)}
-    ${clinvarRow(r, o.releases, mismatch)}
-    ${factsRow(r)}`}
+    ${hasEvidence ? summaryBlock(r, o) : ''}
+    ${noResidue ? '' : html`${hasEvidence ? identifiersSection(r, sub, o, idsOpen) : ''}
+    ${hasEvidence ? populationSection(r, o.releases, mismatch) : ''}
+    ${clinicalSection(r, o.releases, mismatch)}
+    ${hasEvidence && r.residue ? computationalSection(r, sub) : ''}
+    ${structureSection(r, o)}`}
     ${actions(r, o, idx, mismatch)}
     ${cardFinePrint(r, o, mismatch, noResidue)}
   </article>`;
@@ -831,21 +1095,21 @@ function cardFinePrint(r, o, mismatch, noResidue) {
   if (noResidue) return '';
   const rel = o.releases;
   const hasRows = r.type !== 'not_coding' && !(r.type === 'not_in_resource' && !r.residue);
-  const releases = [r.releases?.gnomad ?? rel?.gnomad?.label, r.releases?.clinvar ?? rel?.clinvar?.label].filter(Boolean);
+  const releases = [r.releases?.gnomad ?? rel?.gnomad?.label, r.releases?.clinvar ?? rel?.clinvar?.label, rel?.alphamissense?.label, rel?.conservation?.label].filter(Boolean);
   const f = r.residue ? residueFacts(r) : null;
   const about = [];
   if (leadNeeded(r, o.interp)) about.push(html`<li><strong>How it was read:</strong> ${leadReason(r, o.interp)}.</li>`);
   for (const n of (r.notes ?? []).filter((x) => FINE_NOTES.has(x.code))) about.push(html`<li>${n.text}</li>`);
+  if (hasRows) about.push(html`<li><strong>Population evidence</strong> is the gnomAD missense allele (exome counts where present, else genome). Per-population frequencies are not held in this index; open the gnomAD record for them.</li>`);
   if (f) {
     about.push(html`<li><strong>CFR:</strong> a core functional residue is a generic position in the top 30 of the class-wide ranking.</li>`);
     if (f.dmax !== null) about.push(html`<li><strong>Largest contact change:</strong> the biggest |ΔRRCS| among this residue's contacts${f.threshold !== null ? html`; this receptor's threshold is ${f.threshold.toFixed(2)}` : ''}.</li>`);
-    about.push(html`<li><strong>Conservation</strong> is on a 0 to 1 scale. <strong>AlphaMissense, residue mean</strong> is the mean prediction over all substitutions at the residue.</li>`);
+    about.push(html`<li><strong>Contacts</strong> are residue pairs of the AlphaFold-Multistate models whose contact score changes by at least the receptor's threshold between the inactive and the active model. They describe the two models, not the effect of a variant.</li>`);
+    about.push(html`<li><strong>Conservation</strong> is on a 0 to 1 scale. <strong>AlphaMissense</strong> scores are predictions (0 to 1; likely benign below 0.34, likely pathogenic above 0.564); <strong>residue mean</strong> is the mean over all substitutions at the residue.</li>`);
   }
-  const tables = notationsDetails(r, mismatch);
-  if (!releases.length && !about.length && !tables) return '';
+  if (!releases.length && !about.length) return '';
   return finePrint(html`${hasRows && releases.length ? html`<p class="sr-card-releases">${releases.join('; ')}.</p>` : ''}
-    ${about.length ? html`<details class="sr-about"><summary>About these numbers</summary><ul>${about}</ul></details>` : ''}
-    ${tables}`, { cls: 'sr-card-fine' });
+    ${about.length ? html`<details class="sr-about"><summary>About these numbers</summary><ul>${about}</ul></details>` : ''}`, { cls: 'sr-card-fine' });
 }
 
 // ------------------------------------------------------- every ClinVar record of one receptor
@@ -1264,7 +1528,8 @@ export function renderAnswer(answer, query, o) {
     } else {
       statusBits.push(`${rs.length} ${rs.length === 1 ? 'result' : 'results'}`);
       const motif = motifBlock(answer.motif);
-      out += html`<section class="sr-results" aria-label="Results">${motif}${rs.map((r, i) => (r.type === 'receptor' ? receptorCard(r, ro, i) : card(r, ro, i)))}</section>`.s;
+      const co = { ...ro, cardCount: rs.length };
+      out += html`<section class="sr-results" aria-label="Results">${motif}${rs.map((r, i) => (r.type === 'receptor' ? receptorCard(r, co, i) : card(r, co, i)))}</section>`.s;
     }
   } else if (groupedOnly) {
     compare = compareModel(answer, o);

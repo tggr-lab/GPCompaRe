@@ -240,3 +240,60 @@
   .sr-table--cmp td.sr-c-dmax { grid-column: span 2; min-width: 0; }
   .sr-table--cmp .num { text-align: left; }
 }
+
+/* ------------------------------------------------------------ variant card: evidence sections */
+/* the plain-language summary at the top of a card */
+.sr-summary { padding: var(--s-3) var(--s-4) 0; }
+.sr-summary-text { margin: 0 0 var(--s-2); font-size: 1rem; line-height: 1.6; }
+.sr-summary .sr-research-note { margin: 0 0 var(--s-2); }
+/* collapsible sections: the summary row is the heading */
+.sr-sec { border-top: 1px solid var(--borderColor-muted); }
+.sr-sec > summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-1) var(--s-2); padding: var(--s-2) var(--s-4); cursor: pointer; list-style: none; }
+.sr-sec > summary::-webkit-details-marker { display: none; }
+.sr-sec > summary::before { content: "\25B8"; color: var(--fgColor-muted); font-size: 0.8em; margin-right: var(--s-1); }
+.sr-sec[open] > summary::before { content: "\25BE"; }
+.sr-sec > summary:hover { background: var(--bgColor-muted); }
+.sr-sec > summary:focus-visible { outline: 2px solid var(--brand-primary); outline-offset: -2px; }
+.sr-sec-title { display: inline; margin: 0; font-size: 0.86rem; font-weight: 600; color: var(--fgColor-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.sr-sec-body { padding: 0 var(--s-4) var(--s-3); }
+.sr-sec-body > p:last-child { margin-bottom: 0; }
+.sr-sec-body .sr-notations { margin-top: var(--s-3); }
+.sr-sec-body .sr-notations > summary { color: var(--fgColor-muted); font-weight: 500; }
+.sr-sec-body .sr-notations .sr-table { font-size: 0.85rem; }
+/* identifiers: label and value, copy buttons beside each notation */
+.sr-ids { display: grid; grid-template-columns: minmax(150px, 220px) minmax(0, 1fr); gap: var(--s-2) var(--s-3); margin: 0; }
+.sr-id { display: contents; }
+.sr-id dt { font-size: 0.82rem; color: var(--fgColor-muted); padding-top: 2px; }
+.sr-id dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.sr-id-list { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-3); }
+.sr-id-item { white-space: nowrap; }
+.sr-id-item .mono { white-space: normal; overflow-wrap: anywhere; }
+/* AlphaMissense: neutral greys for the classes (red and blue are kept for active and inactive) */
+.sr-am-class { font-weight: 500; }
+.sr-am-all { margin-top: var(--s-3); }
+.sr-am-all > p { margin: 0 0 var(--s-2); }
+.sr-am-strip { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.sr-am-cell { display: flex; flex-direction: column; align-items: center; min-width: 3.4em; padding: 3px 4px; border: 1px solid var(--borderColor-muted); border-radius: var(--r-sm); background: var(--bgColor-default); font-variant-numeric: tabular-nums; line-height: 1.2; }
+.sr-am-aa { font-size: 0.74rem; color: var(--fgColor-muted); }
+.sr-am-score { font-size: 0.82rem; font-family: var(--font-mono); }
+.sr-am--benign { background: color-mix(in srgb, var(--fgColor-default) 4%, var(--bgColor-default)); }
+.sr-am--ambiguous { background: color-mix(in srgb, var(--fgColor-default) 14%, var(--bgColor-default)); }
+.sr-am--pathogenic { background: color-mix(in srgb, var(--fgColor-default) 26%, var(--bgColor-default)); }
+.sr-am-cell.is-this { outline: 2px solid var(--brand-primary); outline-offset: 0; font-weight: 700; }
+.sr-am-cell.is-this .sr-am-aa { color: var(--fgColor-default); }
+/* contacts */
+.sr-table--contacts td { vertical-align: middle; }
+.sr-table--contacts td.num { white-space: nowrap; }
+.sr-contacts-legend { margin-top: var(--s-2); }
+h5.sr-subhead { margin: var(--s-3) 0 var(--s-1); font-size: 0.84rem; font-weight: 600; color: var(--fgColor-muted); }
+
+@media (max-width: 720px) {
+  .sr-summary { padding-left: var(--s-3); padding-right: var(--s-3); }
+  .sr-sec > summary { padding-left: var(--s-3); padding-right: var(--s-3); }
+  .sr-sec-body { padding-left: var(--s-3); padding-right: var(--s-3); }
+  .sr-ids { grid-template-columns: minmax(0, 1fr); gap: var(--s-1); }
+  .sr-id dt { padding-top: var(--s-2); }
+  .sr-id-item { white-space: normal; }
+  .sr-am-cell { min-width: 3em; }
+  .sr-table--contacts td { text-align: left; }
+}
