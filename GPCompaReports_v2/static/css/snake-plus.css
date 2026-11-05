@@ -91,6 +91,8 @@ svg.sp-focus .sp-arc.is-hot { opacity: 0.95; }
 svg.sp-seg-hot .sp-arc { opacity: 0.08; }
 svg.sp-seg-hot .sp-arc.is-seg { opacity: 0.95; }
 .sp-mode-state .sp-arc { opacity: 0.6; }
+/* a score of zero in the model shown: a faint dashed trace (any positive score is drawn) */
+.sp-mode-state .sp-arc.is-absent { opacity: 0.28; stroke-dasharray: 2 4; }
 @media (prefers-reduced-motion: reduce) { .sp-arc { transition: none; } }
 
 /* dim the residues that are not in focus; the approved circles only get a class */
@@ -248,3 +250,39 @@ svg.sp-dim:not(.sp-focus) .sp-arc { opacity: 0.1; }
 .sp-motif-link.sp-motif-contact.is-active { stroke: var(--sp-ink-active); }
 .sp-motif-link.sp-motif-contact.is-inactive { stroke: var(--sp-ink-inactive); }
 .sp-motif-partner circle { fill: none; stroke: #333; stroke-width: 1.2; stroke-dasharray: 1 2.5; pointer-events: none; }
+
+/* ---------------------------------------------------------------- the contact-link checkbox */
+/* a plain checkbox: the arcs are on by default, so it is no longer the loudest thing in the section */
+#sec-snake .snake-links-toggle,
+#sec-snake .snake-links-toggle:has(input:checked) {
+  border-color: transparent;
+  background: none;
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--fgColor-muted);
+  padding: 4px 2px;
+}
+#sec-snake .snake-links-toggle:hover { border-color: transparent; color: var(--fgColor-default); }
+#sec-snake .snake-links-toggle input { width: 15px; height: 15px; }
+
+/* ---------------------------------------------------------------- phones (snake-plus.js phoneLayout) */
+#sec-snake.sp-phone .snake-plot-toolbar { display: none; }
+#sec-snake.sp-phone #snake-plot-container { margin-top: var(--s-2); }
+.sp-colour-by { display: flex; align-items: center; gap: var(--s-2); margin: var(--s-3) 0 var(--s-2); }
+.sp-colour-by .sp-select { flex: 1 1 auto; min-width: 0; font-size: 0.9rem; padding: 7px 8px; }
+.sp-tools {
+  margin: 0 0 var(--s-3);
+  border: 1px solid var(--borderColor-muted);
+  border-radius: var(--r-md);
+  background: var(--bgColor-default);
+}
+.sp-tools > summary {
+  cursor: pointer;
+  padding: var(--s-2) var(--s-3);
+  font: 600 0.875rem/1.3 var(--font-ui);
+  color: var(--fgColor-default);
+}
+.sp-tools[open] > summary { border-bottom: 1px solid var(--borderColor-muted); }
+.sp-tools > :not(summary) { margin: var(--s-2) var(--s-3); }
+.sp-tools .snake-links-toggle { margin-left: var(--s-3); }
+.sp-tools .sp-bar { border: 0; padding: 0; }

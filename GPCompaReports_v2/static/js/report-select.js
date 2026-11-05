@@ -623,7 +623,7 @@
       what.appendChild(el('b', null, label(pair.b)));
       if (!isNaN(pair.delta)) {
         what.appendChild(el('span', 'gpc-selbar-delta ' + (up ? 'is-active' : 'is-inactive'), fmtSigned(pair.delta)));
-        what.appendChild(el('span', 'gpc-selbar-dir', up ? 'stronger in active' : 'stronger in inactive'));
+        what.appendChild(el('span', 'gpc-selbar-dir', up ? 'stronger in the active model' : 'stronger in the inactive model'));
       }
       var meta = [segOf(pair.a) || null, segOf(pair.b) || null].filter(Boolean);
       if (meta.length) what.appendChild(el('span', 'gpc-selbar-meta', meta.join(' to ')));
@@ -635,7 +635,7 @@
       if (r) {
         var net = r.active_minus_inactive;
         what.appendChild(el('span', 'gpc-selbar-delta ' + (net >= 0 ? 'is-active' : 'is-inactive'), 'net ' + fmtSigned(net)));
-        what.appendChild(el('span', 'gpc-selbar-dir', net >= 0 ? 'stronger in active' : 'stronger in inactive'));
+        what.appendChild(el('span', 'gpc-selbar-dir', net >= 0 ? 'stronger in the active model' : 'stronger in the inactive model'));
       }
     }
     actions.appendChild(button(pair ? 'Details' : 'Partners', 'Open the residue details with its contact partners', function () {

@@ -65,13 +65,13 @@
         <div class="report-stat-num">{{ significant_changes }}</div>
         <div class="report-stat-label">Above-threshold changes</div>
       </div>
-      <div class="report-stat report-stat-up" data-tooltip="Largest positive ΔRRCS: contact strengthened most in active state">
+      <div class="report-stat report-stat-up" data-tooltip="Largest positive ΔRRCS: the contact pair with the biggest increase from the inactive model to the active model">
         <div class="report-stat-num">{{ "%.2f"|format(max_increase) }}</div>
-        <div class="report-stat-label">Max Increase</div>
+        <div class="report-stat-label">Largest increase</div>
       </div>
-      <div class="report-stat report-stat-down" data-tooltip="Largest negative ΔRRCS: contact weakened most in active state">
+      <div class="report-stat report-stat-down" data-tooltip="Largest negative ΔRRCS: the contact pair with the biggest decrease from the inactive model to the active model">
         <div class="report-stat-num">{{ "%.2f"|format(max_decrease) }}</div>
-        <div class="report-stat-label">Max Decrease</div>
+        <div class="report-stat-label">Largest decrease</div>
       </div>
     </div>
 
@@ -131,6 +131,7 @@
       <p>Built from the RRCS results on this page: the contact pairs whose |ΔRRCS| is at or above this receptor's threshold, grouped by the segment of each residue (a pair between two segments counts for both). The bars show the sum of ΔRRCS in each direction, scaled to the largest segment; the number is how many such pairs touch the segment. Open a segment to see its largest changes. Choosing a pair marks it on the snake plot, in the tables, in the charts and in the 3D view.</p>
       <p>The one-line answer and the "Largest changes" list cover the helices TM1 to TM7 and H8, where the models are best constrained.{% if rx_summary.n_tail %} {{ rx_summary.n_tail }} of the {{ rx_summary.pairs_all|length }} largest changes overall involve a loop or a terminus; "Include loops and termini" lists them, marked loop or tail. Treat those with more caution.{% else %} None of the {{ rx_summary.pairs_all|length }} largest changes overall involves a loop or a terminus.{% endif %}</p>
       <p>Segment order: "Helices first" lists TM1 to TM7 and H8 together, then the loops, then the termini. "Sequence" follows the chain from the N-terminus. The models are most reliable in the helices. The choice applies to every segment list and chart on the site and in the Studio, and is remembered in this browser.</p>
+      <p class="gpc-understanding-link">For an explanation of the scores and colours, see <a href="#sec-understanding" data-open-section="sec-understanding">Understanding the results</a>.</p>
       {% endcall %}
     </section>
     {% endif %}
@@ -141,13 +142,13 @@
       <header class="report-section-head"><h2>Interactive snake plot</h2></header>
       <div class="callout">
         <p>
-          <strong>GPCRdb-style topology.</strong> Use the view buttons to recolor residues by data layer.
-          Toggle contact links to overlay above-threshold residue-residue contacts. Click ICL or ECL
-          labels to expand or collapse loop regions.
+          Each circle is one residue, laid out as in GPCRdb. The buttons recolour the residues by a data layer.
+          The arcs are the contact pairs at or above this receptor's threshold, within the selected filters; open a loop to show its contacts.
+          Hover a residue to see its partners, click it to select it across the page, and click an ICL or ECL label to open or close that loop.
         </p>
         <p>
-          <span class="is-active">Red:</span> stronger in active.
-          <span class="is-inactive">Blue:</span> stronger in inactive.
+          <span class="is-active">Red:</span> stronger in the active model.
+          <span class="is-inactive">Blue:</span> stronger in the inactive model.
         </p>
       </div>
 
@@ -212,7 +213,7 @@
           <span class="rx-3d-status" id="rx-3d-status" role="status" aria-live="polite"></span>
         </div>
         <div class="rx-3d-pane" id="rx-3d-pane" role="group" aria-label="Active and inactive models of {{ uniprot_name|e }}, superposed"></div>
-        <p class="rx-caption">Colour: net ΔRRCS per residue. <span class="is-active">Red:</span> stronger in active. <span class="is-inactive">Blue:</span> stronger in inactive.</p>
+        <p class="rx-caption">Colour: net ΔRRCS per residue. <span class="is-active">Red:</span> stronger in the active model. <span class="is-inactive">Blue:</span> stronger in the inactive model.</p>
       </div>
       <aside class="fine-print rx-attr">
         {%- set _models_label = data_versions.sources.gpcrdb_models.label %}
@@ -230,7 +231,7 @@
     <section class="report-section" id="sec-changes" data-section-title="Largest changes">
       <header class="report-section-head">
         <h2>Largest active-inactive contact-score changes</h2>
-        <p class="section-sub">Residue pairs ranked by |ΔRRCS| between the active and inactive models. GPCRdb generic numbers are shown in parentheses when available. Highlighted rows exceed the receptor-specific ΔRRCS threshold.</p>
+        <p class="section-sub">The {{ top_changes|length }} contact pairs with the largest |ΔRRCS|. Generic numbers (GPCRdb) in brackets where known. Highlighted rows are at or above this receptor's threshold (|ΔRRCS| ≥ {{ "%.2f"|format(sig_threshold) }}).</p>
       </header>
       <div class="v2-table-wrap" data-table-auto="top-changes-table" data-page-size="25">
         <div class="v2-table-toolbar">
@@ -246,7 +247,7 @@
                 <th data-sort="res2" data-tooltip="Second residue in the contact pair">Residue 2</th>
                 <th data-sort="active" data-tooltip="Contact strength in active conformation (0 = no contact)">Active RRCS</th>
                 <th data-sort="inactive" data-tooltip="Contact strength in inactive conformation">Inactive RRCS</th>
-                <th data-sort="delta" data-tooltip="Active minus inactive: positive = stronger in active">ΔRRCS</th>
+                <th data-sort="delta" data-tooltip="Active minus inactive. Red (positive): stronger in the active model. Blue (negative): stronger in the inactive model.">ΔRRCS</th>
                 <th data-sort="mag" data-tooltip="Magnitude class (HIGH / MED / LOW) based on |ΔRRCS|">Magnitude</th>
               </tr>
             </thead>
@@ -259,7 +260,7 @@
                 <td class="num">{{ "%.3f"|format(row.active_rrcs) }}</td>
                 <td class="num">{{ "%.3f"|format(row.inactive_rrcs) }}</td>
                 <td class="num {{ 'positive-delta' if row.delta_rrcs > 0 else 'negative-delta' }}"><strong>{{ "%+.3f"|format(row.delta_rrcs) }}</strong></td>
-                <td><span class="badge badge-{{ 'high' if row.magnitude == 'HIGH' else ('med' if row.magnitude == 'MED' else 'low') }}" data-tooltip="{% if row.magnitude == 'HIGH' %}|ΔRRCS| ≥ 5.0: major structural rearrangement{% elif row.magnitude == 'MED' %}Threshold ≤ |ΔRRCS| < 5.0: moderate change{% else %}|ΔRRCS| below the receptor-specific ΔRRCS threshold{% endif %}">{{ row.magnitude }}</span></td>
+                <td><span class="badge badge-{{ 'high' if row.magnitude == 'HIGH' else ('med' if row.magnitude == 'MED' else 'low') }}" data-tooltip="{% if row.magnitude == 'HIGH' %}|ΔRRCS| ≥ 5.0: a large contact change{% elif row.magnitude == 'MED' %}Threshold ≤ |ΔRRCS| < 5.0: moderate change{% else %}|ΔRRCS| below the receptor-specific ΔRRCS threshold{% endif %}">{{ row.magnitude }}</span></td>
               </tr>
             {% endfor %}
             </tbody>
@@ -278,10 +279,9 @@
       </header>
       <div class="callout">
         <p>
-          Residues are grouped by segment according to whether their contact pairs are stronger in the
-          <span class="is-active">active model</span> (positive ΔRRCS) or the
-          <span class="is-inactive">inactive model</span> (negative ΔRRCS). Only residues linked to
-          contact-pair changes above the receptor-specific ΔRRCS threshold (|ΔRRCS| ≥ {{ "%.2f"|format(sig_threshold) }}, computed as max(mean(|Δ|) + σ, 0.2)) are shown.
+          A residue is listed when its largest single contact change or the sum of its signed contact changes reaches this receptor's threshold (|ΔRRCS| ≥ {{ "%.2f"|format(sig_threshold) }}).
+          The column follows the signed sum: positive is stronger overall in the <span class="is-active">active model</span>, negative stronger overall in the <span class="is-inactive">inactive model</span>.
+          "Largest single contact" changes the value shown, not the column. The threshold formula is in Methods.
         </p>
       </div>
       <div class="v2-table-wrap" data-table-auto="tm-summary-table" data-page-size="50">
@@ -332,6 +332,9 @@
         </div>
       </div>
     </section>
+    <aside class="fine-print rx-tm-fine" id="tm-fine-print">
+      <p>This table uses partial annotations from residues in contact pairs with |ΔRRCS| ≥ 3.0. It does not summarize every residue in each helix.</p>
+    </aside>
     {% endif %}
 
     {# -------------- Plotly charts -------------- #}
@@ -382,7 +385,7 @@
     <section class="report-section" id="sec-variants" data-section-title="Variants">
       <header class="report-section-head">
         <h2>Contact-site missense variants</h2>
-        <p class="section-sub">{{ total_variants }} gnomAD missense variants at residues that take part in at least one contact pair with |ΔRRCS| ≥ 3.0 (a fixed cutoff, not the receptor-specific threshold), sorted by the ΔRRCS magnitude of the corresponding position.</p>
+        <p class="section-sub">{{ total_variants }} gnomAD missense alleles at residues with at least one contact change of |ΔRRCS| ≥ 3.0, a fixed cutoff shared by all receptors. Rows are ordered by each residue's largest |ΔRRCS|.</p>
       </header>
       <div class="v2-table-wrap" data-table-auto="variants-table" data-page-size="25">
         <div class="v2-table-toolbar">
@@ -508,7 +511,7 @@
         {%- if rrcs_total_pairs and rrcs_total_pairs > complete_rrcs|length %}
         <p class="section-sub rrcs-truncation-note">Showing {{ "{:,}".format(complete_rrcs|length) }} of {{ "{:,}".format(rrcs_total_pairs) }} contact pairs.</p>
         {%- endif %}
-        <p class="section-sub">Top 1000 contact pairs ranked by |ΔRRCS|. Rows above the receptor-specific ΔRRCS threshold (|ΔRRCS| ≥ {{ "%.2f"|format(sig_threshold) }}, computed as max(mean(|Δ|) + σ, 0.2)) are highlighted.</p>
+        <p class="section-sub">Up to 1,000 contact pairs, ranked by |ΔRRCS|. Highlighted rows are at or above this receptor's threshold (|ΔRRCS| ≥ {{ "%.2f"|format(sig_threshold) }}).</p>
       </header>
       <div class="v2-table-wrap" data-table-auto="rrcs-table" data-page-size="25">
         <div class="v2-table-toolbar">
@@ -525,7 +528,7 @@
                 <th data-tooltip="Second residue amino acid">AA2</th>
                 <th data-sort="a" data-tooltip="Contact strength in active conformation">Active RRCS</th>
                 <th data-sort="i" data-tooltip="Contact strength in inactive conformation">Inactive RRCS</th>
-                <th data-sort="d" data-tooltip="Active minus inactive: positive = stronger in active">ΔRRCS</th>
+                <th data-sort="d" data-tooltip="Active minus inactive. Red (positive): stronger in the active model. Blue (negative): stronger in the inactive model.">ΔRRCS</th>
                 <th data-sort="ad" data-tooltip="Magnitude of the active-inactive change">|ΔRRCS|</th>
               </tr>
             </thead>
@@ -583,7 +586,7 @@
           gives a per-pair ΔRRCS.
         </p>
         <p>
-          <strong>Receptor-specific ΔRRCS threshold.</strong> |ΔRRCS| ≥ {{ "%.2f"|format(sig_threshold) }}, computed as max(mean(|Δ|) + σ, 0.2). The 0.2 floor ensures receptors with very small overall change still surface their largest contacts.
+          <strong>Receptor-specific ΔRRCS threshold.</strong> |ΔRRCS| ≥ {{ "%.2f"|format(sig_threshold) }}, computed as max(mean(|Δ|) + σ, 0.2). The threshold is never lower than 0.2. Contact pairs with |ΔRRCS| below 0.2 do not pass this rule.
         </p>
         <p>
           <strong>Variant data.</strong> Population frequencies from
@@ -613,7 +616,7 @@
           <h3 class="report-chart-head">What is RRCS?</h3>
           <p>
             Residue-Residue Contact Score (RRCS) measures how strongly two amino acids interact in a protein structure.
-            When a protein changes shape (from inactive to active), these contact strengths change.
+            Here, ΔRRCS compares contact scores in the active and inactive receptor models.
           </p>
           <p>ΔRRCS (Delta RRCS) shows the difference in contact strength between states:</p>
           <ul>
@@ -633,10 +636,11 @@
             based on structural and evolutionary features. The published score thresholds bin each variant as:
           </p>
           <ul>
-            <li><span class="badge badge-pathogenic">Pathogenic</span> (score ≥ 0.564): consistent with disruptive substitutions in known disease genes.</li>
-            <li><span class="badge badge-ambiguous">Ambiguous</span> (0.34–0.563): score does not clearly favor either class.</li>
-            <li><span class="badge badge-benign">Benign</span> (&lt; 0.34): consistent with tolerated substitutions.</li>
+            <li><span class="badge badge-pathogenic">Likely pathogenic</span>: score &gt; 0.564.</li>
+            <li><span class="badge badge-ambiguous">Ambiguous</span>: 0.34 ≤ score ≤ 0.564.</li>
+            <li><span class="badge badge-benign">Likely benign</span>: score &lt; 0.34.</li>
           </ul>
+          <p>Classes follow the source predictions before display rounding.</p>
 
           <h3 class="report-chart-head">Conservation &amp; population data</h3>
           <p>
@@ -889,6 +893,15 @@ document.addEventListener('DOMContentLoaded', function() {
   btns.forEach(function(b) {
     b.addEventListener('click', function() { setMetric(b.getAttribute('data-tm-metric')); });
   });
+  // Each value is coloured by its own sign (red positive, blue negative, zero neutral): under
+  // "Largest single contact" a residue in the active column can show a negative value.
+  table.querySelectorAll('.tm-res').forEach(function(span) {
+    [['.tm-val-signed', 'data-signed'], ['.tm-val-max', 'data-max']].forEach(function(k) {
+      var v = span.querySelector(k[0]), x = parseFloat(span.getAttribute(k[1]));
+      if (!v || isNaN(x)) return;
+      v.classList.add(x > 0 ? 'tm-sign-pos' : (x < 0 ? 'tm-sign-neg' : 'tm-sign-zero'));
+    });
+  });
 })();
 </script>
 
@@ -1004,13 +1017,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
 {% if has_snake_plot %}
 <script type="application/json" id="snake-plot-data">{{ snake_plot_json | safe }}</script>
+{% if rx_contacts_json %}<script type="application/json" id="rx-contacts">{{ rx_contacts_json | safe }}</script>{% endif %}
 <script>
 (function() {
   var snakeData = JSON.parse(document.getElementById('snake-plot-data').textContent);
   var views = snakeData.views;
-  var links = snakeData.contact_links;
   var positions = snakeData.positions;
-  var linksDrawn = false;
+  // The above-threshold pairs (#rx-contacts) set the |ΔRRCS| slider bounds until snake-plus.js,
+  // which draws the arcs, takes the controls over.
+  var pairs = (function () {
+    var node = document.getElementById('rx-contacts');
+    try { return (node && JSON.parse(node.textContent).pairs) || []; } catch (e) { return []; }
+  })();
 
   function textColorForFill(hex) {
     try {
@@ -1070,9 +1088,9 @@ document.addEventListener('DOMContentLoaded', function() {
     el.innerHTML = html;
   }
 
-  var maxAbsDelta = links.reduce(function(m, l) { return Math.max(m, Math.abs(l.delta)); }, 0);
-  var minAbsDelta = links.length
-    ? links.reduce(function(m, l) { return Math.min(m, Math.abs(l.delta)); }, maxAbsDelta)
+  var maxAbsDelta = pairs.reduce(function(m, p) { return Math.max(m, Math.abs(p[4])); }, 0);
+  var minAbsDelta = pairs.length
+    ? pairs.reduce(function(m, p) { return Math.min(m, Math.abs(p[4])); }, maxAbsDelta)
     : 0;
 
   var filterState = {
@@ -1083,64 +1101,12 @@ document.addEventListener('DOMContentLoaded', function() {
     direction: 'both'
   };
 
+  // The arcs are drawn by snake-plus.js from the page's above-threshold pairs; the old top-50
+  // overlay and its contact_links payload were removed (P4, approved 2026-11-05). Every control
+  // still calls this hook, so it stays.
   function redrawSnakeLinks() {
-    var container = document.getElementById('snake-plot-container');
-    var snakeGroup = container.querySelector('#snake');
-    if (!snakeGroup) return;
-
-    var existing = container.querySelector('#snake-links');
-    if (existing) existing.parentNode.removeChild(existing);
-
     var summary = document.getElementById('snake-filter-summary');
-
-    if (!filterState.visible) {
-      if (summary) summary.textContent = '';
-      return;
-    }
-
-    var ns = 'http://www.w3.org/2000/svg';
-    var g = document.createElementNS(ns, 'g');
-    g.setAttribute('id', 'snake-links');
-
-    var visibleCount = 0;
-    links.forEach(function(link) {
-      var absDelta = Math.abs(link.delta);
-      if (absDelta < filterState.magMin - 1e-9 || absDelta > filterState.magMax + 1e-9) return;
-      if (filterState.direction === 'active' && link.delta < 0) return;
-      if (filterState.direction === 'inactive' && link.delta > 0) return;
-      if (filterState.selectedResidue !== null &&
-          link.from_seq !== filterState.selectedResidue &&
-          link.to_seq !== filterState.selectedResidue) return;
-
-      var p1 = positions[String(link.from_seq)];
-      var p2 = positions[String(link.to_seq)];
-      if (!p1 || !p2) return;
-
-      var midX = (p1[0] + p2[0]) / 2;
-      var midY = (p1[1] + p2[1]) / 2;
-      var dist = Math.abs(link.to_seq - link.from_seq);
-      var arcH = 30 + dist * 0.5;
-      var arcDir = dist < 20 ? -1 : 1;
-      var ctrlY = midY + arcDir * arcH;
-
-      var path = document.createElementNS(ns, 'path');
-      path.setAttribute('d', 'M ' + p1[0] + ',' + p1[1] + ' Q' + midX + ',' + ctrlY + ' ' + p2[0] + ',' + p2[1]);
-      path.setAttribute('stroke', link.color);
-      path.setAttribute('stroke-width', String(link.width));
-      path.setAttribute('fill', 'none');
-      path.setAttribute('opacity', '0.6');
-      var title = document.createElementNS(ns, 'title');
-      title.textContent = 'Res ' + link.from_seq + ' ↔ ' + link.to_seq + ' | ΔRRCS: ' + link.delta;
-      path.appendChild(title);
-      g.appendChild(path);
-      visibleCount++;
-    });
-    snakeGroup.appendChild(g);
-
-    if (summary) {
-      summary.textContent = visibleCount + ' / ' + links.length + ' arc' +
-        (links.length === 1 ? '' : 's') + ' shown';
-    }
+    if (summary && !filterState.visible) summary.textContent = '';
   }
 
   function updateResidueHighlight() {
@@ -1278,11 +1244,34 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
+  // The built viewBox fits the collapsed plot; an opened loop can reach past it, so the box is
+  // refitted (the union of the built box and the drawn content) after every toggle.
+  var plotSvg = document.querySelector('#snake-plot-container svg');
+  var builtBox = (function () {
+    var vb = plotSvg && plotSvg.getAttribute('viewBox');
+    var v = vb ? vb.trim().split(/[\s,]+/).map(parseFloat) : [];
+    return v.length === 4 && v.every(function (x) { return !isNaN(x); }) ? { x: v[0], y: v[1], w: v[2], h: v[3] } : null;
+  })();
+  function refitSnake() {
+    if (!plotSvg || !builtBox) return;
+    var g = plotSvg.querySelector('#snake'), b;
+    if (!g) return;
+    try { b = g.getBBox(); } catch (e) { return; }
+    var m = /translate\(\s*([-\d.]+)[\s,]+([-\d.]+)/.exec(g.getAttribute('transform') || '');
+    var tx = m ? parseFloat(m[1]) : 0, ty = m ? parseFloat(m[2]) : 0, pad = 16;
+    var x0 = Math.min(builtBox.x, b.x + tx - pad), y0 = Math.min(builtBox.y, b.y + ty - pad);
+    var x1 = Math.max(builtBox.x + builtBox.w, b.x + tx + b.width + pad), y1 = Math.max(builtBox.y + builtBox.h, b.y + ty + b.height + pad);
+    plotSvg.setAttribute('viewBox', x0.toFixed(1) + ' ' + y0.toFixed(1) + ' ' + (x1 - x0).toFixed(1) + ' ' + (y1 - y0).toFixed(1));
+    plotSvg.setAttribute('width', (x1 - x0).toFixed(1));
+    plotSvg.setAttribute('height', (y1 - y0).toFixed(1));
+  }
+
   function toggleLoop(selector, currentMode, expanded, element) {
     var container = document.getElementById('snake-plot-container');
     var otherMode = currentMode === 'short' ? 'long' : 'short';
     container.querySelectorAll(selector + '.' + currentMode).forEach(function(el) { el.style.display = 'none'; });
     container.querySelectorAll(selector + '.' + otherMode).forEach(function(el) { el.style.display = 'inline'; });
+    refitSnake();
   }
 
   window.switchSnakeView = switchSnakeView;

@@ -36,7 +36,7 @@ GLOSSARY = [
          match=[_L + r'(?:Active|Inactive) RRCS' + _R]),
     dict(id='delta', group='Contact scores', term='ΔRRCS', full='delta RRCS',
          definition='The change in one contact: its RRCS in the active model minus its RRCS in the inactive model. '
-                    'Positive (red) means stronger in the active state, negative (blue) stronger in the inactive state.',
+                    'Positive (red) means stronger in the active model, negative (blue) stronger in the inactive model.',
          match=[r'(?<!\|)ΔRRCS(?!\|)', _L + r'Delta RRCS' + _R]),
     dict(id='absdelta', group='Contact scores', term='|ΔRRCS|, |Δ|',
          definition='The size of a change whatever its direction: ΔRRCS without its sign.',
@@ -203,7 +203,8 @@ GLOSSARY = [
          match=[_L + r'dbSNP' + _R]),
     dict(id='am', group='Variants', term='AlphaMissense, AM',
          definition='A machine-learning prediction of how likely one amino-acid change is to harm the protein, from '
-                    '0 to 1: likely benign below 0.34, likely pathogenic from 0.564, ambiguous between. '
+                    '0 to 1. Likely pathogenic: score > 0.564. Ambiguous: 0.34 ≤ score ≤ 0.564. Likely benign: score < 0.34. '
+                    'Classes follow the source predictions before display rounding. '
                     'A prediction, not a clinical classification.',
          href='https://doi.org/10.1126/science.adg7492',
          match=[_L + r'AlphaMissense' + _R, _L + r'AM' + _R]),

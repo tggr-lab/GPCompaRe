@@ -343,10 +343,24 @@
     document.dispatchEvent(new CustomEvent('rx:residue', { detail: { pos: pos, source: source || '' } }));
   }
 
+  // On a wide screen the drawer floats beside the page: it opens on the side away from the
+  // selected residue on the snake plot, so it never covers the residue and its partners
+  // (TM5 to H8 sit on the right of the plot, TM1 to TM4 on the left).
+  function placeSide(pos) {
+    var left = false;
+    if (window.innerWidth > 600) {
+      var c = document.querySelector('#snake-plot-container circle[id="' + pos + '"]');
+      var r = c && c.getBoundingClientRect ? c.getBoundingClientRect() : null;
+      if (r && r.width) left = (r.left + r.width / 2) > window.innerWidth / 2;
+    }
+    drawer.classList.toggle('rx-drawer--left', left);
+  }
+
   function open(pos, opts) {
     opts = opts || {};
     current = pos;
     render(pos);
+    placeSide(pos);
     drawer.hidden = false;
     if (opts.focus) {
       drawer.setAttribute('tabindex', '-1');

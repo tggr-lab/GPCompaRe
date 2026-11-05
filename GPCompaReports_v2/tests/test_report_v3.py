@@ -306,7 +306,7 @@ def test_choosing_a_pair_in_the_summary_marks_it_everywhere_and_shows_the_bar(op
     assert str(chip['a']) in what and str(chip['b']) in what
     cls = bar.locator('.gpc-selbar-delta').get_attribute('class')
     assert ('is-active' if chip['d'] >= 0 else 'is-inactive') in cls
-    assert ('stronger in active' if chip['d'] >= 0 else 'stronger in inactive') in what
+    assert ('stronger in the active model' if chip['d'] >= 0 else 'stronger in the inactive model') in what
     # marked: the chip, the rows of the two tables, the snake plot (a ringed, b coloured)
     assert page.evaluate("document.querySelector('#gpc-pairs-core .gpc-pair').getAttribute('aria-current')") == 'true'
     assert page.evaluate("""(c) => {

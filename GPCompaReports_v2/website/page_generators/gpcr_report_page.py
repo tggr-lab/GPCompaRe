@@ -451,7 +451,27 @@ def _patch_snake_views(snake_json_str, annot_map, cfr_generic_numbers, var_df,
     # --- Variants: drop entirely (button also removed from template) ---
     views.pop('variants', None)
 
+    # --- The old top-50 arc overlay is gone (P4, approved 2026-11-05): snake-plus.js draws the
+    # arcs from #rx-contacts and the RRCS table, so its contact_links payload is not shipped.
+    data.pop('contact_links', None)
+
     return json.dumps(data)
+
+
+def _sig9(v):
+    return float('%.9g' % float(v))
+
+
+def _contact_pairs(delta_df, sig_threshold):
+    """{'sig', 'pairs': [[res1, res2, active RRCS, inactive RRCS, dRRCS, 1], ...]} for every pair at or
+    above the threshold, largest |dRRCS| first, values to nine significant digits (not the tables'
+    three decimals, so a small positive score is never read back as zero)."""
+    if delta_df.empty:
+        return {'sig': float(sig_threshold), 'pairs': []}
+    rows = delta_df[delta_df['abs_delta'] >= sig_threshold].sort_values('abs_delta', ascending=False, kind='mergesort')
+    pairs = [[int(r.res1), int(r.res2), _sig9(r.active_rrcs), _sig9(r.inactive_rrcs), _sig9(r.delta_rrcs), 1]
+             for r in rows.itertuples(index=False)]
+    return {'sig': float(sig_threshold), 'pairs': pairs}
 
 
 def generate_all_reports(env: Environment, store, output_dir, analysis_results=None, only=None):
@@ -556,6 +576,10 @@ def generate_all_reports(env: Environment, store, output_dir, analysis_results=N
         # "What changes most": the page's own above-threshold pairs, by segment
         rx_summary = report_extras.contact_summary(delta_df, sig_threshold, rx['annotation'])
 
+        # The above-threshold pairs with their unrounded endpoint scores, for the snake plot's arcs
+        # and its inactive -> active slider (the tables show three decimals).
+        rx_contacts_json = report_extras.json_for_script(_contact_pairs(delta_df, sig_threshold))
+
         max_increase = float(delta_df['delta_rrcs'].max()) if not delta_df.empty else 0.0
         max_decrease = float(delta_df['delta_rrcs'].min()) if not delta_df.empty else 0.0
 
@@ -622,6 +646,7 @@ def generate_all_reports(env: Environment, store, output_dir, analysis_results=N
             rx_residue_json=rx_residue_json,
             rx_summary=rx_summary,
             rx_summary_json=report_extras.json_for_script(rx_summary),
+            rx_contacts_json=rx_contacts_json,
             rx_clinvar_label=report_extras.clinvar_label(rx['clinvar']),
             rx_clinvar_scope=report_extras.CLINVAR_SCOPE,
             layout_light_json=layout_light_json,

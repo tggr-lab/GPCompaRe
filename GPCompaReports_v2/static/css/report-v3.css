@@ -185,6 +185,10 @@
 
 /* the residue drawer sits above the bar when both are open (bottom offset set by report-select.js) */
 .rx-drawer { bottom: calc(var(--s-4) + var(--gpc-selbar-h, 0px)); }
+/* on the left when the selected residue is on the right half of the plot (residue-drawer.js) */
+@media (min-width: 601px) {
+  .rx-drawer.rx-drawer--left { left: var(--s-4); right: auto; }
+}
 
 @media (max-width: 720px) {
   .gpc-summary { padding: var(--s-3) var(--s-3) var(--s-2); border-radius: var(--r-md); }
@@ -256,6 +260,16 @@
 .gpc-fine .callout p { font-size: inherit; }
 /* a folded section (Compact view) hides its fine print with the rest */
 .report-section.v3-folded .gpc-fine { display: none; }
+
+/* ---------------------------------------------------------------- TM analysis */
+/* each value takes the colour of its own sign (the column follows the signed sum) */
+.tm-metric-table .tm-res-val.tm-sign-pos { color: var(--semantic-active); }
+.tm-metric-table .tm-res-val.tm-sign-neg { color: var(--semantic-inactive); }
+.tm-metric-table .tm-res-val.tm-sign-zero { color: var(--fgColor-muted); }
+/* the table's fine print sits under the frozen section, inside its spacing */
+.fine-print.rx-tm-fine { margin: calc(var(--s-3) - var(--s-7)) 0 var(--s-7); }
+/* the summary's pointer to Understanding the results */
+.gpc-understanding-link a { font-weight: 600; }
 
 @media (prefers-reduced-motion: reduce) {
   .gpc-pair, .gpc-seg-name::after { transition: none; }

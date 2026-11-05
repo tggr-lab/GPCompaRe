@@ -192,8 +192,8 @@
     }
     var legend = el('p', 'rx-legend');
     legend.id = 'rx-3d-legend';
-    var k1 = el('span', 'rx-key'); k1.appendChild(line('rx-k-active', 3)); k1.appendChild(document.createTextNode('Contact stronger in active'));
-    var k2 = el('span', 'rx-key'); k2.appendChild(line('rx-k-inactive', 3)); k2.appendChild(document.createTextNode('Contact stronger in inactive'));
+    var k1 = el('span', 'rx-key'); k1.appendChild(line('rx-k-active', 3)); k1.appendChild(document.createTextNode('Contact stronger in the active model'));
+    var k2 = el('span', 'rx-key'); k2.appendChild(line('rx-k-inactive', 3)); k2.appendChild(document.createTextNode('Contact stronger in the inactive model'));
     var k3 = el('span', 'rx-key'); k3.appendChild(line('rx-k-width', 1.5)); k3.appendChild(line('rx-k-width', 4)); k3.appendChild(document.createTextNode('Width: |ΔRRCS|'));
     var count = el('span', 'rx-legend-count');
     count.id = 'rx-3d-contact-count';

@@ -85,6 +85,11 @@ def test_built_section_carries_no_layer_markup(gid):
 @pytest.mark.skipif(BASELINE_DIR is None, reason='set SNAKE_BASELINE_DIR to compare the snake SVG with an earlier build')
 @pytest.mark.parametrize('gid', PAGES)
 def test_built_snake_svg_is_byte_identical_to_baseline(gid):
+    """Byte for byte once the approved build-time changes of 2026-11-05 are undone (the recorded
+    <svg> tag and terminus labels, the two baked groups with their recorded hashes; see
+    tests/test_snake_bake.py). A baseline built before that approval compares after unbaking; one
+    built after it compares as it is."""
+    from .test_snake_bake import unbake
     here = REPORTS_DIR / (gid + '.html')
     there = BASELINE_DIR / 'reports' / (gid + '.html')
     if not there.exists():
@@ -92,7 +97,10 @@ def test_built_snake_svg_is_byte_identical_to_baseline(gid):
     a = SVG_RE.search(here.read_text(encoding='utf-8'))
     b = SVG_RE.search(there.read_text(encoding='utf-8'))
     assert a and b
-    assert a.group(1) == b.group(1)
+    if 'snake-helix-labels' in b.group(1):
+        assert a.group(1) == b.group(1)
+    else:
+        assert unbake(a.group(1), gid) == b.group(1)
 
 
 # --------------------------------------------------------------------------
@@ -227,15 +235,20 @@ def test_arcs_equal_the_above_threshold_contacts_on_the_page(open_report, gid):
 
 
 def test_plot_margins_are_trimmed_and_helix_labels_added(open_report):
+    """Since 2026-11-05 the build fits the viewBox and bakes the helix labels and sides into the plot
+    (tests/test_snake_bake.py); the layer reuses them (no second copy) and its toggle hides them."""
     page = open_report(MAIN)
     vb = page.evaluate("document.querySelector('#snake-plot-container svg').viewBox.baseVal.height")
-    assert vb < 700   # the SVG is built 925 tall with empty bands above and below the plot
-    labels = page.evaluate("Array.from(document.querySelectorAll('#sp-labels .sp-helix-label text')).map(t => t.textContent)")
+    assert vb < 700   # ouroboros draws the SVG 925 tall with empty bands above and below the plot
+    labels = page.evaluate("Array.from(document.querySelectorAll('#snake-plot-container g.snake-helix-labels text[text-anchor=middle]')).map(t => t.textContent)")
     assert labels[:7] == ['TM1', 'TM2', 'TM3', 'TM4', 'TM5', 'TM6', 'TM7']
-    sides = page.evaluate("Array.from(document.querySelectorAll('#sp-labels .sp-side')).map(t => t.textContent)")
+    sides = page.evaluate("Array.from(document.querySelectorAll('#snake-plot-container g.snake-helix-labels text[font-style=italic]')).map(t => t.textContent)")
     assert sides == ['extracellular side', 'intracellular side']
+    assert page.evaluate("document.querySelectorAll('#sp-labels .sp-helix-label, #sp-labels .sp-side').length") == 0
     page.click('#sp-labels-btn')
-    assert page.evaluate("getComputedStyle(document.getElementById('sp-labels')).display") == 'none'
+    assert page.evaluate("getComputedStyle(document.querySelector('#snake-plot-container g.snake-helix-labels')).display") == 'none'
+    page.click('#sp-labels-btn')
+    assert page.evaluate("getComputedStyle(document.querySelector('#snake-plot-container g.snake-helix-labels')).display") != 'none'
     assert not page.errors
 
 
@@ -337,7 +350,7 @@ def test_view_switch_keeps_the_layer_and_ring_adds_a_second_one(open_report):
     page.wait_for_timeout(100)
     assert page.evaluate("document.querySelector('.snake-btn.active').dataset.view") == 'conservation'
     assert page.evaluate("document.querySelectorAll('#sp-arcs .sp-arc').length") == before
-    assert page.evaluate("document.querySelectorAll('#sp-labels .sp-helix-label').length") >= 7
+    assert page.evaluate("document.querySelectorAll('#snake-plot-container g.snake-helix-labels rect').length") >= 7
     page.select_option('#sp-ring', 'cfr')
     page.wait_for_timeout(100)
     n_cfr = page.evaluate("Object.keys(JSON.parse(document.getElementById('snake-plot-data').textContent).views.cfr.colors).length")
@@ -573,9 +586,37 @@ def test_keyboard_moves_along_the_chain_and_selects(open_report):
     assert not page.errors
 
 
+def test_phone_layout_puts_the_plot_under_its_heading(open_report):
+    """Below 640 px (approved 2026-11-05): the plot comes straight under the heading and its "About
+    this plot", the view buttons become one "Colour by" menu, the filters, legend and tools fold
+    into "Filters and tools", and the plot opens zoomed on TM3 to TM6 with the minimap."""
+    page = open_report(MAIN, viewport=PHONE, touch=True)
+    order = page.evaluate("""Array.from(document.getElementById('sec-snake').children).map(n => n.id || n.className)""")
+    i_plot = order.index('snake-plot-container')
+    assert i_plot <= 2, order                     # heading, About this plot, the plot
+    assert page.evaluate("document.querySelector('.snake-plot-toolbar').getBoundingClientRect().height") == 0
+    gap = page.evaluate("""document.getElementById('snake-plot-container').getBoundingClientRect().top -
+        document.querySelector('#sec-snake .report-section-head').getBoundingClientRect().bottom""")
+    assert gap < 120, gap
+    assert state(page)['zoom'] == 2
+    assert page.evaluate("getComputedStyle(document.getElementById('sp-minimap')).display") == 'block'
+    page.select_option('#sp-colour-by', 'conservation')
+    assert page.evaluate("document.querySelector('.snake-btn.active').dataset.view") == 'conservation'
+    tools = page.locator('#sp-tools')
+    assert tools.get_attribute('open') is None
+    for sel in ('#snake-filter-panel', '#snake-legend', '#sp-bar', '.snake-links-toggle'):
+        assert page.evaluate("!!document.querySelector('#sp-tools %s')" % sel), sel
+    tools.locator('summary').click()
+    assert page.locator('#sp-bar').is_visible()
+    assert page.evaluate("document.body.scrollWidth <= window.innerWidth")
+    assert not page.errors
+
+
 def test_phone_zoom_pan_and_minimap(open_report):
     page = open_report(MAIN, viewport=PHONE, touch=True)
     svg = page.locator('#snake-plot-container svg').first
+    # a phone opens zoomed on TM3 to TM6; fit the whole plot first
+    page.click('#sp-zoom button[aria-label="Fit the whole plot"]')
     full = page.evaluate("document.querySelector('#snake-plot-container svg').viewBox.baseVal.width")
     assert page.evaluate("getComputedStyle(document.getElementById('sp-minimap')).display") == 'none'
     page.click('#sp-zoom button[aria-label="Zoom in"]')

@@ -113,9 +113,9 @@ def test_header_stat_cards_follow_the_red_blue_convention_outside_the_frozen_sec
         html = path.read_text(encoding='utf-8')
         bodies = ''.join(SECTION_RE.findall(html))
         assert 'report-stat-up' not in bodies and 'report-stat-down' not in bodies
-        m = re.search(r'<div class="report-stat report-stat-up"[^>]*>.*?Max Increase', html, re.S)
-        n = re.search(r'<div class="report-stat report-stat-down"[^>]*>.*?Max Decrease', html, re.S)
-        assert m and n, '%s: Max Increase / Max Decrease are not marked up/down' % path.stem
+        m = re.search(r'<div class="report-stat report-stat-up"[^>]*>.*?Largest increase', html, re.S)
+        n = re.search(r'<div class="report-stat report-stat-down"[^>]*>.*?Largest decrease', html, re.S)
+        assert m and n, '%s: Largest increase / Largest decrease are not marked up/down' % path.stem
     css = (BASE / 'static' / 'css' / 'report-extras.css').read_text(encoding='utf-8')
     assert re.search(r'\.report-stat-up[^{]*\{[^}]*var\(--semantic-active\)', css)
     assert re.search(r'\.report-stat-down[^{]*\{[^}]*var\(--semantic-inactive\)', css)

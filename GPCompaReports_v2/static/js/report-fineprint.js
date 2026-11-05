@@ -57,6 +57,22 @@
     var a = ev.target && ev.target.closest ? ev.target.closest('.v3-secnav a, a[href="#sec-methods"]') : null;
     if (a && (a.dataset.target === 'sec-methods' || a.getAttribute('href') === '#sec-methods')) openFor('sec-methods');
   });
+
+  // "Understanding the results" is a collapsible of its own: the summary's pointer to it opens it
+  // and then scrolls there (twice: the body grows over a short transition). The section menu keeps
+  // its plain jump.
+  document.addEventListener('click', function (ev) {
+    var a = ev.target && ev.target.closest ? ev.target.closest('a[data-open-section="sec-understanding"]') : null;
+    if (!a) return;
+    var sec = document.getElementById('sec-understanding');
+    var head = sec && sec.querySelector('.collapsible-head');
+    if (!sec || !head) return;
+    ev.preventDefault();
+    head.setAttribute('aria-expanded', 'true');
+    sec.scrollIntoView({ block: 'start' });
+    setTimeout(function () { sec.scrollIntoView({ block: 'start' }); }, 360);
+    if (window.history && history.replaceState) history.replaceState(null, '', '#sec-understanding');
+  });
   openFromHash();
   window.addEventListener('hashchange', openFromHash);
 })();

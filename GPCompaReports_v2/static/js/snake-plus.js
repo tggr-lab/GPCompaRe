@@ -172,6 +172,9 @@
       seen[k] = true;
       out.push({ a: lo, b: hi, delta: d, active: act, inactive: inact, passes: !!passes });
     }
+    // the build's block first: the above-threshold pairs with unrounded endpoint scores (the
+    // tables show three decimals, so a small positive score would read back as 0); then the
+    // table for every other listed pair (motif contacts below the threshold)
     var block = readJSON('rx-contacts');
     if (block && Array.isArray(block.pairs)) {
       var sig = typeof block.sig === 'number' ? block.sig : threshold;
@@ -180,7 +183,6 @@
         if (d === null && act !== null && inact !== null) d = act - inact;
         add(a, b, d, act, inact, p.length > 5 ? !!p[5] : (sig !== null && Math.abs(d) >= sig - 1e-9));
       });
-      if (out.length) return out;
     }
     var table = document.getElementById('rrcs-table');
     if (table && table.tBodies[0]) {
@@ -190,8 +192,8 @@
         add(num(parseInt(c[0].textContent, 10)), num(parseInt(c[2].textContent, 10)), num(c[6].textContent),
             num(c[4].textContent), num(c[5].textContent), row.classList.contains('significant-row'));
       });
-      if (out.length) return out;
     }
+    if (out.length) return out;
     (snakeData.contact_links || []).forEach(function (l) { add(num(l.from_seq), num(l.to_seq), num(l.delta), null, null, true); });
     return out;
   }
@@ -237,6 +239,14 @@
   var ty = (function () { var m = /translate\(\s*([-\d.]+)\s*,\s*([-\d.]+)/.exec(snakeG.getAttribute('transform') || ''); return m ? parseFloat(m[2]) : 0; })();
   var tx = (function () { var m = /translate\(\s*([-\d.]+)/.exec(snakeG.getAttribute('transform') || ''); return m ? parseFloat(m[1]) : 0; })();
   var originalViewBox = svg.getAttribute('viewBox');
+  // The build fits the viewBox to the collapsed plot and bakes the helix labels in (2026-11-05):
+  // the layer keeps that box as the floor of every refit and reuses the baked labels.
+  var bakedLabels = snakeG.querySelector('g.snake-helix-labels');
+  var builtBox = (function () {
+    var v = (originalViewBox || '').trim().split(/[\s,]+/).map(parseFloat);
+    if (v.length !== 4 || v.some(isNaN) || (v[0] === 0 && v[1] === 0)) return null;
+    return { x: v[0], y: v[1], w: v[2], h: v[3] };
+  })();
   var originalSize = { w: parseFloat(svg.getAttribute('width')) || 0, h: parseFloat(svg.getAttribute('height')) || 0 };
   var fitBox = null;            // {x, y, w, h} in SVG user units, after trimming the margins
   var helixBox = {};            // seg -> {minX, maxX, minY, maxY, cx}
@@ -280,10 +290,17 @@
   // Trim the SVG's empty margins on screen: the viewBox follows the drawn content.
   function fit() {
     var b;
-    try { b = snakeG.getBBox(); } catch (e) { return; }
-    if (!b || !b.width) return;
+    try { b = snakeG.getBBox(); } catch (e) { b = null; }
+    if ((!b || !b.width) && !builtBox) return;
     var pad = 16;
-    fitBox = { x: b.x + tx - pad, y: b.y + ty - pad, w: b.width + 2 * pad, h: b.height + 2 * pad };
+    var box = b && b.width ? { x: b.x + tx - pad, y: b.y + ty - pad, w: b.width + 2 * pad, h: b.height + 2 * pad } : builtBox;
+    if (builtBox) {
+      // never smaller than the built box (it already holds the collapsed plot and its labels)
+      var x0 = Math.min(builtBox.x, box.x), y0 = Math.min(builtBox.y, box.y);
+      var x1 = Math.max(builtBox.x + builtBox.w, box.x + box.w), y1 = Math.max(builtBox.y + builtBox.h, box.y + box.h);
+      box = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+    }
+    fitBox = box;
     applyView();
   }
   function applyView() {
@@ -332,8 +349,11 @@
   function widthState(c) {
     var s = strengthAt(c, S.t);
     if (s === null) return widthDelta(c);
-    return stateMax > 0 ? 0.5 + 4.5 * (s / stateMax) : 2;
+    return stateMax > 0 ? 0.6 + 4.4 * (Math.max(0, s) / stateMax) : 2;
   }
+  // a contact is drawn whenever its score is positive, however small; only a score of zero (no
+  // contact in that model) leaves the dashed trace
+  function absentAt(c, t) { var s = strengthAt(c, t); return s !== null && s <= 0; }
   function filtered() {
     var list = passing.filter(function (c) {
       var ad = Math.abs(c.delta);
@@ -363,10 +383,10 @@
       var p = svgEl('path', { d: d, 'class': 'sp-arc ' + (c.delta >= 0 ? 'is-active' : 'is-inactive'),
         'data-a': c.a, 'data-b': c.b, 'data-delta': c.delta, tabindex: '-1' });
       p.setAttribute('stroke-width', (S.mode === 'state' ? widthState(c) : widthDelta(c)).toFixed(2));
-      if (S.mode === 'state') { var s = strengthAt(c, S.t); if (s !== null && s < 0.05) p.classList.add('is-absent'); }
+      if (S.mode === 'state' && absentAt(c, S.t)) p.classList.add('is-absent');
       var t = svgEl('title');
       t.textContent = label(c.a) + (gnOf(c.a) ? ' ' + gnOf(c.a) : '') + ' to ' + label(c.b) + (gnOf(c.b) ? ' ' + gnOf(c.b) : '') +
-        ', dRRCS ' + fmtSigned(c.delta) + (c.delta >= 0 ? ', stronger in active' : ', stronger in inactive') +
+        ', dRRCS ' + fmtSigned(c.delta) + (c.delta >= 0 ? ', stronger in the active model' : ', stronger in the inactive model') +
         (c.active !== null ? ' (active ' + c.active.toFixed(2) + ', inactive ' + c.inactive.toFixed(2) + ')' : '');
       p.appendChild(t);
       arcsG.appendChild(p);
@@ -381,8 +401,7 @@
       var p = arcEls[c.a + '-' + c.b];
       if (!p) return;
       p.setAttribute('stroke-width', (S.mode === 'state' ? widthState(c) : widthDelta(c)).toFixed(2));
-      var s = S.mode === 'state' ? strengthAt(c, S.t) : null;
-      p.classList.toggle('is-absent', s !== null && s < 0.05);
+      p.classList.toggle('is-absent', S.mode === 'state' && absentAt(c, S.t));
     });
     updateSummary();
   }
@@ -396,7 +415,7 @@
     if (ui.count) {
       if (!S.arcs) ui.count.textContent = '';
       else if (S.mode === 'state') {
-        var present = shown.filter(function (c) { var s = strengthAt(c, S.t); return s !== null && s >= 0.05; }).length;
+        var present = shown.filter(function (c) { return strengthAt(c, S.t) !== null && !absentAt(c, S.t); }).length;
         ui.count.textContent = present + ' of ' + n + ' present';
       } else ui.count.textContent = n + ' of ' + total;
     }
@@ -411,6 +430,11 @@
   function drawLabels() {
     while (labelsG.firstChild) labelsG.removeChild(labelsG.firstChild);
     labelsG.style.display = S.labels ? '' : 'none';
+    if (bakedLabels) {
+      // the plot carries its own labels: the toggle shows or hides those, nothing is drawn twice
+      bakedLabels.style.display = S.labels ? '' : 'none';
+      return;
+    }
     if (!S.labels) return;
     var topY = 1e9, botY = -1e9, maxX = -1e9;
     for (var k in helixBox) { topY = Math.min(topY, helixBox[k].minY); botY = Math.max(botY, helixBox[k].maxY); maxX = Math.max(maxX, helixBox[k].maxX); }
@@ -1019,7 +1043,7 @@
           var d = el('span', 'sp-chip-delta ' + (k.c.delta >= 0 ? 'is-active' : 'is-inactive'),
             k.bwA + '-' + k.bwB + ' ' + fmtSigned(k.c.delta));
           d.title = aa1(k.a) + k.bwA + ' to ' + aa1(k.b) + k.bwB + ': ΔRRCS ' + fmtSigned(k.c.delta) +
-            (k.c.delta >= 0 ? ', stronger in the active model' : ', weaker in the active model') + (k.c.passes ? '' : ' (not above the threshold)');
+            (k.c.delta >= 0 ? ', stronger in the active model' : ', stronger in the inactive model') + (k.c.passes ? '' : ' (not above the threshold)');
           chip.appendChild(d);
         });
       }
@@ -1050,7 +1074,7 @@
 
     var fine = el('aside', 'fine-print sp-fine');
     fine.innerHTML = '<p>Arcs: the contact pairs on this page at or above the threshold' + (threshold !== null ? ' (|ΔRRCS| ≥ ' + threshold.toFixed(2) + ')' : '') +
-      ', drawn between the two residues. Red: stronger in the active model. Blue: stronger in the inactive model. Width: the size of the change, or, in "By state", the contact’s RRCS in the inactive model, the active model, or a point between them (a straight blend of the two values; the models are the two endpoints and nothing in between is simulated). ' +
+      ', drawn between the two residues. Red: stronger in the active model. Blue: stronger in the inactive model. Width: the size of the change, or, in "By state", the contact’s RRCS. The endpoints show contact scores from the inactive and active models. Intermediate slider values are linear interpolations of those scores; no intermediate structures or dynamics were calculated. A contact is drawn whenever its score is above zero; a dashed trace marks a score of zero. ' +
       'Pairs with a residue inside a collapsed loop are drawn when the loop is opened. The grid counts the same pairs by helix. Hover a residue to see its partners; choose a contact to mark it in the tables, the charts and the 3D view. Keyboard: Tab to the plot, arrows along the chain, Enter to select, Escape to step back (the cursor first, then the details, the selection bar and the selection).</p>';
     panels.parentNode.insertBefore(fine, panels.nextSibling);
     ui.fine = fine;
@@ -1085,7 +1109,7 @@
         if (!cell) { td.className = 'sp-grid-zero'; td.textContent = '·'; tr.appendChild(td); return; }
         var b = btn(String(cell.n), 'sp-cell ' + (cell.sum >= 0 ? 'is-active' : 'is-inactive'),
           hi + (i === j ? ' within itself' : ' to ' + hj) + ': ' + cell.n + ' contact' + (cell.n === 1 ? '' : 's') + ' above the threshold, ' +
-          cell.up + ' stronger in active, ' + cell.down + ' stronger in inactive, net ΔRRCS ' + fmtSigned(cell.sum));
+          cell.up + ' stronger in the active model, ' + cell.down + ' stronger in the inactive model, net ΔRRCS ' + fmtSigned(cell.sum));
         b.style.setProperty('--sp-cell-a', (0.18 + 0.72 * cell.n / maxN).toFixed(2));
         b.dataset.pair = hi + '|' + hj;
         var on = S.segFilter && S.segFilter !== 'loops' && S.segFilter[0] === hi && S.segFilter[1] === hj;
@@ -1282,7 +1306,7 @@
     var parts = [label(pos)];
     if (gn) parts.push(gn);
     if (seg) parts.push(seg);
-    if (r && typeof r.active_minus_inactive === 'number') parts.push('net ' + fmtSigned(r.active_minus_inactive) + (r.active_minus_inactive >= 0 ? ', stronger in active' : ', stronger in inactive'));
+    if (r && typeof r.active_minus_inactive === 'number') parts.push('net ' + fmtSigned(r.active_minus_inactive) + (r.active_minus_inactive >= 0 ? ', stronger in the active model' : ', stronger in the inactive model'));
     var n = (byRes[pos] || []).length;
     parts.push(n + ' partner' + (n === 1 ? '' : 's') + ' above the threshold');
     return parts.join(', ');
@@ -1399,6 +1423,58 @@
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
   }
 
+  // ------------------------------------------------------------------ phones
+  // Below 640 px the plot comes straight under its heading: the nine view buttons become one
+  // "Colour by" menu under the plot, and the filters, the legend and the contacts bar fold into
+  // one "Filters and tools". The plot opens zoomed on TM3 to TM6 with the minimap showing.
+  // Run-time rearrangement only: every approved element stays on the page, moved, not changed.
+  var PHONE_MQ = '(max-width: 640px)';
+  function isPhone() { return !!(window.matchMedia && matchMedia(PHONE_MQ).matches); }
+  function phoneLayout() {
+    if (!isPhone() || section.classList.contains('sp-phone')) return;
+    section.classList.add('sp-phone');
+    var head = section.querySelector('.report-section-head');
+    var toolbar = section.querySelector('.snake-plot-toolbar');
+    if (head && head.parentNode === section) head.insertAdjacentElement('afterend', container);
+    var row = el('div', 'sp-colour-by');
+    var lab = el('label', 'sp-lab', 'Colour by');
+    lab.htmlFor = 'sp-colour-by';
+    var sel = el('select', 'sp-select');
+    sel.id = 'sp-colour-by';
+    Array.prototype.forEach.call(section.querySelectorAll('.snake-btn[data-view]'), function (b) {
+      var op = el('option', null, b.textContent.trim());
+      op.value = b.dataset.view;
+      sel.appendChild(op);
+    });
+    sel.value = window.SnakeAPI.getView ? window.SnakeAPI.getView() : 'delta_rrcs';
+    sel.addEventListener('change', function () { if (window.switchSnakeView) window.switchSnakeView(sel.value); });
+    var sw = window.switchSnakeView;
+    if (typeof sw === 'function') {
+      window.switchSnakeView = function (name) { sw(name); if (views[name]) sel.value = name; };
+      window.SnakeAPI.setView = window.switchSnakeView;
+    }
+    row.appendChild(lab); row.appendChild(sel);
+    container.insertAdjacentElement('afterend', row);
+    var tools = el('details', 'sp-tools');
+    tools.id = 'sp-tools';
+    tools.appendChild(el('summary', null, 'Filters and tools'));
+    var links = toolbar && toolbar.querySelector('.snake-links-toggle');
+    [links, document.getElementById('snake-filter-panel'), document.getElementById('snake-legend'), document.getElementById('sp-bar')]
+      .forEach(function (n) { if (n) tools.appendChild(n); });
+    row.insertAdjacentElement('afterend', tools);
+  }
+  function phoneZoom() {
+    if (!section.classList.contains('sp-phone') || !fitBox) return;
+    var hs = ['TM3', 'TM4', 'TM5', 'TM6'].map(function (k) { return helixBox[k]; }).filter(Boolean);
+    if (!hs.length) return;
+    var x0 = Math.min.apply(null, hs.map(function (b) { return b.minX; })), x1 = Math.max.apply(null, hs.map(function (b) { return b.maxX; }));
+    var y0 = Math.min.apply(null, hs.map(function (b) { return b.minY; })), y1 = Math.max.apply(null, hs.map(function (b) { return b.maxY; }));
+    S.zoom = 2;
+    S.cx = (x0 + x1) / 2 + tx;
+    S.cy = (y0 + y1) / 2 + ty;
+    applyView();
+  }
+
   // ------------------------------------------------------------------ public
   var PUBLIC = {
     state: function () { return { arcs: S.arcs, mode: S.mode, t: S.t, shown: shown.length, passing: passing.length, zoom: S.zoom, labels: S.labels, ring: S.ring, segFilter: S.segFilter, top: S.top, inited: S.inited }; },
@@ -1434,6 +1510,8 @@
     helixBoxes();
     drawLabels();
     fit();
+    phoneLayout();
+    phoneZoom();
     paintGrid();
     setArcsChrome(true);
     updateSummary();
