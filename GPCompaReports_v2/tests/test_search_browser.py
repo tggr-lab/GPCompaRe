@@ -1343,7 +1343,7 @@ def test_card_sections_fold_and_the_most_relevant_are_open(open_page):
     page = search_page(open_page, 'MC4R V103I')
     secs = page.locator('.sr-card details.sr-sec')
     keys = [secs.nth(i).get_attribute('data-sec') for i in range(secs.count())]
-    assert keys == ['structure', 'region', 'predictions', 'population', 'clinical', 'refs', 'prose']
+    assert keys == ['structure', 'region', 'predictions', 'conservation', 'population', 'clinical', 'refs', 'prose']
     for i in range(secs.count()):
         assert secs.nth(i).evaluate('e => e.open') == (keys[i] != 'prose'), keys[i]
     # the tiles lead; the prose is folded at the end and still reads the same
@@ -1569,3 +1569,16 @@ def test_no_table_in_a_card_is_clipped(open_page, q, viewport):
         box = cell.bounding_box()
         assert box['x'] + box['width'] <= right + 1
     assert page.evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth') <= 1
+
+
+def test_conservation_has_its_own_section_not_under_predictions(open_page):
+    # owner, 2026-11-05: "conservation is not a prediction"
+    page = search_page(open_page, 'MC4R V103I')
+    pred = page.locator('details.sr-sec[data-sec="predictions"]').first
+    cons = page.locator('details.sr-sec[data-sec="conservation"]').first
+    assert 'onservation' not in pred.locator('.sr-sec-title, summary').first.inner_text()
+    assert pred.locator('.sr-facts').first.inner_text().count('onservation') == 0
+    assert cons.count() and 'Measured from aligned homologous sequences' in cons.inner_text()
+    assert page.locator('.sr-tile--conservation').count() == 1
+    assert page.locator('nav [href$="-conservation"], [data-nav] [href$="-conservation"], a[href$="-conservation"]').count() >= 1
+    assert page.errors == []

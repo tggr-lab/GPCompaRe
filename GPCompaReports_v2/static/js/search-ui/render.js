@@ -689,12 +689,22 @@ function predictionsSection(r, sub, o) {
   const body = html`<dl class="sr-facts">
     ${r.alt || sub.mismatch ? cell(html`${term(o, 'am', 'AlphaMissense')}, this change`, amThis) : ''}
     ${cell(html`${term(o, 'am', 'AlphaMissense')}, residue mean`, f.amMean === null ? html`<span class="sr-na">not available</span>` : f.amMean.toFixed(2))}
-    ${cell(term(o, 'conservation', 'Conservation'), f.conservation === null ? html`<span class="sr-na">not available</span>` : f.conservation.toFixed(2))}
   </dl>
   <div class="sr-gauge-row"><span class="sr-gauge-label">${sub.mismatch ? 'Residue mean' : (am ? 'This change' : 'Residue mean')}</span>${amGauge(sub.mismatch ? f.amMean : (am ? am.am : f.amMean))}</div>
-  ${amStrip(r, sub)}${pathLegend()}${amSource(o)}
-  <div class="sr-gauge-row"><span class="sr-gauge-label">${term(o, 'conservation', 'Conservation')}</span>${plainGauge(f.conservation, 'Conservation')}</div>`;
-  return section('predictions', 'Predictions', 'AlphaMissense, conservation', body, { idx: o.idx });
+  ${amStrip(r, sub)}${pathLegend()}${amSource(o)}`;
+  return section('predictions', 'Predictions', 'AlphaMissense', body, { idx: o.idx });
+}
+
+/** Conservation is measured from aligned homologous sequences: an observation, not a prediction, so it has its own section. */
+function conservationSection(r, o) {
+  const f = residueFacts(r);
+  const src = o.releases?.conservation?.label;
+  const body = html`<dl class="sr-facts">
+    ${cell(term(o, 'conservation', 'Conservation at this residue'), f.conservation === null ? html`<span class="sr-na">not available</span>` : f.conservation.toFixed(2))}
+  </dl>
+  <div class="sr-gauge-row"><span class="sr-gauge-label">0 variable to 1 conserved</span>${plainGauge(f.conservation, 'Conservation')}</div>
+  <p class="sr-sub">Measured from aligned homologous sequences${src ? `, ${src}` : ''}.</p>`;
+  return section('conservation', 'Conservation', 'across homologous sequences', body, { idx: o.idx });
 }
 
 // --------------------------------------------------------------------------------- structure
@@ -951,7 +961,7 @@ export function pathLegend({ cuts = true } = {}) {
 // ------------------------------------------------------------------------------------- tiles
 
 const NAV = Object.freeze([
-  ['summary', 'Summary'], ['structure', 'Contacts and structure'], ['region', 'Receptor map'], ['predictions', 'Predictions'],
+  ['summary', 'Summary'], ['structure', 'Contacts and structure'], ['region', 'Receptor map'], ['predictions', 'Predictions'], ['conservation', 'Conservation'],
   ['population', 'Population'], ['clinical', 'Clinical'], ['refs', 'Notations and references'],
 ]);
 const secId = (idx, key) => `sr-${idx}-${key}`;
@@ -1007,7 +1017,7 @@ function tiles(r, o, sub) {
     ${tile('predictions', 'AlphaMissense', html`${amBody}${amGauge(amVal)}`, html`<span class="sr-sub">prediction, not an observation</span>`)}
     ${tile('population', 'Population', html`${popBody}${afGauge(best?.af ?? null)}`, popFoot)}
     ${tile('clinical', 'ClinVar', cvBody, cvFoot)}
-    ${tile('predictions', 'Conservation', html`<span class="sr-big">${f.conservation === null ? html`<span class="sr-na">n/a</span>` : f.conservation.toFixed(2)}</span>${plainGauge(f.conservation, 'Conservation')}`, html`<span class="sr-sub">0 variable to 1 conserved</span>`)}
+    ${tile('conservation', 'Conservation', html`<span class="sr-big">${f.conservation === null ? html`<span class="sr-na">n/a</span>` : f.conservation.toFixed(2)}</span>${plainGauge(f.conservation, 'Conservation')}`, html`<span class="sr-sub">0 variable to 1 conserved</span>`)}
   </ul>`;
 }
 
@@ -1449,9 +1459,9 @@ function card(r, o, idx) {
   const hasEvidence = !noResidue && r.type !== 'not_coding' && !(r.type === 'not_in_resource' && !r.residue);
   // the notations open on a single card; with several cards on the page they start folded
   const refsOpen = (o.cardCount ?? 1) <= 1;
-  const keys = new Set(['summary', 'structure', 'predictions', 'population', 'clinical', 'refs']);
+  const keys = new Set(['summary', 'structure', 'predictions', 'conservation', 'population', 'clinical', 'refs']);
   if (r.track && r.pos) keys.add('region');
-  if (!x) { keys.delete('structure'); keys.delete('predictions'); keys.delete('region'); }
+  if (!x) { keys.delete('structure'); keys.delete('predictions'); keys.delete('conservation'); keys.delete('region'); }
   return html`<article class="sr-card sr-card--${r.type}" aria-labelledby="sr-card-${idx}">
     <header class="sr-card-head">
       <h3 id="sr-card-${idx}" class="sr-card-title">${title}${r.pos ? html`<span class="sr-dot" aria-hidden="true">·</span>${mismatch ? html`<span class="sr-sub">model residue </span>` : ''}${intLink(L.residueUrl(o, r.gid, r.pos), `${three(r.residue?.aa ?? r.ref)}${r.pos}`, { cls: 'mono', title: 'Report at this residue' })}` : ''}${x?.generic ? html`<span class="sr-dot" aria-hidden="true">·</span><span class="mono" title="Generic residue number">${x.generic}</span>` : ''}${x?.segment ? html`<span class="sr-dot" aria-hidden="true">·</span><span class="sr-nowrap">${x.segment}</span>` : ''}</h3>
@@ -1466,6 +1476,7 @@ function card(r, o, idx) {
       ${structureSection(r, oc)}
       ${regionSection(r, oc)}
       ${x ? predictionsSection(r, sub, oc) : ''}
+      ${x ? conservationSection(r, oc) : ''}
       ${populationSection(r, oc, mismatch)}
       ${clinicalSection(r, oc, mismatch)}
       ${refsSection(r, sub, oc, refsOpen)}
