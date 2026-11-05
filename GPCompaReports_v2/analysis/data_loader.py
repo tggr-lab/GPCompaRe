@@ -253,6 +253,12 @@ class GPCRDataStore:
             return _annotation_map(layer.annotation[gpcr_id])
         return self.get_annotation_map(gpcr_id)
 
+    def report_variants_note(self, gpcr_id):
+        """pack_layer.no_variants_reason for a receptor whose report variant table is empty (the line the
+        report shows in its place); None when the table has rows, and without packs."""
+        layer = self._layer()
+        return None if layer is None else layer.no_variants.get(gpcr_id)
+
     def report_hgvs_numbering(self, gpcr_id):
         """pack_layer.hgvs_numbering for the report table (None for most receptors and without packs)."""
         layer = self._layer()

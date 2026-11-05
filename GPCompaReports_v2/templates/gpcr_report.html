@@ -420,6 +420,12 @@
       <p>{{ variant_release.long_label }}: missense alleles on one transcript per gene, placed on the model's residues. One AlphaMissense score per substitution ({{ data_versions.sources.alphamissense.label }}); conservation from {{ data_versions.sources.conservation.label }}.{% if variant_numbering is defined and variant_numbering %} Protein and DNA changes follow gnomAD's transcript {{ variant_numbering.transcript }}{% if variant_numbering.offset is number %}, whose residue numbers run {{ variant_numbering.offset|abs }} {{ 'higher' if variant_numbering.offset < 0 else 'lower' }} than the Position column (Position = transcript number {{ '%+d'|format(variant_numbering.offset) }}){% else %}, whose residue numbers differ from the Position column{% endif %}.{% endif %}</p>
       {% if data_versions.sources.gnomad_batch and variant_release.label != data_versions.sources.gnomad_batch.label %}<p>The paper's database variant counts come from the earlier query ({{ data_versions.sources.gnomad_batch.label }}); this table uses {{ variant_release.label }}, the release the search also shows.</p>{% elif data_versions.sources.gnomad %}<p>This table uses the earlier query the paper's counts come from; the search shows {{ data_versions.sources.gnomad.label }}.</p>{% endif %}
     </aside>
+    {% elif variants_note is defined and variants_note %}
+    {# no variant table: one fine-print line in its place says why (outside every report section) #}
+    <aside class="fine-print rx-variants-none" id="variants-fine-print">
+      {% if variants_note.kind == 'pseudogene' %}<p>No variants section: the human {{ variants_note.gene or gene_name }} gene is a pseudogene{% if variants_note.ensembl %} (Ensembl {{ variants_note.ensembl }}, {{ variants_note.biotype }}){% endif %} with no protein-coding transcript, so {{ variant_release.label or 'gnomAD' }} lists no missense alleles to place on this model.</p>
+      {% else %}<p>No variants section: {{ variant_release.label or 'gnomAD' }} lists no missense allele at the residues the table would show for this receptor (residues in a contact pair with |ΔRRCS| ≥ 3.0).</p>{% endif %}
+    </aside>
     {% endif %}
 
     {# -------------- ClinVar P/LP missense records: opt-in (collapsed), outside every report section -------------- #}

@@ -608,6 +608,9 @@ def generate_all_reports(env: Environment, store, output_dir, analysis_results=N
             # None, or {'transcript', 'offset', 'rows'} when the table's HGVS protein numbers (gnomAD's
             # transcript) differ from its Position column (the model): LPAR2, MCHR1, NPFFR2
             variant_numbering=store.report_hgvs_numbering(gid),
+            # why there is no variant table (pseudogene, or no allele at a selected residue); None
+            # when there is one, and without packs
+            variants_note=store.report_variants_note(gid),
             complete_rrcs=complete_rrcs,
             # Total modelled contact pairs for this receptor, so the
             # section can say how many of them the table shows.

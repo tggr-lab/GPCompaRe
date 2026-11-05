@@ -186,6 +186,25 @@ def provenance(pack):
     return ((pack or {}).get('provenance') or {}).get('gnomad') or {}
 
 
+def no_variants_reason(pack):
+    """Why a receptor's variant table is empty, for the line the report shows in its place:
+    {'kind': 'pseudogene', 'gene', 'ensembl', 'biotype'} when the gene has no protein-coding
+    transcript (the pack then has no gnomAD source; the reason is recorded with its ClinVar block,
+    e.g. NPY6R and TAAR3), {'kind': 'none_at_contacts'} when gnomAD has alleles for the gene but none
+    at a residue the table selects, None when the table has rows."""
+    import re
+    if not pack:
+        return None
+    gene = (pack.get('meta') or {}).get('gene') or ''
+    empty = (((pack.get('provenance') or {}).get('clinvar')) or {}).get('empty') or ''
+    if not pack.get('variants') and not provenance(pack) and empty.startswith('pseudogene: '):
+        m = re.search(r'\b(ENSG\d+)\b(?:\s*\(([a-z_]+)\))?', empty)
+        return {'kind': 'pseudogene', 'gene': gene,
+                'ensembl': m.group(1) if m else '',
+                'biotype': (m.group(2) or 'pseudogene').replace('_', ' ') if m else 'pseudogene'}
+    return {'kind': 'none_at_contacts', 'gene': gene}
+
+
 def hgvs_numbering(variants, gnomad):
     """None when every listed allele's HGVS protein number is its model position; else
     {'transcript': 'ENST...v', 'offset': model minus HGVS number, 'rows': n} (LPAR2 -3, MCHR1 +69, NPFFR2 +102):
@@ -206,6 +225,7 @@ class ReportLayer:
     """Per-receptor report layer built from the packs, for every gid the store knows.
 
     variants[gid]        DataFrame (VARIANT_COLUMNS); empty when the pack has no allele at a selected residue
+    no_variants[gid]     no_variants_reason() for a receptor whose table is empty
     annotation[gid]      DataFrame (ANNOTATION_COLUMNS) for WRONG_RECEPTOR_ANNOTATION only
     uniprot[gid]         the pack's UniProt accession
     conservation[gid]    {pos: score}; am_mean[gid] {pos: mean score}
@@ -219,6 +239,7 @@ class ReportLayer:
             raise FileNotFoundError('no Studio packs at %s (set STUDIO_PACK_DIR or STUDIO_ROOT)' % self.folder)
         self.release_id = (index.get('release') or {}).get('id')
         self.variants, self.annotation, self.conservation, self.am_mean, self.gnomad = {}, {}, {}, {}, {}
+        self.no_variants = {}
         self.uniprot = {}  # gid -> the pack's UniProt accession (the receptor's own)
         missing = []
         for gid in store.gpcr_ids:
@@ -228,6 +249,8 @@ class ReportLayer:
                 continue
             delta = store.delta_data.get(gid, pd.DataFrame())
             self.variants[gid] = variant_frame(pack, delta)
+            if self.variants[gid].empty:
+                self.no_variants[gid] = no_variants_reason(pack)
             if gid in WRONG_RECEPTOR_ANNOTATION:
                 self.annotation[gid] = annotation_frame(pack, delta)
             self.conservation[gid] = conservation(pack)
