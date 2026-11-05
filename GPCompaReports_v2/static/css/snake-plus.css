@@ -242,3 +242,9 @@ svg.sp-dim:not(.sp-focus) .sp-arc { opacity: 0.1; }
   #sec-snake.sp-on .snake-filter-panel input[type="range"] { width: auto; flex: 1 1 70px; min-width: 60px; max-width: 110px; }
   #sec-snake.sp-on .snake-filter-label { white-space: nowrap; }
 }
+
+/* a registry motif's own contacts (xMY): the link takes the sign colour, the partner a dotted ring */
+.sp-motif-link.sp-motif-contact { stroke-width: 2; stroke-dasharray: none; }
+.sp-motif-link.sp-motif-contact.is-active { stroke: var(--sp-ink-active); }
+.sp-motif-link.sp-motif-contact.is-inactive { stroke: var(--sp-ink-inactive); }
+.sp-motif-partner circle { fill: none; stroke: #333; stroke-width: 1.2; stroke-dasharray: 1 2.5; pointer-events: none; }

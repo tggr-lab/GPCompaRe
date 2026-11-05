@@ -413,6 +413,64 @@ def test_motif_chips_mark_generic_positions(open_report):
     assert not page.errors
 
 
+def _carries_xmy(gid):
+    """Met at 3.36 and Tyr at 3.37 in the page's own snake plot titles ('M120 3.36x36')."""
+    html = (REPORTS_DIR / (gid + '.html')).read_text(encoding='utf-8')
+    def aa(bw):
+        m = re.search(r'<title>([A-Z])\d+ ' + re.escape(bw) + r'x\d+</title>', html)
+        return m.group(1) if m else None
+    return aa('3.36') == 'M' and aa('3.37') == 'Y'
+
+
+# an xMY receptor for the chip test, never the PAR2 report
+XMY = next((g for g in PAGES if g != 'par2_human' and _carries_xmy(g)), None)
+
+
+@pytest.mark.skipif(XMY is None, reason='no xMY receptor (Met3.36, Tyr3.37) other than PAR2 in this build')
+def test_xmy_chip_marks_the_motif_and_its_contacts(open_report):
+    page = open_report(XMY)
+    chip = page.locator('#sp-motif-chips .sp-chip[data-motif="xmy"]')
+    assert chip.count() == 1
+    assert chip.locator('b').inner_text() == 'xMY'
+    res = chip.locator('.sp-chip-res').inner_text()
+    assert re.match(r'^[A-Z]\d+ M\d+ Y\d+$', res), res
+    assert '—' not in chip.inner_text() + (chip.get_attribute('title') or '')
+    # the line under the chips links to the glossary entry
+    more = page.locator('.sp-motif-more a')
+    assert more.count() == 1 and more.get_attribute('href').endswith('glossary.html#xmy')
+    chip.click()
+    page.wait_for_timeout(100)
+    assert chip.get_attribute('aria-pressed') == 'true'
+    tags = page.evaluate("Array.from(document.querySelectorAll('#sp-motifs .sp-motif .sp-motif-tag')).map(t => t.textContent)")
+    assert tags == ['3.35', '3.36', '3.37']
+    # its contacts, where the page lists them: M3.36-Y3.37 and M3.36-6.48, coloured by sign
+    pairs = page.evaluate("""Array.from(document.querySelectorAll('#sp-motifs .sp-motif-contact')).map(p =>
+        [p.dataset.pair, p.classList.contains('is-active') ? 1 : (p.classList.contains('is-inactive') ? -1 : 0)])""")
+    assert pairs, 'no xMY contact drawn'
+    assert set(p for p, _ in pairs) <= {'3.36-3.37', '3.36-6.48'}
+    assert all(sign != 0 for _, sign in pairs)
+    deltas = chip.locator('.sp-chip-delta').all_inner_texts()
+    assert len(deltas) == len(pairs)
+    for (pair, sign), text in zip(pairs, deltas):
+        assert text.startswith(pair + ' ') and (text.split(' ')[1].startswith('+') == (sign > 0)), (pair, text)
+    if any(p == '3.36-6.48' for p, _ in pairs):
+        partner = page.evaluate("Array.from(document.querySelectorAll('#sp-motifs .sp-motif-partner .sp-motif-tag')).map(t => t.textContent)")
+        assert partner == ['6.48']
+    chip.click()
+    assert page.evaluate("document.querySelectorAll('#sp-motifs .sp-motif, #sp-motifs .sp-motif-contact').length") == 0
+    assert not page.errors
+
+
+@pytest.mark.skipif('adrb2_human' not in PAGES, reason='no ADRB2 report in this build')
+def test_no_xmy_chip_on_a_receptor_without_met_and_tyr(open_report):
+    assert not _carries_xmy('adrb2_human')     # ADRB2 has C3.35 V3.36 T3.37
+    page = open_report('adrb2_human')
+    assert page.locator('#sp-motif-chips .sp-chip[data-motif="dry"]').count() == 1
+    assert page.locator('#sp-motif-chips .sp-chip[data-motif="xmy"]').count() == 0
+    assert page.locator('.sp-motif-more').count() == 0
+    assert not page.errors
+
+
 def test_largest_changes_step_through_pairs(open_report):
     page = open_report(MAIN)
     page.evaluate("window.__pairs = []; document.addEventListener('gpc:select-pair', e => window.__pairs.push(e.detail))")

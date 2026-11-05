@@ -15,7 +15,9 @@
      - a "rewiring between helices" grid: how many above-threshold contacts each pair of helices
        has, and the net direction; a cell filters the arcs to that pair of helices;
      - the conserved Class A motifs (DRY, CWxP, PIF, NPxxY, sodium pocket, ionic lock) looked
-       up by generic number, with this receptor's own residues at each position;
+       up by generic number, with this receptor's own residues at each position, and the motifs
+       of the database's registry (motifs.json, carried in #rx-config as `motifs`: xMY), shown
+       only when this receptor has the required residues, with the motif's own contacts;
      - an optional second colour layer as a ring around each residue (conservation,
        AlphaMissense, core functional residues) over the chosen fill view;
      - stepping through the largest changes, keyboard navigation along the chain, zoom and
@@ -103,6 +105,13 @@
   var cfg = readJSON('rx-config') || {};
   var GID = cfg.gid || '';
   var segRanges = cfg.segments || {};
+  // Motifs of the registry (GPCompaReports_v2/motifs.json): a chip only for a receptor that has the
+  // `requires` residues at those generic numbers; `contacts` are drawn when the page lists them.
+  (cfg.motifs || []).forEach(function (m) {
+    if (!m || !m.id || !m.positions || MOTIFS.some(function (x) { return x.id === m.id; })) return;
+    MOTIFS.push({ id: m.id, name: m.name, canon: m.name, bw: m.positions.slice(), note: m.note || '',
+      requires: m.requires || null, contacts: m.contacts || [], glossary: m.glossary || '', registry: true });
+  });
   var annotation = cfg.annotation || {};
   var byPos = {};
   (readJSON('residue-summary-data') || []).forEach(function (r) { byPos[r.position] = r; });
@@ -474,6 +483,22 @@
     return bwIndex[bw] || null;
   }
   function motifResidues(m) { return m.bw.map(function (bw) { return { bw: bw, pos: bwLookup(bw) }; }); }
+  // a registry motif: does this receptor have the required residue at each generic number?
+  function motifCarried(m) {
+    if (!m.requires) return true;
+    for (var bw in m.requires) { var p = bwLookup(bw); if (!p || aa1(p) !== m.requires[bw]) return false; }
+    return true;
+  }
+  // a registry motif's own contacts that the page lists: [{a, b, bwA, bwB, c}]
+  function motifContacts(m) {
+    var out = [];
+    (m.contacts || []).forEach(function (pr) {
+      var a = bwLookup(pr[0]), b = bwLookup(pr[1]);
+      var c = a && b ? contactOf(a, b) : null;
+      if (c) out.push({ a: a, b: b, bwA: pr[0], bwB: pr[1], c: c });
+    });
+    return out;
+  }
   function drawMotifs() {
     while (motifsG.firstChild) motifsG.removeChild(motifsG.firstChild);
     var keep = {};
@@ -498,6 +523,25 @@
         tag.textContent = r.bw;
         g.appendChild(tag);
         motifsG.appendChild(g);
+      });
+      // the motif's own contacts, coloured by the sign of the change; the partner outside the motif is kept too
+      motifContacts(m).forEach(function (k) {
+        if (!visible(k.a) || !visible(k.b)) return;
+        var p1 = pointOf(k.a), p2 = pointOf(k.b);
+        motifsG.appendChild(svgEl('path', { d: 'M' + p1.x + ',' + p1.y + ' L' + p2.x + ',' + p2.y,
+          'class': 'sp-motif-link sp-motif-contact ' + (k.c.delta >= 0 ? 'is-active' : 'is-inactive'),
+          'data-motif': m.id, 'data-pair': k.bwA + '-' + k.bwB }));
+        [k.a, k.b].forEach(function (pos) {
+          if (keep[pos]) return;
+          keep[pos] = true;
+          var p = pointOf(pos);
+          var g = svgEl('g', { 'class': 'sp-motif-partner', 'data-motif': m.id, 'data-pos': pos });
+          g.appendChild(svgEl('circle', { cx: p.x, cy: p.y, r: 16 }));
+          var tag = svgEl('text', { x: p.x + 13, y: p.y - 12, 'class': 'sp-motif-tag' });
+          tag.textContent = bwOf(pos);
+          g.appendChild(tag);
+          motifsG.appendChild(g);
+        });
       });
     });
     dimTo(any ? keep : null, 'sp-dim-motif');
@@ -953,9 +997,11 @@
     motifWrap.appendChild(el('h3', 'sp-panel-title', 'Conserved motifs'));
     ui.motifs = el('div', 'sp-motif-chips');
     ui.motifs.id = 'sp-motif-chips';
+    var registryShown = [];
     MOTIFS.forEach(function (m) {
       var res = motifResidues(m);
       if (!res.some(function (r) { return r.pos; })) return;
+      if (!motifCarried(m)) return;
       var chip = btn('', 'sp-chip', m.note);
       chip.dataset.motif = m.id;
       chip.setAttribute('aria-pressed', 'false');
@@ -965,6 +1011,17 @@
         var c = contactOf(res[0].pos, res[1].pos);
         if (c) chip.appendChild(el('span', 'sp-chip-delta ' + (c.delta >= 0 ? 'is-active' : 'is-inactive'), fmtSigned(c.delta) + (c.passes ? '' : ' (not above the threshold)')));
         else chip.appendChild(el('span', 'sp-chip-delta', 'no RRCS contact listed'));
+      }
+      if (m.registry) {
+        registryShown.push(m);
+        chip.classList.add('sp-chip-registry');
+        motifContacts(m).forEach(function (k) {
+          var d = el('span', 'sp-chip-delta ' + (k.c.delta >= 0 ? 'is-active' : 'is-inactive'),
+            k.bwA + '-' + k.bwB + ' ' + fmtSigned(k.c.delta));
+          d.title = aa1(k.a) + k.bwA + ' to ' + aa1(k.b) + k.bwB + ': ΔRRCS ' + fmtSigned(k.c.delta) +
+            (k.c.delta >= 0 ? ', stronger in the active model' : ', weaker in the active model') + (k.c.passes ? '' : ' (not above the threshold)');
+          chip.appendChild(d);
+        });
       }
       chip.addEventListener('click', function () {
         S.motifs[m.id] = !S.motifs[m.id];
@@ -977,6 +1034,17 @@
     motifWrap.appendChild(ui.motifs);
     var mn = el('p', 'sp-panel-note', 'Looked up by generic number (the part before the x). The letters are what this receptor has at each position; the motif names are the canonical ones. Choose a motif to mark it on the plot.');
     motifWrap.appendChild(mn);
+    registryShown.forEach(function (m) {
+      if (!m.glossary) return;
+      var badge = document.querySelector('.motif-badge[data-motif="' + m.id + '"]');
+      var more = el('p', 'sp-panel-note sp-motif-more');
+      more.appendChild(document.createTextNode(m.name + ' is named in the GPCompaRe study: '));
+      var a = el('a', null, 'what it is');
+      a.href = badge ? badge.getAttribute('href') : '../' + m.glossary;
+      more.appendChild(a);
+      more.appendChild(document.createTextNode('.'));
+      motifWrap.appendChild(more);
+    });
     panels.appendChild(motifWrap);
     container.parentNode.insertBefore(panels, container.nextSibling);
 
