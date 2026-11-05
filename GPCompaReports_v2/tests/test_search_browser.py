@@ -309,9 +309,19 @@ def test_a_clinvar_record_that_is_not_pathogenic_shows_its_gnomad_allele(open_pa
         assert absent not in v, absent
 
 
-def test_a_two_base_change_says_why_alphamissense_is_missing(open_page):
-    text = results_text(search_page(open_page, 'ADRB2 R131Q'))
+def test_a_two_base_change_says_why_gnomad_has_no_allele_and_gives_its_alphamissense_score(open_page):
+    page = search_page(open_page, 'ADRB2 R131Q')
+    text = results_text(page)
     assert 'needs two nucleotide substitutions in its codon (CGC)' in text
+    assert 'AlphaMissense predicts likely pathogenic (score 0.972)' in text
+    assert 'not available in this index' not in text
+    # the per-substitution strip: 19 cells, Gln marked as this change, the reference residue absent
+    cells = page.locator('.sr-am-strip .sr-am-cell')
+    assert cells.count() == 19
+    this = page.locator('.sr-am-strip .sr-am-cell.is-this')
+    assert this.count() == 1 and this.get_attribute('aria-current') == 'true'
+    assert this.locator('.sr-am-aa').inner_text() == 'Gln' and this.locator('.sr-am-score').inner_text() == '0.972'
+    assert 'Arg' not in page.locator('.sr-am-strip').inner_text().split()
     assert '\u2014' not in text
 
 
@@ -590,7 +600,8 @@ def test_browse_receptor_filter_still_works(open_page):
 
 # --------------------------------------------------------- phone, dark mode, no JavaScript
 
-@pytest.mark.parametrize('q', ['F2RL1 p.Met159Ile', 'M159I', 'LPAR2 p.Leu351Phe', 'GLP1R', '', 'MC1R ClinVar', 'W3.50', 'PAR2 p.Ala159Ile'])
+@pytest.mark.parametrize('q', ['F2RL1 p.Met159Ile', 'M159I', 'LPAR2 p.Leu351Phe', 'GLP1R', '', 'MC1R ClinVar', 'W3.50', 'PAR2 p.Ala159Ile',
+                               'MC4R V103I', 'ADRB2 R131Q', 'MC1R R151C', 'DRY in ADRB2'])
 def test_phone_width_has_no_horizontal_scroll(open_page, q):
     page = open_page('/search/?q=' + quote(q, safe=''), viewport=PHONE)
     if q:
@@ -1017,7 +1028,7 @@ def test_phone_360_no_sideways_scroll_light_and_dark(open_page, q, scheme):
 
 def test_card_gives_the_numbers_their_context(open_page):
     page = search_page(open_page, 'PAR2 M159I')
-    facts = page.locator('.sr-facts').inner_text()
+    facts = '\n'.join(page.locator('.sr-facts').all_inner_texts())   # the predictions and the database facts
     assert re.search(r'\|ΔRRCS\| 4\.99, with Phe300', facts), facts
     assert 'receptor threshold' not in facts                    # the threshold is fine print, below
     assert 'stronger in inactive' in facts                      # net delta, with a direction word
@@ -1030,7 +1041,7 @@ def test_card_gives_the_numbers_their_context(open_page):
     assert re.search(r"this receptor's threshold is \d\.\d\d", about.inner_text())
     assert '0 to 1 scale' in about.inner_text()
     assert 'Contacts above this receptor' in facts               # kept distinct from the CFR rank
-    assert 'AlphaMissense prediction' in page.locator('.sr-card thead').first.inner_text()
+    assert 'AlphaMissense prediction' in page.locator('details[data-sec="population"] thead').first.inner_text()   # the alleles table
     net = page.locator('.sr-facts .sr-net').first
     cn = [int(x) for x in re.findall(r'\d+', net.evaluate('e => getComputedStyle(e).color'))[:3]]
     assert cn[2] > cn[0]                                          # blue: stronger in inactive
@@ -1272,3 +1283,120 @@ def test_no_exact_residue_still_lists_the_position(open_page):
     assert 'No receptor has Trp at 3.50x50; all 283 receptors with their residue at 3.50x50 are listed below.' in msg
     assert page.locator('.sr-table--cmp tbody tr').count() == 25  # first page of 283
     assert '283' in page.locator('#search-status').inner_text()
+
+
+# ------------------------------------------------------------------ the variant card for an analyst
+
+def _report_contacts(gid, pos):
+    """{(res1, res2): delta} of the report page's threshold-passing pairs (rows of its complete RRCS table marked
+    significant) that involve `pos`, as the page prints them (3 decimals)."""
+    rep = BUILD_DIR / 'reports' / ('%s.html' % gid)
+    if not rep.is_file():
+        pytest.skip('no report page for %s in this build' % gid)
+    html = rep.read_text(encoding='utf-8')
+    table = re.search(r'<table class="v2-table" id="rrcs-table">(.*?)</table>', html, re.S).group(1)
+    out = {}
+    for row in re.findall(r'<tr class="significant-row">(.*?)</tr>', table, re.S):
+        cells = [re.sub(r'<[^>]+>', '', c).strip() for c in re.findall(r'<td[^>]*>(.*?)</td>', row, re.S)]
+        a, b, d = int(cells[0]), int(cells[2]), float(cells[6])
+        if pos in (a, b):
+            out[(a, b)] = d
+    return out
+
+
+def test_contacts_on_the_card_are_the_report_pages_threshold_passing_pairs(open_page):
+    gid, pos = 'adrb2_human', 131
+    want = _report_contacts(gid, pos)
+    assert want, 'the report lists threshold-passing pairs at Arg131'
+    page = search_page(open_page, 'ADRB2 Arg131')
+    rows = page.locator('.sr-table--contacts tbody tr')
+    assert rows.count() == len(want)
+    seen = {}
+    for i in range(rows.count()):
+        link = rows.nth(i).locator('a[href*="#pair="]')
+        m = re.search(r'#pair=(\d+)-(\d+)$', link.get_attribute('href'))
+        a, b = int(m.group(1)), int(m.group(2))
+        delta = float(rows.nth(i).locator('.sr-net').inner_text())
+        seen[(a, b)] = delta
+        assert link.get_attribute('href').startswith('../reports/%s.html#pair=' % gid)
+    assert set(seen) == set(want)
+    for k, d in want.items():
+        assert abs(seen[k] - d) < 0.006, (k, seen[k], d)
+    # largest |dRRCS| first; the colour class follows the sign
+    deltas = [seen[k] for k in seen]
+    assert [abs(d) for d in deltas] == sorted((abs(d) for d in deltas), reverse=True)
+    for i in range(rows.count()):
+        cls = rows.nth(i).locator('.sr-net').get_attribute('class')
+        assert ('sr-net--inactive' in cls) == (deltas[i] < 0)
+    # the first pair link opens the report on that pair
+    first = rows.first.locator('a[href*="#pair="]')
+    href = first.get_attribute('href')
+    page.goto(page.url.rsplit('/search/', 1)[0] + '/' + href.replace('../', ''), wait_until='load')
+    assert '#pair=' in page.url
+
+
+def test_card_sections_fold_and_the_most_relevant_are_open(open_page):
+    page = search_page(open_page, 'MC4R V103I')
+    secs = page.locator('.sr-card details.sr-sec')
+    keys = [secs.nth(i).get_attribute('data-sec') for i in range(secs.count())]
+    assert keys == ['ids', 'population', 'clinical', 'computational', 'structure']
+    for i in range(secs.count()):
+        assert secs.nth(i).evaluate('e => e.open'), keys[i]
+    # the summary sits above the sections and the research note under it
+    summary = page.locator('.sr-card .sr-summary-text').inner_text()
+    assert summary.startswith('MC4R p.Val103Ile (V103I) is a missense change at residue Val103')
+    assert 'not a clinical classification' in page.locator('.sr-card .sr-research-note').inner_text()
+    # keyboard: a section heading is focusable and toggles with Enter
+    page.locator('details.sr-sec[data-sec="population"] > summary').focus()
+    page.keyboard.press('Enter')
+    assert not page.locator('details.sr-sec[data-sec="population"]').evaluate('e => e.open')
+    page.keyboard.press('Enter')
+    assert page.locator('details.sr-sec[data-sec="population"]').evaluate('e => e.open')
+    assert page.errors == []
+
+
+def test_search_copy_names_the_gpcompare_database(open_page):
+    for q in ('MC4R V103I', 'GPR26', 'XYZ9 M1V', 'NM_005242.999:c.477G>A'):
+        page = search_page(open_page, q)
+        text = page.locator('#search-app').inner_text()
+        assert 'this database' not in text.lower(), (q, re.search(r'.{40}this database.{20}', text, re.I).group(0))
+    page = search_page(open_page, 'MC4R V103I', permissions=['clipboard-read', 'clipboard-write'])
+    assert 'in the gpcompare database' in results_text(page).lower()   # the heading is upper-cased by CSS
+    page.get_by_role('button', name='Copy evidence summary').click()
+    page.wait_for_function("() => document.querySelector('[data-copy-evidence]').textContent === 'Copied'")
+    clip = page.evaluate('navigator.clipboard.readText()')
+    assert 'In the GPCompaRe database:' in clip and 'this database' not in clip.lower()
+    for needle in ('Evidence summary:', 'AlphaMissense, this change: 0.084 (likely benign)', 'Research use only', 'ACMG criteria are not applied',
+                   'Contact list: this residue takes part in no contact above the threshold'):
+        assert needle in clip, needle
+
+
+def test_identifier_copy_buttons_copy_the_notation(open_page):
+    page = search_page(open_page, 'MC1R R151C', permissions=['clipboard-read', 'clipboard-write'])
+    btn = page.locator('details[data-sec="ids"] .sr-ids button[data-copy="16-89919709-C-T"]')
+    expect(btn).to_be_visible()
+    btn.click()
+    page.wait_for_function("() => document.querySelector('button[data-copy=\"16-89919709-C-T\"]').textContent === 'Copied'")
+    assert page.evaluate('navigator.clipboard.readText()') == '16-89919709-C-T'
+    ids = page.locator('details[data-sec="ids"]').inner_text()
+    for needle in ('MC1R', 'p.Arg151Cys', 'NM_002386.4:c.451C>T', 'rs1805007', 'VCV000014312', 'GRCh37'):
+        assert needle in ids, needle
+
+
+def test_pathogenicity_classes_use_neutral_colours_and_direction_keeps_red_and_blue(open_page):
+    page = search_page(open_page, 'ADRB2 R131Q')
+
+    def rgb(css):
+        # 'rgb(12, 34, 56)' or, after color-mix, 'color(srgb 0.77 0.78 0.78)'
+        nums = [float(x) for x in re.findall(r'[\d.]+', css)[:3]]
+        return [round(x * 255) if css.startswith('color(') else int(x) for x in nums]
+
+    def neutral(c):
+        r, g, b = c
+        return max(r, g, b) - min(r, g, b) <= 12
+
+    for sel in ('.sr-am-cell.sr-am--pathogenic', '.sr-am-cell.sr-am--benign', '.sr-am-cell.sr-am--ambiguous'):
+        if page.locator(sel).count():
+            assert neutral(rgb(page.locator(sel).first.evaluate('e => getComputedStyle(e).backgroundColor'))), sel
+    blue = rgb(page.locator('.sr-table--contacts .sr-net--inactive').first.evaluate('e => getComputedStyle(e).color'))
+    assert blue[2] > blue[0] + 40, blue

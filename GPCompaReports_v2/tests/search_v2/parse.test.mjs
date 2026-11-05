@@ -1,6 +1,6 @@
 // Search v2 parser tests (P4). Run: node --test GPCompaReports_v2/tests/search_v2/parse.test.mjs
 //
-// 1. The golden table (golden_queries.tsv, 394 rows) at parse level: every row's top interpretation must
+// 1. The golden table (golden_queries.tsv, 396 rows) at parse level: every row's top interpretation must
 //    equal the reviewed expectation in parse_expected.tsv (and the listed alternates must be present),
 //    and must agree with the golden columns that are knowable without data (receptor named, typed
 //    ref/pos/alt, ClinVar id, genomic allele and assembly label, ambiguity alternates).
@@ -89,7 +89,7 @@ const ALLELE_NOT_LISTED = new Map([
 
 describe('golden table at parse level', () => {
   test('both tables list the same rows', () => {
-    assert.equal(golden.length, 394);
+    assert.equal(golden.length, 396);
     assert.deepEqual(golden.map((r) => r.id), [...expected.keys()]);
     for (const g of golden) assert.equal(expected.get(g.id).query, g.query, g.id);
   });

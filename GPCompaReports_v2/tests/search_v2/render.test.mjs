@@ -16,7 +16,7 @@ import {
   renderAnswer, esc, html, compareModel, compareRows, compareCsv, compareDefaults, renderCompareBody,
   evidenceText, inReportTable, mismatchFix, residueFacts, direction, signed, CMP_PAGE_SIZE,
   notationsText, subjectOf, csvField, clinvarGroups, finePrint, HELP, renderHelp, renderReleases,
-  reportTableRelease, allelesTable, fmtAm,
+  reportTableRelease, allelesTable, fmtAm, summarySentences, contactMeaning, amClassLabel, segmentKind, RESEARCH_NOTE, DB_NAME,
 } from '../../static/js/search-ui/render.js';
 import { suggestionsFor } from '../../static/js/search-ui/suggest.js';
 import { shardsFor } from '../../static/js/search/shards.js';
@@ -498,14 +498,16 @@ test('a card keeps its essentials up front and moves explanations into its fine 
   const out = renderAnswer(await search(q, loader), q, OPTS2).html;
   const [main, fine] = out.split('<aside class="fine-print sr-card-fine">');
   assert.ok(fine, 'the card has a fine-print block');
-  // up front: the change, allele frequency, ClinVar and the database facts, and the actions
-  for (const need of ['p.Ser311Cys', 'Frequency', 'ClinVar', 'In this database', 'Open report at this residue']) assert.ok(main.includes(need), need);
-  // not up front: release labels, threshold and scale explanations, transcript tables
-  for (const gone of ['receptor threshold', '0 to 1 scale', 'sr-table--tx', 'mean over all substitutions']) assert.ok(!main.includes(gone), gone);
-  assert.match(fine, /gnomAD v4\.1\.2; ClinVar 2026-10-11\./);
+  // up front: the summary, the change, allele frequency, ClinVar, the predictions, the database facts and the actions
+  for (const need of ['sr-summary', 'p.Ser311Cys', 'Frequency', 'ClinVar', 'In the GPCompaRe database', 'AlphaMissense, this change', 'Important contacts', 'Open report at this residue']) assert.ok(main.includes(need), need);
+  // not up front: release labels, threshold and scale explanations; the transcript table is folded inside the identifiers
+  for (const gone of ['receptor threshold', 'mean over all substitutions']) assert.ok(!main.includes(gone), gone);
+  assert.match(fine, /gnomAD v4\.1\.2; ClinVar 2026-10-11/);
   assert.match(fine, /<details class="sr-about"><summary>About these numbers<\/summary>/);
-  assert.match(fine, /<details class="sr-more sr-notations">/);
+  assert.match(main, /<details class="sr-more sr-notations">/);
   assert.ok(!/<details class="sr-more sr-notations" open>/.test(out), 'the transcript table is always folded');
+  // the evidence sections are collapsible and open by default on a single card
+  for (const sec of ['ids', 'population', 'clinical', 'computational', 'structure']) assert.ok(out.includes(`<details class="sr-sec" data-sec="${sec}" open>`), sec);
 });
 
 test('a warning that changes the meaning stays visible above the results', { skip }, async () => {
@@ -543,8 +545,10 @@ test('allele AlphaMissense scores print with 3 decimals, like the report tables'
   assert.equal(fmtAm(null), 'n/a');
   const al = (am) => ({ id: '1-2-A-C', hgvsc: 'c.1A>C', hgvsp: 'p.Met1Leu', rsids: [], ac: 1, an: 10, af: 0.1, hom: 0, am, amClass: 'pathogenic' });
   const t = allelesTable([al(0.999), al(0.4)], { caption: 'x' }).toString();
-  assert.match(t, /data-label="AlphaMissense prediction">0\.999 <span class="sr-sub">pathogenic/);
-  assert.match(t, />0\.400 <span class="sr-sub">pathogenic/);
+  assert.match(t, /data-label="AlphaMissense prediction">0\.999 <span class="sr-sub">likely pathogenic/);
+  assert.match(t, />0\.400 <span class="sr-sub">likely pathogenic/);
+  assert.equal(amClassLabel('benign'), 'likely benign');
+  assert.equal(amClassLabel('ambiguous'), 'ambiguous');
   assert.ok(!/>1\.00 </.test(t) && !/>0\.40 </.test(t));
 });
 
@@ -568,13 +572,135 @@ test('a non-P/LP ClinVar record shows its gnomAD allele and AlphaMissense, as it
   }
 });
 
-test('a change that needs two nucleotide substitutions says why AlphaMissense is not available', { skip }, async () => {
+test('a change that needs two nucleotide substitutions says why gnomAD has no allele, and still gives its AlphaMissense score', { skip }, async () => {
   const a = await search('ADRB2 R131Q', loader);
   const out = renderAnswer(a, 'ADRB2 R131Q', OPTS);
-  assert.match(out.html, /AlphaMissense prediction for it: not available in this index\. This change needs two nucleotide substitutions in its codon \(CGC\)/);
+  assert.match(out.html, /This exact change is not listed in gnomAD v4\.1\.2\. <span class="sr-sub">This change needs two nucleotide substitutions in its codon \(CGC\); gnomAD alleles each change a single nucleotide, so no allele can carry it\./);
+  assert.match(out.html, /<dt>AlphaMissense, this change<\/dt><dd><strong>0\.972<\/strong> <span class="sr-am-class">likely pathogenic<\/span> <span class="sr-badge sr-badge--muted"[^>]*>prediction<\/span>/);
+  assert.ok(!out.html.includes('not available in this index'));
   assert.ok(!out.html.includes('\u2014'));
-  assert.match(evidenceText(a.results[0], { query: 'ADRB2 R131Q', releases: {} }), /needs two nucleotide substitutions/);
+  const text = evidenceText(a.results[0], { query: 'ADRB2 R131Q', releases: {} });
+  assert.match(text, /needs two nucleotide substitutions/);
+  assert.match(text, /AlphaMissense, this change: 0\.972 \(likely pathogenic\)/);
+  // a one-substitution change with no allele has a score too, and no codon note
   const one = renderAnswer(await search('DRD2 S311A', loader), 'DRD2 S311A', OPTS).html;
-  assert.match(one, /not available in this index\./);
+  assert.match(one, /<dt>AlphaMissense, this change<\/dt><dd><strong>0\.\d{3}<\/strong>/);
   assert.ok(!/nucleotide substitutions/.test(one));
+});
+
+// ----------------------------------------------------------------- the variant card for an analyst
+
+test('V1: every substitution at the residue is listed with its score and class, the card\'s own change marked', { skip }, async () => {
+  const a = await search('ADRB2 R131Q', loader);
+  const out = renderAnswer(a, 'ADRB2 R131Q', OPTS2).html;
+  const strip = /<ol class="sr-am-strip"[^>]*>([^]*?)<\/ol>/.exec(out)?.[1];
+  assert.ok(strip, 'the strip is drawn');
+  const cells = strip.match(/<li class="sr-am-cell/g);
+  assert.equal(cells.length, 19);
+  assert.match(strip, /<li class="sr-am-cell sr-am--pathogenic is-this" aria-current="true" title="Gln: 0\.972, likely pathogenic"><span class="sr-am-aa">Gln<\/span><span class="sr-am-score">0\.972<\/span>/);
+  assert.ok(!strip.includes('<span class="sr-am-aa">Arg</span>'), 'the reference residue has no cell');
+  assert.equal((strip.match(/is-this/g) || []).length, 1);
+  // a two-base change: Gln is the only marked cell although gnomAD has no allele for it
+  assert.equal(a.results[0].alleles.length, 0);
+});
+
+test('V2: the contacts table lists the threshold-passing pairs with partner, signed coloured ΔRRCS, plain meaning and a pair link', { skip }, async () => {
+  const a = await search('ADRB2 R131Q', loader);
+  const r = a.results[0];
+  const out = renderAnswer(a, 'ADRB2 R131Q', OPTS2).html;
+  const tbl = /<table class="sr-table sr-table--contacts">([^]*?)<\/table>/.exec(out)?.[1];
+  assert.ok(tbl, 'the contacts table is drawn');
+  assert.equal((tbl.match(/<tr>/g) || []).length - 1, r.contacts.length, 'one row per contact');
+  assert.match(tbl, /<span class="mono">Asp130<\/span> <span class="sr-sub">3\.49x49, TM3<\/span>/);
+  assert.match(tbl, /<span class="sr-net sr-net--inactive">-5\.67<\/span>/);
+  assert.match(tbl, /<span class="mono">Tyr141<\/span> <span class="sr-sub">34\.53x53, ICL2<\/span> <span class="sr-badge sr-badge--muted"[^>]*>loop<\/span>/);
+  assert.match(tbl, /present in the inactive model only: lost in the active model/);
+  assert.match(tbl, /href="\.\.\/reports\/adrb2_human\.html#pair=130-131"/);
+  assert.match(out, /3 contacts above this receptor\u2019s threshold \(\|ΔRRCS\| ≥ 1\.97\), largest \|ΔRRCS\| first\./);
+  // the rows follow the engine's order (largest |ΔRRCS| first)
+  const partners = [...tbl.matchAll(/<span class="mono">([A-Z][a-z]{2}\d+)<\/span>/g)].map((m) => m[1]);
+  assert.deepEqual(partners, ['Asp130', 'Tyr141', 'Thr68']);
+  // no contact: said plainly
+  const none = renderAnswer(await search('MC4R V103I', loader), 'MC4R V103I', OPTS2).html;
+  assert.match(none, /This residue takes part in no contact above this receptor\u2019s threshold \(\|ΔRRCS\| ≥ 2\.42\)\./);
+  assert.ok(!none.includes('sr-table--contacts'));
+  // meanings never claim what a variant does
+  assert.equal(contactMeaning({ delta: 2, active: 2, inactive: 0 }), 'forms in the active model: no contact in the inactive model');
+  assert.equal(contactMeaning({ delta: -2, active: 0, inactive: 2 }), 'present in the inactive model only: lost in the active model');
+  assert.equal(contactMeaning({ delta: -1.5, active: 1, inactive: 2.5 }), 'present in both models, stronger in the inactive model');
+  assert.ok(!out.includes('disrupt'));
+  assert.equal(segmentKind('ICL2'), 'loop');
+  assert.equal(segmentKind('C-term'), 'terminus');
+  assert.equal(segmentKind('TM3'), '');
+});
+
+test('V3: the evidence summary reads in plain language and the research-use note follows it', { skip }, async () => {
+  const a = await search('MC4R V103I', loader);
+  const r = a.results[0];
+  const S = summarySentences(r, { releases: {} });
+  assert.equal(S[0], 'MC4R p.Val103Ile (V103I) is a missense change at residue Val103 (2.63x63, TM2).');
+  assert.match(S[1], /^gnomAD v4\.1\.2: allele frequency 0\.018 \([\d,]+ of [\d,]+ alleles, [\d,]+ homozygotes, exomes\)\.$/);
+  assert.match(S[2], /^ClinVar 2026-10-11: Benign\/Likely benign \(2 of 4 review stars, \d+ submissions\)/);
+  assert.match(S[3], /^AlphaMissense predicts likely benign \(score 0\.084\); this is a prediction, not an observation\. Conservation at the residue: 0\.\d\d on a 0 to 1 scale\.$/);
+  assert.equal(S[4], 'In the GPCompaRe models, Val103 is not a CFR; it takes part in no contact above the receptor\u2019s threshold.');
+  const out = renderAnswer(a, 'MC4R V103I', OPTS2).html;
+  const main = out.split('<aside class="fine-print sr-card-fine">')[0];
+  assert.ok(main.includes('<div class="sr-summary">'), 'the summary is in the card body');
+  assert.ok(out.indexOf('sr-summary') < out.indexOf('data-sec="ids"'), 'the summary comes first');
+  assert.ok(main.includes(`<aside class="fine-print sr-research-note"><p>${RESEARCH_NOTE}</p></aside>`), 'research-use note under the summary');
+  assert.match(RESEARCH_NOTE, /not a clinical classification/);
+  assert.match(RESEARCH_NOTE, /ACMG criteria are not applied/);
+  // the CFR + motif + contacts sentence
+  const S2 = summarySentences((await search('ADRB2 R131Q', loader)).results[0], { releases: {} });
+  assert.equal(S2[S2.length - 1], 'In the GPCompaRe models, Arg131 is a core functional residue (CFR, class-wide rank 1) and part of the DRY motif and the ionic lock; it takes part in 3 contacts above the receptor\u2019s threshold; the largest, with Asp130 (3.49x49), is stronger in the inactive model (ΔRRCS -5.67).');
+  // the evidence text carries the same sentences, the contacts and the note
+  const text = evidenceText(r, { query: 'MC4R V103I', releases: {} });
+  for (const need of ['Evidence summary:', `  ${S[0]}`, 'In the GPCompaRe database:', 'Contact list: this residue takes part in no contact above the threshold', `Note: ${RESEARCH_NOTE}`, 'AlphaMissense, every substitution at Val103:']) assert.ok(text.includes(need), need);
+});
+
+test('V4: a reference mismatch keeps the typed change unverifiable in the summary, the strip and the predictions', { skip }, async () => {
+  const q = 'PAR2 A159I';
+  const a = await search(q, loader);
+  const out = renderAnswer(a, q, OPTS2);
+  const S = summarySentences(a.results[0], out.ctx);
+  assert.match(S[0], /^p\.Ala159Ile: position 159 is Met in F2RL1, so this change cannot be checked\. What follows is about the model residue Met159/);
+  assert.ok(!S.some((s) => /Met159Ile/.test(s)), 'the corrected change is never the subject');
+  assert.match(out.html, /<dt>AlphaMissense, this change<\/dt><dd><span class="sr-na">not shown: the typed change is not the model residue<\/span>/);
+  assert.ok(!/is-this/.test(out.html), 'no cell is marked as the typed change');
+  assert.match(out.html, /every substitution at Met159 \(the model residue\)/);
+});
+
+test('V5: the identifiers section has copy buttons for every notation, and folds when several cards share the page', { skip }, async () => {
+  const q = 'MC1R Arg151Cys';
+  const out = renderAnswer(await search(q, loader), q, OPTS2).html;
+  const ids = /<details class="sr-sec" data-sec="ids" open>([^]*?)<\/details>\s*<details class="sr-sec" data-sec="population"/.exec(out)?.[1];
+  assert.ok(ids, 'identifiers open on a single card');
+  for (const need of ['<dt>Gene</dt>', 'data-copy="MC1R"', 'data-copy="p.Arg151Cys"', '<dt>MANE Select (RefSeq)</dt>', 'data-copy="NM_002386.4:c.451C&gt;T"', '<dt>GRCh38 (hg38)</dt>', 'data-copy="16-89919709-C-T"', '<dt>GRCh37 (hg19)</dt>', '<dt>rsID</dt>', 'data-copy="rs1805007"', '<dt>ClinVar</dt>', 'data-copy="VCV000014312']) assert.ok(ids.includes(need), need);
+  const many = renderAnswer(await search('DRY in ADRB2', loader), 'DRY in ADRB2', OPTS2).html;
+  assert.ok(many.includes('<details class="sr-sec" data-sec="ids">'), 'identifiers folded on a multi-card page');
+  assert.ok(!many.includes('<details class="sr-sec" data-sec="ids" open>'));
+  assert.ok(many.includes('<details class="sr-sec" data-sec="structure" open>'), 'the structural evidence stays open');
+});
+
+test('V6: search copy names the GPCompaRe database, never "this database"', { skip }, async () => {
+  for (const q of ['MC4R V103I', 'ADRB2 R131Q', 'PAR2 A159I', 'GLP1R', 'GPR26', 'NM_005242.999:c.477G>A', 'ADRB1 Arg389Gly', 'MC1R ClinVar']) {
+    const a = await search(q, loader);
+    const out = renderAnswer(a, q, OPTS2);
+    assert.ok(!/this database/i.test(out.html), `${q}: ${/.{40}this database.{20}/i.exec(out.html)?.[0]}`);
+    assert.ok(!/this database/i.test(a.message ?? ''), `${q}: ${a.message}`);
+    for (const r of out.results) {
+      assert.ok(!/this database/i.test(evidenceText(r, out.ctx)), `${q}: evidence text`);
+      assert.ok(!/this database/i.test(notationsText(r, out.ctx)), `${q}: notations text`);
+    }
+  }
+  assert.equal(DB_NAME, 'the GPCompaRe database');
+  const card = renderAnswer(await search('MC4R V103I', loader), 'MC4R V103I', OPTS2).html;
+  assert.match(card, /<h4 class="sr-sec-title">In the GPCompaRe database<\/h4>/);
+  assert.ok(/receptors in the GPCompaRe database run up to|not one of the 283 human Class A GPCRs in the GPCompaRe database/.test((await search('GPR9999', loader)).message));
+});
+
+test('V7: ClinVar records show submissions and the last-evaluated date; gnomAD alleles name their source', { skip }, async () => {
+  const out = renderAnswer(await search('MC4R V103I', loader), 'MC4R V103I', OPTS2).html;
+  assert.match(out, /<span class="sr-badge">Benign\/Likely benign<\/span> <span class="sr-stars"[^]*?<span class="sr-sub">\d+ submissions, last evaluated \d{4}-\d{2}-\d{2}<\/span>/);
+  assert.match(out, /<td class="num" data-label="Allele count">[\d,]+<span class="sr-sub"> of [\d,]+, exomes<\/span><\/td>/);
 });

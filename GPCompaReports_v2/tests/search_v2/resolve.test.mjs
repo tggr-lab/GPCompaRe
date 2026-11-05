@@ -128,7 +128,7 @@ function checkRow(row, ans) {
 }
 
 describe('golden table end to end', { skip }, () => {
-  test('table size', () => assert.equal(golden.length, 394));
+  test('table size', () => assert.equal(golden.length, 396));
   for (const row of golden) {
     test(`${row.id} ${JSON.stringify(row.query)} -> ${row.expect}`, async () => {
       const ans = await search(unescape(row.query), loader);
@@ -703,5 +703,81 @@ describe('C7 motif words', { skip }, () => {
     }
     const a = await search('XYZ9 DRY', loader);
     assert.equal(a.results.length, 0);
+  });
+});
+
+describe('variant card evidence: per-substitution AlphaMissense, contacts, motifs (detail/ shard)', { skip }, () => {
+  const counted = () => { const seen = new Set(); return { seen, f: async (p) => { seen.add(p); return loader(p); } }; };
+
+  test('a two-nucleotide change carries the AlphaMissense prediction of its substitution', async () => {
+    const r = (await search('ADRB2 R131Q', loader)).results[0];
+    assert.equal(r.codon?.steps?.Q, 2, 'no single-nucleotide allele gives Gln');
+    assert.equal(r.alleles.length, 0);
+    assert.deepEqual(r.amThis, { am: 0.972, amClass: 'pathogenic' });
+    assert.equal(Object.keys(r.amAll).length, 19, 'every substitution but the reference residue');
+    assert.ok(!('R' in r.amAll));
+    for (const v of Object.values(r.amAll)) assert.ok(v.am >= 0 && v.am <= 1 && ['benign', 'ambiguous', 'pathogenic'].includes(v.amClass));
+  });
+
+  test('the per-substitution table agrees with the allele scores and the residue mean', async () => {
+    for (const q of ['MC1R Arg151Cys', 'DRD2 S311C', 'PAR2 M159I']) {
+      const r = (await search(q, loader)).results[0];
+      assert.ok(r.amAll, q);
+      for (const a of r.residueAlleles) if (a.am !== null) assert.equal(r.amAll[a.alt].am, a.am, `${q} ${a.id}`);
+      const mean = Object.values(r.amAll).reduce((s, v) => s + v.am, 0) / Object.keys(r.amAll).length;
+      assert.ok(Math.abs(mean - r.residue.amMean) < 0.011, `${q}: mean ${mean} vs ${r.residue.amMean}`);
+    }
+  });
+
+  test('contacts are the threshold-passing pairs of the residue, largest |ΔRRCS| first, with the partner named', async () => {
+    const r = (await search('ADRB2 R131Q', loader)).results[0];
+    assert.equal(r.contacts.length, r.summary.nsig);
+    assert.equal(r.contacts.length, r.residue.nsig);
+    const abs = r.contacts.map((c) => Math.abs(c.delta));
+    assert.deepEqual(abs, [...abs].sort((a, b) => b - a));
+    assert.deepEqual(r.contacts.map((c) => c.partnerPos), [130, 141, 68]);
+    assert.deepEqual(r.contacts[0], { a: 130, b: 131, partnerPos: 130, partnerAa: 'D', partnerGeneric: '3.49x49', partnerSegment: 'TM3', delta: -5.67, active: 0.38, inactive: 6.05 });
+    for (const c of r.contacts) {
+      assert.ok(Math.abs(c.delta) >= r.summary.threshold - 0.005, 'above the threshold');
+      assert.ok(Math.abs(c.active - c.inactive - c.delta) < 0.011, 'ΔRRCS = active - inactive');
+      assert.ok(c.a === 131 || c.b === 131);
+    }
+    assert.equal(Math.round(Math.abs(r.contacts[0].delta) * 10) / 10, r.summary.dmax);
+  });
+
+  test('a residue without a threshold-passing contact gets an empty list, not a missing one', async () => {
+    const r = (await search('MC4R V103I', loader)).results[0];
+    assert.deepEqual(r.contacts, []);
+    assert.equal(r.summary.nsig, 0);
+    assert.deepEqual(r.amThis, { am: 0.084, amClass: 'benign' });
+    assert.deepEqual(r.motifs, []);
+  });
+
+  test('motif membership follows the database definitions by BW number', async () => {
+    const r131 = (await search('ADRB2 R131Q', loader)).results[0];
+    assert.deepEqual(r131.motifs.map((m) => [m.key, m.position, m.canonical]), [['dry', '3.50', 'R'], ['ioniclock', '3.50', 'R']]);
+    const w = (await search('ADRB2 W286', loader)).results[0];
+    assert.deepEqual(w.motifs.map((m) => m.key).sort(), ['cwxp', 'toggle']);
+    const n = (await search('ADRB2 N322', loader)).results[0];
+    assert.deepEqual(n.motifs.map((m) => m.key).sort(), ['npxxy', 'sodium']); // 7.49 is in NPxxY and in the sodium pocket
+  });
+
+  test('ClinVar records carry the number of submissions and the last-evaluated date', async () => {
+    const r = (await search('MC4R V103I', loader)).results[0];
+    assert.ok(r.clinvar.length >= 1);
+    const c = r.clinvar[0];
+    assert.ok(Number.isInteger(c.scv) && c.scv >= 1, 'scv');
+    assert.match(c.evaluated, /^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  test('a full card loads the detail shard once and at most 12 files in all', async () => {
+    const c = counted();
+    await search('ADRB2 R131Q', c.f);
+    assert.ok([...c.seen].filter((p) => p.startsWith('detail/')).length === 1, [...c.seen].join(', '));
+    assert.ok(c.seen.size <= 12, [...c.seen].join(', '));
+    // a bare change across receptors never loads it
+    const d = counted();
+    await search('M159I', d.f);
+    assert.ok(![...d.seen].some((p) => p.startsWith('detail/')));
   });
 });
