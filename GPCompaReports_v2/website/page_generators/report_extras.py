@@ -15,6 +15,8 @@ import os
 import re
 from pathlib import Path
 
+from .. import motifs as _motifs
+
 BASE = Path(__file__).resolve().parent.parent.parent
 
 # The Studio checkout the packs are read from (override with STUDIO_ROOT).
@@ -383,6 +385,13 @@ def build_extras(gid, annot_map, residue_metrics, models_root, gene_name=''):
         r['aa3'] = _ONE_TO_THREE.get(r['ref'], r['ref'])
         r['alt3'] = _ONE_TO_THREE.get(r['alt'], r['alt'])
 
+    # motifs of the registry (motifs.json) this receptor carries, from its own residues
+    if pack:
+        by_bw = _motifs.by_generic(pack.get('residues'))
+    else:
+        by_bw = _motifs.by_generic_from_annotation(annot_map)
+    carried = _motifs.carried(by_bw)
+
     config = {
         'gid': gid,
         'has3d': has_3d,
@@ -396,6 +405,8 @@ def build_extras(gid, annot_map, residue_metrics, models_root, gene_name=''):
         'clinvarLabel': clinvar_label(clinvar) if clinvar else None,
         'clinvarScope': CLINVAR_SCOPE,
         'gene': gene_name or '',
+        # the registry's motif definitions; snake-plus.js shows a chip for each one this receptor carries
+        'motifs': _motifs.definitions(),
     }
     # JS needs only a few fields per record
     config['clinvar'] = [
@@ -407,6 +418,7 @@ def build_extras(gid, annot_map, residue_metrics, models_root, gene_name=''):
         'has_3d': has_3d,
         'studio_url': config['studio'],
         'clinvar': clinvar,
+        'motifs': carried,
         'config_json': _json_for_script(config),
     }
 

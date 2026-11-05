@@ -40,6 +40,9 @@
           <span class="report-meta-item"><span class="report-meta-label">Family</span> <strong>{{ receptor_family }}</strong></span>
           <span class="report-meta-item"><span class="report-meta-label">Ligand type</span> <strong>{{ ligand_type }}</strong></span>
           {% if uniprot_id %}<span class="report-meta-item"><span class="report-meta-label">UniProt</span> <code>{{ uniprot_id }}</code></span>{% endif %}
+          {%- for m in (rx.motifs if rx is defined and rx else []) %}
+          <span class="report-meta-item report-motif"><span class="report-meta-label">Motif</span> <a class="motif-badge" data-motif="{{ m.id }}" href="{{ static_prefix }}{{ m.glossary }}" title="{{ m.label }}: {{ m.text }}. What it is, in the glossary">{{ m.name }}</a> <span class="motif-badge-res">{{ m.text }}</span></span>
+          {%- endfor %}
         </div>
       </div>
       {% if uniprot_id %}

@@ -15,6 +15,7 @@ are tried longest-pattern first so "ΔRRCS" wins over "RRCS". No em dashes.
 import json
 
 from . import data_versions as dv
+from . import motifs as _motifs
 
 GROUPS = ['Contact scores', 'The models', 'The receptor', 'Variants', 'Statistics page', 'Links and files']
 
@@ -136,6 +137,10 @@ GLOSSARY = [
          definition='A generic-numbered position where an above-threshold contact change recurs across many '
                     'receptors (at least three); the Statistics page ranks them.',
          match=[_L + r'CFRs?' + _R, _L + r'Core Functional(?: Residues?)?' + _R]),
+    # the definition, with its count, is the motif registry's (motifs.json), the text search shows too
+    dict(id='xmy', group='The receptor', term='xMY motif',
+         definition=_motifs.motif('xmy')['definition'],
+         match=[_L + r'xMY' + _R]),
     dict(id='cfrscore', group='Statistics page', term='CFR score',
          definition="The mean of a position's normalised recurrence (how many receptors) and normalised mean "
                     '|ΔRRCS|; it orders the CFR table.',

@@ -24,6 +24,8 @@ from .page_generators.contact_page import generate_contact_page
 from .page_generators.downloads_page import generate_downloads_page
 from .page_generators.info_pages import generate_glossary_page, generate_privacy_page
 from . import data_versions
+from . import motifs
+from .page_generators import report_extras
 from .seo import SITE_URL, write_robots, write_sitemap, write_gene_redirects
 from .page_generators.search_index import generate_search_index
 from .page_generators.search_index_v2 import generate_search_index_v2
@@ -61,6 +63,13 @@ class SiteGenerator:
 
         self.store = GPCRDataStore(batch_dir=batch_dir, metadata_csv=metadata_csv)
         self.analysis_results = {}
+
+    def _motif_residues(self, gid):
+        """{bw: [pos, aa]} for one receptor: its Studio pack, else the report annotation."""
+        pack = report_extras.load_pack(gid)
+        if pack:
+            return motifs.by_generic(pack.get('residues'))
+        return motifs.by_generic_from_annotation(self.store.get_report_annotation_map(gid))
 
     def run(self):
         print("=" * 60)
@@ -110,6 +119,9 @@ class SiteGenerator:
         # and JS from <site>/data_versions.json
         data_versions.install(env)
         data_versions.write_site_copy(self.output_dir)
+        # motifs.json: the motif registry plus every receptor that carries each motif, for search
+        motifs.write_site_copy(self.output_dir, self.store.gpcr_ids, self._motif_residues,
+                               self.store.gpcr_info)
 
         print("  Landing page...")
         generate_landing_page(env, self.store, self.output_dir)

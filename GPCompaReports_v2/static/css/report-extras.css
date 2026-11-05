@@ -268,3 +268,22 @@
 [data-color-mode="dark"] #top-changes-table td:nth-child(6), [data-color-mode="dark"] #variants-table td:nth-child(6) {
   box-shadow: -8px 0 8px -8px rgba(0, 0, 0, 0.6);
 }
+
+/* Motif badge in the report header (website/motifs.py): a receptor that carries a registry motif,
+   linked to its glossary entry. Neutral colours: a motif is not active or inactive. */
+.report-motif { display: inline-flex; align-items: center; gap: 6px; }
+.motif-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 999px;
+  background: var(--bgColor-muted);
+  color: var(--fgColor-default);
+  font-weight: 600;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  text-decoration: none;
+}
+.motif-badge:hover { border-color: var(--fgColor-accent); color: var(--fgColor-accent); }
+.motif-badge:focus-visible { outline: 2px solid var(--focus-outlineColor, var(--fgColor-accent)); outline-offset: 2px; }
+.motif-badge-res { font-family: var(--font-mono); font-size: 0.8rem; color: var(--fgColor-muted); }
