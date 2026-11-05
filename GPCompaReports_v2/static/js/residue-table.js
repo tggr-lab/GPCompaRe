@@ -11,7 +11,8 @@
                              number, as shown here, is among the top cross-receptor CFR
                              positions, the rule the snake plot uses)
    Sortable, filterable (active-favouring, inactive-favouring, TM helices only) and
-   downloadable as CSV. Residue names open the residue drawer (residue-drawer.js). */
+   downloadable as CSV. Sorting by Segment follows the site's segment order switch
+   (segment-order.js), which sits in the toolbar. Residue names open the residue drawer (residue-drawer.js). */
 (function () {
   'use strict';
 
@@ -89,6 +90,16 @@
       return true;
     });
     var key = state.sort, dir = state.dir;
+    // Segment: in the site's segment order (segment-order.js: helices first, or along the chain)
+    var so = window.GPCSegOrder;
+    if (key === 'seg' && so) {
+      list.sort(function (a, b) {
+        var nx = !a.seg, ny = !b.seg;
+        if (nx || ny) return nx && ny ? a.pos - b.pos : (nx ? 1 : -1);
+        return (so.rank(a.seg) - so.rank(b.seg)) * dir || a.pos - b.pos;
+      });
+      return list;
+    }
     list.sort(function (a, b) {
       var x = a[key], y = b[key];
       var nx = x === null || x === undefined || x === '', ny = y === null || y === undefined || y === '';
@@ -222,6 +233,7 @@
     filterButtons = [fa, fi, ft];
     filterButtons.forEach(function (b) { group.appendChild(b); });
     tools.appendChild(group);
+    if (window.GPCSegOrder) tools.appendChild(window.GPCSegOrder.control());
     countEl = el('span', 'rx-rt-count');
     countEl.setAttribute('role', 'status');
     tools.appendChild(countEl);
@@ -234,6 +246,7 @@
     mount.appendChild(el('p', 'rx-note',
       'Net ΔRRCS is red where the contacts are stronger in the active model and blue where they are stronger in the inactive model. ' +
       '"TM helices only" hides loops, termini and helix 8.' +
+      (window.GPCSegOrder ? ' Sorting by Segment follows the order switch: helices first, or along the chain.' : '') +
       (state.sig !== undefined ? ' Threshold: |ΔRRCS| ≥ ' + Number(state.sig).toFixed(2) + '.' : '')));
 
     var wrap = el('div', 'v2-table-wrap');
@@ -267,6 +280,8 @@
     refreshFilterButtons();
     paint();
   }
+
+  document.addEventListener('gpc:segment-order', function () { if (built && state.sort === 'seg') paint(); });
 
   if (details.open) build();
   details.addEventListener('toggle', function () { if (details.open) build(); });

@@ -99,6 +99,10 @@
       </div>
 
       {% if 'chart-cfr-dotplot' in charts %}
+      <div class="seg-order-row">
+        <span class="seg-order-slot" data-seg-order-slot></span>
+        <aside class="fine-print seg-order-fine">Legend order. Helices first: TM1 to TM7 and H8, then the loops, then the termini. Sequence: along the chain. The models are most reliable in the helices. The choice is remembered in this browser.</aside>
+      </div>
       <div class="v2-chart v2-chart-wide"
            id="chart-cfr-dotplot"
            data-chart-layout-light='{{ layout_light_json }}'
@@ -314,4 +318,5 @@ document.addEventListener('DOMContentLoaded', function() {
   if (window.Site && Site.initCharts) Site.initCharts();
 });
 </script>
+<script src="{{ static_prefix }}static/js/segment-order.js" defer></script>
 {% endblock %}

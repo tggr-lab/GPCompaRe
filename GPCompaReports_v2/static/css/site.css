@@ -1257,3 +1257,34 @@ p  { margin: 0 0 var(--s-4); }
   .privacy-table tr { display: block; padding: var(--s-2) 0; border-bottom: 1px solid var(--borderColor-muted); }
   .privacy-table td { display: block; border: 0; padding: var(--s-1) 0; }
 }
+
+/* ----------- Segment order switch (static/js/segment-order.js) -----------
+   Neutral greys only: blue and red mean inactive and active on this site. */
+.seg-order { display: inline-flex; align-items: center; gap: 0; font-size: 0.78rem; line-height: 1.2; flex-wrap: nowrap; }
+.seg-order-name { color: var(--fgColor-muted); margin-right: var(--s-2); }
+.seg-order-btn {
+  font: inherit; cursor: pointer; white-space: nowrap;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--borderColor-default);
+  background: var(--bgColor-default); color: var(--fgColor-muted);
+}
+.seg-order-btn:first-of-type { border-radius: var(--r-sm) 0 0 var(--r-sm); }
+.seg-order-btn:last-of-type { border-radius: 0 var(--r-sm) var(--r-sm) 0; border-left: 0; }
+.seg-order-btn:hover { color: var(--fgColor-default); }
+.seg-order-btn.active { background: var(--bgColor-muted); color: var(--fgColor-default); font-weight: 600; }
+.seg-order-btn:focus-visible { outline: 2px solid var(--fgColor-accent); outline-offset: 1px; position: relative; }
+.seg-order-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-1) var(--s-3); margin: 0 0 var(--s-2); }
+.seg-order-row .seg-order-fine { margin: 0; flex: 1 1 18rem; }
+
+/* group labels and the bracket for the helices in a segment list */
+.seg-order-label {
+  list-style: none;
+  font: 600 0.7rem/1.2 var(--font-ui);
+  text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--fgColor-muted);
+  padding: var(--s-1) 0 2px var(--s-2);
+}
+.seg-order-label-rest { margin-top: var(--s-2); padding-top: var(--s-2); border-top: 1px dashed var(--borderColor-default); }
+[data-seg-order="helices"] > [data-seg-group="helix"] { box-shadow: inset 2px 0 0 var(--borderColor-default); }
+/* a table split into the same groups: a rule above the first loop or terminus row */
+tr.seg-group-start > td { border-top: 2px solid var(--borderColor-default); }

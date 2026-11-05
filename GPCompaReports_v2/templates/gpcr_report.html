@@ -82,10 +82,17 @@
       </div>
       <div class="gpc-summary-grid">
         <div class="gpc-summary-col">
-          <h3 class="gpc-summary-sub">By segment</h3>
-          <ul class="gpc-segs" role="list">
-          {% for s in rx_summary.segments %}
-            <li class="gpc-seg{% if s.seg in rx_summary.lead %} gpc-seg-lead{% endif %}" data-gpc-seg="{{ s.seg }}">
+          <div class="gpc-summary-subrow">
+            <h3 class="gpc-summary-sub">By segment</h3>
+            <span class="seg-order-slot" data-seg-order-slot></span>
+          </div>
+          {#- Helices first by default (static/js/segment-order.js reorders on the visitor's choice) -#}
+          {% set hf_helices = ['TM1', 'TM2', 'TM3', 'TM4', 'TM5', 'TM6', 'TM7', 'H8'] %}
+          <ul class="gpc-segs" role="list" data-seg-order="helices">
+          {% for s in (rx_summary.segments_helices_first or rx_summary.segments) %}
+            {% if rx_summary.has_seg_groups and loop.first %}<li class="seg-order-label" aria-hidden="true">Helices</li>{% endif %}
+            {% if rx_summary.has_seg_groups and s.seg not in hf_helices and (loop.first or loop.previtem.seg in hf_helices) %}<li class="seg-order-label seg-order-label-rest" aria-hidden="true">Loops and termini</li>{% endif %}
+            <li class="gpc-seg{% if s.seg in rx_summary.lead %} gpc-seg-lead{% endif %}" data-gpc-seg="{{ s.seg }}" data-seg-group="{{ 'helix' if s.seg in hf_helices else 'rest' }}">
               <details class="gpc-seg-details">
                 <summary class="gpc-seg-row" aria-label="{{ s.seg }}: {{ s.n }} contact{{ '' if s.n == 1 else 's' }} above the threshold, {{ '%.1f'|format(s.up) }} stronger in the active model, {{ '%.1f'|format(s.down) }} stronger in the inactive model. Show the largest.">
                   <span class="gpc-seg-name">{{ s.seg }}</span>
@@ -120,6 +127,7 @@
       {% call fine_print(summary='About this summary', cls='gpc-summary-fine') %}
       <p>Built from the RRCS results on this page: the contact pairs whose |ΔRRCS| is at or above this receptor's threshold, grouped by the segment of each residue (a pair between two segments counts for both). The bars show the sum of ΔRRCS in each direction, scaled to the largest segment; the number is how many such pairs touch the segment. Open a segment to see its largest changes. Choosing a pair marks it on the snake plot, in the tables, in the charts and in the 3D view.</p>
       <p>The one-line answer and the "Largest changes" list cover the helices TM1 to TM7 and H8, where the models are best constrained.{% if rx_summary.n_tail %} {{ rx_summary.n_tail }} of the {{ rx_summary.pairs_all|length }} largest changes overall involve a loop or a terminus; "Include loops and termini" lists them, marked loop or tail. Treat those with more caution.{% else %} None of the {{ rx_summary.pairs_all|length }} largest changes overall involves a loop or a terminus.{% endif %}</p>
+      <p>Segment order: "Helices first" lists TM1 to TM7 and H8 together, then the loops, then the termini. "Sequence" follows the chain from the N-terminus. The models are most reliable in the helices. The choice applies to every segment list and chart on the site and in the Studio, and is remembered in this browser.</p>
       {% endcall %}
     </section>
     {% endif %}
@@ -1337,6 +1345,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="{{ static_prefix }}static/js/v3-deeplink.js" defer></script>
 <script src="{{ static_prefix }}static/js/residue-drawer.js" defer></script>
 <script src="{{ static_prefix }}static/js/viewer3d.js" defer></script>
+<script src="{{ static_prefix }}static/js/segment-order.js" defer></script>
 <script src="{{ static_prefix }}static/js/residue-table.js" defer></script>
 <script src="{{ static_prefix }}static/js/report-select.js" defer></script>
 <script src="{{ static_prefix }}static/js/snake-plus.js" defer></script>

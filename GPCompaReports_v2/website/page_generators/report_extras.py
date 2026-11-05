@@ -243,6 +243,10 @@ def json_for_script(obj):
 SEGMENT_ORDER = ['N-term', 'TM1', 'ICL1', 'TM2', 'ECL1', 'TM3', 'ICL2', 'TM4', 'ECL2',
                  'TM5', 'ICL3', 'TM6', 'ECL3', 'TM7', 'H8', 'C-term']
 HELICES = {'TM1', 'TM2', 'TM3', 'TM4', 'TM5', 'TM6', 'TM7', 'H8'}
+# The site's default display order ("Helices first", static/js/segment-order.js keeps the
+# same list): the helices together, then the loops, then the termini.
+HELICES_FIRST_ORDER = ['TM1', 'TM2', 'TM3', 'TM4', 'TM5', 'TM6', 'TM7', 'H8',
+                       'ICL1', 'ICL2', 'ICL3', 'ECL1', 'ECL2', 'ECL3', 'N-term', 'C-term']
 
 
 def _aa3(name):
@@ -326,6 +330,9 @@ def contact_summary(delta_df, sig_threshold, annotation, top_n=8, per_segment=3)
         s['up'] = round(s['up'], 1)
         s['down'] = round(s['down'], 1)
     out['segments'] = ordered
+    hf = {name: i for i, name in enumerate(HELICES_FIRST_ORDER)}
+    out['segments_helices_first'] = sorted(ordered, key=lambda s: (hf.get(s['seg'], len(hf)), s['seg']))
+    out['has_seg_groups'] = any(s['seg'] in HELICES for s in ordered) and any(s['seg'] not in HELICES for s in ordered)
     helices = [s for s in ordered if s['seg'] in HELICES]
     out['lead'] = [s['seg'] for s in sorted(helices, key=lambda s: -(s['up'] + s['down']))[:3]]
     out['pairs_all'] = [pair_of(r) for _, r in hit.head(top_n).iterrows()]
