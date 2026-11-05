@@ -65,6 +65,8 @@ async function show(q, { remember = true } = {}) {
   if (my !== run) return;
   const meta = await shardsFor(loader).meta();
   const releases = meta?.releases ?? null;
+  // the size of the class-wide CFR set every CFR text names (meta.json cfrTop); kept on opts for the re-renders below
+  opts.cfrTop = meta?.cfrTop ?? null;
   const symbolOf = (gid) => meta?.byGid.get(gid)?.symbol ?? gid;
   const familyOf = (gid) => meta?.byGid.get(gid)?.family;
   const pageUrl = `${window.location.origin}${window.location.pathname}`;

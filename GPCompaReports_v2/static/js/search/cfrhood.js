@@ -4,9 +4,9 @@
  * How a residue relates to the core functional residue (CFR) positions of its own receptor, by four exact rules
  * (one place, so the card, the receptor list and the tests agree):
  *
- *   at         the residue's generic number is a CFR position: one of the CFR_TOP (30) top-ranked generic positions
- *              of the class-wide CFR ranking (residues/<gid>.json `cfr`: the rule of the card's CFR flag and of the
- *              report snake plots)
+ *   at         the residue's generic number is a CFR position: one of the meta.cfrTop (50) top-ranked class-wide
+ *              CFR positions by CFR score (residues/<gid>.json `cfr`: the rule of the card's CFR flag, the report
+ *              snake plots and residue table, and the Statistics page)
  *   connected  the residue takes part in a contact above the receptor's |ΔRRCS| threshold (detail/ `pairs`, the
  *              report's pair list) whose partner residue is at a CFR position
  *   near       the residue lies within NEAR_SEQ (2) residues of a CFR position along the chain and in the same

@@ -105,7 +105,7 @@
  *     dmaxPartner: string|null, dmaxPartnerPos: number|null,   // that contact's partner ('F300', 300)
  *     nsig: number,             // contacts with |ΔRRCS| >= the receptor threshold
  *     threshold: number|null,   // the receptor's |ΔRRCS| threshold (mean + SD, floor 0.2; the report's rule)
- *     cfr: boolean, cfrRank: number|null,   // top-30 CFR position (snake-plot rule); rank of the generic number
+ *     cfr: boolean, cfrRank: number|null,   // a class-wide CFR position (rank <= meta.cfrTop, the reports' rule); its rank by CFR score
  *     conservation: number|null,// 0..1, 1 = conserved (0.1 precision)
  *     family: string|null,
  *     observed?: {gnomad: number, clinvar: number}   // bare missense changes: records of exactly this change
@@ -224,7 +224,7 @@ function makeSummary(meta, idx, seq, pos, row) {
     net: row?.net ?? null, dmax: sm === null ? null : Math.abs(sm), dmaxSigned: sm,
     dmaxPartner: partner ? `${seq?.[partner - 1] ?? ''}${partner}` : null, dmaxPartnerPos: partner,
     nsig: row?.nsig ?? 0, threshold: rec.threshold ?? null,
-    cfr: !!(rank && rank <= (meta.cfrTop ?? 30)), cfrRank: rank,
+    cfr: !!(rank && meta.cfrTop && rank <= meta.cfrTop), cfrRank: rank,
     conservation: row?.cons ?? null, family: rec.family ?? null,
   };
 }

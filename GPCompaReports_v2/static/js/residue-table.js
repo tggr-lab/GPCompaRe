@@ -8,8 +8,9 @@
      #rx-residue-extra       contacts above the receptor's threshold, AlphaMissense mean
                              and conservation per residue (the caches the snake plot's
                              colour views read), and the CFR flag (the residue's generic
-                             number, as shown here, is among the top cross-receptor CFR
-                             positions, the rule the snake plot uses)
+                             number, as shown here, is one of the class-wide CFR positions:
+                             the rx-config cfrTop top-ranked by CFR score, the rule the snake
+                             plot and search use)
    Sortable, filterable (active-favouring, inactive-favouring, TM helices only) and
    downloadable as CSV. Sorting by Segment follows the site's segment order switch
    (segment-order.js), which sits in the toolbar. Residue names open the residue drawer (residue-drawer.js). */
@@ -32,6 +33,13 @@
     return n;
   }
 
+  // The class-wide CFR set the page marks: its size travels in #rx-config as cfrTop (analysis/cfr_analysis.py
+  // CFR_TOP_N, the same number as the search's meta.json cfrTop and the Statistics page's ranked table).
+  var cfrTop = (readJSON('rx-config') || {}).cfrTop;
+  var cfrTip = 'Core functional residue (CFR) position: this generic position is one of the ' +
+    (cfrTop ? cfrTop + ' ' : '') + 'top-ranked class-wide CFR positions (by CFR score), ' +
+    'the positions the snake plot, search and the Statistics page mark as CFR';
+
   var COLUMNS = [
     { key: 'pos', label: 'Residue', num: false, tip: 'Residue and position in the model' },
     { key: 'gn', label: 'Generic number', num: false, tip: 'GPCRdb generic number' },
@@ -40,7 +48,7 @@
     { key: 'max', label: 'Largest |ΔRRCS|', num: true, tip: 'Largest single contact change at this residue' },
     { key: 'partner', label: 'Partner', num: false, tip: 'The partner residue at the largest change' },
     { key: 'above', label: 'Contacts above threshold', num: true, tip: 'Contacts with |ΔRRCS| at or above this receptor\'s threshold' },
-    { key: 'cfr', label: 'CFR position', num: false, tip: 'Core functional residue position: this generic position is one of the 30 most recurrent CFR positions across the 283 receptors (the same marks as the snake plot and search)' },
+    { key: 'cfr', label: 'CFR position', num: false, tip: cfrTip },
     { key: 'am', label: 'AlphaMissense mean', num: true, tip: 'Mean AlphaMissense score over the 19 substitutions (a prediction): 0 benign-like, 1 pathogenic-like' },
     { key: 'cons', label: 'Conservation', num: true, tip: 'Sequence conservation: 0 variable, 1 conserved' }
   ];

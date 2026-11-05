@@ -802,10 +802,15 @@ function motifsCell(r) {
 
 // ------------------------------------------------------------------------ CFR neighbourhood
 
-/** How many class-wide CFR positions the card, the snake plots and every CFR feature of search mark (search_index_v2 CFR_TOP). */
-export const CFR_TOP_N = 30;
+/**
+ * The class-wide CFR set, named the same way everywhere: "one of the N top-ranked class-wide CFR positions (by CFR score)".
+ * N is never typed here: it is meta.json `cfrTop` (search_index_v2 CFR_TOP = analysis/cfr_analysis.py CFR_TOP_N, the
+ * size the report pages and the Statistics page use), passed in as `o.cfrTop` (search-page.js) or `ctx.cfrTop`.
+ * @param {number|null|undefined} n
+ */
+export const cfrOneOf = (n) => `one of the ${n ? `${n} ` : ''}top-ranked class-wide CFR positions (by CFR score)`;
 /** The CFR set in one plain line. */
-export const CFR_SET_TEXT = `CFR positions are the ${CFR_TOP_N} top-ranked generic positions of the class-wide CFR ranking, the positions the card and the snake plots mark as CFR.`;
+export const cfrSetText = (n) => `CFR positions are the ${n ? `${n} ` : ''}top-ranked class-wide CFR positions (by CFR score), the positions search, the report snake plots and the Statistics page mark as CFR.`;
 /** The group names of the CFR neighbourhood (search/cfrhood.js), as headings. */
 export const CFR_GROUP_LABEL = Object.freeze({
   at: 'At a CFR position', connected: 'Connected to a CFR', near: 'Near a CFR in sequence', touch: 'In contact with a CFR, below threshold',
@@ -886,7 +891,7 @@ function cfrHoodBlock(r, o) {
   }
   return html`<div class="sr-cfrhood" data-cfrhood="${h.group ?? 'none'}">
     <h5 class="sr-subhead">CFR neighbourhood</h5>
-    <p class="sr-sub sr-cfrhood-set">${CFR_SET_TEXT} ${term(o, 'cfr', 'What is a CFR?')}</p>
+    <p class="sr-sub sr-cfrhood-set">${cfrSetText(o.cfrTop)} ${term(o, 'cfr', 'What is a CFR?')}</p>
     <ul class="sr-cfrhood-list">${items}</ul>
     ${finePrint(html`<p>${CFR_GROUP_LABEL.connected}: ${CFR_GROUP_DEF.connected} ${CFR_GROUP_LABEL.near}: ${CFR_GROUP_DEF.near} ${CFR_GROUP_LABEL.touch}: ${CFR_GROUP_DEF.touch} These describe the two models, not the effect of a variant. <span class="sr-net sr-net--active">Red, positive</span> ΔRRCS: stronger in the active model; <span class="sr-net sr-net--inactive">blue, negative</span>: stronger in the inactive model.</p>`, { cls: 'sr-cfrhood-note' })}
   </div>`;
@@ -1313,8 +1318,8 @@ function releaseLines(r, rel) {
  * On a reference mismatch (`PAR2 p.Ala159Ile`) the typed change is reported as typed and unverifiable, the
  * model residue on its own, and the correction only as a suggestion: never as the subject.
  *
- * @param {{query?: string, reading?: string|null, interp?: object, releases?: object, pageUrl?: string,
- *          typed?: object, alternates?: object[]}} [ctx]
+ * @param {{query?: string, reading?: string|null, interp?: object, releases?: object, cfrTop?: number|null,
+ *          pageUrl?: string, typed?: object, alternates?: object[]}} [ctx]
  */
 export function evidenceText(r, ctx = {}) {
   const L = [];
@@ -1391,8 +1396,8 @@ export function evidenceText(r, ctx = {}) {
     L.push(`  Conservation: ${f.conservation === null ? 'not available' : `${f.conservation.toFixed(2)} on a 0 to 1 scale`}`);
     L.push('In the GPCompaRe database:');
     L.push(`  Numbering: ${x.generic ? `${x.generic} (BW ${x.bw}, GPCRdb ${x.gpcrdb}), ${x.segment}` : `no generic number (${x.segment || 'outside the helices'})`}`);
-    L.push(`  Core functional residue (class-wide): ${x.cfr ? `yes, rank ${f.cfrRank} of the class-wide positions` : (f.cfrRank ? `no, its generic position ranks ${f.cfrRank}` : 'not ranked (no generic number)')}`);
-    if (r.cfrHood) L.push(`  CFR neighbourhood (CFR = top ${CFR_TOP_N} class-wide positions): ${cfrHoodSentence(r) ?? 'at a CFR position, no other relation'}`);
+    L.push(`  Core functional residue (class-wide): ${x.cfr ? `yes, ${cfrOneOf(ctx.cfrTop)}, rank ${f.cfrRank}` : (f.cfrRank ? `no, its generic position ranks ${f.cfrRank} by CFR score` : 'not ranked (no generic number)')}`);
+    if (r.cfrHood) L.push(`  CFR neighbourhood (a CFR is ${cfrOneOf(ctx.cfrTop)}): ${cfrHoodSentence(r) ?? 'at a CFR position, no other relation'}`);
     if (r.motifs) { const ms = r.motifs.filter((m) => m.key !== 'xmy' || m.carried !== false); L.push(`  Motif: ${ms.length ? ms.map((m) => `${m.name} (position ${m.position}${!m.required ? ', the variable x' : m.canonical ? `, canonical ${m.canonical.split('').map(three).join(' or ')}` : ''}${m.carried === false ? '; not carried in full by this receptor' : ''}${m.key === 'xmy' ? `; ${m.note}` : ''})`).join('; ') : 'not a motif position'}`); }
     L.push(`  Largest contact change: ${f.dmax === null ? 'no contacts' : `|dRRCS| ${f.dmax.toFixed(2)}${f.threshold !== null ? `, receptor threshold ${f.threshold.toFixed(2)}` : ''}${f.partner ? `, with ${f.partner}` : ''}`}`);
     if (f.net !== null) L.push(`  Net dRRCS: ${signed(f.net, 1)} (${direction(f.net).word}; red = active, blue = inactive): ${netSentence(f.net)}`);
@@ -1544,9 +1549,9 @@ function fixBlock(fix, o) {
     ${fix.count !== null ? html`<span class="sr-sub">${fix.count === 0 ? 'not recorded in gnomAD or ClinVar' : `${fix.count} ${fix.count === 1 ? 'record' : 'records'} in gnomAD or ClinVar`}</span>` : ''}</div>`;
 }
 
-function badgesFor(r) {
+function badgesFor(r, o = {}) {
   const b = [];
-  if (r.residue?.cfr) b.push(html`<span class="sr-badge sr-badge--cfr" title="Core functional residue: one of the 30 top-ranked class-wide generic positions">CFR, rank ${residueFacts(r).cfrRank} of the class-wide positions</span>`);
+  if (r.residue?.cfr) b.push(html`<span class="sr-badge sr-badge--cfr" title="Core functional residue: ${cfrOneOf(o.cfrTop)}">CFR, class-wide rank ${residueFacts(r).cfrRank}</span>`);
   if (r.notes?.some((n) => n.code === 'model_conflict')) b.push(html`<span class="sr-badge sr-badge--warn">model differs from reference genome</span>`);
   return b;
 }
@@ -1570,7 +1575,7 @@ function card(r, o, idx) {
   return html`<article class="sr-card sr-card--${r.type}" aria-labelledby="sr-card-${idx}">
     <header class="sr-card-head">
       <h3 id="sr-card-${idx}" class="sr-card-title">${title}${r.pos ? html`<span class="sr-dot" aria-hidden="true">·</span>${mismatch ? html`<span class="sr-sub">model residue </span>` : ''}${intLink(L.residueUrl(o, r.gid, r.pos), `${three(r.residue?.aa ?? r.ref)}${r.pos}`, { cls: 'mono', title: 'Report at this residue' })}` : ''}${x?.generic ? html`<span class="sr-dot" aria-hidden="true">·</span><span class="mono" title="Generic residue number">${x.generic}</span>` : ''}${x?.segment ? html`<span class="sr-dot" aria-hidden="true">·</span><span class="sr-nowrap">${x.segment}</span>` : ''}</h3>
-      ${noResidue ? '' : html`<div class="sr-change">${changeLine(r, fix, mismatch)} ${status} ${badgesFor(r)}</div>`}
+      ${noResidue ? '' : html`<div class="sr-change">${changeLine(r, fix, mismatch)} ${status} ${badgesFor(r, o)}</div>`}
       ${hasEvidence ? idLine(r, oc, sub) : ''}
     </header>
     ${leadLine(r, o)}
@@ -1608,7 +1613,7 @@ function cardFinePrint(r, o, mismatch, noResidue) {
   for (const n of (r.notes ?? []).filter((x) => FINE_NOTES.has(x.code))) about.push(html`<li>${n.text}</li>`);
   if (hasRows) about.push(html`<li><strong>Population evidence</strong> is the ${term(o, 'gnomad', 'gnomAD')} missense allele (exome counts where present, else genome). Per-population frequencies are not held in this index; open the gnomAD record for them.</li>`);
   if (f) {
-    about.push(html`<li><strong>${term(o, 'cfr', 'CFR')}:</strong> a core functional residue is a generic position in the top 30 of the class-wide ranking.</li>`);
+    about.push(html`<li><strong>${term(o, 'cfr', 'CFR')}:</strong> a core functional residue position here is ${cfrOneOf(o.cfrTop)}. The rank is the position's place in that class-wide ranking.</li>`);
     if (f.dmax !== null) about.push(html`<li><strong>Largest contact change:</strong> the biggest |ΔRRCS| among this residue's contacts${f.threshold !== null ? html`; this receptor's threshold is ${f.threshold.toFixed(2)}` : ''}.</li>`);
     about.push(html`<li><strong>${term(o, 'pair', 'Contacts')}</strong> are residue pairs of the AlphaFold-Multistate models whose contact score changes by at least the receptor's threshold between the inactive and the active model. They describe the two models, not the effect of a variant.</li>`);
     about.push(html`<li><strong>${term(o, 'conservation', 'Conservation')}</strong> is on a 0 to 1 scale. <strong>${term(o, 'am', 'AlphaMissense')}</strong> scores are predictions (0 to 1; likely benign below 0.34, likely pathogenic above 0.564); <strong>residue mean</strong> is the mean over all substitutions at the residue.</li>`);
@@ -1728,7 +1733,7 @@ export function cfrListModel(r, o = {}) {
   return {
     gid: r.gid, symbol: r.receptor?.symbol ?? r.gid, receptor: r.receptor, rows, cols, counts: L0.counts, cfr: L0.cfr,
     skipped: L0.skipped, hasTouch: L0.hasTouch, hasContacts: L0.hasContacts, hasVariants: L0.hasVariants, threshold: L0.threshold,
-    releases: r.releases ?? {}, reports: o.reports,
+    releases: r.releases ?? {}, reports: o.reports, cfrTop: o.cfrTop ?? null,
   };
 }
 
@@ -1845,7 +1850,7 @@ export function renderCfrList(model, state, o = {}) {
     ? html`<details class="sr-more sr-cfr-positions"><summary>The ${model.cfr.length} CFR positions of ${sym}</summary><ul class="sr-chips">${[...model.cfr].sort((a, b) => a.pos - b.pos).map((c) => html`<li>${intLink(L.residueUrl(o, model.gid, c.pos), cfrName(c), { cls: 'sr-chip', title: 'Report at this residue' })}</li>`)}</ul></details>`
     : html`<p>${sym} has no residue at a CFR position.</p>`;
   return html`<div class="sr-cfrlist" data-cfrlist>
-    <p class="sr-cfr-set">${CFR_SET_TEXT} ${term(o, 'cfr', 'What is a CFR?')}</p>
+    <p class="sr-cfr-set">${cfrSetText(o.cfrTop ?? model.cfrTop)} ${term(o, 'cfr', 'What is a CFR?')}</p>
     ${tiles}
     ${cfrList}
     <div class="sr-cmp-controls">
@@ -2020,7 +2025,7 @@ function cellHtml(col, row, o) {
       return html`<span class="${d ? `sr-net sr-net--${d.cls}` : ''}">${f.dmax.toFixed(1)}</span>${d ? html`<span class="sr-sr-only"> (${d.word})</span>` : ''}${f.partner ? html` <span class="sr-sub">with <span class="sr-notation">${f.partner}</span></span>` : ''}`;
     }
     case 'nsig': return f.nsig === null ? html`<span class="sr-na">none</span>` : String(f.nsig);
-    case 'cfr': return f.cfrRank === null ? html`<span class="sr-na">none</span>` : html`${f.cfrRank}${f.cfr ? html` <span class="sr-badge sr-badge--cfr" title="One of the 30 top-ranked class-wide generic positions">CFR</span>` : ''}`;
+    case 'cfr': return f.cfrRank === null ? html`<span class="sr-na">none</span>` : html`${f.cfrRank}${f.cfr ? html` <span class="sr-badge sr-badge--cfr" title="Core functional residue: ${cfrOneOf(o.cfrTop)}">CFR</span>` : ''}`;
     case 'cons': return f.conservation === null ? html`<span class="sr-na">none</span>` : f.conservation.toFixed(1);
     case 'gnomad': return row.gnomad === null ? html`<span class="sr-na">n/a</span>` : (row.gnomad ? String(row.gnomad) : html`<span class="sr-na">not seen</span>`);
     case 'clinvar': return row.clinvar === null ? html`<span class="sr-na">n/a</span>` : (row.clinvar ? String(row.clinvar) : html`<span class="sr-na">none</span>`);
@@ -2178,8 +2183,9 @@ function groupedOnlyMessage(answer) {
 /**
  * @param {object} answer engine answer
  * @param {string} query what was typed
- * @param {{reports: string, studio: string, releases?: object, symbolOf?: (gid:string)=>string,
- *          familyOf?: (gid:string)=>string, pageUrl?: string, base?: string}} o
+ * @param {{reports: string, studio: string, releases?: object, cfrTop?: number, symbolOf?: (gid:string)=>string,
+ *          familyOf?: (gid:string)=>string, pageUrl?: string, base?: string}} o   `cfrTop`: meta.json cfrTop, the size
+ *          of the class-wide CFR set (every CFR text names it)
  * @returns {{html: string, status: string, results: object[], compare: object|null, cfr: object|null, ctx: object}}
  *   `results` are the cards' results (index = the data-copy-* number); `compare` is the model of the
  *   cross-receptor table when one was drawn; `cfr` the model of a receptor's CFR variant table ("ADRB2 CFR
@@ -2192,7 +2198,7 @@ export function renderAnswer(answer, query, o) {
   const statusBits = [];
   let out = '';
   const ro = { ...o, interp: answer.interpretation, query, typed: answer.typed ?? null, alternates: answer.alternates ?? [] };
-  const ctx = { query, reading, interp: answer.interpretation, releases: o.releases, pageUrl: o.pageUrl, typed: answer.typed ?? null, alternates: answer.alternates ?? [] };
+  const ctx = { query, reading, interp: answer.interpretation, releases: o.releases, cfrTop: o.cfrTop ?? null, pageUrl: o.pageUrl, typed: answer.typed ?? null, alternates: answer.alternates ?? [] };
   // no exact match, but the other residues at the position are grouped (W3.50: nobody has Trp at 3.50x50)
   const groupedOnly = !rs.length && (answer.groups ?? []).some((g) => g.results?.length);
 
