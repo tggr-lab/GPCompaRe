@@ -16,7 +16,8 @@ import {
   renderAnswer, esc, html, compareModel, compareRows, compareCsv, compareDefaults, renderCompareBody,
   evidenceText, inReportTable, mismatchFix, residueFacts, direction, signed, CMP_PAGE_SIZE,
   notationsText, subjectOf, csvField, clinvarGroups, finePrint, HELP, renderHelp, renderReleases,
-  reportTableRelease, allelesTable, fmtAm, summarySentences, contactMeaning, amClassLabel, segmentKind, RESEARCH_NOTE, DB_NAME,
+  reportTableRelease, allelesTable, fmtAm, summarySentences, contactMeaning, amClassLabel, segmentKind, RESEARCH_NOTE, RESEARCH_NOTE_SHORT, DB_NAME,
+  activationWord, netSentence, amClassOfScore, AM_CUTS, afBand, cvClassKey, receptorMap, PATH_CLASSES,
 } from '../../static/js/search-ui/render.js';
 import { suggestionsFor } from '../../static/js/search-ui/suggest.js';
 import * as L from '../../static/js/search-ui/links.js';
@@ -504,15 +505,16 @@ test('a card keeps its essentials up front and moves explanations into its fine 
   const [main, fine] = out.split('<aside class="fine-print sr-card-fine">');
   assert.ok(fine, 'the card has a fine-print block');
   // up front: the summary, the change, allele frequency, ClinVar, the predictions, the database facts and the actions
-  for (const need of ['sr-summary', 'p.Ser311Cys', 'Frequency', 'ClinVar', 'In the GPCompaRe database', 'AlphaMissense, this change', 'Important contacts', 'Open report at this residue']) assert.ok(main.includes(need), need);
+  for (const need of ['sr-tiles', 'p.Ser311Cys', 'Frequency', 'ClinVar', 'in the GPCompaRe database', 'AlphaMissense, this change', 'Important contacts', 'Open report at this residue']) assert.ok(main.includes(need), need);
   // not up front: release labels, threshold and scale explanations; the transcript table is folded inside the identifiers
   for (const gone of ['receptor threshold', 'mean over all substitutions']) assert.ok(!main.includes(gone), gone);
   assert.match(fine, /gnomAD v4\.1\.2; ClinVar 2026-10-11/);
   assert.match(fine, /<details class="sr-about"><summary>About these numbers<\/summary>/);
   assert.match(main, /<details class="sr-more sr-notations">/);
   assert.ok(!/<details class="sr-more sr-notations" open>/.test(out), 'the transcript table is always folded');
-  // the evidence sections are collapsible and open by default on a single card
-  for (const sec of ['ids', 'population', 'clinical', 'computational', 'structure']) assert.ok(out.includes(`<details class="sr-sec" data-sec="${sec}" open>`), sec);
+  // the evidence sections are collapsible and open by default on a single card; the prose is folded at the end
+  for (const sec of ['structure', 'region', 'predictions', 'population', 'clinical', 'refs']) assert.ok(out.includes(`<details class="sr-sec" data-sec="${sec}" id="sr-0-${sec}" open>`), sec);
+  assert.ok(out.includes('<details class="sr-sec" data-sec="prose" id="sr-0-prose">'), 'the prose is folded');
 });
 
 test('a warning that changes the meaning stays visible above the results', { skip }, async () => {
@@ -550,8 +552,8 @@ test('allele AlphaMissense scores print with 3 decimals, like the report tables'
   assert.equal(fmtAm(null), 'n/a');
   const al = (am) => ({ id: '1-2-A-C', hgvsc: 'c.1A>C', hgvsp: 'p.Met1Leu', rsids: [], ac: 1, an: 10, af: 0.1, hom: 0, am, amClass: 'pathogenic' });
   const t = allelesTable([al(0.999), al(0.4)], { caption: 'x' }).toString();
-  assert.match(t, /data-label="AlphaMissense prediction">0\.999 <span class="sr-sub">likely pathogenic/);
-  assert.match(t, />0\.400 <span class="sr-sub">likely pathogenic/);
+  assert.match(t, /data-label="AlphaMissense prediction"><span class="sr-path sr-path--pathogenic">0\.999<\/span> <span class="sr-path-chip sr-path-chip--pathogenic">likely pathogenic/);
+  assert.match(t, />0\.400<\/span> <span class="sr-path-chip sr-path-chip--pathogenic">likely pathogenic/);
   assert.equal(amClassLabel('benign'), 'likely benign');
   assert.equal(amClassLabel('ambiguous'), 'ambiguous');
   assert.ok(!/>1\.00 </.test(t) && !/>0\.40 </.test(t));
@@ -581,7 +583,7 @@ test('a change that needs two nucleotide substitutions says why gnomAD has no al
   const a = await search('ADRB2 R131Q', loader);
   const out = renderAnswer(a, 'ADRB2 R131Q', OPTS);
   assert.match(out.html, /This exact change is not listed in gnomAD v4\.1\.2\. <span class="sr-sub">This change needs two nucleotide substitutions in its codon \(CGC\); gnomAD alleles each change a single nucleotide, so no allele can carry it\./);
-  assert.match(unlinked(out.html), /<dt>AlphaMissense, this change<\/dt><dd><strong>0\.972<\/strong> <span class="sr-am-class">likely pathogenic<\/span> <span class="sr-badge sr-badge--muted"[^>]*>prediction<\/span>/);
+  assert.match(unlinked(out.html), /<dt>AlphaMissense, this change<\/dt><dd><strong class="sr-path sr-path--pathogenic">0\.972<\/strong> <span class="sr-path-chip sr-path-chip--pathogenic">likely pathogenic<\/span> <span class="sr-badge sr-badge--muted"[^>]*>prediction<\/span>/);
   assert.ok(!out.html.includes('not available in this index'));
   assert.ok(!out.html.includes('\u2014'));
   const text = evidenceText(a.results[0], { query: 'ADRB2 R131Q', releases: {} });
@@ -589,7 +591,7 @@ test('a change that needs two nucleotide substitutions says why gnomAD has no al
   assert.match(text, /AlphaMissense, this change: 0\.972 \(likely pathogenic\)/);
   // a one-substitution change with no allele has a score too, and no codon note
   const one = unlinked(renderAnswer(await search('DRD2 S311A', loader), 'DRD2 S311A', OPTS).html);
-  assert.match(one, /<dt>AlphaMissense, this change<\/dt><dd><strong>0\.\d{3}<\/strong>/);
+  assert.match(one, /<dt>AlphaMissense, this change<\/dt><dd><strong class="sr-path sr-path--\w+">0\.\d{3}<\/strong>/);
   assert.ok(!/nucleotide substitutions/.test(one));
 });
 
@@ -620,7 +622,7 @@ test('V2: the contacts table lists the threshold-passing pairs with partner, sig
   assert.match(tbl, /<span class="mono">Asp130<\/span> <span class="sr-sub">3\.49x49, TM3<\/span>/);
   assert.match(tbl, /<span class="sr-net sr-net--inactive">-5\.67<\/span>/);
   assert.match(tbl, /<span class="mono">Tyr141<\/span> <span class="sr-sub">34\.53x53, ICL2<\/span> <span class="sr-badge sr-badge--muted"[^>]*>loop<\/span>/);
-  assert.match(tbl, /present in the inactive model only: lost in the active model/);
+  assert.match(tbl, /<strong>breaks on activation<\/strong><span class="sr-sub">: present in the inactive model, no contact in the active model/);
   assert.match(tblRaw, /href="\.\.\/reports\/adrb2_human\.html#pair=130-131" target="_blank" rel="noopener"/);
   assert.match(out, /3 contacts above this receptor\u2019s threshold \(\|ΔRRCS\| ≥ 1\.97\), largest \|ΔRRCS\| first\./);
   // the rows follow the engine's order (largest |ΔRRCS| first)
@@ -631,9 +633,12 @@ test('V2: the contacts table lists the threshold-passing pairs with partner, sig
   assert.match(none, /This residue takes part in no contact above this receptor\u2019s threshold \(\|ΔRRCS\| ≥ 2\.42\)\./);
   assert.ok(!none.includes('sr-table--contacts'));
   // meanings never claim what a variant does
-  assert.equal(contactMeaning({ delta: 2, active: 2, inactive: 0 }), 'forms in the active model: no contact in the inactive model');
-  assert.equal(contactMeaning({ delta: -2, active: 0, inactive: 2 }), 'present in the inactive model only: lost in the active model');
-  assert.equal(contactMeaning({ delta: -1.5, active: 1, inactive: 2.5 }), 'present in both models, stronger in the inactive model');
+  assert.equal(contactMeaning({ delta: 2, active: 2, inactive: 0 }), 'forms on activation: no contact in the inactive model, present in the active model');
+  assert.equal(contactMeaning({ delta: -2, active: 0, inactive: 2 }), 'breaks on activation: present in the inactive model, no contact in the active model');
+  assert.equal(contactMeaning({ delta: -1.5, active: 1, inactive: 2.5 }), 'weakens on activation: present in both models, stronger in the inactive model');
+  assert.equal(activationWord({ delta: 1.5, active: 2.5, inactive: 1 }), 'strengthens on activation');
+  assert.equal(netSentence(-13.04), 'overall its contacts weaken on activation (net ΔRRCS -13.0)');
+  assert.equal(netSentence(2.3), 'overall its contacts strengthen on activation (net ΔRRCS +2.3)');
   assert.ok(!out.includes('disrupt'));
   assert.equal(segmentKind('ICL2'), 'loop');
   assert.equal(segmentKind('C-term'), 'terminus');
@@ -650,15 +655,19 @@ test('V3: the evidence summary reads in plain language and the research-use note
   assert.match(S[3], /^AlphaMissense predicts likely benign \(score 0\.084\); this is a prediction, not an observation\. Conservation at the residue: 0\.\d\d on a 0 to 1 scale\.$/);
   assert.equal(S[4], 'In the GPCompaRe models, Val103 is not a CFR; it takes part in no contact above the receptor\u2019s threshold.');
   const out = renderAnswer(a, 'MC4R V103I', OPTS2).html;
-  const main = out.split('<aside class="fine-print sr-card-fine">')[0];
-  assert.ok(main.includes('<div class="sr-summary">'), 'the summary is in the card body');
-  assert.ok(out.indexOf('sr-summary') < out.indexOf('data-sec="ids"'), 'the summary comes first');
-  assert.ok(main.includes(`<aside class="fine-print sr-research-note"><p>${RESEARCH_NOTE}</p></aside>`), 'research-use note under the summary');
+  const [main, fine] = out.split('<aside class="fine-print sr-card-fine">');
+  // the lead is the tiles; the prose is a folded section after the references, never above the tiles
+  assert.ok(out.indexOf('<ul class="sr-tiles">') < out.indexOf('data-sec="structure"'), 'the tiles come first');
+  assert.ok(main.includes('<details class="sr-sec" data-sec="prose" id="sr-0-prose">'), 'the prose is folded');
+  assert.ok(out.indexOf('data-sec="refs"') < out.indexOf('data-sec="prose"'), 'the prose is the last section');
+  assert.ok(!main.includes('<div class="sr-summary">'), 'no prose block in the lead');
+  assert.ok(fine.includes(`<p class="sr-research-note">${RESEARCH_NOTE_SHORT}</p>`), 'research-use note in the fine print');
   assert.match(RESEARCH_NOTE, /not a clinical classification/);
   assert.match(RESEARCH_NOTE, /ACMG criteria are not applied/);
+  assert.match(RESEARCH_NOTE_SHORT, /ACMG criteria are not applied/);
   // the CFR + motif + contacts sentence
   const S2 = summarySentences((await search('ADRB2 R131Q', loader)).results[0], { releases: {} });
-  assert.equal(S2[S2.length - 1], 'In the GPCompaRe models, Arg131 is a core functional residue (CFR, class-wide rank 1) and part of the DRY motif and the ionic lock; it takes part in 3 contacts above the receptor\u2019s threshold; the largest, with Asp130 (3.49x49), is stronger in the inactive model (ΔRRCS -5.67).');
+  assert.equal(S2[S2.length - 1], 'In the GPCompaRe models, Arg131 is a core functional residue (CFR, class-wide rank 1) and part of the DRY motif and the ionic lock; it takes part in 3 contacts above the receptor\u2019s threshold; the largest, with Asp130 (3.49x49), weakens on activation (ΔRRCS -5.67, stronger in the inactive model); overall its contacts weaken on activation (net ΔRRCS -16.7).');
   // the evidence text carries the same sentences, the contacts and the note
   const text = evidenceText(r, { query: 'MC4R V103I', releases: {} });
   for (const need of ['Evidence summary:', `  ${S[0]}`, 'In the GPCompaRe database:', 'Contact list: this residue takes part in no contact above the threshold', `Note: ${RESEARCH_NOTE}`, 'AlphaMissense, every substitution at Val103:']) assert.ok(text.includes(need), need);
@@ -672,20 +681,20 @@ test('V4: a reference mismatch keeps the typed change unverifiable in the summar
   assert.match(S[0], /^p\.Ala159Ile: position 159 is Met in F2RL1, so this change cannot be checked\. What follows is about the model residue Met159/);
   assert.ok(!S.some((s) => /Met159Ile/.test(s)), 'the corrected change is never the subject');
   assert.match(unlinked(out.html), /<dt>AlphaMissense, this change<\/dt><dd><span class="sr-na">not shown: the typed change is not the model residue<\/span>/);
-  assert.ok(!/is-this/.test(out.html), 'no cell is marked as the typed change');
+  assert.ok(!/sr-am-cell[^"]*is-this/.test(out.html), 'no cell is marked as the typed change');
   assert.match(out.html, /every substitution at Met159 \(the model residue\)/);
 });
 
-test('V5: the identifiers section has copy buttons for every notation, and folds when several cards share the page', { skip }, async () => {
+test('V5: the notations section has copy buttons for every notation, sits last, and folds when several cards share the page', { skip }, async () => {
   const q = 'MC1R Arg151Cys';
   const out = renderAnswer(await search(q, loader), q, OPTS2).html;
-  const ids = /<details class="sr-sec" data-sec="ids" open>([^]*?)<\/details>\s*<details class="sr-sec" data-sec="population"/.exec(out)?.[1];
-  assert.ok(ids, 'identifiers open on a single card');
+  const ids = /<details class="sr-sec" data-sec="refs" id="sr-0-refs" open>([^]*?)<\/details>\s*<details class="sr-sec" data-sec="prose"/.exec(out)?.[1];
+  assert.ok(ids, 'notations open on a single card, before the prose');
   for (const need of ['<dt>Gene</dt>', 'data-copy="MC1R"', 'data-copy="p.Arg151Cys"', '<dt>MANE Select (RefSeq)</dt>', 'data-copy="NM_002386.4:c.451C&gt;T"', '<dt>GRCh38 (hg38)</dt>', 'data-copy="16-89919709-C-T"', '<dt>GRCh37 (hg19)</dt>', '<dt>rsID</dt>', 'data-copy="rs1805007"', '<dt>ClinVar</dt>', 'data-copy="VCV000014312']) assert.ok(ids.includes(need), need);
   const many = renderAnswer(await search('DRY in ADRB2', loader), 'DRY in ADRB2', OPTS2).html;
-  assert.ok(many.includes('<details class="sr-sec" data-sec="ids">'), 'identifiers folded on a multi-card page');
-  assert.ok(!many.includes('<details class="sr-sec" data-sec="ids" open>'));
-  assert.ok(many.includes('<details class="sr-sec" data-sec="structure" open>'), 'the structural evidence stays open');
+  assert.ok(many.includes('<details class="sr-sec" data-sec="refs" id="sr-0-refs">'), 'notations folded on a multi-card page');
+  assert.ok(!/data-sec="refs" id="sr-\d+-refs" open>/.test(many));
+  assert.ok(many.includes('<details class="sr-sec" data-sec="structure" id="sr-1-structure" open>'), 'the structural evidence stays open on every card');
 });
 
 test('V6: search copy names the GPCompaRe database, never "this database"', { skip }, async () => {
@@ -701,13 +710,13 @@ test('V6: search copy names the GPCompaRe database, never "this database"', { sk
   }
   assert.equal(DB_NAME, 'the GPCompaRe database');
   const card = renderAnswer(await search('MC4R V103I', loader), 'MC4R V103I', OPTS2).html;
-  assert.match(card, /<h4 class="sr-sec-title">In the GPCompaRe database<\/h4>/);
+  assert.match(card, /<h4 class="sr-sec-title">Contacts and structure<\/h4> <span class="sr-sub">in the GPCompaRe database<\/span>/);
   assert.ok(/receptors in the GPCompaRe database run up to|not one of the 283 human Class A GPCRs in the GPCompaRe database/.test((await search('GPR9999', loader)).message));
 });
 
 test('V7: ClinVar records show submissions and the last-evaluated date; gnomAD alleles name their source', { skip }, async () => {
   const out = renderAnswer(await search('MC4R V103I', loader), 'MC4R V103I', OPTS2).html;
-  assert.match(out, /<span class="sr-badge">Benign\/Likely benign<\/span> <span class="sr-stars"[^]*?<span class="sr-sub">\d+ submissions, last evaluated \d{4}-\d{2}-\d{2}<\/span>/);
+  assert.match(out, /<span class="sr-path-chip sr-path-chip--benign">Benign\/Likely benign<\/span> <span class="sr-stars"[^]*?<span class="sr-sub">\d+ submissions, last evaluated \d{4}-\d{2}-\d{2}<\/span>/);
   assert.match(out, /<td class="num" data-label="Allele count">[\d,]+<span class="sr-sub"> of [\d,]+, exomes<\/span><\/td>/);
 });
 
@@ -806,6 +815,10 @@ test('L3: every link out of a result opens a new tab: outbound ones (sr-ext, dra
       } else if (/data-q=/.test(a.attrs)) {
         srch += 1;
         assert.ok(!/target=/.test(a.attrs), `${q}: a search link stays on the page: ${whole}`);
+      } else if (/data-nav=/.test(a.attrs)) {
+        srch += 1;   // a card's own section link: same page, same card
+        assert.ok(/^href="#sr-\d+-\w+"/.test(a.attrs.replace(/^class="[^"]*" /, '')) || /href="#sr-\d+-\w+"/.test(a.attrs), `${q}: ${whole}`);
+        assert.ok(!/target=/.test(a.attrs), `${q}: a section link stays on the page: ${whole}`);
       } else {
         int += 1;
         assert.match(a.attrs, /target="_blank" rel="noopener"/, `${q}: ${whole}`);
@@ -829,4 +842,146 @@ test('L4: the exports are unchanged by the links', { skip }, async () => {
   for (const t of [ev, nt]) assert.ok(!/↗|opens in a new tab|<a /.test(t), t);
   const csv = compareCsv(compareModel(await search('M159I', loader), {}), compareDefaults());
   assert.ok(!/https?:|↗/.test(csv));
+});
+
+
+// ------------------------------------------------------------------- the card v2: visual first
+
+test('W1: the summary tiles read the data: structure, AlphaMissense gauge, population band, ClinVar chip, conservation', { skip }, async () => {
+  const q = 'MC4R V103I';
+  const a = await search(q, loader);
+  const r = a.results[0];
+  const out = renderAnswer(a, q, OPTS2).html;
+  const tiles = /<ul class="sr-tiles">([^]*?)<\/ul>/.exec(out)?.[1];
+  assert.ok(tiles, 'tiles drawn');
+  assert.equal((tiles.match(/<li class="sr-tile /g) || []).length, 5);
+  assert.ok(out.indexOf('sr-tiles') < out.indexOf('data-sec="structure"'), 'tiles lead the card');
+  assert.match(tiles, /sr-tile--structure[^]*?<span class="sr-big">Not a CFR, rank 88<\/span>/);
+  assert.match(tiles, /no contact above the threshold/);
+  assert.match(tiles, /<span class="sr-big sr-path sr-path--benign">0\.084<\/span> <span class="sr-path-chip sr-path-chip--benign">likely benign<\/span>/);
+  assert.match(tiles, /sr-gauge--am[^]*?<span class="sr-gauge-mark sr-gauge-mark--benign" style="left:8\.4%">/);
+  assert.match(tiles, /<span class="sr-zone sr-zone--benign" style="width:34\.0%">[^]*?<span class="sr-zone sr-zone--ambiguous" style="width:22\.4%">[^]*?<span class="sr-zone sr-zone--pathogenic" style="width:43\.6%">/);
+  assert.match(tiles, /sr-tile--population[^]*?<span class="sr-big">0\.018<\/span> <span class="sr-badge sr-badge--muted">common<\/span>/);
+  assert.match(tiles, new RegExp(`${r.alleles[0].hom} homozygotes`));
+  assert.match(tiles, /sr-tile--clinical[^]*?<span class="sr-path-chip sr-path-chip--benign">Benign\/Likely benign<\/span> <span class="sr-stars"/);
+  assert.match(tiles, /Conservation<\/a><div class="sr-tile-v"><span class="sr-big">0\.\d\d<\/span><div class="sr-gauge sr-gauge--plain"/);
+  // every tile heading links to its section, which exists
+  for (const m of tiles.matchAll(/href="#(sr-0-\w+)"/g)) assert.ok(out.includes(`id="${m[1]}"`), m[1]);
+  // the cutoffs are the published ones and the band rule is descriptive
+  assert.deepEqual(AM_CUTS, { benign: 0.34, pathogenic: 0.564 });
+  assert.equal(amClassOfScore(0.339), 'benign'); assert.equal(amClassOfScore(0.34), 'ambiguous'); assert.equal(amClassOfScore(0.565), 'pathogenic');
+  assert.equal(afBand(0.0005).key, 'rare'); assert.equal(afBand(0.005).key, 'low'); assert.equal(afBand(0.02).key, 'common');
+  assert.equal(cvClassKey('Pathogenic/Likely pathogenic'), 'pathogenic'); assert.equal(cvClassKey('Uncertain significance'), 'ambiguous'); assert.equal(cvClassKey('Conflicting classifications of pathogenicity'), 'ambiguous'); assert.equal(cvClassKey('Benign'), 'benign'); assert.equal(cvClassKey('drug response'), 'none');
+  // the structure tile of a CFR with contacts says the direction in words
+  const t2 = /<ul class="sr-tiles">([^]*?)<\/ul>/.exec(renderAnswer(await search('ADRB2 R131Q', loader), 'ADRB2 R131Q', OPTS2).html)[1];
+  assert.match(t2, /<span class="sr-big">CFR, rank 1<\/span> <span class="sr-badge sr-badge--cfr">DRY motif<\/span>/);
+  assert.match(t2, /strongest with <span class="mono">Asp130<\/span> <span class="sr-net sr-net--inactive">-5\.67<\/span> weakens on activation; overall they weaken on activation \(net ΔRRCS -16\.7\)/);
+});
+
+test('W2: the pathogenicity palette is one set of classes used by the strip, the gauge, the allele table and ClinVar chips', { skip }, async () => {
+  const out = renderAnswer(await search('MC1R Arg151Cys', loader), 'MC1R Arg151Cys', OPTS2).html;
+  assert.deepEqual(PATH_CLASSES, ['benign', 'ambiguous', 'pathogenic']);
+  for (const c of PATH_CLASSES) {
+    assert.ok(out.includes(`sr-am--${c}`) || c === 'ambiguous', `strip ${c}`);
+    assert.ok(out.includes(`sr-zone--${c}`), `gauge zone ${c}`);
+  }
+  assert.match(out, /<ul class="sr-path-legend"[^>]*>(?:<li><span class="sr-path-swatch sr-path-swatch--\w+" aria-hidden="true"><\/span>[^<]+(?:<span class="sr-sub">[^<]+<\/span>)?<\/li>){3}<\/ul>/);
+  assert.match(out, /likely benign <span class="sr-sub">below 0\.34<\/span>/);
+  assert.match(out, /likely pathogenic <span class="sr-sub">above 0\.564<\/span>/);
+  // a conflicting ClinVar record is an ambiguous chip, never a red or blue one
+  assert.match(out, /<span class="sr-path-chip sr-path-chip--ambiguous">Conflicting/);
+  assert.ok(!/sr-net--(active|inactive)">(?:likely|Conflicting|Benign|Pathogenic)/.test(out));
+  // the strip cells carry their class and the queried change is outlined once
+  const strip = /<ol class="sr-am-strip"[^>]*>([^]*?)<\/ol>/.exec(out)[1];
+  assert.equal((strip.match(/class="sr-am-cell sr-am--(benign|ambiguous|pathogenic)/g) || []).length, 19);
+  assert.equal((strip.match(/is-this/g) || []).length, 1);
+});
+
+test('W3: the receptor map marks the residue, draws one arc per contact, the CFR positions, the heat band and the record ticks', { skip }, async () => {
+  const q = 'ADRB2 R131Q';
+  const a = await search(q, loader);
+  const r = a.results[0];
+  const svg = receptorMap(r, { ...OPTS2, idx: 0 }).toString();
+  assert.match(svg, /<figure class="sr-map" data-map="0" data-length="413" data-symbol="ADRB2">/);
+  assert.equal((svg.match(/class="sr-map-arc /g) || []).length, r.contacts.length);
+  assert.match(svg, /sr-map-arc sr-map-arc--inactive/);
+  assert.equal((svg.match(/class="sr-map-cfr/g) || []).length, r.track.cfr.length);
+  assert.match(svg, /class="sr-map-cfr is-this"/);
+  assert.match(svg, /<text class="sr-map-reslabel"[^>]*>Arg131<\/text>/);
+  assert.equal((svg.match(/sr-map-tick--allele/g) || []).length, r.track.alleles.length);
+  assert.equal((svg.match(/sr-map-tick--cv/g) || []).length, r.track.clinvar.length);
+  assert.ok((svg.match(/<rect class="sr-map-seg is-helix"/g) || []).length >= 8, 'TM1 to TM7 and H8');
+  assert.match(svg, /<text class="sr-map-seglabel"[^>]*>TM3<\/text>/);
+  assert.ok(/sr-map-am sr-map-am--(benign|ambiguous|pathogenic)/.test(svg), 'the heat band uses the palette');
+  assert.match(svg, /<rect class="sr-map-hit" data-map-hit="0"/);
+  assert.match(svg, /<form class="sr-map-go" data-map-go="0"><label>Residue <input type="number"[^>]*max="413"[^>]*value="131"/);
+  // the section is in the card and the map is not drawn for a light or residue-less result
+  const out = renderAnswer(a, q, OPTS2).html;
+  assert.ok(out.includes('<details class="sr-sec" data-sec="region" id="sr-0-region" open>'));
+  assert.equal(receptorMap({ pos: null }, {}), '');
+});
+
+test('W4: the contacts read in activation terms: dumbbells with words, partner badges, the net sentence, rank and threshold', { skip }, async () => {
+  const q = 'PAR2 p.Met159Ile';
+  const a = await search(q, loader);
+  const r = a.results[0];
+  const out = renderAnswer(a, q, OPTS2).html;
+  const dbs = /<ol class="sr-dbs"[^>]*>([^]*?)<\/ol>/.exec(out)?.[1];
+  assert.ok(dbs, 'dumbbells drawn');
+  assert.equal((dbs.match(/<li class="sr-db-row">/g) || []).length, r.contacts.length);
+  assert.match(dbs, /<span class="mono">Phe300<\/span> <span class="sr-sub">6\.48x48<\/span> <span class="sr-badge sr-badge--cfr" title="Core functional residue, class-wide rank 3">CFR 3<\/span>/);
+  assert.match(dbs, /sr-db-line sr-db-line--inactive/);
+  assert.match(dbs, /<span class="sr-net sr-net--inactive">-4\.99<\/span> <span class="sr-db-word">weakens on activation<\/span>/);
+  assert.match(out, /<p class="sr-db-legend">/);
+  assert.match(out, /overall its contacts weaken on activation \(net ΔRRCS -13\.0\)/);
+  assert.match(out, /rank 41 of 397 residues in F2RL1 by largest \|ΔRRCS\|/);
+  assert.match(out, /<dd>2 <span class="sr-sub">\(\|ΔRRCS\| ≥ 2\.60\)<\/span>/);
+  assert.match(out, /<button type="button" class="btn btn-ghost btn-sm" data-3d="0" aria-expanded="false" aria-controls="sr-0-3d-pane">Show in 3D<\/button>/);
+  assert.ok(!/pair-viewer|\.pdb/.test(out), 'nothing of the 3D viewer is in the markup');
+  // the table says it in words too, with the model phrasing kept
+  assert.match(out, /<strong>weakens on activation<\/strong><span class="sr-sub">: present in both models, stronger in the inactive model<\/span>/);
+});
+
+test('W5: the xMY motif is named where the receptor carries Met 3.36 and Tyr 3.37, with the paper\'s definition; 30 of 283 receptors carry it', { skip }, async () => {
+  const par2 = (await search('PAR2 p.Met159Ile', loader)).results[0];
+  assert.deepEqual(par2.motifs.map((m) => [m.key, m.position, m.required, m.carried]), [['xmy', '3.36', true, true]]);
+  const out = renderAnswer(await search('PAR2 p.Met159Ile', loader), 'PAR2 p.Met159Ile', OPTS2).html;
+  assert.match(out, /<span class="sr-badge sr-badge--cfr">xMY motif<\/span>/);
+  assert.match(out, /<strong>xMY motif<\/strong> <span class="sr-sub">position 3\.36, canonical Met<\/span> <span class="sr-sub">\(Met 3\.36 and Tyr 3\.37, preceded by a variable residue at 3\.35; carried by 30 of 283 Class A receptors \(GPCompaRe study\)\)<\/span>/);
+  assert.ok(!/novel|PAR-specific/i.test(out));
+  // the x of the window and a receptor without the motif
+  const x = (await search('PAR2 3.35', loader)).results[0];
+  assert.deepEqual(x.motifs.map((m) => [m.key, m.required, m.carried]), [['xmy', false, true]]);
+  assert.match(renderAnswer(await search('PAR2 3.35', loader), 'PAR2 3.35', OPTS2).html, /the variable x of the window/);
+  const adrb2 = (await search('ADRB2 M3.36', loader)).results[0];
+  assert.deepEqual(adrb2.motifs.map((m) => [m.key, m.carried]), [['xmy', false]]);
+  const h = renderAnswer(await search('ADRB2 M3.36', loader), 'ADRB2 M3.36', OPTS2).html;
+  assert.ok(!/xMY/.test(/<ul class="sr-tiles">[^]*?<\/ul>/.exec(h)[0]), 'no xMY badge on a receptor without it');
+  assert.match(h, /<dt>Motif<\/dt><dd><span class="sr-na">not a motif position<\/span>/);
+  // the count, from the index
+  const S = shardsFor(loader);
+  const meta = await S.meta();
+  let n = 0;
+  for (const rec of meta.receptors) {
+    const res = await S.residues(rec.gid);
+    const p36 = res.findGeneric('3.36', null)[0]; const p37 = res.findGeneric('3.37', null)[0];
+    if (p36 && p37 && res.residue(p36).aa === 'M' && res.residue(p37).aa === 'Y') n += 1;
+  }
+  assert.equal(n, 30);
+  // the bare word resolves as a motif
+  const bare = await search('xMY', loader);
+  assert.equal(bare.interpretation.kind, 'motif');
+  assert.deepEqual(bare.motif.positions, ['3.35', '3.36', '3.37']);
+});
+
+test('W6: the section nav lists every section of the card in order and every target exists', { skip }, async () => {
+  const out = renderAnswer(await search('DRD2 S311C', loader), 'DRD2 S311C', OPTS2).html;
+  const nav = /<nav class="sr-nav" aria-label="Sections of this result"><ul>([^]*?)<\/ul><\/nav>/.exec(out)?.[1];
+  assert.ok(nav, 'nav drawn');
+  const items = [...nav.matchAll(/<a href="#(sr-0-\w+)" data-nav="0">([^<]+)<\/a>/g)].map((m) => [m[1], m[2]]);
+  assert.deepEqual(items, [['sr-0-summary', 'Summary'], ['sr-0-structure', 'Contacts and structure'], ['sr-0-region', 'Receptor map'], ['sr-0-predictions', 'Predictions'], ['sr-0-population', 'Population'], ['sr-0-clinical', 'Clinical'], ['sr-0-refs', 'Notations and references']]);
+  for (const [id] of items) assert.ok(out.includes(`id="${id}"`), id);
+  assert.ok(out.indexOf('<nav class="sr-nav"') < out.indexOf('<ul class="sr-tiles">'));
+  // the compact identifier line under the title
+  assert.match(out, /<p class="sr-idline"><span class="mono">NM_000795\.4:c\.932C&gt;G<\/span><span class="sr-dot" aria-hidden="true">·<\/span><a class="sr-ext mono" href="https:\/\/gnomad[^"]*11-113412762-G-C/);
 });

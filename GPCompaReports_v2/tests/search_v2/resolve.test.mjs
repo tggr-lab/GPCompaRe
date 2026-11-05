@@ -736,7 +736,10 @@ describe('variant card evidence: per-substitution AlphaMissense, contacts, motif
     const abs = r.contacts.map((c) => Math.abs(c.delta));
     assert.deepEqual(abs, [...abs].sort((a, b) => b - a));
     assert.deepEqual(r.contacts.map((c) => c.partnerPos), [130, 141, 68]);
-    assert.deepEqual(r.contacts[0], { a: 130, b: 131, partnerPos: 130, partnerAa: 'D', partnerGeneric: '3.49x49', partnerSegment: 'TM3', delta: -5.67, active: 0.38, inactive: 6.05 });
+    assert.deepEqual(r.contacts[0], { a: 130, b: 131, partnerPos: 130, partnerAa: 'D', partnerGeneric: '3.49x49', partnerSegment: 'TM3', partnerCfr: true, partnerCfrRank: 4, partnerMotifs: ['DRY motif'], delta: -5.67, active: 0.38, inactive: 6.05 });
+    assert.deepEqual(r.rank, { of: 413, rank: 17, withContact: 357 });
+    assert.equal(r.track.length, 413);
+    assert.ok(r.track.cfr.includes(131) && r.track.segments.some(([n]) => n === 'TM3'));
     for (const c of r.contacts) {
       assert.ok(Math.abs(c.delta) >= r.summary.threshold - 0.005, 'above the threshold');
       assert.ok(Math.abs(c.active - c.inactive - c.delta) < 0.011, 'ΔRRCS = active - inactive');

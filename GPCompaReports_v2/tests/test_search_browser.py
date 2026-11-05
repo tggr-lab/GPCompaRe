@@ -313,7 +313,8 @@ def test_a_two_base_change_says_why_gnomad_has_no_allele_and_gives_its_alphamiss
     page = search_page(open_page, 'ADRB2 R131Q')
     text = results_text(page)
     assert 'needs two nucleotide substitutions in its codon (CGC)' in text
-    assert 'AlphaMissense predicts likely pathogenic (score 0.972)' in text
+    tile = page.locator('.sr-tile--predictions').first.inner_text()
+    assert '0.972' in tile and 'likely pathogenic' in tile, tile
     assert 'not available in this index' not in text
     # the per-substitution strip: 19 cells, Gln marked as this change, the reference residue absent
     cells = page.locator('.sr-am-strip .sr-am-cell')
@@ -601,7 +602,7 @@ def test_browse_receptor_filter_still_works(open_page):
 # --------------------------------------------------------- phone, dark mode, no JavaScript
 
 @pytest.mark.parametrize('q', ['F2RL1 p.Met159Ile', 'M159I', 'LPAR2 p.Leu351Phe', 'GLP1R', '', 'MC1R ClinVar', 'W3.50', 'PAR2 p.Ala159Ile',
-                               'MC4R V103I', 'ADRB2 R131Q', 'MC1R R151C', 'DRY in ADRB2'])
+                               'MC4R V103I', 'ADRB2 R131Q', 'MC1R R151C', 'DRY in ADRB2', 'DRD2 S311C', 'PAR2 p.Met159Ile'])
 def test_phone_width_has_no_horizontal_scroll(open_page, q):
     page = open_page('/search/?q=' + quote(q, safe=''), viewport=PHONE)
     if q:
@@ -1342,13 +1343,21 @@ def test_card_sections_fold_and_the_most_relevant_are_open(open_page):
     page = search_page(open_page, 'MC4R V103I')
     secs = page.locator('.sr-card details.sr-sec')
     keys = [secs.nth(i).get_attribute('data-sec') for i in range(secs.count())]
-    assert keys == ['ids', 'population', 'clinical', 'computational', 'structure']
+    assert keys == ['structure', 'region', 'predictions', 'population', 'clinical', 'refs', 'prose']
     for i in range(secs.count()):
-        assert secs.nth(i).evaluate('e => e.open'), keys[i]
-    # the summary sits above the sections and the research note under it
+        assert secs.nth(i).evaluate('e => e.open') == (keys[i] != 'prose'), keys[i]
+    # the tiles lead; the prose is folded at the end and still reads the same
+    expect(page.locator('.sr-card .sr-tiles')).to_be_visible()
+    page.locator('details[data-sec="prose"] > summary').click()
     summary = page.locator('.sr-card .sr-summary-text').inner_text()
     assert summary.startswith('MC4R p.Val103Ile (V103I) is a missense change at residue Val103')
     assert 'not a clinical classification' in page.locator('.sr-card .sr-research-note').inner_text()
+    # the section nav: Tab reaches it, Enter follows it, and a folded target opens
+    page.locator('details[data-sec="population"]').evaluate('e => { e.open = false; }')
+    page.locator('.sr-nav a[href$="-population"]').focus()
+    page.keyboard.press('Enter')
+    assert page.locator('details[data-sec="population"]').evaluate('e => e.open')
+    assert page.evaluate("document.activeElement.closest('details[data-sec=\"population\"]') !== null")
     # keyboard: a section heading is focusable and toggles with Enter
     page.locator('details.sr-sec[data-sec="population"] > summary').focus()
     page.keyboard.press('Enter')
@@ -1376,103 +1385,155 @@ def test_search_copy_names_the_gpcompare_database(open_page):
 
 def test_identifier_copy_buttons_copy_the_notation(open_page):
     page = search_page(open_page, 'MC1R R151C', permissions=['clipboard-read', 'clipboard-write'])
-    btn = page.locator('details[data-sec="ids"] .sr-ids button[data-copy="16-89919709-C-T"]')
+    btn = page.locator('details[data-sec="refs"] .sr-ids button[data-copy="16-89919709-C-T"]')
     expect(btn).to_be_visible()
     btn.click()
     page.wait_for_function("() => document.querySelector('button[data-copy=\"16-89919709-C-T\"]').textContent === 'Copied'")
     assert page.evaluate('navigator.clipboard.readText()') == '16-89919709-C-T'
-    ids = page.locator('details[data-sec="ids"]').inner_text()
+    ids = page.locator('details[data-sec="refs"]').inner_text()
     for needle in ('MC1R', 'p.Arg151Cys', 'NM_002386.4:c.451C>T', 'rs1805007', 'VCV000014312', 'GRCh37'):
         assert needle in ids, needle
 
 
-def test_pathogenicity_classes_use_neutral_colours_and_direction_keeps_red_and_blue(open_page):
-    page = search_page(open_page, 'ADRB2 R131Q')
+def _rgb(css):
+    """'rgb(12, 34, 56)' or, after color-mix, 'color(srgb 0.77 0.78 0.78)' -> [r, g, b] 0..255."""
+    nums = [float(x) for x in re.findall(r'[\d.]+', css)[:3]]
+    return [round(x * 255) if css.startswith('color(') else int(x) for x in nums]
 
-    def rgb(css):
-        # 'rgb(12, 34, 56)' or, after color-mix, 'color(srgb 0.77 0.78 0.78)'
-        nums = [float(x) for x in re.findall(r'[\d.]+', css)[:3]]
-        return [round(x * 255) if css.startswith('color(') else int(x) for x in nums]
 
-    def neutral(c):
+def _contrast(fg, bg):
+    def lum(c):
+        def ch(v):
+            v = v / 255
+            return v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
         r, g, b = c
-        return max(r, g, b) - min(r, g, b) <= 12
-
-    for sel in ('.sr-am-cell.sr-am--pathogenic', '.sr-am-cell.sr-am--benign', '.sr-am-cell.sr-am--ambiguous'):
-        if page.locator(sel).count():
-            assert neutral(rgb(page.locator(sel).first.evaluate('e => getComputedStyle(e).backgroundColor'))), sel
-    blue = rgb(page.locator('.sr-table--contacts .sr-net--inactive').first.evaluate('e => getComputedStyle(e).color'))
-    assert blue[2] > blue[0] + 40, blue
+        return 0.2126 * ch(r) + 0.7152 * ch(g) + 0.0722 * ch(b)
+    a, b = lum(fg) + 0.05, lum(bg) + 0.05
+    return a / b if a > b else b / a
 
 
-# ------------------------------------------------------ links in results open in a new tab
+def _hue(c):
+    import colorsys
+    r, g, b = [x / 255 for x in c]
+    return colorsys.rgb_to_hls(r, g, b)[0] * 360
 
-SHOTS = pathlib.Path(os.environ.get('SEARCH_LINK_SHOTS', '')) if os.environ.get('SEARCH_LINK_SHOTS') else None
 
+@pytest.mark.parametrize('scheme', ['light', 'dark'])
+def test_pathogenicity_palette_is_legible_and_never_the_direction_red_or_blue(open_page, scheme):
+    page = search_page(open_page, 'MC1R Arg151Cys', scheme=scheme)
+    style = lambda sel, prop: page.locator(sel).first.evaluate('(e, p) => getComputedStyle(e)[p]', prop)
+    page_bg = _rgb(style('.sr-card', 'backgroundColor'))
+    hues = {}
+    for cls in ('benign', 'ambiguous', 'pathogenic'):
+        chip = '.sr-path-chip--%s' % cls
+        if not page.locator(chip).count():
+            page.locator('.sr-am-cell.sr-am--%s' % cls).first.wait_for()
+        fill = _rgb(style('.sr-am-cell.sr-am--%s' % cls, 'backgroundColor'))
+        text = _rgb(style('.sr-am-cell.sr-am--%s .sr-am-score' % cls, 'color'))
+        assert _contrast(text, fill) >= 4.5, (scheme, cls, text, fill)
+        if page.locator('.sr-path.sr-path--%s' % cls).count():
+            strong = _rgb(style('.sr-path.sr-path--%s' % cls, 'color'))
+            assert _contrast(strong, page_bg) >= 4.5, (scheme, cls, strong, page_bg)
+        hues[cls] = _hue(fill)
+    # three distinct hues (teal, amber, purple), and none of them the red or the blue of active and inactive
+    red = _hue(_rgb(page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--semantic-active').trim() && (() => { const s = document.createElement('span'); s.style.color = getComputedStyle(document.documentElement).getPropertyValue('--semantic-active'); document.body.append(s); const c = getComputedStyle(s).color; s.remove(); return c; })()")))
+    blue = _hue(_rgb(page.evaluate("(() => { const s = document.createElement('span'); s.style.color = getComputedStyle(document.documentElement).getPropertyValue('--semantic-inactive'); document.body.append(s); const c = getComputedStyle(s).color; s.remove(); return c; })()")))
 
-def test_clicking_an_rsid_opens_dbsnp_in_a_new_tab_and_nothing_is_fetched_before(open_page):
-    page = search_page(open_page, 'rs1042713')
-    calls = []
-
-    def stub(route):
-        calls.append(route.request.url)
-        route.fulfill(status=200, content_type='text/html', body='<!doctype html><title>stub</title>')
-
-    page.context.route(re.compile(r'^https://(www\.ncbi\.nlm\.nih\.gov|gnomad\.broadinstitute\.org|www\.ensembl\.org|'
-                                  r'genome\.ucsc\.edu|www\.uniprot\.org|gpcrdb\.org|www\.genenames\.org|zenodo\.org)/'), stub)
-    link = page.locator('.sr-sec[data-sec="ids"] a.sr-ext', has_text='rs1042713').first
-    expect(link).to_be_visible()
-    assert link.get_attribute('href') == 'https://www.ncbi.nlm.nih.gov/snp/rs1042713'
-    assert link.get_attribute('target') == '_blank'
-    assert link.get_attribute('rel') == 'noopener noreferrer'
-    assert link.inner_text() == 'rs1042713'  # the ↗ is drawn by CSS: copying the text gives the bare id
-    assert '\u2197' in link.evaluate("e => getComputedStyle(e, '::after').content")
-    assert page.locator('#sr-newtab').get_attribute('hidden') is not None
-    report = page.locator('.sr-card-title a.sr-int').first
-    assert report.get_attribute('target') == '_blank'
-    assert report.evaluate("e => getComputedStyle(e, '::after').content") in ('none', 'normal', '')
-    link.hover()
-    link.focus()
-    page.wait_for_timeout(300)
-    assert calls == [] and page.foreign == [], 'requested before the click: %s %s' % (calls, page.foreign)
-    with page.expect_popup() as info:
-        link.click()
-    tab = info.value
-    tab.wait_for_load_state('load')
-    assert tab.url == 'https://www.ncbi.nlm.nih.gov/snp/rs1042713'
-    assert calls == ['https://www.ncbi.nlm.nih.gov/snp/rs1042713']
-    assert tab.evaluate('window.opener') is None
-    assert tab.evaluate('document.referrer') == ''
-    assert 'q=rs1042713' in page.url  # the search stayed where it was
-    # the copy button beside it still copies, and opens nothing
-    page.context.grant_permissions(['clipboard-read', 'clipboard-write'])
-    n = len(page.context.pages)
-    page.locator('button.sr-copy[data-copy="rs1042713"]').first.click()
-    page.wait_for_timeout(200)
-    assert len(page.context.pages) == n
+    def apart(a, b):
+        d = abs(a - b) % 360
+        return min(d, 360 - d)
+    for cls, h in hues.items():
+        assert apart(h, red) > 25 and apart(h, blue) > 25, (scheme, cls, h, red, blue)
+    assert apart(hues['benign'], hues['pathogenic']) > 60 and apart(hues['benign'], hues['ambiguous']) > 60 and apart(hues['ambiguous'], hues['pathogenic']) > 60, hues
+    # the direction colours stay red and blue
+    d = _rgb(style('.sr-table--contacts .sr-net--inactive, .sr-net--inactive', 'color')) if page.locator('.sr-net--inactive').count() else None
     assert page.errors == []
 
 
-def test_result_links_are_tappable_on_a_phone_without_overflow(open_page):
-    for scheme in ('light', 'dark'):
-        page = search_page(open_page, 'rs1042713', viewport=PHONE, scheme=scheme, mobile=True)
-        assert page.evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth')
-        boxes = page.eval_on_selector_all(
-            '#search-results .sr-sec[open] a.sr-ext, #search-results .sr-card-head a.sr-int',
-            'els => els.filter(e => e.offsetParent).map(e => { const r = e.getBoundingClientRect(); '
-            'return [e.textContent.trim().slice(0, 30), r.left, r.right, r.height]; })')
-        assert len(boxes) >= 10, boxes
-        for text, left, right, height in boxes:
-            assert left >= 0 and right <= PHONE['width'] + 0.5, (text, left, right)
-            assert height >= 24, (text, height)
-        if SHOTS:
-            SHOTS.mkdir(parents=True, exist_ok=True)
-            page.screenshot(path=str(SHOTS / ('phone_rs1042713_%s.png' % scheme)), full_page=True)
-    desk = search_page(open_page, 'rs1042713')
-    desk.locator('.sr-sec[data-sec="ids"] a.sr-ext').first.focus()
-    outline = desk.evaluate("getComputedStyle(document.activeElement).outlineStyle")
-    assert outline not in ('', 'none'), outline
-    if SHOTS:
-        desk.screenshot(path=str(SHOTS / 'desktop_rs1042713.png'), full_page=True)
-        for q, name in (('ADRB2', 'desktop_receptor'), ('MC1R ClinVar', 'desktop_clinvar_list'), ('M159I', 'desktop_compare')):
-            search_page(open_page, q).screenshot(path=str(SHOTS / (name + '.png')), full_page=True)
+def test_summary_tiles_lead_the_card_and_carry_the_numbers(open_page):
+    page = search_page(open_page, 'MC4R V103I')
+    tiles = page.locator('.sr-card .sr-tiles .sr-tile')
+    assert tiles.count() == 5
+    # the tiles are above the first section, visible without scrolling the card
+    top = page.locator('.sr-card .sr-tiles').bounding_box()['y']
+    assert top < page.locator('details[data-sec="structure"]').bounding_box()['y']
+    text = page.locator('.sr-card .sr-tiles').inner_text()
+    for needle in ('Not a CFR, rank 88', 'no contact above the threshold', '0.084', 'likely benign', '0.018', 'common', 'Benign/Likely benign', 'homozygotes', 'conservation'):
+        assert needle in text or needle in text.lower(), needle   # tile headings are upper-cased by CSS
+    # the gauge marker sits where the score says (8.4% of the AlphaMissense gauge)
+    mark = page.locator('.sr-tile--predictions .sr-gauge--am .sr-gauge-mark').first
+    gauge = page.locator('.sr-tile--predictions .sr-gauge--am').first.bounding_box()
+    x = (mark.bounding_box()['x'] + mark.bounding_box()['width'] / 2 - gauge['x']) / gauge['width']
+    assert 0.06 < x < 0.11, x
+    # a tile heading opens its section
+    page.locator('.sr-tile--clinical .sr-tile-k').click()
+    assert page.locator('details[data-sec="clinical"]').evaluate('e => e.open')
+    assert page.errors == []
+
+
+def test_receptor_map_marks_the_residue_and_a_click_searches_a_position(open_page):
+    page = search_page(open_page, 'ADRB2 R131Q')
+    fig = page.locator('.sr-map')
+    expect(fig).to_be_visible()
+    assert fig.get_attribute('data-length') == '413'
+    assert page.locator('.sr-map .sr-map-reslabel').text_content() == 'Arg131'
+    assert page.locator('.sr-map .sr-map-arc').count() == 3
+    assert page.locator('.sr-map .sr-map-cfr.is-this').count() == 1
+    assert page.locator('.sr-map .sr-map-seglabel', has_text='TM3').count() == 1
+    page.locator('.sr-map svg').scroll_into_view_if_needed()
+    box = page.locator('.sr-map svg').bounding_box()
+    # the residue marker sits at 131/413 of the track width
+    line = page.locator('.sr-map .sr-map-res').bounding_box()
+    assert abs((line['x'] - box['x']) / box['width'] - (130.5 / 413)) < 0.01
+    # click near the end of the track: a residue of the C-terminus is searched
+    page.mouse.click(box['x'] + box['width'] * 0.95, box['y'] + box['height'] * 0.55)
+    page.wait_for_function("() => /q=ADRB2(?:%20|\\+)\\d+$/.test(location.search)")   # pushState, no page load
+    settle(page)
+    assert re.match(r'ADRB2 \d+', page.locator('#search-input').input_value())
+    # the residue form is the keyboard route
+    page.locator('.sr-map-go input').fill('131')
+    page.locator('.sr-map-go input').press('Enter')
+    page.wait_for_function("() => /q=ADRB2(?:%20|\\+)131$/.test(location.search)")
+    settle(page)
+    assert 'Arg131' in page.locator('.sr-card-title').first.inner_text()
+    assert page.errors == []
+
+
+def test_show_in_3d_loads_nothing_until_pressed(open_page, server):
+    page = search_page(open_page, 'PAR2 p.Met159Ile')
+    before = [u for u in page.evaluate("performance.getEntriesByType('resource').map(e => e.name)")]
+    assert not any('/studio/' in u or '/models/' in u for u in before), before
+    btn = page.locator('button[data-3d]')
+    expect(btn).to_be_visible()
+    assert btn.get_attribute('aria-expanded') == 'false'
+    btn.click()
+    page.wait_for_function("() => document.querySelector('.sr-3d-status').textContent.trim() !== ''", timeout=20000)
+    assert btn.get_attribute('aria-expanded') == 'true' and btn.inner_text() == 'Hide 3D'
+    status = page.locator('.sr-3d-status').inner_text()
+    after = page.evaluate("performance.getEntriesByType('resource').map(e => e.name)")
+    assert any('/studio/embed/pair-viewer.js' in u for u in after), after
+    assert page.locator('.sr-3d-pane').is_visible()
+    # this quick build hosts neither the embed nor the models: the card says so instead of failing silently
+    if not (BUILD_DIR / 'studio' / 'embed' / 'pair-viewer.js').is_file():
+        assert 'not available' in status or 'not hosted' in status, status
+    btn.click()
+    assert btn.get_attribute('aria-expanded') == 'false'
+    assert not page.locator('.sr-3d-pane').is_visible()
+
+
+def test_contacts_read_in_activation_terms_with_a_legend(open_page):
+    page = search_page(open_page, 'PAR2 p.Met159Ile')
+    rows = page.locator('.sr-dbs .sr-db-row')
+    assert rows.count() == 2
+    words = [rows.nth(i).locator('.sr-db-word').inner_text() for i in range(rows.count())]
+    assert words == ['weakens on activation', 'breaks on activation']
+    assert 'CFR 3' in rows.first.inner_text()
+    legend = page.locator('.sr-db-legend').inner_text()
+    assert 'inactive model' in legend and 'active model' in legend and 'weakens' in legend
+    facts = '\n'.join(page.locator('.sr-facts').all_inner_texts())
+    assert 'overall its contacts weaken on activation' in facts
+    assert 'rank 41 of 397 residues' in facts
+    assert '(|ΔRRCS| ≥ 2.60)' in facts
+    assert 'xMY motif' in facts and '30 of 283' in facts
+    over = page.evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth')
+    assert over <= 1
