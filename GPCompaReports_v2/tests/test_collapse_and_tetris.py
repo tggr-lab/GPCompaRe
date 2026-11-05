@@ -1,4 +1,4 @@
-"""Nothing on a report folds away for good, and the RRCS Tetris block can be found by chance.
+"""Nothing on a report folds away for good, and RRCS Tetris opens from a small gamepad.
 
 1. The collapse trap (owner report, 2026-11-05). "Compact view" folds every report section
    to its heading with one click and is remembered in localStorage, so every reload and
@@ -10,9 +10,10 @@
    anything is folded, and a link that lands on a folded section opens it.
    The general rule is checked for every collapsible part of the page: fold it with its
    control, find a visible control to bring it back, use it, reload, and do it again.
-2. Tetris: a small block next to the "ΔRRCS distribution" heading; lingering on the
-   histogram or clicking a bar wiggles it once and shows a one-line hint that starts the
-   game. Idle pages and phones show only the block; no motion under reduced motion.
+2. Tetris (owner, 2026-11-05): "a small pixel-art gamepad that opens the game, with 'Play
+   Tetris' as the tooltip". The gamepad sits next to the "ΔRRCS distribution" heading: crisp
+   pixel rects in currentColor, title and accessible name "Play Tetris", opened by click, tap,
+   Enter or Space, a 32 px target on phones. No hint text and no motion of its own.
 
 Browser checks drive a built site in headless Chromium (SMOKE_BUILD_DIR / FREEZE_BUILD_DIR,
 as tests/test_report_v3.py) and skip without Playwright or a build.
@@ -319,90 +320,114 @@ def test_snake_loops_fold_and_unfold_from_their_own_label(new_page):
         assert page.evaluate(vis, seg) == first
 
 
-# ---- 3. Tetris: easy to stumble on, calm when idle ----------------------------------------
+# ---- 3. Tetris: a pixel-art gamepad, calm when idle ---------------------------------------
 
 def _tetris_ready(page):
     page.locator('.rrcs-tetris-toggle').scroll_into_view_if_needed()
     page.wait_for_function("document.getElementById('delta-chart').dataset.chartRendered === '1'")
 
 
+def _box(page, sel):
+    return page.evaluate("(s => { var r = document.querySelector(s).getBoundingClientRect(); return [r.width, r.height]; })", sel)
+
+
 @needs_build
-def test_the_block_is_there_and_quiet_until_the_reader_lingers(new_page):
+def test_the_gamepad_is_there_named_play_tetris_and_opens_the_game(new_page):
     page = new_page(_pick('id="delta-chart"'), plotly=False)
     btn = page.locator('.rrcs-tetris-toggle')
     assert btn.count() == 1 and btn.is_visible()
-    assert btn.locator('svg.rrcs-tetris-icon rect').count() == 4
-    assert float(btn.evaluate('b => getComputedStyle(b).opacity')) >= 0.6, 'the block is too faint to find'
-    assert btn.get_attribute('aria-label') == 'Play RRCS Tetris'
-    assert page.locator('.rrcs-tetris-hint').is_hidden()
-    assert 'is-wiggle' not in (btn.get_attribute('class') or '')
-    # the hint and the block are not in the approved section's built text
-    assert page.locator('.rrcs-tetris-hint').count() == 1
-    # keyboard: Tab reaches the block, Enter starts the game
-    btn.focus()
-    page.keyboard.press('Enter')
+    assert btn.get_attribute('title') == 'Play Tetris'
+    assert btn.get_attribute('aria-label') == 'Play Tetris'
+    icon = btn.locator('svg.rrcs-tetris-icon')
+    assert icon.get_attribute('shape-rendering') == 'crispEdges'
+    assert icon.get_attribute('fill') == 'currentColor'
+    assert icon.get_attribute('aria-hidden') == 'true'
+    # pixel art: whole-pixel rects on a small grid, one pixel tall
+    rects = page.evaluate("""Array.from(document.querySelectorAll('.rrcs-tetris-icon rect')).map(r =>
+        ['x', 'y', 'width', 'height'].map(k => parseFloat(r.getAttribute(k))))""")
+    assert len(rects) >= 8
+    assert all(v == int(v) for r in rects for v in r) and all(r[3] == 1 for r in rects)
+    w, h = _box(page, '.rrcs-tetris-icon')
+    assert 20 <= w <= 24 and 12 <= h <= 24, (w, h)
+    bw, bh = _box(page, '.rrcs-tetris-toggle')
+    assert bw >= 32 and bh >= 32, (bw, bh)
+    assert float(btn.evaluate('b => getComputedStyle(b).opacity')) >= 0.6, 'the gamepad is too faint to find'
+    # no hint text and no T block any more
+    assert page.locator('.rrcs-tetris-hint').count() == 0
+    assert 'RRCS Tetris' not in (btn.get_attribute('title') or '') + btn.inner_text()
+    btn.click()
     page.wait_for_timeout(200)
     assert page.locator('.rrcs-tetris').is_visible()
+    assert page.locator('#delta-chart').is_hidden()
+    assert btn.get_attribute('aria-pressed') == 'true'
+    page.click('.rrcs-tetris [data-a="exit"]')
+    assert page.locator('#delta-chart').is_visible()
+    assert _errors(page) == []
+
+
+@needs_build
+@pytest.mark.parametrize('key', ['Enter', 'Space'])
+def test_the_gamepad_opens_the_game_from_the_keyboard(new_page, key):
+    page = new_page(_pick('id="delta-chart"'), plotly=False)
+    btn = page.locator('.rrcs-tetris-toggle')
+    btn.focus()
+    assert page.evaluate("document.activeElement.classList.contains('rrcs-tetris-toggle')")
+    page.keyboard.press(key)
+    page.wait_for_timeout(200)
+    assert page.locator('.rrcs-tetris').is_visible()
+    # Escape returns to the chart and the focus to the gamepad
+    page.keyboard.press('Escape')
+    page.wait_for_timeout(100)
+    assert page.locator('#delta-chart').is_visible()
+    assert page.evaluate("document.activeElement.classList.contains('rrcs-tetris-toggle')")
+
+
+@needs_build
+@pytest.mark.parametrize('dark', [False, True])
+def test_the_gamepad_takes_the_text_colour_in_light_and_dark(new_page, dark):
+    page = new_page(_pick('id="delta-chart"'), plotly=False, dark=dark)
+    if dark:
+        page.evaluate("document.documentElement.setAttribute('data-color-mode', 'dark')")
+    c = page.evaluate("""(() => { var b = document.querySelector('.rrcs-tetris-toggle');
+        var r = b.querySelector('rect');
+        return [getComputedStyle(b).color, getComputedStyle(r).fill]; })()""")
+    assert c[0] == c[1], c
 
 
 @needs_build
 @needs_plotly
-def test_lingering_on_the_histogram_offers_the_game_once(new_page):
-    page = new_page(_pick('id="delta-chart"'), wait=1200)
+def test_lingering_or_a_bar_click_brings_up_nothing(new_page):
+    page = new_page(_pick('id="delta-chart"'), reduced_motion='reduce', wait=1200)
     _tetris_ready(page)
-    hint = page.locator('.rrcs-tetris-hint')
     page.hover('#delta-chart', position={'x': 200, 'y': 160})
     page.wait_for_timeout(1100)
-    assert hint.is_visible()
-    assert 'is-wiggle' in page.get_attribute('.rrcs-tetris-toggle', 'class') or \
-        page.evaluate("getComputedStyle(document.querySelector('.rrcs-tetris-icon')).animationName") != 'none'
-    assert '—' not in hint.inner_text()
-    hint.click()
+    idx = page.evaluate("""(() => { var ps = Array.from(document.querySelectorAll('#delta-chart .barlayer path'));
+      var best = 0, h = 0; ps.forEach((p, i) => { var r = p.getBoundingClientRect(); if (r.height > h) { h = r.height; best = i; } });
+      return best; })()""")
+    box = page.locator('#delta-chart .barlayer path').nth(idx).bounding_box()
+    page.mouse.click(box['x'] + box['width'] / 2, box['y'] + box['height'] - 4)
     page.wait_for_timeout(300)
-    assert page.locator('.rrcs-tetris').is_visible()
-    assert page.locator('#delta-chart').is_hidden()
-    assert hint.is_hidden()
-    page.click('.rrcs-tetris [data-a="exit"]')
-    assert page.locator('#delta-chart').is_visible()
-    # played once in this browser: the hint stays away, the block stays
-    page.reload(wait_until='load')
-    page.wait_for_timeout(1200)
-    _tetris_ready(page)
-    page.hover('#delta-chart', position={'x': 200, 'y': 160})
-    page.wait_for_timeout(1100)
-    assert page.locator('.rrcs-tetris-hint').is_hidden()
-    assert page.locator('.rrcs-tetris-toggle').is_visible()
+    assert page.locator('.rrcs-tetris-hint').count() == 0
+    assert page.evaluate("getComputedStyle(document.querySelector('.rrcs-tetris-icon')).animationName") == 'none'
+    assert page.evaluate("getComputedStyle(document.querySelector('.rrcs-tetris-toggle')).transitionDuration") in ('0s', '0s, 0s, 0s, 0s')
+    assert page.locator('#delta-chart').is_visible(), 'a bar click never starts the game by itself'
     assert _errors(page) == []
 
 
 @needs_build
 @needs_plotly
-def test_a_click_on_a_bar_offers_the_game_without_motion_under_reduced_motion(new_page):
-    page = new_page(_pick('id="delta-chart"'), reduced_motion='reduce', wait=1200)
-    _tetris_ready(page)
-    bar = page.locator('#delta-chart .barlayer path').nth(0)
-    # the tallest bar, so the click lands on it
-    idx = page.evaluate("""(() => { var ps = Array.from(document.querySelectorAll('#delta-chart .barlayer path'));
-      var best = 0, h = 0; ps.forEach((p, i) => { var r = p.getBoundingClientRect(); if (r.height > h) { h = r.height; best = i; } });
-      return best; })()""")
-    bar = page.locator('#delta-chart .barlayer path').nth(idx)
-    box = bar.bounding_box()
-    page.mouse.click(box['x'] + box['width'] / 2, box['y'] + box['height'] - 4)
-    page.wait_for_timeout(300)
-    assert page.locator('.rrcs-tetris-hint').is_visible()
-    assert page.evaluate("getComputedStyle(document.querySelector('.rrcs-tetris-icon')).animationName") == 'none'
-    assert page.evaluate("getComputedStyle(document.querySelector('.rrcs-tetris-hint')).animationName") == 'none'
-    assert page.locator('#delta-chart').is_visible(), 'a bar click never starts the game by itself'
-
-
-@needs_build
-@needs_plotly
-def test_on_a_phone_the_block_shows_and_nothing_pops_up_on_its_own(new_page):
+def test_on_a_phone_the_gamepad_is_a_tappable_target(new_page):
     page = new_page(_pick('id="delta-chart"'), viewport=PHONE, touch=True, dark=True, wait=1200)
     _tetris_ready(page)
     page.evaluate("window.scrollBy(0, 200)")
     page.wait_for_timeout(1000)
-    assert page.locator('.rrcs-tetris-toggle').is_visible()
-    assert page.locator('.rrcs-tetris-hint').is_hidden()
+    btn = page.locator('.rrcs-tetris-toggle')
+    assert btn.is_visible()
+    bw, bh = _box(page, '.rrcs-tetris-toggle')
+    assert bw >= 32 and bh >= 32, (bw, bh)
+    assert page.locator('.rrcs-tetris-hint').count() == 0
     # the heading row still fits the phone
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+    btn.tap()
+    page.wait_for_timeout(300)
+    assert page.locator('.rrcs-tetris').is_visible()

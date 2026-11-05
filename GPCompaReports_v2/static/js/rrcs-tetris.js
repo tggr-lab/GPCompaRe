@@ -5,14 +5,10 @@
    with real counts on the y-axis and real ΔRRCS values on the x-axis.
    Exit restores the chart.
 
-   Triggers: the small block (a T piece) next to the "ΔRRCS distribution" heading,
-   typing SLIGKV (PAR2's tethered ligand) or the Konami code
-   (↑ ↑ ↓ ↓ ← → ← → B A) anywhere on the page.
-   To be found by chance: resting the pointer on the histogram for a moment, or clicking
-   (tapping) one of its bars, wiggles the block once and shows a one-line hint beside it,
-   "Play RRCS Tetris", which starts the game. Nothing moves or
-   appears until then; once a game has been played in this browser the hint stays away
-   (the block remains). No wiggle under prefers-reduced-motion.
+   Triggers: a small pixel-art gamepad next to the "ΔRRCS distribution" heading (a button,
+   tooltip and accessible name "Play Tetris"; click, tap, Enter or Space), typing SLIGKV
+   (PAR2's tethered ligand) or the Konami code (↑ ↑ ↓ ↓ ← → ← → B A) anywhere on the page.
+   Nothing moves or appears on its own: the gamepad only brightens on hover or focus.
 
    Controls: ← → move · ↑ / X rotate · Z rotate back · ↓ soft drop
              Space hard drop · P pause · Esc exit. Touch buttons on mobile.
@@ -27,12 +23,26 @@
   var ROWS = 20;
   var SEED_MAX_ROWS = 8;
   var BEST_KEY = 'gpcrsynth-rrcs-tetris-best';
-  var SEEN_KEY = 'gpcrsynth-rrcs-tetris-seen';
-  var HOVER_MS = 700;
-  // a T piece, drawn like four histogram cells
-  var ICON = '<svg class="rrcs-tetris-icon" viewBox="0 0 17 12" width="17" height="12" aria-hidden="true" focusable="false">' +
-    '<rect x="0.75" y="6.25" width="5" height="5" rx="1"/><rect x="5.75" y="6.25" width="5" height="5" rx="1"/>' +
-    '<rect x="10.75" y="6.25" width="5" height="5" rx="1"/><rect x="5.75" y="0.75" width="5" height="5" rx="1"/></svg>';
+  // a pixel-art gamepad, 12 x 8 pixels drawn at 2 px each: '#' is a filled pixel; the d-pad and
+  // the two buttons are holes. One rect per run of pixels, crisp edges, in currentColor.
+  var PAD = [
+    '.##########.',
+    '##.########.',
+    '#...######.#',
+    '##.######.##',
+    '############',
+    '#####..#####',
+    '###......###',
+    '.#........#.'
+  ];
+  var ICON = (function() {
+    var rects = '';
+    PAD.forEach(function(row, y) {
+      row.replace(/#+/g, function(run, x) { rects += '<rect x="' + x + '" y="' + y + '" width="' + run.length + '" height="1"/>'; return run; });
+    });
+    return '<svg class="rrcs-tetris-icon" viewBox="0 0 12 8" width="24" height="16" shape-rendering="crispEdges" ' +
+      'fill="currentColor" aria-hidden="true" focusable="false">' + rects + '</svg>';
+  })();
   // Plot margins around the board, in px (roughly the figure's own margins).
   var M = { l: 56, r: 16, t: 44, b: 52 };
 
@@ -701,8 +711,6 @@
     chartEl.hidden = true;
     wrapEl.hidden = false;
     if (ui.toggle) ui.toggle.setAttribute('aria-pressed', 'true');
-    hideHint();
-    try { localStorage.setItem(SEEN_KEY, '1'); } catch (e) {}
     newGame(msg);
     resize();
     reveal();
@@ -724,49 +732,6 @@
     if (window.Plotly && chartEl.data) Plotly.Plots.resize(chartEl);
   }
 
-  // ---------- being found by chance ----------
-
-  function seen() {
-    try { return localStorage.getItem(SEEN_KEY) === '1'; } catch (e) { return false; }
-  }
-  var hinted = false;
-  function nudge() {
-    if (active || !ui.toggle) return;
-    if (!hinted) {
-      hinted = true;
-      ui.toggle.classList.add('is-wiggle');     // CSS drops it under prefers-reduced-motion
-      if (ui.hint && !seen()) ui.hint.hidden = false;
-    }
-  }
-  function hideHint() {
-    if (ui.hint) ui.hint.hidden = true;
-  }
-  // A pointer resting on the histogram (devices that hover), or a click or tap on a bar.
-  function watchForCuriosity() {
-    var timer = null;
-    var canHover = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-    if (canHover) {
-      chartEl.addEventListener('pointerenter', function() {
-        clearTimeout(timer);
-        timer = setTimeout(nudge, HOVER_MS);
-      });
-      chartEl.addEventListener('pointerleave', function() { clearTimeout(timer); });
-    }
-    function hookBars() {
-      if (chartEl.on && !chartEl.dataset.tetrisHooked) {
-        chartEl.dataset.tetrisHooked = '1';
-        chartEl.on('plotly_click', nudge);
-      }
-    }
-    if (chartEl.dataset.chartRendered) hookBars();
-    else if ('MutationObserver' in window) {
-      var mo = new MutationObserver(function() {
-        if (chartEl.dataset.chartRendered) { mo.disconnect(); hookBars(); }
-      });
-      mo.observe(chartEl, { attributes: true, attributeFilter: ['data-chart-rendered'] });
-    }
-  }
-
   function pauseIfPlaying() {
     if (active && state && !state.over) state.paused = true;
   }
@@ -780,22 +745,13 @@
       btn.type = 'button';
       btn.className = 'rrcs-tetris-toggle';
       btn.innerHTML = ICON;
-      btn.title = 'Play RRCS Tetris';
-      btn.setAttribute('aria-label', 'Play RRCS Tetris');
+      btn.title = 'Play Tetris';
+      btn.setAttribute('aria-label', 'Play Tetris');
       btn.setAttribute('aria-pressed', 'false');
+      // a button: click, tap, Enter and Space all arrive here
       btn.addEventListener('click', function() { active ? stop() : start(false); });
-      btn.addEventListener('animationend', function() { btn.classList.remove('is-wiggle'); });
       head.appendChild(btn);
       ui.toggle = btn;
-      var hint = document.createElement('button');
-      hint.type = 'button';
-      hint.className = 'rrcs-tetris-hint';
-      hint.hidden = true;
-      hint.textContent = 'Play RRCS Tetris';
-      hint.addEventListener('click', function() { if (!active) start(false); });
-      head.appendChild(hint);
-      ui.hint = hint;
-      watchForCuriosity();
     }
     document.addEventListener('keydown', onKey);
     window.addEventListener('resize', resize);
