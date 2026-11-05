@@ -137,6 +137,22 @@ GLOSSARY = [
          definition='A generic-numbered position where an above-threshold contact change recurs across many '
                     'receptors (at least three); the Statistics page ranks them.',
          match=[_L + r'CFRs?' + _R, _L + r'Core Functional(?: Residues?)?' + _R]),
+    # the CFR neighbourhood of the search (static/js/search/cfrhood.js): the same top-30 CFR positions as the
+    # search card's CFR flag and the report snake plots (search_index_v2.CFR_TOP)
+    dict(id='cfr-connected', group='The receptor', term='CFR-connected residue',
+         definition="A residue that takes part in a contact above its receptor's ΔRRCS threshold whose partner "
+                    'residue sits at a CFR position in the same receptor. CFR positions here are the 30 top-ranked '
+                    'generic positions of the class-wide CFR ranking, the positions search and the snake plots mark '
+                    'as CFR.',
+         match=[_L + r'CFR-connected(?: residues?)?' + _R, _L + r'[Cc]onnected to a CFR' + _R]),
+    dict(id='cfr-near', group='The receptor', term='Near a CFR',
+         definition='A residue within two residues of a CFR position along the chain, in the same segment (helix, '
+                    'loop or terminus). CFR positions are the same 30 top-ranked class-wide positions.',
+         match=[_L + r'[Nn]ear a CFR(?: in sequence)?' + _R]),
+    dict(id='cfr-touch', group='The receptor', term='In contact with a CFR, below threshold',
+         definition="A residue with a contact to a CFR residue in at least one of the two models (RRCS above 0) that "
+                    "stays below the receptor's threshold.",
+         match=[_L + r'[Ii]n contact with a CFR' + _R]),
     # the definition, with its count, is the motif registry's (motifs.json), the text search shows too
     dict(id='xmy', group='The receptor', term='xMY motif',
          definition=_motifs.motif('xmy')['definition'],
