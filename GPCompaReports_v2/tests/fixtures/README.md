@@ -93,3 +93,22 @@ Refreshes so far:
   Changelog: `~/scratch/2026-11-05_reports_v3/C_REFRESH_CHANGELOG.tsv`. The
   gnomAD label in Methods and Understanding is handled by the approved-edit
   rule `gnomad-release-2026-11-05`, not by the refresh.
+
+## Approved edits of 2026-11-05 (final pass, plan section A)
+
+Fourteen rules at the top of `freeze_approved_deltas.json` (newest first), each with the
+approval, what and why, and an expected rewrite `count` that `test_freeze.py` checks per
+receptor (a number, a marker literal counted in the built sections, or one per recorded
+string), so a rule that matches too little or too much fails:
+
+* wording rows 1 to 10 and the AlphaMissense intervals (`literal`, or
+  `literal_per_receptor` with `values_from: threshold-label-two-decimals` where the
+  sentence carries this receptor's threshold);
+* the snake plot (P1 to P3): `snake-svg-tags-2026-11-05` rewrites the exact `<svg>` tag
+  and moved terminus labels recorded per receptor (`literal_pairs_per_receptor`), and
+  `snake-helix-labels-2026-11-05` / `snake-x50-marks-2026-11-05` delete the two baked
+  groups only when their SHA-256 is the recorded one (`regex_delete_sha`).
+
+The per-receptor record is `snake_svg_changes_2026-11-05.json`, written by
+`scripts/build_snake_svg_record.py` (run by hand; `--check` compares). The baseline
+manifest is unchanged. `tests/test_freeze_negative.py` shows that unrelated edits still fail.

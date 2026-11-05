@@ -69,9 +69,26 @@ def _load_deltas():
 
 
 _REVERSAL = _load_deltas()
+_RULES_BY_ID = {r['id']: r for r in _REVERSAL}
+_FILES = {}
 
 
-def _reverse_approved_edits(body, gpcr_id=None):
+def _values(rule):
+    """Per-receptor values of a rule: its own, another rule's ('values_from'), or a fixture file's
+    ('values_file' + 'values_key', one entry per receptor)."""
+    if 'values' in rule:
+        return rule['values']
+    if 'values_from' in rule:
+        return _values(_RULES_BY_ID[rule['values_from']])
+    name = rule['values_file']
+    if name not in _FILES:
+        data = json.loads((DELTAS_PATH.parent / name).read_text(encoding='utf-8'))
+        _FILES[name] = data
+    key = rule['values_key']
+    return {gid: rec[key] for gid, rec in _FILES[name].items() if key in rec}
+
+
+def _reverse_approved_edits(body, gpcr_id=None, counts=None):
     """Undo the approved edits so the section can be compared to the baseline.
 
     Deliberately narrow. A literal rule rewrites one exact string, and the
@@ -80,27 +97,86 @@ def _reverse_approved_edits(body, gpcr_id=None):
     receptor: it rewrites only the strings recorded for this gpcr_id, and does
     nothing for a receptor it has no entry for (so that receptor fails). None
     of them can absorb an unrelated change.
+
+    Two kinds added with the 2026-11-05 approval (snake plot, P1 to P3):
+    literal_pairs_per_receptor rewrites the exact [after, before] strings recorded for this
+    receptor (values_file), and regex_delete_sha deletes what its pattern matches only when
+    the match's SHA-256 is the one recorded for this receptor; anything else is left in place
+    (so the hash fails). counts, when given, collects rule id -> number of rewrites, which
+    _check_counts compares with each rule's expected 'count'.
     """
+    def tally(rule, n):
+        if counts is not None:
+            counts[rule['id']] = counts.get(rule['id'], 0) + n
+
     for rule in _REVERSAL:
-        if rule['kind'] == 'literal':
+        kind = rule['kind']
+        if kind == 'literal':
+            tally(rule, body.count(rule['after']))
             body = body.replace(rule['after'], rule['before'])
-        elif rule['kind'] == 'regex_delete':
-            body = re.sub(rule['pattern'], '', body)
-        elif rule['kind'] == 'literal_per_receptor':
-            values = rule['values'].get(gpcr_id)
+        elif kind == 'regex_delete':
+            body, n = re.subn(rule['pattern'], '', body)
+            tally(rule, n)
+        elif kind == 'literal_per_receptor':
+            values = _values(rule).get(gpcr_id)
             if values is None:
                 continue
             after, before = values
             for after_t, before_t in rule['templates']:
-                body = body.replace(after_t.format(after=after),
-                                    before_t.format(before=before))
+                a = after_t.format(after=after, before=before)
+                tally(rule, body.count(a))
+                body = body.replace(a, before_t.format(after=after, before=before))
+        elif kind == 'literal_pairs_per_receptor':
+            for after, before in _values(rule).get(gpcr_id) or []:
+                tally(rule, body.count(after))
+                body = body.replace(after, before)
+        elif kind == 'regex_delete_sha':
+            want = _values(rule).get(gpcr_id)
+            def drop(m):
+                if want is not None and hashlib.sha256(m.group(0).encode('utf-8')).hexdigest() == want:
+                    tally(rule, 1)
+                    return ''
+                return m.group(0)
+            body = re.sub(rule['pattern'], drop, body)
         else:
-            raise ValueError('unknown reversal kind %r' % rule['kind'])
+            raise ValueError('unknown reversal kind %r' % kind)
     return body
 
 
+def _expected_count(rule, gpcr_id, raw):
+    """A rule's expected number of rewrites for one receptor, or None when it states none.
+    'count' is a number, or {"pattern": literal, "times": k}: k per occurrence of the literal in
+    the built sections (a marker of the element the rule rewrites), or {"per_receptor_file": true}:
+    one per [after, before] pair recorded for this receptor."""
+    c = rule.get('count')
+    if c is None:
+        return None
+    if isinstance(c, int):
+        return c
+    if c.get('pattern'):
+        return raw.count(c['pattern']) * c.get('times', 1)
+    if c.get('per_receptor_file'):
+        v = _values(rule).get(gpcr_id)
+        return 0 if v is None else (len(v) if rule['kind'] == 'literal_pairs_per_receptor' else 1)
+    raise ValueError('bad count in rule %r' % rule['id'])
+
+
+def _check_counts(gpcr_id, raw, counts):
+    bad = []
+    for rule in _REVERSAL:
+        want = _expected_count(rule, gpcr_id, raw)
+        if want is not None and counts.get(rule['id'], 0) != want:
+            bad.append('%s: %d rewrite(s), expected %d' % (rule['id'], counts.get(rule['id'], 0), want))
+    assert not bad, '%s: approved-edit rules did not apply as recorded: %s' % (gpcr_id, '; '.join(bad))
+
+
 def _approved_sections(html, gpcr_id=None):
-    return [_reverse_approved_edits(b, gpcr_id) for b in SECTION_RE.findall(html)]
+    bodies = SECTION_RE.findall(html)
+    counts = {}
+    out = [_reverse_approved_edits(b, gpcr_id, counts) for b in bodies]
+    if gpcr_id is not None:
+        _check_counts(gpcr_id, SECTION_SEP.decode('ascii').join(bodies), counts)
+    return out
 
 
 def _approved_content_hash(html, gpcr_id=None):

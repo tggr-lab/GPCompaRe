@@ -9,6 +9,219 @@
   "ordering": "delta_df.nlargest(1000, 'abs_delta'): the 1,000 contact pairs with the largest |ΔRRCS|, descending. Ties broken by pandas' nlargest, which keeps first occurrence in row order.",
   "reversal": [
     {
+      "id": "snake-svg-tags-2026-11-05",
+      "approved_on": "2026-11-05",
+      "approved_by": "Yamir (2026-11-05: \"sounds good all of it ... then implement\"; reviews by Astra and Fable; FINAL_IMPLEMENTATION_PLAN.md section A)",
+      "section": "sec-snake",
+      "what": "The <svg> tag of the snake plot (viewBox fitted to the collapsed plot with its labels, 16 px padding, width and height in the same proportion; P2), and the N-term / C-term labels that lay on residues, moved beside them (53 receptors, e.g. MC4R C-term over H8; P1).",
+      "why": "The canvas carried about 430 px of empty bands, and 53 terminus labels covered residues. Residues, paths, numbering and values are unchanged.",
+      "kind": "literal_pairs_per_receptor",
+      "values_file": "snake_svg_changes_2026-11-05.json",
+      "values_key": "replaced_tags",
+      "count": {
+        "per_receptor_file": true
+      },
+      "derivation": "scripts/build_snake_svg_record.py writes the exact [after, before] strings per receptor (website/snake_bake.py)."
+    },
+    {
+      "id": "snake-helix-labels-2026-11-05",
+      "approved_on": "2026-11-05",
+      "approved_by": "Yamir (2026-11-05: \"sounds good all of it ... then implement\"; reviews by Astra and Fable; FINAL_IMPLEMENTATION_PLAN.md section A)",
+      "section": "sec-snake",
+      "what": "One grey pill per helix present (TM1 to TM7, H8; not clickable) and the italic \"extracellular side\" / \"intracellular side\" labels, in <g class='snake-helix-labels'> at the end of the plot (P1).",
+      "why": "The plot labelled the loops but not the helices or the membrane sides. A build-time check keeps every label off the residues.",
+      "kind": "regex_delete_sha",
+      "values_file": "snake_svg_changes_2026-11-05.json",
+      "values_key": "labels_group_sha256",
+      "count": {
+        "per_receptor_file": true
+      },
+      "pattern": "<g class='snake-helix-labels' pointer-events='none'>(?:<rect x='[-\\d.]+' y='[-\\d.]+' width='[\\d.]+' height='15' rx='3' fill='white' stroke='#c7c7c7' stroke-width='0.8'><title>[^<]*</title></rect><text x='[-\\d.]+' y='[-\\d.]+' text-anchor='middle' font-family='helvetica' font-size='11' font-weight='bold' fill='#444' letter-spacing='0.03em'>(?:TM[1-7]|H8)</text>)*(?:<text x='[-\\d.]+' y='[-\\d.]+' transform='rotate\\(-90 [-\\d.]+ [-\\d.]+\\)' text-anchor='(?:start|end)' font-family='helvetica' font-size='10.5' font-style='italic' fill='#777'>(?:extra|intra)cellular side</text>)*</g>"
+    },
+    {
+      "id": "snake-x50-marks-2026-11-05",
+      "approved_on": "2026-11-05",
+      "approved_by": "Yamir (2026-11-05: \"sounds good all of it ... then implement\"; reviews by Astra and Fable; FINAL_IMPLEMENTATION_PLAN.md section A)",
+      "section": "sec-snake",
+      "what": "The x.50 reference residue of each helix: a thicker outline drawn over the residue (pointer-events none) and, where it fits beside the helix without touching a residue or a label, a 9 px tag with the residue's own frozen label (for example 3.50x50), in <g class='snake-x50'> (P3).",
+      "why": "Readers count helix positions from the x.50 residues; the hover title stays the full answer for every residue.",
+      "kind": "regex_delete_sha",
+      "values_file": "snake_svg_changes_2026-11-05.json",
+      "values_key": "x50_group_sha256",
+      "count": {
+        "per_receptor_file": true
+      },
+      "pattern": "<g class='snake-x50' pointer-events='none'>(?:<circle cx='[-\\d.]+' cy='[-\\d.]+' r='13.1' fill='none' stroke='black' stroke-width='1.8'/>)*(?:<text x='[-\\d.]+' y='[-\\d.]+' text-anchor='(?:start|end)' font-family='helvetica' font-size='9' font-weight='bold' fill='#333' stroke='white' stroke-width='3' stroke-linejoin='round' paint-order='stroke'>[1-8]\\.50x50</text>)*</g>"
+    },
+    {
+      "id": "snake-callout-2026-11-05",
+      "approved_on": "2026-11-05",
+      "approved_by": "Yamir (2026-11-05: \"sounds good all of it ... then implement\"; reviews by Astra and Fable; FINAL_IMPLEMENTATION_PLAN.md section A)",
+      "section": "sec-snake",
+      "what": "The snake plot callout (rows 1 and P5).",
+      "why": "It told readers to toggle links that are now on from the start, and did not say what a click does.",
+      "kind": "literal",
+      "count": {
+        "pattern": "<div id=\"snake-plot-container\">",
+        "times": 1
+      },
+      "after": "          Each circle is one residue, laid out as in GPCRdb. The buttons recolour the residues by a data layer.\n          The arcs are the contact pairs at or above this receptor's threshold, within the selected filters; open a loop to show its contacts.\n          Hover a residue to see its partners, click it to select it across the page, and click an ICL or ECL label to open or close that loop.",
+      "before": "          <strong>GPCRdb-style topology.</strong> Use the view buttons to recolor residues by data layer.\n          Toggle contact links to overlay above-threshold residue-residue contacts. Click ICL or ECL\n          labels to expand or collapse loop regions."
+    },
+    {
+      "id": "snake-colour-key-2026-11-05",
+      "approved_on": "2026-11-05",
+      "approved_by": "Yamir (2026-11-05: \"sounds good all of it ... then implement\"; reviews by Astra and Fable; FINAL_IMPLEMENTATION_PLAN.md section A)",
+      "section": "sec-snake",
+      "what": "The colour key under the callout (row 2).",
+      "why": "One phrasing for direction on the page: stronger in the active / inactive model.",
+      "kind": "literal",
+      "count": {
+        "pattern": "<div id=\"snake-plot-container\">",
+        "times": 1
+      },
+      "after": "<span class=\"is-active\">Red:</span> stronger in the active model.\n          <span class=\"is-inactive\">Blue:</span> stronger in the inactive model.",
+      "before": "<span class=\"is-active\">Red:</span> stronger in active.\n          <span class=\"is-inactive\">Blue:</span> stronger in inactive."
+    },
+    {
+      "id": "changes-subtitle-2026-11-05",
+      "approved_on": "2026-11-05",
+      "approved_by": "Yamir (2026-11-05: \"sounds good all of it ... then implement\"; reviews by Astra and Fable; FINAL_IMPLEMENTATION_PLAN.md section A)",
+      "section": "sec-changes",
+      "what": "The Largest changes subtitle (row 3), with this receptor's threshold.",
+      "why": "It did not state the count (100 in all 283) or the threshold value, and the highlight rule is \"at or above\" (>=), not \"exceed\".",
+      "kind": "literal_per_receptor",
+      "values_from": "threshold-label-two-decimals",
+      "count": {
+        "pattern": "id=\"top-changes-table\"",
+        "times": 1
+      },
+      "templates": [
+        [
+          "<p class=\"section-sub\">The 100 contact pairs with the largest |ΔRRCS|. Generic numbers (GPCRdb) in brackets where known. Highlighted rows are at or above this receptor's threshold (|ΔRRCS| ≥ {after}).</p>",
+          "<p class=\"section-sub\">Residue pairs ranked by |ΔRRCS| between the active and inactive models. GPCRdb generic numbers are shown in parentheses when available. Highlighted rows exceed the receptor-specific ΔRRCS threshold.</p>"
+        ]
+      ]
+    },
+    {
+      "id": "delta-header-tooltip-2026-11-05",
+      "approved_on": "2026-11-05",
+      "approved_by": "Yamir (2026-11-05: \"sounds good all of it ... then implement\"; reviews by Astra and Fable; FINAL_IMPLEMENTATION_PLAN.md section A)",
+      "section": "sec-changes, sec-rrcs",
+      "what": "The ΔRRCS column header tooltip in both tables (row 9).",
+      "why": "Ties the sign to the colour the reader sees.",
+      "kind": "literal",
+      "count": 2,
+      "after": "data-tooltip=\"Active minus inactive. Red (positive): stronger in the active model. Blue (negative): stronger in the inactive model.\"",
+      "before": "data-tooltip=\"Active minus inactive: positive = stronger in active\""
+    },
+    {
+      "id": "magnitude-high-tooltip-2026-11-05",
+      "approved_on": "2026-11-05",
+      "approved_by": "Yamir (2026-11-05: \"sounds good all of it ... then implement\"; reviews by Astra and Fable; FINAL_IMPLEMENTATION_PLAN.md section A)",
+      "section": "sec-changes",
+      "what": "The HIGH magnitude badge tooltip (row 10), one per HIGH row.",
+      "why": "\"major structural rearrangement\" overclaimed what one contact score shows.",
+      "kind": "literal",
+      "count": {
+        "pattern": "<span class=\"badge badge-high\"",
+        "times": 1
+      },
+      "after": "|ΔRRCS| ≥ 5.0: a large contact change",
+      "before": "|ΔRRCS| ≥ 5.0: major structural rearrangement"
+    },
+    {
+      "id": "tm-callout-2026-11-05",
+      "approved_on": "2026-11-05",
+      "approved_by": "Yamir (2026-11-05: \"sounds good all of it ... then implement\"; reviews by Astra and Fable; FINAL_IMPLEMENTATION_PLAN.md section A)",
+      "section": "sec-tm",
+      "what": "The TM analysis callout (row 4, a factual correction).",
+      "why": "A residue is listed when its largest single contact change or its signed sum reaches the threshold (_build_tm_summary), not only through its contact pairs (e.g. OPN5 residue 69: sum +3.90, largest single +3.18, threshold 3.41); the column follows the signed sum.",
+      "kind": "literal_per_receptor",
+      "values_from": "threshold-label-two-decimals",
+      "count": {
+        "pattern": "id=\"tm-summary-table\"",
+        "times": 1
+      },
+      "templates": [
+        [
+          "          A residue is listed when its largest single contact change or the sum of its signed contact changes reaches this receptor's threshold (|ΔRRCS| ≥ {after}).\n          The column follows the signed sum: positive is stronger overall in the <span class=\"is-active\">active model</span>, negative stronger overall in the <span class=\"is-inactive\">inactive model</span>.\n          \"Largest single contact\" changes the value shown, not the column. The threshold formula is in Methods.",
+          "          Residues are grouped by segment according to whether their contact pairs are stronger in the\n          <span class=\"is-active\">active model</span> (positive ΔRRCS) or the\n          <span class=\"is-inactive\">inactive model</span> (negative ΔRRCS). Only residues linked to\n          contact-pair changes above the receptor-specific ΔRRCS threshold (|ΔRRCS| ≥ {after}, computed as max(mean(|Δ|) + σ, 0.2)) are shown."
+        ]
+      ]
+    },
+    {
+      "id": "variants-subtitle-2026-11-05",
+      "approved_on": "2026-11-05",
+      "approved_by": "Yamir (2026-11-05: \"sounds good all of it ... then implement\"; reviews by Astra and Fable; FINAL_IMPLEMENTATION_PLAN.md section A)",
+      "section": "sec-variants",
+      "what": "The variants subtitle (row 5). Reversed to the 2026-10-19 text, which variants-selection-wording reverses to the baseline.",
+      "why": "Plainer; rows are alleles; the order is each residue's largest |ΔRRCS|.",
+      "kind": "literal",
+      "count": {
+        "pattern": "id=\"variants-table\"",
+        "times": 1
+      },
+      "after": " gnomAD missense alleles at residues with at least one contact change of |ΔRRCS| ≥ 3.0, a fixed cutoff shared by all receptors. Rows are ordered by each residue's largest |ΔRRCS|.</p>",
+      "before": " gnomAD missense variants at residues that take part in at least one contact pair with |ΔRRCS| ≥ 3.0 (a fixed cutoff, not the receptor-specific threshold), sorted by the ΔRRCS magnitude of the corresponding position.</p>"
+    },
+    {
+      "id": "rrcs-subtitle-2026-11-05",
+      "approved_on": "2026-11-05",
+      "approved_by": "Yamir (2026-11-05: \"sounds good all of it ... then implement\"; reviews by Astra and Fable; FINAL_IMPLEMENTATION_PLAN.md section A)",
+      "section": "sec-rrcs",
+      "what": "The RRCS results subtitle (row 6). The truncation note line (rrcs-truncation-note) is unchanged.",
+      "why": "Only 7 receptors reach 1,000 rows (ADRB2 has 700); the formula is stated once, in Methods.",
+      "kind": "literal_per_receptor",
+      "values_from": "threshold-label-two-decimals",
+      "count": {
+        "pattern": "id=\"rrcs-table\"",
+        "times": 1
+      },
+      "templates": [
+        [
+          "<p class=\"section-sub\">Up to 1,000 contact pairs, ranked by |ΔRRCS|. Highlighted rows are at or above this receptor's threshold (|ΔRRCS| ≥ {after}).</p>",
+          "<p class=\"section-sub\">Top 1000 contact pairs ranked by |ΔRRCS|. Rows above the receptor-specific ΔRRCS threshold (|ΔRRCS| ≥ {after}, computed as max(mean(|Δ|) + σ, 0.2)) are highlighted.</p>"
+        ]
+      ]
+    },
+    {
+      "id": "methods-threshold-floor-2026-11-05",
+      "approved_on": "2026-11-05",
+      "approved_by": "Yamir (2026-11-05: \"sounds good all of it ... then implement\"; reviews by Astra and Fable; FINAL_IMPLEMENTATION_PLAN.md section A)",
+      "section": "sec-methods",
+      "what": "The 0.2 floor sentence (row 7).",
+      "why": "The floor does not ensure that a receptor's largest changes pass.",
+      "kind": "literal",
+      "count": 1,
+      "after": "The threshold is never lower than 0.2. Contact pairs with |ΔRRCS| below 0.2 do not pass this rule.",
+      "before": "The 0.2 floor ensures receptors with very small overall change still surface their largest contacts."
+    },
+    {
+      "id": "understanding-intro-2026-11-05",
+      "approved_on": "2026-11-05",
+      "approved_by": "Yamir (2026-11-05: \"sounds good all of it ... then implement\"; reviews by Astra and Fable; FINAL_IMPLEMENTATION_PLAN.md section A)",
+      "section": "sec-understanding",
+      "what": "The second sentence of \"What is RRCS?\" (row 8).",
+      "why": "No transition was simulated or observed: the page compares two models.",
+      "kind": "literal",
+      "count": 1,
+      "after": "Here, ΔRRCS compares contact scores in the active and inactive receptor models.",
+      "before": "When a protein changes shape (from inactive to active), these contact strengths change."
+    },
+    {
+      "id": "understanding-am-intervals-2026-11-05",
+      "approved_on": "2026-11-05",
+      "approved_by": "Yamir (2026-11-05: \"sounds good all of it ... then implement\"; reviews by Astra and Fable; FINAL_IMPLEMENTATION_PLAN.md section A)",
+      "section": "sec-understanding",
+      "what": "The AlphaMissense class intervals (a factual correction).",
+      "why": "The publisher defines likely pathogenic as > 0.564 and ambiguous as 0.34 to 0.564 inclusive (e.g. PTGER1 R67N 0.5635 is ambiguous); the page said >= 0.564 and 0.34-0.563.",
+      "kind": "literal",
+      "count": 1,
+      "after": "            <li><span class=\"badge badge-pathogenic\">Likely pathogenic</span>: score &gt; 0.564.</li>\n            <li><span class=\"badge badge-ambiguous\">Ambiguous</span>: 0.34 ≤ score ≤ 0.564.</li>\n            <li><span class=\"badge badge-benign\">Likely benign</span>: score &lt; 0.34.</li>\n          </ul>\n          <p>Classes follow the source predictions before display rounding.</p>",
+      "before": "            <li><span class=\"badge badge-pathogenic\">Pathogenic</span> (score ≥ 0.564): consistent with disruptive substitutions in known disease genes.</li>\n            <li><span class=\"badge badge-ambiguous\">Ambiguous</span> (0.34–0.563): score does not clearly favor either class.</li>\n            <li><span class=\"badge badge-benign\">Benign</span> (&lt; 0.34): consistent with tolerated substitutions.</li>\n          </ul>"
+    },
+    {
       "id": "rrcs-heading",
       "approved_on": "2026-08-26",
       "kind": "literal",
