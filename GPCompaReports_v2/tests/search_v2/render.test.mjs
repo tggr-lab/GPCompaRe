@@ -209,7 +209,7 @@ test('B2: card facts carry a direction word; the threshold and the 0 to 1 scale 
   assert.ok(!/receptor threshold/.test(text.split('sr-card-fine')[0]), 'no threshold in the facts');
   assert.match(text, /this receptor's threshold is \d\.\d\d/);
   assert.match(text, /stronger in inactive/);
-  assert.match(text, /<dt>Conservation<\/dt><dd>0\.96<\/dd>/);
+  assert.match(text, /<dt>Conservation at this residue<\/dt><dd>0\.96<\/dd>/);
   assert.match(text, /Conservation<\/strong> is on a 0 to 1 scale/);
   assert.ok(!text.includes('0 variable, 1 conserved'));
   assert.match(text, /AlphaMissense prediction/);
@@ -981,7 +981,7 @@ test('W6: the section nav lists every section of the card in order and every tar
   const nav = /<nav class="sr-nav" aria-label="Sections of this result"><ul>([^]*?)<\/ul><\/nav>/.exec(out)?.[1];
   assert.ok(nav, 'nav drawn');
   const items = [...nav.matchAll(/<a href="#(sr-0-\w+)" data-nav="0">([^<]+)<\/a>/g)].map((m) => [m[1], m[2]]);
-  assert.deepEqual(items, [['sr-0-summary', 'Summary'], ['sr-0-structure', 'Contacts and structure'], ['sr-0-region', 'Receptor map'], ['sr-0-predictions', 'Predictions'], ['sr-0-population', 'Population'], ['sr-0-clinical', 'Clinical'], ['sr-0-refs', 'Notations and references']]);
+  assert.deepEqual(items, [['sr-0-summary', 'Summary'], ['sr-0-structure', 'Contacts and structure'], ['sr-0-region', 'Receptor map'], ['sr-0-predictions', 'Predictions'], ['sr-0-conservation', 'Conservation'], ['sr-0-population', 'Population'], ['sr-0-clinical', 'Clinical'], ['sr-0-refs', 'Notations and references']]);
   for (const [id] of items) assert.ok(out.includes(`id="${id}"`), id);
   assert.ok(out.indexOf('<nav class="sr-nav"') < out.indexOf('<ul class="sr-tiles">'));
   // the compact identifier line under the title
