@@ -2,7 +2,7 @@
  * Search v2 UI: autocomplete for a search input (an ARIA 1.2 combobox with a listbox).
  *
  * Suggestions: recent queries (localStorage, optional), receptor names and aliases from the
- * search index's meta.json, and generic residue numbers. Nothing is fetched until the reader
+ * search index's meta.json, generic residue numbers, and a receptor's CFR variant list ("ADRB2 CFR variants"). Nothing is fetched until the reader
  * focuses or types in the box.
  *
  *   attachSuggest(input, {indexUrl | loader, submit})
@@ -56,6 +56,48 @@ export function clearRecent() {
 
 // ----------------------------------------------------------------------------- suggestion logic
 
+const CFR_HINT = 'Variants at, connected to or near its CFR positions';
+/** Endings that ask for a receptor's CFR variant list, as typed so far ("ADRB2 c", "ADRB2 near"). */
+const CFR_TAILS = ['cfr variants', 'near cfr'];
+/** Receptors whose names start with `term` (exact first), as meta indices; [] without meta. */
+function receptorsFor(term, meta, max = 3) {
+  const k = aliasKey(term);
+  if (!k || !meta) return [];
+  const exact = meta.aliases.get(k) ?? [];
+  const out = [...new Set(exact.map((h) => h.idx))];
+  for (const key of meta.keys) {
+    if (out.length >= max) break;
+    if (key !== k && key.startsWith(k)) for (const h of meta.aliases.get(key)) if (!out.includes(h.idx)) out.push(h.idx);
+  }
+  return out.slice(0, max);
+}
+
+/** CFR list suggestions for the text typed so far: "<receptor> CFR variants" and "CFR variants in <receptor>". */
+function cfrSuggestions(t, meta) {
+  const out = [];
+  const low = t.toLowerCase();
+  const m = /^(?:cfrs?|core functional residues?)(?:\s+variants?)?(?:\s+(?:in|of|for|near))?\s+(.+)$/i.exec(t);
+  if (m && meta) {
+    for (const idx of receptorsFor(m[1], meta)) out.push({ kind: 'cfr', label: `CFR variants in ${meta.receptors[idx].symbol}`, hint: CFR_HINT, query: `CFR variants in ${meta.receptors[idx].symbol}` });
+  } else if (low.length >= 2 && ('cfr variants'.startsWith(low) || /^cfrs?\b/.test(low))) {
+    for (const q of ['ADRB2 CFR variants', 'CFR variants in MC4R']) out.push({ kind: 'cfr', label: q, hint: `${CFR_HINT} (add a receptor)`, query: q });
+  }
+  const sp = t.lastIndexOf(' ');
+  if (sp > 0 && meta) {
+    // every split "head tail" where the head names a receptor exactly and the tail starts a CFR request
+    for (let i = t.indexOf(' '); i > 0; i = t.indexOf(' ', i + 1)) {
+      const head = t.slice(0, i).trim(); const tail = t.slice(i + 1).trim().toLowerCase();
+      if (tail.length < 2 || !CFR_TAILS.some((x) => x.startsWith(tail))) continue;
+      const hit = meta.aliases.get(aliasKey(head));
+      if (!hit) continue;
+      const sym = meta.receptors[hit[0].idx].symbol;
+      out.push({ kind: 'cfr', label: `${sym} CFR variants`, hint: CFR_HINT, query: `${sym} CFR variants` });
+      break;
+    }
+  }
+  return out;
+}
+
 /**
  * Suggestions for the text typed so far. Pure (takes decoded meta), so it is testable.
  * Each: {kind: 'recent'|'receptor'|'generic', label, hint, query}.
@@ -68,6 +110,8 @@ export function suggestionsFor(text, meta, recent = []) {
   }
   const low = t.toLowerCase();
   for (const q of recent) if (q.toLowerCase().startsWith(low) && q.toLowerCase() !== low && out.length < 3) out.push({ kind: 'recent', label: q, hint: 'Recent search', query: q });
+
+  out.push(...cfrSuggestions(t, meta));
 
   if (/^\d{1,2}([.x]\d{0,3}(x\d{0,3})?)?$/i.test(t)) {
     const norm = t.toLowerCase();
@@ -94,6 +138,12 @@ export function suggestionsFor(text, meta, recent = []) {
     for (const [idx, v] of ranked) {
       const r = meta.receptors[idx];
       out.push({ kind: 'receptor', label: v.display, hint: `${r.symbol}, ${r.name}`, query: r.symbol, gid: r.gid });
+    }
+    // the whole text names one receptor: its CFR variant list is one step away
+    const exact = meta.aliases.get(k);
+    if (exact && new Set(exact.map((h) => h.idx)).size === 1 && !out.some((o) => o.kind === 'cfr')) {
+      const sym = meta.receptors[exact[0].idx].symbol;
+      out.push({ kind: 'cfr', label: `${sym} CFR variants`, hint: CFR_HINT, query: `${sym} CFR variants` });
     }
   }
   // the same query twice is noise
