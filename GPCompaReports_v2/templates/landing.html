@@ -155,7 +155,9 @@
         <p>
           Mapping those receptor-level CFRs onto GPCRdb generic positions gives recurrent CFR
           positions across the family. A position is counted as recurrent when it is identified as
-          a CFR in at least three receptors.
+          a CFR in at least three receptors. Recurrent positions are ranked by CFR score, and the
+          site marks the {{ cfr_top_n }} top-ranked class-wide CFR positions as CFR on every page: the
+          report snake plots and residue tables, search and the Statistics page.
         </p>
         <p>
           That mapping needs a GPCRdb generic number. The cross-receptor recurrence statistics
@@ -164,7 +166,7 @@
         </p>
         {% endcall %}
         <p>
-          <a href="{{ static_prefix }}statistics.html#sec-c">See the ranked Top {{ cfr_top_n }} recurrent positions</a>
+          <a href="{{ static_prefix }}statistics.html#sec-c">See the {{ cfr_top_n }} top-ranked class-wide CFR positions</a>
         </p>
       </div>
     </div>

@@ -84,7 +84,8 @@
           reporting threshold, not a definition:
           {{ cfr_total_positions }} positions meet the CFR criterion of recurring in at least
           three receptors. A position ranked below {{ cfr_top_n }} is still a recurrent CFR
-          position, it just falls outside the subset reported here.
+          position, it just falls outside the subset reported here. The report snake plots, the
+          residue tables and search mark these same {{ cfr_top_n }} positions as CFR.
         </p>
         <p class="section-sub" style="margin-top: var(--s-3);">
           <strong>Where these cross-receptor numbers come from.</strong> Cross-receptor
@@ -179,7 +180,7 @@
     {# ---- D. Variant Correlation ---- #}
     <section class="analysis-section reveal" aria-labelledby="sec-d">
       <header class="section-head">
-        <h2 id="sec-d" data-tooltip="How genetic variants correlate with conformational change and pathogenicity, comparing the top {{ cfr_top_n }} recurrent CFR positions with other generic-numbered positions">D. Variant Correlation</h2>
+        <h2 id="sec-d" data-tooltip="How genetic variants correlate with conformational change and pathogenicity, comparing the {{ cfr_top_n }} top-ranked class-wide CFR positions (by CFR score) with other generic-numbered positions">D. Variant Correlation</h2>
         <p class="section-sub">
           Variant analyses include 279 receptors. NPY6R and TAAR3 lack protein-coding missense
           annotations because they are annotated as pseudogene loci. GP182 and P2RY8 are excluded
@@ -197,10 +198,10 @@
 
       {% if fig3_or %}
       <div class="callout callout-accent">
-        <div class="callout-head">AlphaMissense pathogenicity at the top {{ cfr_top_n }} recurrent positions</div>
+        <div class="callout-head">AlphaMissense pathogenicity at the {{ cfr_top_n }} top-ranked CFR positions</div>
         <p>
           Among decisive AlphaMissense predictions, <strong>{{ "%.1f"|format(fig3_decisive.recurrent) }}%</strong>
-          were classified as pathogenic at the {{ cfr_top_n }} most recurrent generic positions,
+          were classified as pathogenic at the {{ cfr_top_n }} top-ranked class-wide CFR positions (by CFR score),
           compared with <strong>{{ "%.1f"|format(fig3_decisive.other) }}%</strong> at other
           generic-numbered positions: odds ratio
           <strong>{{ "%.2f"|format(fig3_or) }}</strong>

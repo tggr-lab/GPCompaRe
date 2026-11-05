@@ -16,6 +16,7 @@ import json
 
 from . import data_versions as dv
 from . import motifs as _motifs
+from ..analysis.cfr_analysis import CFR_TOP_N
 
 GROUPS = ['Contact scores', 'The models', 'The receptor', 'Variants', 'Statistics page', 'Links and files']
 
@@ -133,21 +134,28 @@ GLOSSARY = [
                     'and forth through the membrane.',
          href='https://gpcrdb.org/',
          match=[_L + r'[Ss]nake plot' + _R]),
+    # two meanings, said plainly; the class-wide set is the one the whole site marks (CFR_TOP_N, owner 2026-11-05)
     dict(id='cfr', group='The receptor', term='CFR', full='Core Functional Residue',
-         definition='A generic-numbered position where an above-threshold contact change recurs across many '
-                    'receptors (at least three); the Statistics page ranks them.',
+         definition="The term has two meanings. A receptor-level CFR is a residue of one receptor that takes part "
+                    "in a contact whose |ΔRRCS| is above that receptor's threshold. The class-wide CFR positions "
+                    'are generic positions where receptor-level CFRs recur in at least three receptors, ranked by '
+                    'CFR score. The site marks the top %d, as in Figure 3 of the paper: the snake plots, the '
+                    'residue table and search call a residue a CFR when its generic number is one of the %d '
+                    'top-ranked class-wide CFR positions (by CFR score), and the Statistics page lists them.'
+                    % (CFR_TOP_N, CFR_TOP_N),
          match=[_L + r'CFRs?' + _R, _L + r'Core Functional(?: Residues?)?' + _R]),
-    # the CFR neighbourhood of the search (static/js/search/cfrhood.js): the same top-30 CFR positions as the
-    # search card's CFR flag and the report snake plots (search_index_v2.CFR_TOP)
+    # the CFR neighbourhood of the search (static/js/search/cfrhood.js): the same top CFR_TOP_N class-wide CFR
+    # positions as the search card's CFR flag, the report snake plots and the Statistics page
     dict(id='cfr-connected', group='The receptor', term='CFR-connected residue',
          definition="A residue that takes part in a contact above its receptor's ΔRRCS threshold whose partner "
-                    'residue sits at a CFR position in the same receptor. CFR positions here are the 30 top-ranked '
-                    'generic positions of the class-wide CFR ranking, the positions search and the snake plots mark '
-                    'as CFR.',
+                    'residue sits at a CFR position in the same receptor. A CFR position here is one of the %d '
+                    'top-ranked class-wide CFR positions (by CFR score), the positions search and the snake plots '
+                    'mark as CFR.' % CFR_TOP_N,
          match=[_L + r'CFR-connected(?: residues?)?' + _R, _L + r'[Cc]onnected to a CFR' + _R]),
     dict(id='cfr-near', group='The receptor', term='Near a CFR',
          definition='A residue within two residues of a CFR position along the chain, in the same segment (helix, '
-                    'loop or terminus). CFR positions are the same 30 top-ranked class-wide positions.',
+                    'loop or terminus). CFR positions are the same %d top-ranked class-wide CFR positions (by CFR '
+                    'score).' % CFR_TOP_N,
          match=[_L + r'[Nn]ear a CFR(?: in sequence)?' + _R]),
     dict(id='cfr-touch', group='The receptor', term='In contact with a CFR, below threshold',
          definition="A residue with a contact to a CFR residue in at least one of the two models (RRCS above 0) that "
