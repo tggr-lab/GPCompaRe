@@ -14,6 +14,7 @@
 import { three } from '../search/shards.js';
 import { gnomadIdOf } from '../search/genomic.js';
 import { MAX_QUERY_LENGTH } from '../search/parse.js';
+import * as L from './links.js';
 
 // ------------------------------------------------------------------------------ html helper
 
@@ -314,6 +315,68 @@ function copyBtn(text, label) {
   return html`<button type="button" class="sr-copy" data-copy="${text}" aria-label="Copy ${label ?? text}" title="Copy">Copy</button>`;
 }
 
+// ------------------------------------------------------------------------------------ links
+// Every link out of a result opens in a new tab, so the search stays where it is. URLs come from links.js.
+
+/** The id of the hidden "opens in a new tab" text every result link points at (aria-describedby). */
+export const NEW_TAB_ID = 'sr-newtab';
+const newTabNote = () => html`<span id="${NEW_TAB_ID}" hidden>Opens in a new tab</span>`;
+
+/**
+ * A link to another site. CSS draws its ↗ (static/css/search-ui.css .sr-ext::after), so selecting and copying
+ * the text gives the bare identifier; the new-tab hint is the title and, for screen readers, aria-describedby.
+ * rel noreferrer: the other site is not told the search address. Without `href` (an id of the wrong shape)
+ * the text is shown plain.
+ */
+export function extLink(href, text, site, { cls = 'mono' } = {}) {
+  if (!href) return cls ? html`<span class="${cls}">${text}</span>` : html`${text}`;
+  return html`<a class="sr-ext${cls ? ` ${cls}` : ''}" href="${href}" target="_blank" rel="noopener noreferrer" title="${site}, opens in a new tab" aria-describedby="${NEW_TAB_ID}">${text}</a>`;
+}
+
+/** A link to another page of this site (report, Studio, glossary): a new tab as well, but no ↗. */
+export function intLink(href, text, { cls = '', title = null } = {}) {
+  return html`<a class="sr-int${cls ? ` ${cls}` : ''}" href="${href}" target="_blank" rel="noopener" title="${title ? `${title}, opens` : 'Opens'} in a new tab" aria-describedby="${NEW_TAB_ID}">${text}</a>`;
+}
+
+/** A term that links to its glossary entry (ids from website/glossary.py). */
+const term = (o, id, text) => intLink(L.glossaryUrl(o, id), text, { cls: 'sr-term', title: 'Glossary entry' });
+
+/** An identifier that opens its record, with its copy button beside it. */
+const idLink = (href, text, site, label) => html`${extLink(href, text, site)} ${copyBtn(text, label ?? text)}`;
+
+const SITE = { gnomad: 'gnomAD browser', dbsnp: 'dbSNP', clinvar: 'ClinVar', ucsc38: 'UCSC Genome Browser, hg38', ucsc37: 'UCSC Genome Browser, hg19' };
+
+/** A GRCh38 genome id: gnomAD for an allele id, else the genome browser. */
+function g38Link(id, rel) {
+  const gn = L.gnomadVariantUrl(id, rel);
+  return gn ? extLink(gn, id, SITE.gnomad) : extLink(L.ucscUrl(id, 'GRCh38'), id, SITE.ucsc38);
+}
+/** The same id in the genome browser, as a short second link (gnomAD ids only). */
+function g38Browser(id, rel) {
+  return L.gnomadVariantUrl(id, rel) ? extLink(L.ucscUrl(id, 'GRCh38'), 'UCSC', SITE.ucsc38, { cls: 'sr-ext-alt' }) : '';
+}
+const g37Link = (id) => extLink(L.ucscUrl(id, 'GRCh37'), id, SITE.ucsc37);
+
+/** "NM_000024.6:c.46G>A": the accession opens its record, the rest is text; the copy button takes the whole. */
+function notationLink(acc, rest) {
+  const full = `${acc}:${rest}`;
+  return html`${extLink(L.accessionUrl(acc), acc, L.accessionSite(acc))}<span class="mono">:${rest}</span> ${copyBtn(full)}`;
+}
+
+/** The receptor's records elsewhere, as short links: HGNC, UniProt, GPCRdb, NCBI Gene, Ensembl, gnomAD gene page. */
+function receptorLinks(rec, o) {
+  const items = [
+    ['HGNC', L.hgncUrl(rec), rec.hgnc ?? rec.symbol],
+    ['UniProt', L.uniprotUrl(rec.uniprot), rec.uniprot],
+    ['GPCRdb', L.gpcrdbUrl(rec.entry), String(rec.entry ?? '').toLowerCase()],
+    ['NCBI Gene', L.ncbiGeneUrl(rec.geneId), rec.geneId],
+    ['Ensembl', L.ensemblUrl(rec.ensg), rec.ensg],
+    ['gnomAD gene page', L.gnomadGeneUrl(rec.ensg, o.releases), rec.symbol],
+  ].filter(([, href]) => href);
+  if (!items.length) return '';
+  return html`<ul class="sr-extlinks">${items.map(([site, href, id]) => html`<li>${extLink(href, html`${site} <span class="sr-sub mono">${id}</span>`, site, { cls: '' })}</li>`)}</ul>`;
+}
+
 /** AlphaMissense's own class words: the index keeps benign | ambiguous | pathogenic. */
 export const AM_CLASS_LABEL = { benign: 'likely benign', ambiguous: 'ambiguous', pathogenic: 'likely pathogenic' };
 export const amClassLabel = (c) => AM_CLASS_LABEL[c] ?? (c ?? '');
@@ -325,14 +388,14 @@ function amCell(a) {
 
 const sourceWord = (s) => (s === 'exome' ? 'exomes' : s === 'genome' ? 'genomes' : null);
 
-export function allelesTable(alleles, { caption }) {
+export function allelesTable(alleles, { caption, rel = null, o = {} }) {
   return html`<div class="sr-table-wrap"><table class="sr-table">
     <caption class="sr-sr-only">${caption}</caption>
-    <thead><tr><th scope="col">gnomAD allele (GRCh38)</th><th scope="col">Change</th><th scope="col">rsID</th><th scope="col" class="num">Allele count</th><th scope="col" class="num">Frequency</th><th scope="col" class="num">Homozygotes</th><th scope="col">AlphaMissense prediction</th></tr></thead>
+    <thead><tr><th scope="col">gnomAD allele (GRCh38)</th><th scope="col">Change</th><th scope="col">rsID</th><th scope="col" class="num">Allele count</th><th scope="col" class="num">Frequency</th><th scope="col" class="num">Homozygotes</th><th scope="col">${term(o, 'am', 'AlphaMissense')} prediction</th></tr></thead>
     <tbody>${alleles.map((a) => html`<tr>
-      <td class="mono" data-label="gnomAD allele (GRCh38)">${a.id}${a.id37 ? html`<br><span class="sr-sub">GRCh37 <span class="mono">${a.id37}</span></span>` : ''}</td>
+      <td data-label="gnomAD allele (GRCh38)">${g38Link(a.id, rel)}${a.id37 ? html`<br><span class="sr-sub">GRCh37 ${g37Link(a.id37)}</span>` : ''}</td>
       <td data-label="Change"><span class="mono">${a.hgvsc ?? ''}</span>${a.hgvsc ? html`<br>` : ''}<span class="sr-sub mono">${a.hgvsp ?? ''}</span>${a.conflict ? html` <span class="sr-badge sr-badge--warn" title="The model has the other residue here">model differs</span>` : ''}</td>
-      <td class="mono" data-label="rsID">${a.rsids?.length ? a.rsids.join(', ') : 'none'}</td>
+      <td data-label="rsID">${a.rsids?.length ? a.rsids.map((x, i) => html`${i ? ', ' : ''}${extLink(L.dbsnpUrl(x), x, SITE.dbsnp)}`) : 'none'}</td>
       <td class="num" data-label="Allele count">${fmtInt(a.ac)}<span class="sr-sub"> of ${fmtInt(a.an)}${sourceWord(a.source) ? html`, ${sourceWord(a.source)}` : ''}</span></td>
       <td class="num" data-label="Frequency">${fmtAf(a.af)}</td>
       <td class="num" data-label="Homozygotes">${fmtInt(a.hom)}</td>
@@ -385,7 +448,7 @@ function leadLine(r, o) {
 
 // ------------------------------------------------------ transcripts, assemblies (folded away)
 
-function transcriptTable(r) {
+function transcriptTable(r, rel) {
   const tv = r.transcriptViews ?? [];
   if (!tv.length) return '';
   const anyAllele = tv.some((t) => t.allele);
@@ -407,14 +470,14 @@ function transcriptTable(r) {
   return html`<div class="sr-table-wrap"><table class="sr-table sr-table--tx">
     <caption class="sr-sr-only">The change on each transcript, with the genomic allele it comes from</caption>
     <thead><tr>${anyAllele ? html`<th scope="col">Genomic allele (GRCh38)</th>` : ''}<th scope="col">View</th><th scope="col">Transcript</th><th scope="col">Protein</th>${anyC ? html`<th scope="col">Coding change</th>` : ''}<th scope="col">Protein change</th></tr></thead>
-    <tbody>${rows.map((row) => html`<tr>${anyAllele ? html`<td class="mono" data-label="Genomic allele (GRCh38)">${row.t.allele ?? ''}</td>` : ''}
+    <tbody>${rows.map((row) => html`<tr>${anyAllele ? html`<td data-label="Genomic allele (GRCh38)">${row.t.allele ? g38Link(row.t.allele, rel) : ''}</td>` : ''}
       <td data-label="View">${row.roles.map(roleLabel).join(', ')}</td>
-      <td class="mono" data-label="Transcript">${row.t.transcript}</td><td class="mono" data-label="Protein">${row.protein ?? ''}</td>
+      <td data-label="Transcript">${extLink(L.accessionUrl(row.t.transcript), row.t.transcript, L.accessionSite(row.t.transcript))}</td><td data-label="Protein">${row.protein ? extLink(L.accessionUrl(row.protein), row.protein, L.accessionSite(row.protein)) : ''}</td>
       ${anyC ? html`<td class="mono" data-label="Coding change">${row.c ?? ''}</td>` : ''}
       <td class="mono" data-label="Protein change">${row.p ?? ''}${row.differs ? html` <span class="sr-badge sr-badge--warn">numbered differently</span>` : ''}</td></tr>`)}</tbody></table></div>`;
 }
 
-function genomeTable(r) {
+function genomeTable(r, rel) {
   const alleles = r.alleles ?? [];
   const g = r.genomic ?? {};
   const items = [];
@@ -424,20 +487,20 @@ function genomeTable(r) {
     items.push({ g38: g.grch38, g37: g.grch37 });
   }
   if (!items.length) return '';
-  const show = (v, approx) => (v
-    ? html`<span class="mono">${v}</span>${approx ? html` <span class="sr-badge sr-badge--warn" title="Lifted by the nearest alignment block, not checked base by base">approximate</span>` : ''} ${copyBtn(v)}`
+  const show = (v, approx, asm) => (v
+    ? html`${asm === 'GRCh37' ? g37Link(v) : g38Link(v, rel)}${approx ? html` <span class="sr-badge sr-badge--warn" title="Lifted by the nearest alignment block, not checked base by base">approximate</span>` : ''} ${copyBtn(v)}${asm === 'GRCh38' ? html` ${g38Browser(v, rel)}` : ''}`
     : html`<span class="sr-na">not mapped</span>`);
   return html`<div class="sr-table-wrap"><table class="sr-table">
       <caption class="sr-sr-only">Genomic positions on both assemblies</caption>
       <thead><tr><th scope="col">GRCh38 (hg38)</th><th scope="col">GRCh37 (hg19)</th></tr></thead>
-      <tbody>${items.map((x) => html`<tr><td data-label="GRCh38">${show(x.g38, g.grch38Approximate)}</td><td data-label="GRCh37">${show(x.g37, g.grch37Approximate)}</td></tr>`)}</tbody></table></div>
+      <tbody>${items.map((x) => html`<tr><td data-label="GRCh38">${show(x.g38, g.grch38Approximate, 'GRCh38')}</td><td data-label="GRCh37">${show(x.g37, g.grch37Approximate, 'GRCh37')}</td></tr>`)}</tbody></table></div>
     <p class="sr-sub">IDs read chromosome-position-reference-alternate, on the forward strand.</p>`;
 }
 
 /** The transcript and genome tables: folded away inside the card's fine print; the numbering warning stays on the summary. */
-function notationsDetails(r, mismatch = false) {
-  const tx = transcriptTable(r);
-  const gen = genomeTable(r);
+function notationsDetails(r, mismatch = false, rel = null) {
+  const tx = transcriptTable(r, rel);
+  const gen = genomeTable(r, rel);
   if (!tx && !gen) return '';
   const differs = hasNote(r, MAPPING_WARN);
   return html`<details class="sr-more sr-notations">
@@ -486,47 +549,54 @@ export const segmentKind = (seg) => (!seg || HELICES.has(seg) ? '' : (seg === 'N
 /** The "Identifiers" section: gene, HGVS on every transcript held, genome ids on both assemblies, rsID, ClinVar. */
 function identifiersSection(r, sub, o, open) {
   const rec = r.receptor ?? {};
+  const rel = o.releases;
   const rows = [];
-  const mono = (s, label) => html`<span class="mono">${s}</span> ${copyBtn(s, label ?? s)}`;
   const entry = String(rec.entry ?? '').replace(/_HUMAN$/, '');
-  rows.push(['Gene', html`<strong>${rec.symbol ?? r.gid}</strong> ${copyBtn(rec.symbol ?? r.gid, 'gene symbol')}${rec.uniprot ? html` <span class="sr-sub">UniProt ${rec.uniprot}${entry && entry.toUpperCase() !== String(rec.symbol).toUpperCase() ? ` (${entry})` : ''}</span> ${copyBtn(rec.uniprot, 'UniProt accession')}` : ''}`]);
+  const sym = rec.symbol ?? r.gid;
+  rows.push(['Gene', html`<strong>${extLink(L.hgncUrl(rec), sym, 'HGNC')}</strong> ${copyBtn(sym, 'gene symbol')}${rec.uniprot ? html` <span class="sr-sub">UniProt</span> ${extLink(L.uniprotUrl(rec.uniprot), rec.uniprot, 'UniProt')}${entry && entry.toUpperCase() !== String(rec.symbol).toUpperCase() ? html`<span class="sr-sub"> (${entry})</span>` : ''} ${copyBtn(rec.uniprot, 'UniProt accession')}` : ''}`]);
+  const recLinks = receptorLinks(rec, o);
+  if (recLinks) rows.push(['Records elsewhere', recLinks]);
+  // the model residue opens the report there
   const modelRes = `${three(r.residue?.aa ?? r.ref)}${r.pos}`;
-  if (sub.mismatch) rows.push(['Model residue', html`${mono(modelRes)} <span class="sr-sub">the typed ${sub.what} is not checkable here</span>`]);
-  else if (sub.change && r.kind === 'missense') rows.push(['Protein change, model numbering', html`${mono(hgvsP(r))} <span class="sr-sub">(${r.ref}${r.pos}${r.alt})</span>`]);
-  else if (sub.change) rows.push(['Change, model numbering', mono(hgvsP(r))]);
-  else rows.push(['Residue, model numbering', mono(modelRes)]);
+  const atRes = (text) => html`${intLink(L.residueUrl(o, r.gid, r.pos), text, { cls: 'mono', title: 'Report at this residue' })} ${copyBtn(text)}`;
+  if (sub.mismatch) rows.push(['Model residue', html`${atRes(modelRes)} <span class="sr-sub">the typed ${sub.what} is not checkable here</span>`]);
+  else if (sub.change && r.kind === 'missense') rows.push(['Protein change, model numbering', html`${atRes(hgvsP(r))} <span class="sr-sub">(${r.ref}${r.pos}${r.alt})</span>`]);
+  else if (sub.change) rows.push(['Change, model numbering', atRes(hgvsP(r))]);
+  else rows.push(['Residue, model numbering', atRes(modelRes)]);
   // one row per transcript role; the notations of every allele that shares the role go together
   const byRole = new Map();
   for (const t of r.transcriptViews ?? []) {
     const items = [];
-    if (t.c) items.push(`${t.transcript}:${t.c}`);
-    if (t.protein && t.p) items.push(`${t.protein}:${t.p}`);
+    if (t.c) items.push([t.transcript, t.c]);
+    if (t.protein && t.p) items.push([t.protein, t.p]);
     if (!items.length) continue;
     const k = roleLabel(t);
     if (!byRole.has(k)) byRole.set(k, []);
-    for (const s of items) if (!byRole.get(k).includes(s)) byRole.get(k).push(s);
+    const list = byRole.get(k);
+    for (const it of items) if (!list.some((x) => x[0] === it[0] && x[1] === it[1])) list.push(it);
   }
-  for (const [k, items] of byRole) rows.push([k, html`<span class="sr-id-list">${items.map((s) => html`<span class="sr-id-item">${mono(s)}</span>`)}</span>`]);
+  for (const [k, items] of byRole) rows.push([k, html`<span class="sr-id-list">${items.map(([acc, rest]) => html`<span class="sr-id-item">${notationLink(acc, rest)}</span>`)}</span>`]);
   const g = r.genomic ?? {};
   const alleles = r.alleles ?? [];
   const approx = (flag) => (flag ? html` <span class="sr-badge sr-badge--warn" title="Lifted by the nearest alignment block, not checked base by base">approximate</span>` : '');
   const ids38 = alleles.length ? alleles.map((a) => a.id) : (g.grch38 ? [g.grch38] : []);
   const ids37 = alleles.length ? alleles.map((a) => a.id37).filter(Boolean) : (g.grch37 ? [g.grch37] : []);
-  if (ids38.length) rows.push(['GRCh38 (hg38)', html`<span class="sr-id-list">${ids38.map((s) => html`<span class="sr-id-item">${mono(s)}${approx(g.grch38Approximate)}</span>`)}</span>`]);
-  if (ids37.length || ids38.length) rows.push(['GRCh37 (hg19)', ids37.length ? html`<span class="sr-id-list">${ids37.map((s) => html`<span class="sr-id-item">${mono(s)}${approx(g.grch37Approximate)}</span>`)}</span>` : html`<span class="sr-na">not mapped</span>`]);
+  if (ids38.length) rows.push(['GRCh38 (hg38)', html`<span class="sr-id-list">${ids38.map((s) => html`<span class="sr-id-item">${g38Link(s, rel)}${approx(g.grch38Approximate)} ${copyBtn(s)} ${g38Browser(s, rel)}</span>`)}</span>`]);
+  if (ids37.length || ids38.length) rows.push(['GRCh37 (hg19)', ids37.length ? html`<span class="sr-id-list">${ids37.map((s) => html`<span class="sr-id-item">${g37Link(s)}${approx(g.grch37Approximate)} ${copyBtn(s)}</span>`)}</span>` : html`<span class="sr-na">not mapped</span>`]);
   const rsids = [...new Set(alleles.flatMap((a) => a.rsids ?? []))];
-  if (alleles.length) rows.push(['rsID', rsids.length ? html`<span class="sr-id-list">${rsids.map((s) => html`<span class="sr-id-item">${mono(s)}</span>`)}</span>` : html`<span class="sr-na">none</span>`]);
+  if (alleles.length) rows.push(['rsID', rsids.length ? html`<span class="sr-id-list">${rsids.map((s) => html`<span class="sr-id-item">${idLink(L.dbsnpUrl(s), s, SITE.dbsnp)}</span>`)}</span>` : html`<span class="sr-na">none</span>`]);
   const cv = (r.clinvar ?? []);
-  if (cv.length) rows.push(['ClinVar', html`<span class="sr-id-list">${cv.map((c) => html`<span class="sr-id-item"><a class="mono" href="${c.url}" target="_blank" rel="noopener noreferrer">${c.accession}<span class="sr-sr-only"> (opens ClinVar in a new tab)</span></a> ${copyBtn(c.accession)}</span>`)}</span>`]);
+  if (cv.length) rows.push(['ClinVar', html`<span class="sr-id-list">${cv.map((c) => html`<span class="sr-id-item">${idLink(c.url ?? L.clinvarUrl(c.variationId), c.accession, SITE.clinvar)}</span>`)}</span>`]);
   const body = html`<dl class="sr-ids">${rows.map(([k, v]) => html`<div class="sr-id"><dt>${k}</dt><dd>${v}</dd></div>`)}</dl>
-    ${ids38.length ? html`<p class="sr-sub">Genome ids read chromosome-position-reference-alternate on the forward strand.</p>` : ''}
-    ${notationsDetails(r, sub.mismatch)}`;
+    ${ids38.length ? html`<p class="sr-sub">Genome ids read chromosome-position-reference-alternate on the forward strand. GRCh38 allele ids open in the gnomAD browser; UCSC opens the genome browser at the same position.</p>` : ''}
+    ${notationsDetails(r, sub.mismatch, rel)}`;
   return section('ids', 'Identifiers', 'gene, transcripts, genome, rsID, ClinVar', body, { open });
 }
 
 // ------------------------------------------------------------------------------- population
 
-function populationSection(r, releases, mismatch) {
+function populationSection(r, o, mismatch) {
+  const releases = o.releases;
   const alleles = r.alleles ?? [];
   const resid = r.residueAlleles ?? [];
   const names = new Set(alleles.map((a) => a.id));
@@ -534,7 +604,7 @@ function populationSection(r, releases, mismatch) {
   const label = r.releases?.gnomad ?? releases?.gnomad?.label ?? 'gnomAD';
   let body;
   if (alleles.length) {
-    body = allelesTable(alleles, { caption: `${label} alleles for this change` });
+    body = allelesTable(alleles, { caption: `${label} alleles for this change`, rel: releases, o });
   } else if (mismatch) {
     // the residue is not the one typed: nothing is claimed about the typed change
     body = html`<p>Not looked up: the residue you typed is not the model residue.</p>`;
@@ -545,7 +615,7 @@ function populationSection(r, releases, mismatch) {
   } else body = '';
   const where = mismatch && r.pos ? `the model residue ${three(r.residue?.aa ?? r.ref)}${r.pos}` : 'this residue';
   const more = others.length
-    ? html`<details class="sr-more"><summary>${alleles.length ? 'Other' : 'All'} ${others.length} ${label} missense allele${others.length === 1 ? '' : 's'} at ${where}</summary>${allelesTable(others, { caption: `Other ${label} alleles at this residue` })}</details>`
+    ? html`<details class="sr-more"><summary>${alleles.length ? 'Other' : 'All'} ${others.length} ${label} missense allele${others.length === 1 ? '' : 's'} at ${where}</summary>${allelesTable(others, { caption: `Other ${label} alleles at this residue`, rel: releases, o })}</details>`
     : '';
   return section('population', 'Population evidence', label, html`${body}${more}`);
 }
@@ -557,7 +627,7 @@ function clinvarRecord(c) {
   if (c.scv) facts.push(`${c.scv} ${c.scv === 1 ? 'submission' : 'submissions'}`);
   if (c.evaluated) facts.push(`last evaluated ${c.evaluated}`);
   return html`<li>
-        <a href="${c.url}" target="_blank" rel="noopener noreferrer">${c.accession}<span class="sr-sr-only"> (opens ClinVar in a new tab)</span></a>
+        ${extLink(c.url ?? L.clinvarUrl(c.variationId), c.accession, SITE.clinvar)}
         <span class="sr-badge">${c.classification || 'no classification'}</span> ${stars(c.stars)}${facts.length ? html` <span class="sr-sub">${facts.join(', ')}</span>` : ''}
         ${c.conditions?.length ? html`<div class="sr-sub">${c.conditions.join('; ')}</div>` : ''}
         <div class="sr-sub">${c.title}</div></li>`;
@@ -600,7 +670,14 @@ function amStrip(r, sub) {
     })}</ol></div>`;
 }
 
-function computationalSection(r, sub) {
+/** Where the AlphaMissense scores come from: the record named in data_versions.json. */
+function amSource(o) {
+  const u = L.alphamissenseUrl(o.releases);
+  if (!u) return '';
+  return html`<p class="sr-sub sr-am-source">Scores from ${o.releases?.alphamissense?.label ?? 'AlphaMissense'}, ${extLink(u, L.recordLabel(u), 'Zenodo', { cls: '' })}.</p>`;
+}
+
+function computationalSection(r, sub, o) {
   const f = residueFacts(r);
   const am = amForChange(r, sub);
   let amThis;
@@ -609,10 +686,10 @@ function computationalSection(r, sub) {
   else if (r.kind === 'missense' && r.alt) amThis = html`<span class="sr-na">not available in this index</span>`;
   else amThis = html`<span class="sr-na">not a missense change</span>`;
   const body = html`<dl class="sr-facts">
-    ${r.alt || sub.mismatch ? cell('AlphaMissense, this change', amThis) : ''}
-    ${cell('AlphaMissense, residue mean', f.amMean === null ? html`<span class="sr-na">not available</span>` : f.amMean.toFixed(2))}
-    ${cell('Conservation', f.conservation === null ? html`<span class="sr-na">not available</span>` : f.conservation.toFixed(2))}
-  </dl>${amStrip(r, sub)}`;
+    ${r.alt || sub.mismatch ? cell(html`${term(o, 'am', 'AlphaMissense')}, this change`, amThis) : ''}
+    ${cell(html`${term(o, 'am', 'AlphaMissense')}, residue mean`, f.amMean === null ? html`<span class="sr-na">not available</span>` : f.amMean.toFixed(2))}
+    ${cell(term(o, 'conservation', 'Conservation'), f.conservation === null ? html`<span class="sr-na">not available</span>` : f.conservation.toFixed(2))}
+  </dl>${amStrip(r, sub)}${amSource(o)}`;
   return section('computational', 'Computational predictions', 'AlphaMissense, conservation', body);
 }
 
@@ -639,17 +716,17 @@ function contactsTable(r, o) {
     const d = direction(c.delta);
     const kind = segmentKind(c.partnerSegment);
     return html`<tr>
-      <td data-label="Partner"><span class="mono">${partnerName(c)}</span>${c.partnerGeneric || c.partnerSegment ? html` <span class="sr-sub">${[c.partnerGeneric, c.partnerSegment].filter(Boolean).join(', ')}</span>` : ''}${kind ? html` <span class="sr-badge sr-badge--muted" title="${kind === 'terminus' ? 'A residue in a terminus' : 'A residue in a loop'}: loops and termini are less reliably modelled">${kind}</span>` : ''}</td>
+      <td data-label="Partner">${intLink(L.residueUrl(o, r.gid, c.partnerPos), partnerName(c), { cls: 'mono', title: 'Report at this residue' })}${c.partnerGeneric || c.partnerSegment ? html` <span class="sr-sub">${[c.partnerGeneric, c.partnerSegment].filter(Boolean).join(', ')}</span>` : ''}${kind ? html` <span class="sr-badge sr-badge--muted" title="${kind === 'terminus' ? 'A residue in a terminus' : 'A residue in a loop'}: loops and termini are less reliably modelled">${kind}</span>` : ''}</td>
       <td class="num" data-label="ΔRRCS"><span class="sr-net sr-net--${d.cls}">${signed(c.delta)}</span><span class="sr-sr-only"> (${d.word})</span></td>
       <td class="num" data-label="Active RRCS">${c.active.toFixed(2)}</td>
       <td class="num" data-label="Inactive RRCS">${c.inactive.toFixed(2)}</td>
       <td data-label="What the models show">${contactMeaning(c)}</td>
-      <td data-label="Report"><a href="${o.reports}${r.gid}.html#pair=${c.a}-${c.b}">pair ${c.a}-${c.b}</a></td></tr>`;
+      <td data-label="Report">${intLink(L.reportUrl(o, r.gid, `pair=${c.a}-${c.b}`), `pair ${c.a}-${c.b}`, { title: 'Report at this contact pair' })}</td></tr>`;
   });
   return html`<p class="sr-sub">${list.length} contact${list.length === 1 ? '' : 's'} above ${thrText}, largest |ΔRRCS| first.</p>
     <div class="sr-table-wrap"><table class="sr-table sr-table--contacts">
     <caption class="sr-sr-only">Contacts of this residue above the threshold</caption>
-    <thead><tr><th scope="col">Partner</th><th scope="col" class="num">ΔRRCS</th><th scope="col" class="num">Active RRCS</th><th scope="col" class="num">Inactive RRCS</th><th scope="col">What the models show</th><th scope="col">Report</th></tr></thead>
+    <thead><tr><th scope="col">Partner</th><th scope="col" class="num">${term(o, 'delta', 'ΔRRCS')}</th><th scope="col" class="num">Active RRCS</th><th scope="col" class="num">Inactive RRCS</th><th scope="col">What the models show</th><th scope="col">Report</th></tr></thead>
     <tbody>${rows}</tbody></table></div>
     ${finePrint(html`<p><span class="sr-net sr-net--active">Red, positive</span>: stronger in the active model. <span class="sr-net sr-net--inactive">Blue, negative</span>: stronger in the inactive model. RRCS is the residue-residue contact score of each AlphaFold-Multistate model.</p>`, { cls: 'sr-contacts-legend' })}`;
 }
@@ -673,12 +750,12 @@ function structureSection(r, o) {
     ? html`<span class="sr-na">no contacts</span>`
     : html`|ΔRRCS| ${f.dmax.toFixed(2)}${f.partner ? html`<span class="sr-sub">, with ${f.partner}</span>` : ''}`;
   const body = html`<dl class="sr-facts">
-    ${cell('Numbering', html`${x.generic ? html`<span class="mono">${x.generic}</span> ` : ''}${x.bw ? html`<span class="sr-sub">BW ${x.bw}, GPCRdb ${x.gpcrdb}, ${x.segment}</span>` : html`<span class="sr-na">no generic number (${x.segment || 'outside the helices'})</span>`}`)}
-    ${cell('Core functional residue (CFR), class-wide', cfr)}
+    ${cell(term(o, 'gn', 'Numbering'), html`${x.generic ? html`<span class="mono">${x.generic}</span> ` : ''}${x.bw ? html`<span class="sr-sub">BW ${x.bw}, GPCRdb ${x.gpcrdb}, ${x.segment}</span>` : html`<span class="sr-na">no generic number (${x.segment || 'outside the helices'})</span>`}`)}
+    ${cell(html`Core functional residue (${term(o, 'cfr', 'CFR')}), class-wide`, cfr)}
     ${motifsCell(r)}
-    ${cell('Largest contact change', largest)}
-    ${f.net !== null ? cell('Net ΔRRCS over this residue’s contacts', netHtml(f.net)) : ''}
-    ${cell('Contacts above this receptor’s threshold', f.nsig ?? 0)}
+    ${cell(term(o, 'maxdelta', 'Largest contact change'), largest)}
+    ${f.net !== null ? cell(html`${term(o, 'signed', 'Net ΔRRCS')} over this residue’s contacts`, netHtml(f.net)) : ''}
+    ${cell(html`Contacts above this receptor’s ${term(o, 'threshold', 'threshold')}`, f.nsig ?? 0)}
   </dl>
   <h5 class="sr-subhead">Important contacts</h5>
   ${contactsTable(r, o)}`;
@@ -962,9 +1039,9 @@ function actions(r, o, idx, mismatch) {
       : `Not in the report’s variant table: that table was built from ${reportTableRelease(o.releases)} and does not list this change.`}</p>`
     : '';
   return html`<div class="sr-actions">
-    <a class="btn btn-primary btn-sm" href="${res}">${r.pos ? 'Open report at this residue' : 'Open report'}</a>
-    ${canFind ? html`<a class="btn btn-ghost btn-sm" href="${o.reports}${gid}.html#sec=sec-variants&vq=${encodeURIComponent(vq)}">Find in the report's variant table</a>` : ''}
-    <a class="btn btn-ghost btn-sm" href="${o.studio}?db=${encodeURIComponent(gid)}">Open in Studio</a>
+    ${intLink(res, r.pos ? 'Open report at this residue' : 'Open report', { cls: 'btn btn-primary btn-sm' })}
+    ${canFind ? intLink(`${o.reports}${gid}.html#sec=sec-variants&vq=${encodeURIComponent(vq)}`, raw("Find in the report's variant table"), { cls: 'btn btn-ghost btn-sm' }) : ''}
+    ${intLink(L.studioUrl(o, gid), 'Open in Studio', { cls: 'btn btn-ghost btn-sm' })}
     ${r.pos ? html`<button type="button" class="btn btn-ghost btn-sm" data-copy-notations="${idx}">Copy all notations</button>
     <button type="button" class="btn btn-ghost btn-sm" data-copy-evidence="${idx}">Copy evidence summary</button>` : ''}
     ${why}
@@ -1059,7 +1136,7 @@ function card(r, o, idx) {
   const x = r.residue;
   const rec = r.receptor;
   const reportHref = `${o.reports}${r.gid}.html`;
-  const title = html`<a href="${reportHref}">${recFull(rec)}</a>`;
+  const title = intLink(reportHref, recFull(rec), { title: 'Report page' });
   const sub = subjectOf(r, o);
   const { fix, mismatch } = sub;
   const noResidue = !r.pos && r.type === 'not_in_resource'; // e.g. an unknown transcript version: nothing to show but the note
@@ -1069,7 +1146,7 @@ function card(r, o, idx) {
   const idsOpen = (o.cardCount ?? 1) <= 1;
   return html`<article class="sr-card sr-card--${r.type}" aria-labelledby="sr-card-${idx}">
     <header class="sr-card-head">
-      <h3 id="sr-card-${idx}" class="sr-card-title">${title}${r.pos ? html`<span class="sr-dot" aria-hidden="true">·</span>${mismatch ? html`<span class="sr-sub">model residue </span>` : ''}<span class="mono">${three(r.residue?.aa ?? r.ref)}${r.pos}</span>` : ''}${x?.generic ? html`<span class="sr-dot" aria-hidden="true">·</span><span class="mono" title="Generic residue number">${x.generic}</span>` : ''}${x?.segment ? html`<span class="sr-dot" aria-hidden="true">·</span><span class="sr-nowrap">${x.segment}</span>` : ''}</h3>
+      <h3 id="sr-card-${idx}" class="sr-card-title">${title}${r.pos ? html`<span class="sr-dot" aria-hidden="true">·</span>${mismatch ? html`<span class="sr-sub">model residue </span>` : ''}${intLink(L.residueUrl(o, r.gid, r.pos), `${three(r.residue?.aa ?? r.ref)}${r.pos}`, { cls: 'mono', title: 'Report at this residue' })}` : ''}${x?.generic ? html`<span class="sr-dot" aria-hidden="true">·</span><span class="mono" title="Generic residue number">${x.generic}</span>` : ''}${x?.segment ? html`<span class="sr-dot" aria-hidden="true">·</span><span class="sr-nowrap">${x.segment}</span>` : ''}</h3>
       ${noResidue ? '' : html`<div class="sr-change">${changeLine(r, fix, mismatch)} ${status} ${badgesFor(r)}</div>`}
     </header>
     ${leadLine(r, o)}
@@ -1077,9 +1154,9 @@ function card(r, o, idx) {
     ${fixBlock(fix, o)}
     ${hasEvidence ? summaryBlock(r, o) : ''}
     ${noResidue ? '' : html`${hasEvidence ? identifiersSection(r, sub, o, idsOpen) : ''}
-    ${hasEvidence ? populationSection(r, o.releases, mismatch) : ''}
+    ${hasEvidence ? populationSection(r, o, mismatch) : ''}
     ${clinicalSection(r, o.releases, mismatch)}
-    ${hasEvidence && r.residue ? computationalSection(r, sub) : ''}
+    ${hasEvidence && r.residue ? computationalSection(r, sub, o) : ''}
     ${structureSection(r, o)}`}
     ${actions(r, o, idx, mismatch)}
     ${cardFinePrint(r, o, mismatch, noResidue)}
@@ -1100,12 +1177,12 @@ function cardFinePrint(r, o, mismatch, noResidue) {
   const about = [];
   if (leadNeeded(r, o.interp)) about.push(html`<li><strong>How it was read:</strong> ${leadReason(r, o.interp)}.</li>`);
   for (const n of (r.notes ?? []).filter((x) => FINE_NOTES.has(x.code))) about.push(html`<li>${n.text}</li>`);
-  if (hasRows) about.push(html`<li><strong>Population evidence</strong> is the gnomAD missense allele (exome counts where present, else genome). Per-population frequencies are not held in this index; open the gnomAD record for them.</li>`);
+  if (hasRows) about.push(html`<li><strong>Population evidence</strong> is the ${term(o, 'gnomad', 'gnomAD')} missense allele (exome counts where present, else genome). Per-population frequencies are not held in this index; open the gnomAD record for them.</li>`);
   if (f) {
-    about.push(html`<li><strong>CFR:</strong> a core functional residue is a generic position in the top 30 of the class-wide ranking.</li>`);
+    about.push(html`<li><strong>${term(o, 'cfr', 'CFR')}:</strong> a core functional residue is a generic position in the top 30 of the class-wide ranking.</li>`);
     if (f.dmax !== null) about.push(html`<li><strong>Largest contact change:</strong> the biggest |ΔRRCS| among this residue's contacts${f.threshold !== null ? html`; this receptor's threshold is ${f.threshold.toFixed(2)}` : ''}.</li>`);
-    about.push(html`<li><strong>Contacts</strong> are residue pairs of the AlphaFold-Multistate models whose contact score changes by at least the receptor's threshold between the inactive and the active model. They describe the two models, not the effect of a variant.</li>`);
-    about.push(html`<li><strong>Conservation</strong> is on a 0 to 1 scale. <strong>AlphaMissense</strong> scores are predictions (0 to 1; likely benign below 0.34, likely pathogenic above 0.564); <strong>residue mean</strong> is the mean over all substitutions at the residue.</li>`);
+    about.push(html`<li><strong>${term(o, 'pair', 'Contacts')}</strong> are residue pairs of the AlphaFold-Multistate models whose contact score changes by at least the receptor's threshold between the inactive and the active model. They describe the two models, not the effect of a variant.</li>`);
+    about.push(html`<li><strong>${term(o, 'conservation', 'Conservation')}</strong> is on a 0 to 1 scale. <strong>${term(o, 'am', 'AlphaMissense')}</strong> scores are predictions (0 to 1; likely benign below 0.34, likely pathogenic above 0.564); <strong>residue mean</strong> is the mean over all substitutions at the residue.</li>`);
   }
   if (!releases.length && !about.length) return '';
   return finePrint(html`${hasRows && releases.length ? html`<p class="sr-card-releases">${releases.join('; ')}.</p>` : ''}
@@ -1151,7 +1228,7 @@ function clinvarListTable(recs, caption) {
       <td data-label="Condition">${c.conditions?.length ? c.conditions.join('; ') : html`<span class="sr-na">not given</span>`}</td>
       <td data-label="Residue">${c.pos ? html`<a class="mono" href="?q=${encodeURIComponent(q)}" data-q="${q}" title="Details for ${acc}">${c.ref ? three(c.ref) : ''}${c.pos}</a>` : html`<span class="sr-na">not placed</span>`}</td>
       <td data-label="Change"><span class="mono">${cvChange(c)}</span></td>
-      <td data-label="Record"><a class="mono" href="${c.url}" target="_blank" rel="noopener noreferrer">${acc}<span class="sr-sr-only"> (opens ClinVar in a new tab)</span></a></td></tr>`;
+      <td data-label="Record">${extLink(c.url ?? L.clinvarUrl(c.variationId), acc, SITE.clinvar)}</td></tr>`;
     })}</tbody></table></div>`;
 }
 
@@ -1181,15 +1258,16 @@ export function clinvarListSection(r, o = {}) {
 function receptorCard(r, o, idx) {
   const rec = r.receptor;
   return html`<article class="sr-card sr-card--receptor" aria-labelledby="sr-card-${idx}">
-    <header class="sr-card-head"><h3 id="sr-card-${idx}" class="sr-card-title"><a href="${o.reports}${r.gid}.html">${recFull(rec)}</a></h3>
+    <header class="sr-card-head"><h3 id="sr-card-${idx}" class="sr-card-title">${intLink(L.reportUrl(o, r.gid), recFull(rec), { title: 'Report page' })}</h3>
     <div class="sr-change"><span class="sr-sub">${rec.name}</span></div></header>
+    ${receptorLinks(rec, o) ? html`<div class="sr-row"><h4>Records elsewhere</h4><div>${receptorLinks(rec, o)}</div></div>` : ''}
     ${r.clinvarList ? clinvarListSection(r, o) : ''}
     <div class="sr-row"><h4>Search inside this receptor</h4><div><ul class="sr-chips">
       ${[`${rec.symbol} 3.50`, `${rec.symbol} 6.48`, `${rec.symbol} 159`].map((q) => html`<li><a class="sr-chip" href="?q=${encodeURIComponent(q)}" data-q="${q}">${q}</a></li>`)}
     </ul>${finePrint(html`<p>Add a protein change, a residue number, a generic number or a coding change to the receptor name.</p>`)}</div></div>
     ${r.clinvarList ? '' : clinvarListSection(r, o)}
-    <div class="sr-actions"><a class="btn btn-primary btn-sm" href="${o.reports}${r.gid}.html">Open report</a>
-    <a class="btn btn-ghost btn-sm" href="${o.studio}?db=${encodeURIComponent(r.gid)}">Open in Studio</a></div>
+    <div class="sr-actions">${intLink(L.reportUrl(o, r.gid), 'Open report', { cls: 'btn btn-primary btn-sm' })}
+    ${intLink(L.studioUrl(o, r.gid), 'Open in Studio', { cls: 'btn btn-ghost btn-sm' })}</div>
   </article>`;
 }
 
@@ -1215,9 +1293,9 @@ export function renderReceptorList(rs, o) {
     <thead><tr><th scope="col">Receptor</th><th scope="col">UniProt</th><th scope="col">Name</th><th scope="col">Open</th></tr></thead>
     <tbody>${rs.map((r) => html`<tr>
       <td data-label="Receptor"><a href="?q=${encodeURIComponent(r.receptor.symbol)}" data-q="${r.receptor.symbol}">${recShort(r.receptor)}</a></td>
-      <td data-label="UniProt"><span class="mono">${r.receptor.uniprot ?? ''}</span></td>
+      <td data-label="UniProt">${r.receptor.uniprot ? extLink(L.uniprotUrl(r.receptor.uniprot), r.receptor.uniprot, 'UniProt') : ''}</td>
       <td data-label="Name">${r.receptor.name ?? ''}</td>
-      <td data-label="Open"><a href="${o.reports}${r.gid}.html">Report</a></td></tr>`)}</tbody></table></div>`;
+      <td data-label="Open">${intLink(L.reportUrl(o, r.gid), 'Report', { title: 'Report page' })}</td></tr>`)}</tbody></table></div>`;
 }
 
 /** A group label up to its colon: "R3.50 (3.50x50)" from "R3.50 (3.50x50): 269 of 283 receptors have Arg". */
@@ -1308,9 +1386,9 @@ export function compareRows(model, state) {
 function cellHtml(col, row, o) {
   const f = row.f;
   switch (col.key) {
-    case 'rec': return html`<a href="?q=${encodeURIComponent(row.query)}" data-q="${row.query}" title="Details for ${row.query}">${recShort(row.r.receptor)}</a> <a class="sr-sub sr-reportlink" href="${o.reports ?? ''}${row.gid}.html${row.r.pos ? `#sec=sec-snake&res=${row.r.pos}` : ''}">report</a>`;
-    case 'res': return html`<span class="mono">${row.res}</span>${row.departs ? html` <span class="sr-badge sr-badge--warn" title="This residue is not the one the motif name fixes">not the motif residue</span>` : ''}`;
+    case 'rec': return html`<a href="?q=${encodeURIComponent(row.query)}" data-q="${row.query}" title="Details for ${row.query}">${recShort(row.r.receptor)}</a> ${intLink(L.residueUrl(o, row.gid, row.r.pos), 'report', { cls: 'sr-sub sr-reportlink', title: row.r.pos ? 'Report at this residue' : 'Report page' })}`;
     case 'gen': return row.generic ? html`<span class="mono">${row.generic}</span>` : html`<span class="sr-na">none</span>`;
+    case 'res': return html`<span class="mono">${row.res}</span>${row.departs ? html` <span class="sr-badge sr-badge--warn" title="This residue is not the one the motif name fixes">not the motif residue</span>` : ''}`;
     case 'net': return f.net === null ? html`<span class="sr-na">none</span>` : netHtml(f.net, { word: false });
     case 'dmax': {
       if (f.dmax === null) return html`<span class="sr-na">none</span>`;
@@ -1445,7 +1523,9 @@ export function renderReleases(rel) {
   if (!rel) return '';
   const l = (k) => rel[k]?.label;
   const ens = rel.ensembl ? `${l('ensembl')} (${rel.ensembl.grch38}, ${rel.ensembl.grch37})` : null;
-  const bits = [l('gnomad'), l('clinvar'), ens, l('alphamissense'), l('hgnc'), l('uniprot')].filter(Boolean);
+  const amUrl = L.alphamissenseUrl(rel);
+  const am = l('alphamissense') && amUrl ? extLink(amUrl, l('alphamissense'), 'Zenodo', { cls: '' }) : l('alphamissense');
+  const bits = [l('gnomad'), l('clinvar'), ens, am, l('hgnc'), l('uniprot')].filter(Boolean);
   const rt = rel.reportTable ?? null;
   const same = rt ? rt.sameAsSearch !== false : true;
   const rule = html`at residues with at least one contact change of |ΔRRCS| ≥ ${REPORT_TABLE_DELTA.toFixed(1)}`;
@@ -1453,7 +1533,7 @@ export function renderReleases(rel) {
     ? finePrint(html`<p>The variant tables on the report pages use the same release as this search, ${l('gnomad') ?? 'gnomAD'}. They list its missense alleles ${rule}; search covers every missense allele and ${l('clinvar') ?? 'ClinVar'}.</p>`, { cls: 'sr-releases-note' })
     : html`<details><summary>How this differs from the report pages</summary>
     <p>The variant tables on the report pages list ${reportTableRelease(rel)} missense variants ${rule}; search uses ${l('gnomad') ?? 'gnomAD'} and covers every missense allele and ${l('clinvar') ?? 'ClinVar'}. Where the two differ, the search result is the more recent.</p></details>`;
-  return html`<p class="sr-releases"><strong>Data in this search:</strong> ${bits.join('; ')}. Coordinates are given on GRCh38 and GRCh37.</p>
+  return html`<p class="sr-releases"><strong>Data in this search:</strong> ${bits.map((b, i) => html`${i ? '; ' : ''}${b}`)}. Coordinates are given on GRCh38 and GRCh37.</p>
     ${note}`;
 }
 
@@ -1491,6 +1571,7 @@ export function renderAnswer(answer, query, o) {
   // no exact match, but the other residues at the position are grouped (W3.50: nobody has Trp at 3.50x50)
   const groupedOnly = !rs.length && (answer.groups ?? []).some((g) => g.results?.length);
 
+  out += newTabNote().s;
   if (String(query ?? '').length > MAX_QUERY_LENGTH || answer.interpretation?.flags?.includes('query-truncated')) {
     out += html`<div class="sr-message sr-message--info" role="note">Only the first ${MAX_QUERY_LENGTH} characters were read.</div>`.s;
   }

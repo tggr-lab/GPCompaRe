@@ -24,6 +24,7 @@ const indexUrl = new URL(app.dataset.index, document.baseURI);
 const opts = {
   reports: app.dataset.reports,
   studio: app.dataset.studio,
+  glossary: app.dataset.glossary,
   base: '',
 };
 const loader = makeLoader(indexUrl);

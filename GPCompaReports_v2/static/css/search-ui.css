@@ -296,3 +296,24 @@ h5.sr-subhead { margin: var(--s-3) 0 var(--s-1); font-size: 0.84rem; font-weight
   .sr-am-cell { min-width: 3em; }
   .sr-table--contacts td { text-align: left; }
 }
+
+/* ------------------------------------------------------------- links in results (new tab) */
+/* Outbound links carry a small ↗; links to this site's own pages (report, Studio, glossary) do not. */
+/* the glyph is drawn here, not typed into the link, so copying the text gives the bare identifier;
+   the empty alt text keeps screen readers from reading "north east arrow" (aria-describedby says "opens in a new tab") */
+.sr-ext::after { content: "\2197"; content: "\2197" / ""; display: inline-block; margin-left: 2px; font-size: 0.8em; line-height: 1; opacity: 0.75; text-decoration: none; }
+.sr-ext:hover, .sr-int:hover { text-decoration: underline; text-underline-offset: 2px; }
+.sr-ext:hover::after { opacity: 1; }
+.sr-ext-alt { font-size: 0.8rem; margin-left: var(--s-1); }
+.sr-term { color: inherit; text-decoration: underline dotted; text-underline-offset: 2px; }
+.sr-term:hover { color: var(--fgColor-accent); }
+.sr-extlinks { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-3); margin: 0; padding: 0; list-style: none; font-size: 0.92rem; }
+.sr-extlinks li { min-width: 0; }
+.sr-am-source { margin: var(--s-2) 0 0; }
+#search-results a:focus-visible, #search-releases a:focus-visible { outline: 2px solid var(--brand-primary); outline-offset: 2px; border-radius: 2px; }
+@media (max-width: 720px) {
+  /* links stay tappable: a taller hit area without moving the text, and long ids may wrap */
+  .sr-ext, .sr-int:not(.btn) { display: inline-block; padding: 4px 0; overflow-wrap: anywhere; max-width: 100%; }
+  .sr-int.sr-term { padding: 0; display: inline; }
+  .sr-ext-alt { padding: 4px 2px; }
+}
