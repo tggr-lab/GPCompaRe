@@ -142,7 +142,7 @@
 .dataset-table th { text-align: left; font-weight: 600; padding: 6px var(--s-5) 6px 0; white-space: nowrap; }
 .dataset-table td { padding: 6px var(--s-5) 6px 0; font-variant-numeric: tabular-nums; }
 .dataset-table .dataset-note { color: var(--fgColor-muted); font-size: 13px; font-variant-numeric: normal; }
-.dataset-limitation { max-width: 70ch; color: var(--fgColor-muted); font-size: 14px; margin: 0; }
+.dataset-limitation { margin: 0; }
 @media (max-width: 700px) { .dataset-table .dataset-note { display: none; } }
 
 /* ----------- Worked example ----------- */
@@ -173,17 +173,20 @@
 @media (max-width: 820px) { .cfr-grid { grid-template-columns: 1fr; } }
 
 /* ----------- Contains, custom, methods, release ----------- */
-.contains, .custom, .methods-sources, .release { padding: var(--s-7) 0 var(--s-6); border-bottom: 1px solid var(--borderColor-muted); }
-.release { border-bottom: 0; }
+.contains, .custom { padding: var(--s-7) 0 var(--s-6); border-bottom: 1px solid var(--borderColor-muted); }
 .contains-list { columns: 2; column-gap: var(--s-6); margin: 0 0 var(--s-4); padding-left: 1.1rem; }
 .contains-list li { margin-bottom: var(--s-2); break-inside: avoid; }
-.contains-note, .custom p, .methods-sources p { max-width: 70ch; margin: 0 0 var(--s-3); }
-.release-list { display: grid; grid-template-columns: max-content 1fr; gap: var(--s-2) var(--s-5); margin: 0 0 var(--s-4); }
-.release-list dt { font-weight: 600; color: var(--fgColor-muted); }
-.release-list dd { margin: 0; }
-.release-scope { max-width: 70ch; color: var(--fgColor-muted); font-size: 14px; }
+.custom p { max-width: 70ch; margin: 0 0 var(--s-3); }
+.contains-note { margin: var(--s-3) 0 0; }
+
 @media (max-width: 820px) { .contains-list { columns: 1; } }
 
-/* Reference list under "Methods and data sources". */
-.methods-sources .refs-list { max-width: 70ch; margin: var(--s-3) 0 var(--s-4); padding-left: 1.2rem; font-size: 0.875rem; color: var(--fgColor-muted); }
-.methods-sources .refs-list li { margin-bottom: var(--s-1); overflow-wrap: anywhere; }
+/* Page-bottom fine print: data versions, methods and references, release. */
+.landing-fine { padding: 0 0 var(--s-7); }
+.landing-fine .fine-print--page { margin-top: var(--s-6); }
+.landing-versions { margin: 0 0 var(--s-3); }
+.landing-fine .refs-list { margin: var(--s-2) 0 var(--s-3); padding-left: 1.2rem; }
+.landing-fine .refs-list li { margin-bottom: var(--s-1); overflow-wrap: anywhere; }
+.worked-key { font-size: 0.9rem; color: var(--fgColor-muted); }
+.worked-copy .fine-print { margin: 0 0 var(--s-3); }
+.cfr-copy .fine-print { margin: 0 0 var(--s-3); }

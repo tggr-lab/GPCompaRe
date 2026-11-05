@@ -230,11 +230,11 @@
     </section>
 
     {# References condensed to a single line; full sources live on the landing page + footer. #}
-    <p class="stats-refs">
+    <p class="stats-refs fine-print fine-print--page">
       Data &amp; methods:
       <a href="https://github.com/huhlim/alphafold-multistate" target="_blank" rel="noopener">AlphaFold multistate</a> ·
       <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6954041/" target="_blank" rel="noopener">RRCS</a> ·
-      <a href="https://gnomad.broadinstitute.org/" target="_blank" rel="noopener">gnomAD v4.1</a> ·
+      <a href="https://gnomad.broadinstitute.org/" target="_blank" rel="noopener">{{ data_versions.sources.gnomad_batch.label }}</a> (batch layer, as in the paper) ·
       <a href="https://zenodo.org/records/10813168" target="_blank" rel="noopener">AlphaMissense</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>) ·
       <a href="https://gpcrdb.org/" target="_blank" rel="noopener">GPCRdb</a> ·
       <a href="https://www.uniprot.org/" target="_blank" rel="noopener">UniProt</a> ·
@@ -286,21 +286,20 @@
 
     .stats-page .callout { margin: var(--s-4) 0; }
 
-    /* Condensed references strip. */
-    .stats-page .stats-refs {
-      margin: var(--s-7) 0 0;
-      padding: var(--s-4) var(--s-5);
-      background: var(--bgColor-muted);
-      border: 1px solid var(--borderColor-muted);
-      border-radius: var(--r-md);
-      color: var(--fgColor-muted);
-      font-size: 0.88rem;
-      line-height: 1.8;
+    /* Methodological text reads as fine print (presentation only; the wording is unchanged):
+       the section notes under each heading, and every callout paragraph after the first. */
+    .stats-page .analysis-section > .section-head > .section-sub {
+      font-size: 0.8125rem; line-height: 1.55; max-width: 72ch;
     }
-    .stats-page .stats-refs a {
-      color: var(--brand-primary);
-      white-space: nowrap;
+    .stats-page .callout > p ~ p,
+    .stats-page .callout > p.section-sub {
+      font-size: 0.8125rem; line-height: 1.55; color: var(--fgColor-muted); max-width: 72ch;
     }
+    .stats-page .callout > p.section-sub { margin-top: var(--s-3); }
+
+    /* Data and methods strip: the shared fine-print look, sized to the page. */
+    .stats-page .stats-refs { margin-top: var(--s-7); line-height: 1.8; }
+    .stats-page .stats-refs a { white-space: nowrap; }
   </style>
 </section>
 {% endblock %}

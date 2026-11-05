@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_partials/fine_print.html" import fine_print %}
 
 {% block breadcrumbs %}
 <div class="breadcrumbs">
@@ -13,14 +14,14 @@
   <div class="section-inner-wide">
     <header class="section-head">
       <h1>Browse Class A GPCRs</h1>
-      <p class="section-sub">Search and filter receptor reports. Open a receptor to inspect its contact changes, residue-level summaries, variants, and downloadable tables.</p>
+      <p class="section-sub">Filter the receptors and open a report.</p>
     </header>
 
     <form class="browse-search-link" action="{{ static_prefix }}search/" method="get" role="search" data-search-index="{{ static_prefix }}search2/" data-suggest-host>
       <label for="browse-vsearch">Looking for a variant, a residue or a genome position?</label>
-      <input type="search" id="browse-vsearch" name="q" maxlength="300" class="v2-input" placeholder="e.g. PAR2 M159I, rs115885685, 5-76833084-G-A, 3.50x50" aria-describedby="browse-vsearch-help" spellcheck="false" autocapitalize="off" autocomplete="off">
+      <input type="search" id="browse-vsearch" name="q" maxlength="300" class="v2-input" placeholder="e.g. OPRM1 N40D, rs1801028, 16-89919709-C-T, ADRB2 3.50" aria-describedby="browse-vsearch-help" spellcheck="false" autocapitalize="off" autocomplete="off">
       <button type="submit" class="btn btn-primary">Search</button>
-      <span class="sr-hint" id="browse-vsearch-help">Any notation works: protein or coding changes, GRCh37 or GRCh38 positions, rsIDs, ClinVar records, generic numbers. The table below lists receptors.</span>
+      <span class="sr-sr-only" id="browse-vsearch-help">Any notation works. The table below lists receptors.</span>
     </form>
 
     <div id="panel-receptors">
@@ -42,14 +43,6 @@
     </div>
 
     <p class="browse-search-hint" id="receptor-search-hint" role="status" hidden></p>
-
-    <div class="browse-legend">
-      <strong>Column guide:</strong>
-      <span><b>Contacts</b>: total residue-residue contact pairs detected (within 4.63 Å in either the active or the inactive state).</span>
-      <span><b>Above threshold</b>: contact pairs whose |ΔRRCS| exceeds the per-receptor ΔRRCS threshold.</span>
-      <span><b>Total |ΔRRCS|</b>: sum of absolute ΔRRCS across all contacts. Receptor-level summary of total contact-score redistribution between active and inactive models.</span>
-      <span><b>Contact-site variants</b>: gnomAD missense variants at residues that take part in at least one contact pair with |ΔRRCS| ≥ 3.0 (a fixed cutoff, not the per-receptor threshold).</span>
-    </div>
 
     <div class="v2-table-wrap">
       <div class="v2-table-scroll">
@@ -74,6 +67,15 @@
       </div>
       <div class="v2-pagination" data-table-pagination="gpcr-table"></div>
     </div>
+
+    {% call fine_print(summary='Column guide', cls='browse-legend') %}
+    <div class="browse-legend-body">
+      <span><b>Contacts</b>: total residue-residue contact pairs detected (within 4.63 Å in either the active or the inactive state).</span>
+      <span><b>Above threshold</b>: contact pairs whose |ΔRRCS| exceeds the per-receptor ΔRRCS threshold.</span>
+      <span><b>Total |ΔRRCS|</b>: sum of absolute ΔRRCS across all contacts. Receptor-level summary of total contact-score redistribution between active and inactive models.</span>
+      <span><b>Contact-site variants</b>: gnomAD missense variants at residues that take part in at least one contact pair with |ΔRRCS| ≥ 3.0 (a fixed cutoff, not the per-receptor threshold).</span>
+    </div>
+    {% endcall %}
     </div>
 
     <style>

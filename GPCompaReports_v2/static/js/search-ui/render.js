@@ -37,6 +37,19 @@ function part(v) {
   return esc(v);
 }
 
+/**
+ * The fine-print component (static/css/fine-print.css; Jinja twin: templates/_partials/fine_print.html).
+ * Small, muted prose that supports a block without competing with it. With `summary` it is a collapsed
+ * <details>; without, an <aside>. `page` adds the page-bottom rule. `body` is markup (Raw) or text.
+ */
+export function finePrint(body, { summary = null, open = false, page = false, cls = '', id = null } = {}) {
+  const k = `fine-print${page ? ' fine-print--page' : ''}${cls ? ` ${cls}` : ''}`;
+  const idAttr = id ? html` id="${id}"` : '';
+  return summary
+    ? html`<details class="${k}"${idAttr}${open ? raw(' open') : ''}><summary>${summary}</summary>${body}</details>`
+    : html`<aside class="${k}"${idAttr}>${body}</aside>`;
+}
+
 // --------------------------------------------------------------------------------- formatting
 
 const nf = new Intl.NumberFormat('en-US');
@@ -50,6 +63,9 @@ export function fmtAf(af) {
   return String(Number(af.toFixed(3)));
 }
 const fmt2 = (x) => (x === null || x === undefined ? 'n/a' : x.toFixed(2));
+/** Allele AlphaMissense scores print with 3 decimals, as on the report pages (the index keeps 3; the residue mean is kept at 2). */
+export const AM_DECIMALS = 3;
+export const fmtAm = (x) => (x === null || x === undefined ? 'n/a' : x.toFixed(AM_DECIMALS));
 
 /** Short receptor label: "PAR2 (F2RL1)" or just the symbol when the entry name adds nothing. */
 export function recShort(r) {
@@ -301,10 +317,10 @@ function copyBtn(text, label) {
 
 function amCell(a) {
   if (a.am === null || a.am === undefined) return html`<span class="sr-na">no score</span>`;
-  return html`${a.am.toFixed(2)} <span class="sr-sub">${a.amClass ?? ''}</span>`;
+  return html`${fmtAm(a.am)} <span class="sr-sub">${a.amClass ?? ''}</span>`;
 }
 
-function allelesTable(alleles, { caption }) {
+export function allelesTable(alleles, { caption }) {
   return html`<div class="sr-table-wrap"><table class="sr-table">
     <caption class="sr-sr-only">${caption}</caption>
     <thead><tr><th scope="col">gnomAD allele (GRCh38)</th><th scope="col">Change</th><th scope="col">rsID</th><th scope="col" class="num">Allele count</th><th scope="col" class="num">Frequency</th><th scope="col" class="num">Homozygotes</th><th scope="col">AlphaMissense prediction</th></tr></thead>
@@ -327,7 +343,7 @@ function modelText(r) {
   return r.alt && r.kind === 'missense' ? { res, change: hgvsP(r) } : { res, change: null };
 }
 
-function leadReason(r, i) {
+export function leadReason(r, i) {
   if (hasNote(r, 'offset_mapping')) return 'the transcript you typed numbers this residue differently from the model';
   if (hasNote(r, 'isoform_mapping')) return 'mapped from another isoform of this receptor';
   if (hasNote(r, 'version_mismatch')) return 'the transcript version differs from the one in this database';
@@ -359,7 +375,7 @@ function leadLine(r, o) {
   if (subjectOf(r, o).mismatch) m.change = null; // the change on the model residue is only ever a suggestion
   const q = String(o.query ?? '').trim();
   const typed = q.length > 90 ? `${q.slice(0, 87)}...` : q;
-  return html`<p class="sr-lead"><span class="sr-label">You typed</span> <span class="mono">${typed}</span> <span class="sr-arrow" aria-hidden="true">→</span><span class="sr-sr-only"> which is </span> <span class="sr-label">model residue</span> <strong class="mono">${m.res}</strong>${m.change ? html`<span class="sr-sub">, </span><span class="mono">${m.change}</span>` : ''} <span class="sr-sub">(${leadReason(r, o.interp)})</span></p>`;
+  return html`<p class="sr-lead"><span class="sr-label">You typed</span> <span class="mono">${typed}</span> <span class="sr-arrow" aria-hidden="true">→</span><span class="sr-sr-only"> which is </span> <span class="sr-label">model residue</span> <strong class="mono">${m.res}</strong>${m.change ? html`<span class="sr-sub">, </span><span class="mono">${m.change}</span>` : ''} </p>`;
 }
 
 // ------------------------------------------------------ transcripts, assemblies (folded away)
@@ -413,15 +429,19 @@ function genomeTable(r) {
     <p class="sr-sub">IDs read chromosome-position-reference-alternate, on the forward strand.</p>`;
 }
 
+/** The transcript and genome tables: folded away inside the card's fine print; the numbering warning stays on the summary. */
 function notationsDetails(r, mismatch = false) {
   const tx = transcriptTable(r);
   const gen = genomeTable(r);
   if (!tx && !gen) return '';
-  const open = hasNote(r, MAPPING_WARN);
-  return html`<div class="sr-row sr-row--wide"><details class="sr-more sr-notations"${open ? raw(' open') : ''}>
-    <summary>${mismatch ? 'The model residue on each transcript' : 'All transcript notations'}${open ? html` <span class="sr-badge sr-badge--warn">numbering differs</span>` : ''}</summary>
-    ${tx}${gen}</details></div>`;
+  const differs = hasNote(r, MAPPING_WARN);
+  return html`<details class="sr-more sr-notations">
+    <summary>${mismatch ? 'The model residue on each transcript' : 'All transcript notations'}${differs ? html` <span class="sr-badge sr-badge--warn">numbering differs</span>` : ''}</summary>
+    ${tx}${gen}</details>`;
 }
+
+/** "gnomAD v4.1.2" -> "gnomAD", "ClinVar 2026-10-11" -> "ClinVar": the release itself goes to the fine print. */
+const sourceName = (label) => String(label ?? '').split(' ')[0] || String(label ?? '');
 
 function gnomadRow(r, releases, mismatch) {
   const alleles = r.alleles ?? [];
@@ -445,7 +465,7 @@ function gnomadRow(r, releases, mismatch) {
   const more = others.length
     ? html`<details class="sr-more"><summary>${alleles.length ? 'Other' : 'All'} ${others.length} ${label} missense allele${others.length === 1 ? '' : 's'} at ${where}</summary>${allelesTable(others, { caption: `Other ${label} alleles at this residue` })}</details>`
     : '';
-  return html`<div class="sr-row"><h4>${label}</h4><div>${body}${more}</div></div>`;
+  return html`<div class="sr-row"><h4>${sourceName(label)}</h4><div>${body}${more}</div></div>`;
 }
 
 function clinvarRow(r, releases, mismatch = false) {
@@ -459,7 +479,7 @@ function clinvarRow(r, releases, mismatch = false) {
         ${c.conditions?.length ? html`<div class="sr-sub">${c.conditions.join('; ')}</div>` : ''}
         <div class="sr-sub">${c.title}</div></li>`)}</ul>`
     : html`<p>${at ? `No ClinVar record at ${at}.` : 'No ClinVar record matches this query.'}</p>`;
-  return html`<div class="sr-row"><h4>${label}</h4><div>${body}</div></div>`;
+  return html`<div class="sr-row"><h4>${sourceName(label)}</h4><div>${body}</div></div>`;
 }
 
 function factsRow(r) {
@@ -467,19 +487,19 @@ function factsRow(r) {
   if (!x) return '';
   const f = residueFacts(r);
   const cfr = x.cfr
-    ? html`<strong>Yes</strong>, rank ${f.cfrRank} of the class-wide positions (the top 30 are CFRs).`
-    : (f.cfrRank ? html`No. Rank ${f.cfrRank} of the class-wide positions, outside the top 30 that are CFRs.` : html`Not ranked: no generic number.`);
+    ? html`<strong>Yes</strong>, class-wide rank ${f.cfrRank}`
+    : (f.cfrRank ? html`No, class-wide rank ${f.cfrRank}` : html`Not ranked`);
   const largest = f.dmax === null
     ? html`<span class="sr-na">no contacts</span>`
-    : html`|ΔRRCS| ${f.dmax.toFixed(2)}${f.threshold !== null ? html`<span class="sr-sub">, receptor threshold ${f.threshold.toFixed(2)}</span>` : ''}${f.partner ? html`<span class="sr-sub">, with ${f.partner}</span>` : ''}`;
+    : html`|ΔRRCS| ${f.dmax.toFixed(2)}${f.partner ? html`<span class="sr-sub">, with ${f.partner}</span>` : ''}`;
   const cell = (k, v) => html`<div class="sr-fact"><dt>${k}</dt><dd>${v}</dd></div>`;
   return html`<div class="sr-row"><h4>In this database</h4><div><dl class="sr-facts">
     ${cell('Core functional residue (CFR), class-wide', cfr)}
     ${cell('Largest contact change', largest)}
     ${f.net !== null ? cell('Net ΔRRCS over this residue\u2019s contacts', netHtml(f.net)) : ''}
     ${cell('Contacts above this receptor’s threshold', f.nsig ?? 0)}
-    ${cell('Conservation', f.conservation === null ? html`<span class="sr-na">not available</span>` : html`${f.conservation.toFixed(2)} <span class="sr-sub">on a 0 to 1 scale</span>`)}
-    ${cell('AlphaMissense prediction, residue mean', f.amMean === null ? html`<span class="sr-na">not available</span>` : html`${f.amMean.toFixed(2)} <span class="sr-sub">mean over all substitutions</span>`)}
+    ${cell('Conservation', f.conservation === null ? html`<span class="sr-na">not available</span>` : f.conservation.toFixed(2))}
+    ${cell('AlphaMissense, residue mean', f.amMean === null ? html`<span class="sr-na">not available</span>` : f.amMean.toFixed(2))}
     ${cell('Numbering', html`${x.generic ? html`<span class="mono">${x.generic}</span> ` : ''}${x.bw ? html`<span class="sr-sub">BW ${x.bw}, GPCRdb ${x.gpcrdb}</span>` : html`<span class="sr-na">no generic number (outside the helices)</span>`}`)}
   </dl></div></div>`;
 }
@@ -593,7 +613,7 @@ export function evidenceText(r, ctx = {}) {
   if (alleles.length) {
     L.push(`${gl} alleles for this change:`);
     for (const a of alleles) {
-      L.push(`  ${a.id} ${a.hgvsc ?? ''} ${a.hgvsp ?? ''}; ${a.rsids?.length ? a.rsids.join(', ') : 'no rsID'}; allele count ${fmtInt(a.ac)} of ${fmtInt(a.an)}; allele frequency ${fmtAf(a.af)}; homozygotes ${fmtInt(a.hom)}; AlphaMissense prediction ${a.am == null ? 'not available' : `${a.am.toFixed(2)}${a.amClass ? ` (${a.amClass})` : ''}`}`.replace(/\s+;/g, ';'));
+      L.push(`  ${a.id} ${a.hgvsc ?? ''} ${a.hgvsp ?? ''}; ${a.rsids?.length ? a.rsids.join(', ') : 'no rsID'}; allele count ${fmtInt(a.ac)} of ${fmtInt(a.an)}; allele frequency ${fmtAf(a.af)}; homozygotes ${fmtInt(a.hom)}; AlphaMissense prediction ${a.am == null ? 'not available' : `${fmtAm(a.am)}${a.amClass ? ` (${a.amClass})` : ''}`}`.replace(/\s+;/g, ';'));
     }
   } else if (sub.mismatch) {
     L.push(`${gl}: the typed ${sub.what} was not looked up, because ${sub.what === 'change' ? 'its residue is' : 'it is'} not the model residue.`);
@@ -635,8 +655,13 @@ export function evidenceText(r, ctx = {}) {
 
 // ---------------------------------------------------------------------------- actions & cards
 
-/** The gnomAD release the report pages' variant tables were built from (frozen). */
-export const REPORT_TABLE_RELEASE = 'gnomAD v4.1.0';
+/**
+ * The gnomAD release the report pages' variant tables list: `releases.reportTable.label` from search2/meta.json
+ * (the version registry), else the search release. Never a literal.
+ */
+export function reportTableRelease(releases) {
+  return releases?.reportTable?.label ?? releases?.gnomad?.label ?? 'gnomAD';
+}
 
 /** True when the report's variant table lists the change named by the result. */
 export function inReportTable(r) {
@@ -660,9 +685,9 @@ function actions(r, o, idx, mismatch) {
   const dmax = residueFacts(r).dmax;
   const belowCut = dmax === null || dmax < REPORT_TABLE_DELTA;
   const why = !mismatch && vq && hasAlleles && !canFind
-    ? html`<p class="sr-action-note">${belowCut
+    ? html`<p class="sr-action-note fine-print">${belowCut
       ? `Not in the report’s variant table: it lists variants at residues with a contact change of |ΔRRCS| ${REPORT_TABLE_DELTA.toFixed(1)} or more, and ${dmax === null ? 'this residue has no contact change' : `this residue’s largest is ${dmax.toFixed(2)}`}.`
-      : `Not in the report’s variant table: that table was built from ${REPORT_TABLE_RELEASE} and does not list this change.`}</p>`
+      : `Not in the report’s variant table: that table was built from ${reportTableRelease(o.releases)} and does not list this change.`}</p>`
     : '';
   return html`<div class="sr-actions">
     <a class="btn btn-primary btn-sm" href="${res}">${r.pos ? 'Open report at this residue' : 'Open report'}</a>
@@ -674,8 +699,12 @@ function actions(r, o, idx, mismatch) {
   </div>`;
 }
 
-function notesBlock(notes) {
-  if (!notes?.length) return '';
+/** Notes that explain rather than warn: shown in the card's fine print, not above its results. */
+const FINE_NOTES = new Set(['assembly_detected', 'gnomad_frame', 'multi_nucleotide', 'par_y', 'reference_unchecked']);
+
+function notesBlock(allNotes) {
+  const notes = (allNotes ?? []).filter((n) => !FINE_NOTES.has(n.code));
+  if (!notes.length) return '';
   return html`<ul class="sr-notes">${notes.map((n) => html`<li class="sr-note ${WARN_NOTES.has(n.code) ? 'sr-note--warn' : 'sr-note--info'}" data-code="${n.code}"><span class="sr-sr-only">Note: </span>${n.text}</li>`)}</ul>`;
 }
 
@@ -773,10 +802,36 @@ function card(r, o, idx) {
     ${fixBlock(fix, o)}
     ${noResidue ? '' : html`${r.type === 'not_coding' || r.type === 'not_in_resource' && !r.residue ? '' : gnomadRow(r, o.releases, mismatch)}
     ${clinvarRow(r, o.releases, mismatch)}
-    ${factsRow(r)}
-    ${notationsDetails(r, mismatch)}`}
+    ${factsRow(r)}`}
     ${actions(r, o, idx, mismatch)}
+    ${cardFinePrint(r, o, mismatch, noResidue)}
   </article>`;
+}
+
+/**
+ * Everything that explains a card without changing what it says: the data releases, how the typed text
+ * was mapped, notes that are not warnings, what the numbers mean, and the transcript and genome tables.
+ * One small block at the bottom of the card; the long parts are folded.
+ */
+function cardFinePrint(r, o, mismatch, noResidue) {
+  if (noResidue) return '';
+  const rel = o.releases;
+  const hasRows = r.type !== 'not_coding' && !(r.type === 'not_in_resource' && !r.residue);
+  const releases = [r.releases?.gnomad ?? rel?.gnomad?.label, r.releases?.clinvar ?? rel?.clinvar?.label].filter(Boolean);
+  const f = r.residue ? residueFacts(r) : null;
+  const about = [];
+  if (leadNeeded(r, o.interp)) about.push(html`<li><strong>How it was read:</strong> ${leadReason(r, o.interp)}.</li>`);
+  for (const n of (r.notes ?? []).filter((x) => FINE_NOTES.has(x.code))) about.push(html`<li>${n.text}</li>`);
+  if (f) {
+    about.push(html`<li><strong>CFR:</strong> a core functional residue is a generic position in the top 30 of the class-wide ranking.</li>`);
+    if (f.dmax !== null) about.push(html`<li><strong>Largest contact change:</strong> the biggest |ΔRRCS| among this residue's contacts${f.threshold !== null ? html`; this receptor's threshold is ${f.threshold.toFixed(2)}` : ''}.</li>`);
+    about.push(html`<li><strong>Conservation</strong> is on a 0 to 1 scale. <strong>AlphaMissense, residue mean</strong> is the mean prediction over all substitutions at the residue.</li>`);
+  }
+  const tables = notationsDetails(r, mismatch);
+  if (!releases.length && !about.length && !tables) return '';
+  return finePrint(html`${hasRows && releases.length ? html`<p class="sr-card-releases">${releases.join('; ')}.</p>` : ''}
+    ${about.length ? html`<details class="sr-about"><summary>About these numbers</summary><ul>${about}</ul></details>` : ''}
+    ${tables}`, { cls: 'sr-card-fine' });
 }
 
 // ------------------------------------------------------- every ClinVar record of one receptor
@@ -831,16 +886,17 @@ export function clinvarListSection(r, o = {}) {
   if (!Array.isArray(recs)) return '';
   const sym = r.receptor?.symbol ?? r.gid;
   const label = r.releases?.clinvar ?? o.releases?.clinvar?.label ?? 'ClinVar';
-  if (!recs.length) return html`<div class="sr-row sr-cvlist"><h4>${label}</h4><div><p>No ClinVar record for ${sym} in ${label}.</p></div></div>`;
+  if (!recs.length) return html`<div class="sr-row sr-cvlist"><h4>${sourceName(label)}</h4><div><p>No ClinVar record for ${sym} in ${label}.</p></div></div>`;
   const groups = clinvarGroups(recs);
   const counts = groups.filter((g) => g.records.length || g.key === 'plp').map((g) => `${g.records.length} ${g.label.toLowerCase()}`).join(', ');
   const openKey = groups.find((g) => g.key === 'plp' && g.records.length)?.key ?? (r.clinvarList ? groups.find((g) => g.records.length)?.key : null);
-  const body = html`<p class="sr-sub">${recs.length} ${recs.length === 1 ? 'record' : 'records'}: ${counts}. Single-gene records only, any classification; the report page lists the pathogenic or likely pathogenic missense records.</p>
+  const body = html`<p class="sr-sub">${recs.length} ${recs.length === 1 ? 'record' : 'records'}: ${counts}.</p>
+    ${finePrint(html`<p>${label}. Single-gene records only, any classification. The report page lists only the pathogenic or likely pathogenic missense records.</p>`)}
     ${groups.filter((g) => g.records.length).map((g) => html`<details class="sr-more sr-cvgroup" data-cv-group="${g.key}"${g.key === openKey ? raw(' open') : ''}>
       <summary>${g.label} <span class="sr-sub">${g.records.length}</span></summary>
       ${clinvarListTable(g.records, `${g.label}: ${g.records.length} ClinVar records for ${sym}`)}</details>`)}`;
   return html`<div class="sr-row sr-row--wide sr-cvlist" id="sr-cvlist"><details class="sr-more sr-cvlist-all"${r.clinvarList ? raw(' open') : ''}>
-    <summary><strong>All ${recs.length} ClinVar ${recs.length === 1 ? 'record' : 'records'} for ${sym}</strong> <span class="sr-sub">${label}</span></summary>
+    <summary><strong>All ${recs.length} ClinVar ${recs.length === 1 ? 'record' : 'records'} for ${sym}</strong></summary>
     ${body}</details></div>`;
 }
 
@@ -852,7 +908,7 @@ function receptorCard(r, o, idx) {
     ${r.clinvarList ? clinvarListSection(r, o) : ''}
     <div class="sr-row"><h4>Search inside this receptor</h4><div><ul class="sr-chips">
       ${[`${rec.symbol} 3.50`, `${rec.symbol} 6.48`, `${rec.symbol} 159`].map((q) => html`<li><a class="sr-chip" href="?q=${encodeURIComponent(q)}" data-q="${q}">${q}</a></li>`)}
-    </ul><p class="sr-sub">Add a protein change, a residue number, a generic number or a coding change to the receptor name.</p></div></div>
+    </ul>${finePrint(html`<p>Add a protein change, a residue number, a generic number or a coding change to the receptor name.</p>`)}</div></div>
     ${r.clinvarList ? '' : clinvarListSection(r, o)}
     <div class="sr-actions"><a class="btn btn-primary btn-sm" href="${o.reports}${r.gid}.html">Open report</a>
     <a class="btn btn-ghost btn-sm" href="${o.studio}?db=${encodeURIComponent(r.gid)}">Open in Studio</a></div>
@@ -866,6 +922,12 @@ export const CMP_PAGE_SIZE = 25;
 function topClinvar(r) {
   const rec = (r.clinvar ?? [])[0];
   return rec ? `${rec.classification}${(r.clinvar.length > 1 ? ` (+${r.clinvar.length - 1})` : '')}` : '';
+}
+
+/** The motif name and its positions; the longer note about it is fine print. */
+function motifBlock(m) {
+  if (!m) return '';
+  return html`<p class="sr-motif"><strong>${m.name}</strong>${m.positions?.length ? html`<span class="sr-sub">, generic positions ${m.positions.join(', ')}</span>` : ''}</p>${m.note ? finePrint(html`<p>${m.note}</p>`, { cls: 'sr-motif-note' }) : ''}`;
 }
 
 /** Compact table for a list of receptors with nothing to compare (names and accessions). */
@@ -990,12 +1052,12 @@ function cellHtml(col, row, o) {
 export function renderCompare(model, state, o = {}) {
   const sortable = model.cols;
   return html`<div class="sr-compare" data-compare>
-    ${model.motif ? html`<p class="sr-motif"><strong>${model.motif.name}</strong>${model.motif.positions?.length ? html`<span class="sr-sub">, generic positions ${model.motif.positions.join(', ')}</span>` : ''}${model.motif.note ? html`. ${model.motif.note}` : ''}</p>` : ''}
+    ${motifBlock(model.motif)}
     ${model.filterNote ? html`<p class="sr-filter-note">${model.filterNote}</p>` : ''}
     ${model.groups && model.groups.length > 1 ? html`<div class="sr-groups" role="group" aria-label="Show"><span class="sr-label">Show</span>
       <button type="button" class="sr-seg" data-cmp-group="" aria-pressed="${state.group === '' ? 'true' : 'false'}">All <span class="sr-sub">${model.rows.length}</span></button>
       ${model.groups.map((g) => html`<button type="button" class="sr-seg" data-cmp-group="${g.key}" aria-pressed="${state.group === g.key ? 'true' : 'false'}" title="${g.label}">${String(g.label).split(':')[0]} <span class="sr-sub">${g.n}</span></button>`)}</div>
-      ${model.motif && model.groups.some((g) => String(g.label).includes(':')) ? html`<ul class="sr-motif-notes">${model.groups.map((g) => html`<li>${g.label}</li>`)}</ul>` : ''}` : ''}
+      ${model.motif && model.groups.some((g) => String(g.label).includes(':')) ? finePrint(html`<ul class="sr-motif-notes">${model.groups.map((g) => html`<li>${g.label}</li>`)}</ul>`, { summary: 'About these groups' }) : ''}` : ''}
     <div class="sr-cmp-controls">
       ${model.families.length > 1 ? html`<label class="sr-cmp-field">Family
         <select class="v2-select" data-cmp-family><option value="">All families (${model.rows.length})</option>${model.families.map(([name, n]) => html`<option value="${name}"${state.family === name ? raw(' selected') : ''}>${name} (${n})</option>`)}</select></label>` : ''}
@@ -1004,8 +1066,8 @@ export function renderCompare(model, state, o = {}) {
         <button type="button" class="btn btn-ghost btn-sm" data-cmp-dir${state.sort === 'orig' ? raw(' disabled') : ''} aria-label="Sort direction: ${state.dir === 'desc' ? 'high to low' : 'low to high'}. Press to reverse.">${state.dir === 'desc' ? 'High to low' : 'Low to high'}</button></div>
       <button type="button" class="btn btn-ghost btn-sm sr-cmp-csv" data-cmp-csv>Download CSV</button>
     </div>
-    ${model.hasSummary ? html`<p class="sr-sub sr-legend">Net ΔRRCS: <span class="sr-net sr-net--active">red, positive</span> means stronger in the active model; <span class="sr-net sr-net--inactive">blue, negative</span> means stronger in the inactive model. Thresholds are set per receptor, so compare ranks and directions rather than raw sizes.</p>` : ''}
     <div data-cmp-body>${renderCompareBody(model, state, o)}</div>
+    ${model.hasSummary ? html`<aside class="fine-print sr-legend"><p>Net ΔRRCS: <span class="sr-net sr-net--active">red, positive</span> means stronger in the active model; <span class="sr-net sr-net--inactive">blue, negative</span> means stronger in the inactive model. Thresholds are set per receptor, so compare ranks and directions rather than raw sizes.</p></aside>` : ''}
   </div>`;
 }
 
@@ -1083,20 +1145,21 @@ export function compareCsv(model, state) {
 
 // ------------------------------------------------------------------------------- help & footer
 
-const HELP = [
-  ['Protein change', ['F2RL1 p.Met159Ile', 'PAR2 M159I', 'M159I', 'ADRB2 Arg16Gly']],
-  ['Residue', ['F2RL1 Met159', 'PAR2 159']],
-  ['Coding DNA', ['NM_005242.6:c.477G>A', 'ENST00000296677.5:c.477G>A', 'F2RL1 c.477G>A']],
-  ['Genome (GRCh38 or GRCh37)', ['5-76833084-G-A', '5-76128909-G-A', 'chr5:76833084', 'NC_000005.10:g.76833084G>A']],
-  ['Database IDs', ['rs115885685', 'VCV000718860']],
-  ['Generic residue number', ['3.50x50', 'PAR2 6.48', 'R3.50']],
-  ['Motif', ['DRY', 'NPxxY in PAR2', 'toggle switch']],
-  ['Receptor name or ID', ['PAR2', 'F2RL1', 'P55085', 'β2AR']],
+/** One example set across receptor families and notations; every query resolves to a card or a table in the index. */
+export const HELP = [
+  ['Protein change', ['DRD2 S311C', 'MC1R Arg151Cys', 'OPRM1 N40D']],
+  ['Residue', ['DRD2 Ser311', 'CNR1 Trp356']],
+  ['Coding DNA', ['NM_000795.4:c.932C>G', 'NM_002386.4:c.451C>T']],
+  ['Genome (GRCh38 or GRCh37)', ['11-113412762-G-C', '16-89919709-C-T', '11-113283484-G-C']],
+  ['Database IDs', ['rs1801028', 'rs1805007', 'VCV000014312']],
+  ['Generic residue number', ['6.48x48', 'ADRB2 3.50', 'R3.50']],
+  ['Motif', ['DRY', 'NPxxY in MC1R', 'toggle switch']],
+  ['Receptor name or ID', ['ADRB2', 'DRD2', 'MC1R', 'β2AR']],
 ];
 
 export function renderHelp(o = {}) {
   return html`<div class="sr-help"><h2 class="sr-h2">You can search like this</h2>
-    <p class="sr-sub">Any of these forms works, with or without a receptor name. Click an example to try it.</p>
+    <p class="sr-sub">Click an example to try it.</p>
     <dl class="sr-help-list">${HELP.map(([k, ex]) => html`<div><dt>${k}</dt><dd><ul class="sr-chips">${ex.map((q) => html`<li><a class="sr-chip" href="?q=${encodeURIComponent(q)}" data-q="${q}">${q}</a></li>`)}</ul></dd></div>`)}</dl></div>`;
 }
 
@@ -1105,8 +1168,15 @@ export function renderReleases(rel) {
   const l = (k) => rel[k]?.label;
   const ens = rel.ensembl ? `${l('ensembl')} (${rel.ensembl.grch38}, ${rel.ensembl.grch37})` : null;
   const bits = [l('gnomad'), l('clinvar'), ens, l('alphamissense'), l('hgnc'), l('uniprot')].filter(Boolean);
+  const rt = rel.reportTable ?? null;
+  const same = rt ? rt.sameAsSearch !== false : true;
+  const rule = html`at residues with at least one contact change of |ΔRRCS| ≥ ${REPORT_TABLE_DELTA.toFixed(1)}`;
+  const note = same
+    ? finePrint(html`<p>The variant tables on the report pages use the same release as this search, ${l('gnomad') ?? 'gnomAD'}. They list its missense alleles ${rule}; search covers every missense allele and ${l('clinvar') ?? 'ClinVar'}.</p>`, { cls: 'sr-releases-note' })
+    : html`<details><summary>How this differs from the report pages</summary>
+    <p>The variant tables on the report pages list ${reportTableRelease(rel)} missense variants ${rule}; search uses ${l('gnomad') ?? 'gnomAD'} and covers every missense allele and ${l('clinvar') ?? 'ClinVar'}. Where the two differ, the search result is the more recent.</p></details>`;
   return html`<p class="sr-releases"><strong>Data in this search:</strong> ${bits.join('; ')}. Coordinates are given on GRCh38 and GRCh37.</p>
-    <p class="sr-releases">Search uses newer variant data than the variant tables on the report pages. The report tables list gnomAD v4.1.0 missense variants at residues with at least one contact change of |ΔRRCS| ≥ 3.0; search covers every gnomAD v4.1.2 missense allele and ClinVar 2026-10-11. Where the two differ, the search result is the more recent.</p>`;
+    ${note}`;
 }
 
 // -------------------------------------------------------------------------------- main entry
@@ -1179,7 +1249,7 @@ export function renderAnswer(answer, query, o) {
       out += html`<section class="sr-results" aria-label="Results"><h2 class="sr-h2">${n} receptors</h2>${renderCompare(compare, compareDefaults(), o)}</section>`.s;
     } else {
       statusBits.push(`${rs.length} ${rs.length === 1 ? 'result' : 'results'}`);
-      const motif = answer.motif ? html`<p class="sr-motif"><strong>${answer.motif.name}</strong>${answer.motif.positions?.length ? html`<span class="sr-sub">, generic positions ${answer.motif.positions.join(', ')}</span>` : ''}${answer.motif.note ? html`. ${answer.motif.note}` : ''}</p>` : '';
+      const motif = motifBlock(answer.motif);
       out += html`<section class="sr-results" aria-label="Results">${motif}${rs.map((r, i) => (r.type === 'receptor' ? receptorCard(r, ro, i) : card(r, ro, i)))}</section>`.s;
     }
   } else if (groupedOnly) {

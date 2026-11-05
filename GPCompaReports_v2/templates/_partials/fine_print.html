@@ -1,0 +1,72 @@
+{#
+  Fine print component (CSS: static/css/fine-print.css, loaded by base.html).
+
+  Prose, definitions, release lines and method notes go here, not in the main flow.
+
+    {% from "_partials/fine_print.html" import fine_print %}
+
+    {% call fine_print() %}<p>A visible small note.</p>{% endcall %}
+    {% call fine_print(summary="About this data") %}<p>Collapsed by default.</p>{% endcall %}
+    {% call fine_print(summary="How this works", open=True, page=True, id="how") %}...{% endcall %}
+
+  Arguments: summary (text; makes it a collapsible <details>), open, page (page-bottom placement:
+  a rule above it; put it at the end of the content block, above the footer), id, cls (extra classes).
+  Without a summary it is an <aside>.
+#}
+{% macro fine_print(summary=None, open=False, page=False, id=None, cls='') -%}
+{%- set klass = 'fine-print' ~ (' fine-print--page' if page else '') ~ ((' ' ~ cls) if cls else '') -%}
+{%- if summary -%}
+<details class="{{ klass }}"{% if id %} id="{{ id }}"{% endif %}{% if open %} open{% endif %}><summary>{{ summary }}</summary>{{ caller() }}</details>
+{%- else -%}
+<aside class="{{ klass }}"{% if id %} id="{{ id }}"{% endif %}>{{ caller() }}</aside>
+{%- endif -%}
+{%- endmacro %}
+
+{#
+  Data versions. `data_versions` is the registry (data_versions.json): {database: {label}, sources: {key: {label,
+  long_label, fetched, note ...}}}. Read defensively: an entry shows when it is a string or number, or a mapping
+  with a label. Without a registry (or an empty one) these macros print nothing.
+#}
+{% set DV_NAMES = {
+  'database': 'Database', 'rrcs_batch': 'RRCS batch', 'gpcrdb_models': 'GPCRdb models', 'gpcrdb_numbering': 'GPCRdb numbering',
+  'gnomad': 'gnomAD, search and reports', 'gnomad_batch': 'gnomAD, statistics and paper', 'clinvar': 'ClinVar',
+  'alphamissense': 'AlphaMissense', 'conservation': 'Conservation', 'uniprot': 'UniProt', 'ensembl': 'Ensembl',
+  'refseq': 'RefSeq', 'hgnc': 'HGNC'} %}
+{# the sources the footer line names; the full list has them all #}
+{% set DV_FOOTER = ['rrcs_batch', 'gpcrdb_models', 'gnomad', 'clinvar', 'alphamissense', 'uniprot', 'ensembl', 'hgnc'] %}
+
+{% macro dv_text(v, long=False) -%}
+{%- if v is mapping -%}{{ (v.get('long_label') if long else None) or v.get('label') or v.get('name') or v.get('version') or '' }}
+{%- elif v is string or v is number -%}{{ v }}
+{%- endif -%}
+{%- endmacro %}
+
+{# the line in the footer: the database release and the main sources, then a link to the full list #}
+{% macro data_versions_line(dv, url) -%}
+{%- if dv is mapping and dv -%}
+{%- set src = dv.get('sources') if dv.get('sources') is mapping else {} -%}
+{%- set ns = namespace(n=0) -%}
+<aside class="fine-print fine-print--versions" data-data-versions>
+<span class="fine-print-title">Data versions:</span>
+{%- if dv.get('database') %}{% set t = dv_text(dv['database'])|trim %}{% if t %}{% set ns.n = ns.n + 1 %} <span class="fp-item">{{ t }}</span>{% endif %}{% endif -%}
+{%- for k, v in src.items() if k in DV_FOOTER %}{% set t = dv_text(v)|trim %}{% if t %}{% set ns.n = ns.n + 1 %} <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">{{ t }}</span>{% endif %}{% endfor -%}
+{%- if not src %}{% for k, v in dv.items() if not (k|string).startswith('_') and k not in ('database', 'schema', 'layers') %}{% set t = dv_text(v)|trim %}{% if t %}{% set ns.n = ns.n + 1 %} <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">{{ t }}</span>{% endif %}{% endfor %}{% endif -%}
+{% if ns.n %} <span class="fp-sep" aria-hidden="true">·</span> <a href="{{ url }}">Full list</a>{% endif %}
+</aside>
+{%- endif -%}
+{%- endmacro %}
+
+{# every entry, with its fetch date and note #}
+{% macro data_versions_table(dv) -%}
+{%- if dv is mapping and dv -%}
+{%- set src = dv.get('sources') if dv.get('sources') is mapping else {} -%}
+<table class="fp-versions" data-data-versions-table>
+<tbody>
+{%- if dv.get('database') %}{% set t = dv_text(dv['database'])|trim %}{% if t %}
+<tr><th scope="row">{{ DV_NAMES['database'] }}</th><td>{{ t }}</td></tr>{% endif %}{% endif %}
+{%- for k, v in src.items() %}{% set t = dv_text(v, True)|trim %}{% if t %}
+<tr><th scope="row">{{ DV_NAMES.get(k) or (k|replace('_', ' ')|capitalize) }}</th><td>{{ t }}{% if v is mapping and (v.get('fetched') or v.get('date')) %}<br><span class="fp-detail">{{ 'Fetched ' ~ v['fetched'] if v.get('fetched') else 'Run ' ~ v['date'] }}</span>{% endif %}{% if v is mapping and v.get('note') %}<br><span class="fp-detail">{{ v['note'] }}</span>{% endif %}</td></tr>{% endif %}{% endfor %}
+</tbody>
+</table>
+{%- endif -%}
+{%- endmacro %}

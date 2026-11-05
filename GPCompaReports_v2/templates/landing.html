@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_partials/fine_print.html" import fine_print, data_versions_table %}
 
 {% block head %}
 <script type="application/ld+json">{{ dataset_jsonld | safe }}</script>
@@ -11,11 +12,8 @@
     <div class="hero-copy">
       <h1 class="hero-title"><span class="hero-title-serif">GPCompaRe database</span></h1>
       <p class="hero-tagline">
-        Paired active and inactive AlphaFold-Multistate models for {{ total_gpcrs }} human
-        Class&nbsp;A GPCRs, compared using residue-residue contact scores (RRCS). Each report
-        links the structural result to GPCRdb generic numbering, conservation, AlphaMissense
-        predictions, cross-family Core Functional Residue positions, and gnomAD variation for
-        the 279 receptors that have it.
+        Active and inactive structural models of {{ total_gpcrs }} human Class&nbsp;A GPCRs,
+        compared residue by residue.
       </p>
       <div class="hero-ctas">
         <a href="{{ static_prefix }}browse/index.html" class="btn btn-primary">Browse {{ total_gpcrs }} GPCRs
@@ -32,10 +30,10 @@
   <div class="hero-search">
     <form class="search-box" action="{{ static_prefix }}search/" method="get" role="search" data-index="{{ static_prefix }}search2/" data-suggest-host>
       <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" class="search-icon"><path fill="currentColor" d="M10.68 11.74a6 6 0 1 1 1.06-1.06l3.04 3.04a.75.75 0 1 1-1.06 1.06l-3.04-3.04zM11.5 7a4.5 4.5 0 1 0-9 0 4.5 4.5 0 0 0 9 0z"/></svg>
-      <input type="search" id="search-input" name="q" maxlength="300" placeholder="Receptor, variant or position, e.g. PAR2 M159I" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Search receptors, variants, residues and genome positions">
+      <input type="search" id="search-input" name="q" maxlength="300" placeholder="Receptor, variant or position, e.g. MC1R R151C" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Search receptors, variants, residues and genome positions">
       <kbd class="search-kbd" aria-hidden="true">/</kbd>
     </form>
-    <p class="search-examples">Try <a href="{{ static_prefix }}search/?q=PAR2%20M159I">PAR2 M159I</a>, <a href="{{ static_prefix }}search/?q=rs115885685">rs115885685</a>, <a href="{{ static_prefix }}search/?q=3.50x50">3.50x50</a> or a receptor name such as ADRB2.</p>
+    <p class="search-examples">Try <a href="{{ static_prefix }}search/?q=DRD2%20S311C">DRD2 S311C</a>, <a href="{{ static_prefix }}search/?q=rs1805007">rs1805007</a>, <a href="{{ static_prefix }}search/?q=6.48x48">6.48x48</a> or a receptor name such as ADRB2.</p>
   </div>
 </section>
 
@@ -60,10 +58,12 @@
             <td class="dataset-note">receptors without a complete active and inactive pair</td></tr>
       </tbody>
     </table>
-    <p class="dataset-limitation">
+    {% call fine_print(cls='dataset-limitation') %}
+    <p>
       Positions and contact pairs highlighted by GPCompaRe should be interpreted as
       model-derived structural candidates, not direct experimental evidence of function.
     </p>
+    {% endcall %}
   </div>
 </section>
 
@@ -71,17 +71,16 @@
   <div class="section-inner">
     <header class="section-head">
       <h2 id="worked-heading">How to read a GPCompaRe contact</h2>
-      <p class="section-sub">One real contact from the PAR2 report, from the topology diagram to the number.</p>
     </header>
 
     <div class="worked-grid">
       <figure class="worked-fig">
-        <img src="{{ static_prefix }}static/img/par2-explainer-snake.png"
-             alt="Fragment of the PAR2 snake plot, residues shaded by their contact-score change,
+        <img src="{{ static_prefix }}static/img/adrb2-explainer-snake.png"
+             alt="Fragment of the ADRB2 snake plot, residues shaded by their contact-score change,
                   red where contacts are stronger in the active model and blue where they are
-                  stronger in the inactive model. M159 in TM3 and F300 in TM6 are ringed, labelled
+                  stronger in the inactive model. I121 in TM3 and F282 in TM6 are ringed, labelled
                   with their generic numbers, and joined by a line marking the contact between them.">
-        <figcaption>PAR2 (F2RL1), transmembrane helices 3 and 6, coloured by the report's own ΔRRCS view.</figcaption>
+        <figcaption class="fine-print">ADRB2, transmembrane helices 3 and 6, coloured by the report's own ΔRRCS view.</figcaption>
       </figure>
 
       <div class="worked-copy">
@@ -92,32 +91,34 @@
         </p>
 
         <table class="worked-table">
-          <caption>M159 and F300 as they appear in the PAR2 report</caption>
+          <caption>I121 and F282 as they appear in the ADRB2 report</caption>
           <tbody>
-            <tr><th scope="row">Residue 1</th><td>M159 <code>3.36x36</code>, TM3</td></tr>
-            <tr><th scope="row">Residue 2</th><td>F300 <code>6.48x48</code>, TM6</td></tr>
-            <tr><th scope="row">Active RRCS</th><td>0.67</td></tr>
-            <tr><th scope="row">Inactive RRCS</th><td>5.66</td></tr>
-            <tr><th scope="row">ΔRRCS</th><td class="is-inactive">−4.99</td></tr>
-            <tr><th scope="row">PAR2 threshold</th><td>2.60, so this contact passes</td></tr>
-            <tr><th scope="row">Rank in PAR2</th><td>27th of 776 contact pairs by |ΔRRCS|, so not the largest change in this receptor</td></tr>
+            <tr><th scope="row">Residue 1</th><td>I121 <code>3.40x40</code>, TM3</td></tr>
+            <tr><th scope="row">Residue 2</th><td>F282 <code>6.44x44</code>, TM6</td></tr>
+            <tr><th scope="row">Active RRCS</th><td>1.79</td></tr>
+            <tr><th scope="row">Inactive RRCS</th><td>4.69</td></tr>
+            <tr><th scope="row">ΔRRCS</th><td class="is-inactive">−2.90</td></tr>
+            <tr><th scope="row">ADRB2 threshold</th><td>1.97, so this contact passes</td></tr>
+            <tr><th scope="row">Rank in ADRB2</th><td>34th of 700 contact pairs by |ΔRRCS|, so not the largest change in this receptor</td></tr>
           </tbody>
         </table>
 
-        <p>
-          The contact is stronger in the inactive model, so it is
-          <span class="ex-swatch is-inactive"></span> <strong>blue</strong>. Contacts stronger in
-          the active model are <span class="ex-swatch is-active"></span> <strong>red</strong>.
+        <p class="worked-key">
+          <span class="ex-swatch is-inactive"></span> <strong>Blue</strong>: stronger in the inactive model.
+          <span class="ex-swatch is-active"></span> <strong>Red</strong>: stronger in the active model.
         </p>
 
+        {% call fine_print() %}
         <p>
-          F300 occupies the aromatic 6.48 toggle-switch position, one of the canonical
-          activation landmarks. Both residues sit in transmembrane helices.
+          I121 (3.40) and F282 (6.44) are two of the three residues of the P-I-F motif,
+          a well-known activation microswitch in class A receptors. Both residues sit in
+          transmembrane helices.
         </p>
+        {% endcall %}
 
         <p>
-          <a href="{{ static_prefix }}reports/par2_human.html#view=delta_rrcs&amp;sec=sec-snake">
-            Open the PAR2 snake plot</a>
+          <a href="{{ static_prefix }}reports/adrb2_human.html#view=delta_rrcs&amp;sec=sec-snake">
+            Open the ADRB2 snake plot</a>
         </p>
       </div>
     </div>
@@ -134,7 +135,7 @@
       <figure class="cfr-fig">
         <img src="{{ static_prefix }}static/img/fig-cfr-topology.png"
              alt="Consensus Class A topology with each generic position shaded by the number of receptors showing a threshold-passing contact change, and the DRY, NPxxY, CWxP, PIF and D2.50x50 landmarks marked">
-        <figcaption>
+        <figcaption class="fine-print">
           Each position is shaded by how many of the {{ total_gpcrs }} receptors show a
           threshold-passing change there. Lettered and outlined positions mark canonical
           activation landmarks.
@@ -147,6 +148,11 @@
           least one contact whose absolute ΔRRCS passes that receptor's own threshold.
         </p>
         <p>
+          No motif was selected in advance. The cross-receptor analysis recovers established parts
+          of the DRY, NPxxY and CWxP activation machinery on its own.
+        </p>
+        {% call fine_print(summary='How the positions are counted') %}
+        <p>
           Mapping those receptor-level CFRs onto GPCRdb generic positions gives recurrent CFR
           positions across the family. A position is counted as recurrent when it is identified as
           a CFR in at least three receptors.
@@ -156,10 +162,7 @@
           reported here are computed on the full GPCRdb residue maps for all 283 receptors, so they are not limited by how much of a
           receptor its own annotation file numbers.
         </p>
-        <p>
-          No motif was selected in advance. The cross-receptor analysis recovers established parts
-          of the DRY, NPxxY and CWxP activation machinery on its own.
-        </p>
+        {% endcall %}
         <p>
           <a href="{{ static_prefix }}statistics.html#sec-c">See the ranked Top {{ cfr_top_n }} recurrent positions</a>
         </p>
@@ -184,11 +187,13 @@
       <li>AlphaMissense pathogenicity predictions</li>
       <li>Ranked tables with CSV export</li>
     </ul>
-    <p class="contains-note">
+    {% call fine_print(cls='contains-note') %}
+    <p>
       Use the search above to open a receptor. Example reports:
       <a href="{{ static_prefix }}reports/adrb2_human.html">ADRB2</a>,
       <a href="{{ static_prefix }}reports/par2_human.html">PAR2</a>.
     </p>
+    {% endcall %}
   </div>
 </section>
 
@@ -198,77 +203,81 @@
       <h2 id="custom-heading">Analysing your own structures</h2>
     </header>
     <p>
-      GPCompaRe Studio applies the same RRCS comparison used to build this database to your own
-      paired active and inactive structures, and writes standalone HTML and CSV output.
+      GPCompaRe Studio applies the same RRCS comparison to your own paired active and inactive
+      structures, and writes standalone HTML and CSV output.
     </p>
+    <p><a href="{{ static_prefix }}studio/">Open GPCompaRe Studio</a></p>
+    {% call fine_print() %}
     <p>
       It runs in your browser. Your files are not uploaded, and your analyses are not added to
       the public database.
     </p>
-    <p><a href="{{ static_prefix }}studio/">Open GPCompaRe Studio</a></p>
+    {% endcall %}
   </div>
 </section>
 
-<section class="methods-sources" aria-labelledby="methods-heading">
+<section class="landing-fine" aria-label="Methods, data versions and release">
   <div class="section-inner">
-    <header class="section-head">
-      <h2 id="methods-heading">Methods and data sources</h2>
-    </header>
-    <p>
-      Structures are paired active-state and inactive-state models from
-      <a href="https://github.com/huhlim/alphafold-multistate" target="_blank" rel="noopener">AlphaFold-Multistate</a>
-      (Heo and Feig, Proteins 2022).
-      Contacts are scored with
-      <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6954041/" target="_blank" rel="noopener">RRCS</a>.
-      Generic numbering and segment boundaries come from
-      <a href="https://gpcrdb.org/" target="_blank" rel="noopener">GPCRdb</a>.
-      Population variation comes from
-      <a href="https://gnomad.broadinstitute.org/" target="_blank" rel="noopener">gnomAD v4.1</a>
-      (dataset gnomad_r4, accessed 2 February 2026),
-      pathogenicity predictions from
-      <a href="https://zenodo.org/records/10813168" target="_blank" rel="noopener">AlphaMissense</a>
-      (Cheng et al., Science 2023; copyright 2023 DeepMind Technologies Limited, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>; averaged per position here),
-      and conservation from VarSite scores served by
-      <a href="https://www.ebi.ac.uk/ProtVar/" target="_blank" rel="noopener">ProtVar</a>.
-      Receptor accessions come from
-      <a href="https://www.uniprot.org/" target="_blank" rel="noopener">UniProt</a>.
-    </p>
-    <ul class="refs-list">
-      <li>Zhou Q et al. Common activation mechanism of class A GPCRs. eLife 2019;8:e50279. <a href="https://doi.org/10.7554/eLife.50279" target="_blank" rel="noopener">doi 10.7554/eLife.50279</a></li>
-      <li>Heo L, Feig M. Multi-state modeling of G-protein coupled receptors at experimental accuracy. Proteins 2022;90(11):1873-1885. <a href="https://doi.org/10.1002/prot.26382" target="_blank" rel="noopener">doi 10.1002/prot.26382</a></li>
-      <li>Herrera LPT et al. GPCRdb in 2025. Nucleic Acids Res 2025;53(D1):D425-D435. <a href="https://doi.org/10.1093/nar/gkae1065" target="_blank" rel="noopener">doi 10.1093/nar/gkae1065</a></li>
-      <li>Chen S et al. A genomic mutational constraint map using variation in 76,156 human genomes. Nature 2024;625:92-100. <a href="https://doi.org/10.1038/s41586-023-06045-0" target="_blank" rel="noopener">doi 10.1038/s41586-023-06045-0</a></li>
-      <li>Cheng J et al. Accurate proteome-wide missense variant effect prediction with AlphaMissense. Science 2023;381:eadg7492. <a href="https://doi.org/10.1126/science.adg7492" target="_blank" rel="noopener">doi 10.1126/science.adg7492</a></li>
-      <li>Stephenson JD et al. ProtVar: mapping and contextualizing human missense variation. Nucleic Acids Res 2024;52(W1):W140-W147. <a href="https://doi.org/10.1093/nar/gkae413" target="_blank" rel="noopener">doi 10.1093/nar/gkae413</a></li>
-      <li>The UniProt Consortium. UniProt: the Universal Protein Knowledgebase in 2025. Nucleic Acids Res 2025;53(D1):D609-D617. <a href="https://doi.org/10.1093/nar/gkae1010" target="_blank" rel="noopener">doi 10.1093/nar/gkae1010</a></li>
-    </ul>
-    <p>
-      Each receptor has its own ΔRRCS threshold, computed as max(mean(|Δ|) + σ, 0.2).
-    </p>
-    <p>
-      {{ n_models }} models were analysed, two per receptor. Four further receptors listed in the
-      Class&nbsp;A reference set are excluded because they lack a complete active and inactive
-      pair: GPR26, LGR5, OPSX and RXFP1.
-    </p>
-  </div>
-</section>
-
-<section class="release" aria-labelledby="release-heading">
-  <div class="section-inner">
-    <header class="section-head">
-      <h2 id="release-heading">Version, downloads and citation</h2>
-    </header>
-    <dl class="release-list">
-      <dt>Release</dt><dd>GPCompaRe database release 2026.08</dd>
-      <dt>DOI</dt><dd>DOI pending release</dd>
-      <dt>Downloads</dt><dd><a href="{{ static_prefix }}downloads.html">Database release</a></dd>
-      <dt>Contact</dt><dd><a href="{{ static_prefix }}contact.html">Contact the lab</a></dd>
-    </dl>
-    <p class="release-scope">
-      GPCompaRe was developed as the companion resource for the associated study. Corrections and
-      substantial updates will be documented as new releases. No fixed update schedule is
-      currently planned.
-    </p>
+    {% call fine_print(page=True, cls='landing-fine-print') %}
+    {% if data_versions is defined and data_versions %}
+    <details id="data-versions" class="landing-versions">
+      <summary>Data versions</summary>
+      {{ data_versions_table(data_versions) }}
+    </details>
+    {% endif %}
+    <details id="methods-sources">
+      <summary>Methods, data sources and references</summary>
+      <p>
+        Structures are paired active-state and inactive-state models from
+        <a href="https://github.com/huhlim/alphafold-multistate" target="_blank" rel="noopener">AlphaFold-Multistate</a>
+        (Heo and Feig, Proteins 2022).
+        Contacts are scored with
+        <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6954041/" target="_blank" rel="noopener">RRCS</a>.
+        Generic numbering and segment boundaries come from
+        <a href="https://gpcrdb.org/" target="_blank" rel="noopener">GPCRdb</a>.
+        Population variation comes from
+        <a href="https://gnomad.broadinstitute.org/" target="_blank" rel="noopener">{{ data_versions.sources.gnomad.long_label }}</a>,
+        pathogenicity predictions from
+        <a href="https://zenodo.org/records/10813168" target="_blank" rel="noopener">AlphaMissense</a>
+        (Cheng et al., Science 2023; copyright 2023 DeepMind Technologies Limited, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>; averaged per position here),
+        and conservation from VarSite scores served by
+        <a href="https://www.ebi.ac.uk/ProtVar/" target="_blank" rel="noopener">ProtVar</a>.
+        Receptor accessions come from
+        <a href="https://www.uniprot.org/" target="_blank" rel="noopener">UniProt</a>.
+      </p>
+      <ul class="refs-list">
+        <li>Zhou Q et al. Common activation mechanism of class A GPCRs. eLife 2019;8:e50279. <a href="https://doi.org/10.7554/eLife.50279" target="_blank" rel="noopener">doi 10.7554/eLife.50279</a></li>
+        <li>Heo L, Feig M. Multi-state modeling of G-protein coupled receptors at experimental accuracy. Proteins 2022;90(11):1873-1885. <a href="https://doi.org/10.1002/prot.26382" target="_blank" rel="noopener">doi 10.1002/prot.26382</a></li>
+        <li>Herrera LPT et al. GPCRdb in 2025. Nucleic Acids Res 2025;53(D1):D425-D435. <a href="https://doi.org/10.1093/nar/gkae1065" target="_blank" rel="noopener">doi 10.1093/nar/gkae1065</a></li>
+        <li>Chen S et al. A genomic mutational constraint map using variation in 76,156 human genomes. Nature 2024;625:92-100. <a href="https://doi.org/10.1038/s41586-023-06045-0" target="_blank" rel="noopener">doi 10.1038/s41586-023-06045-0</a></li>
+        <li>Cheng J et al. Accurate proteome-wide missense variant effect prediction with AlphaMissense. Science 2023;381:eadg7492. <a href="https://doi.org/10.1126/science.adg7492" target="_blank" rel="noopener">doi 10.1126/science.adg7492</a></li>
+        <li>Stephenson JD et al. ProtVar: mapping and contextualizing human missense variation. Nucleic Acids Res 2024;52(W1):W140-W147. <a href="https://doi.org/10.1093/nar/gkae413" target="_blank" rel="noopener">doi 10.1093/nar/gkae413</a></li>
+        <li>The UniProt Consortium. UniProt: the Universal Protein Knowledgebase in 2025. Nucleic Acids Res 2025;53(D1):D609-D617. <a href="https://doi.org/10.1093/nar/gkae1010" target="_blank" rel="noopener">doi 10.1093/nar/gkae1010</a></li>
+      </ul>
+      <p>
+        Each receptor has its own ΔRRCS threshold, computed as max(mean(|Δ|) + σ, 0.2).
+      </p>
+      <p>
+        {{ n_models }} models were analysed, two per receptor. Four further receptors listed in the
+        Class&nbsp;A reference set are excluded because they lack a complete active and inactive
+        pair: GPR26, LGR5, OPSX and RXFP1.
+      </p>
+    </details>
+    <details id="release-info">
+      <summary>Release and citation</summary>
+      <dl class="release-list">
+        <dt>Release</dt><dd>GPCompaRe database release 2026.08</dd>
+        <dt>DOI</dt><dd>DOI pending release</dd>
+        <dt>Downloads</dt><dd><a href="{{ static_prefix }}downloads.html">Database release</a></dd>
+        <dt>Contact</dt><dd><a href="{{ static_prefix }}contact.html">Contact the lab</a></dd>
+      </dl>
+      <p class="release-scope">
+        GPCompaRe was developed as the companion resource for the associated study. Corrections and
+        substantial updates will be documented as new releases. No fixed update schedule is
+        currently planned.
+      </p>
+    </details>
+    {% endcall %}
   </div>
 </section>
 

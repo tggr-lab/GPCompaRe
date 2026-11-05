@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_partials/fine_print.html" import fine_print %}
 
 {% block breadcrumbs %}
 <div class="breadcrumbs">
@@ -13,7 +14,7 @@
   <div class="section-inner">
     <header class="section-head">
       <h1 id="glossary-heading" data-glossary-skip>Glossary</h1>
-      <p class="section-sub">One plain sentence for each term and abbreviation the site uses. On the report pages, terms with a dotted underline show the same sentence when you point at, tab to or tap them.</p>
+      <p class="section-sub">One plain sentence for each term the site uses.</p>
     </header>
     <nav class="gloss-nav" aria-label="Glossary groups">
       {% for group, terms in groups %}<a href="#{{ group|lower|replace(' ', '-') }}">{{ group }}</a>{% endfor %}
@@ -29,6 +30,9 @@
       {% endfor %}
     </dl>
     {% endfor %}
+    {% call fine_print(page=True) %}
+    <p>On the report pages, terms with a dotted underline show the same sentence when you point at, tab to or tap them.</p>
+    {% endcall %}
   </div>
 </section>
 {% endblock %}

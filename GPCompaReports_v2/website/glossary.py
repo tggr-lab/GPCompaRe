@@ -14,6 +14,8 @@ are tried longest-pattern first so "ΔRRCS" wins over "RRCS". No em dashes.
 
 import json
 
+from . import data_versions as dv
+
 GROUPS = ['Contact scores', 'The models', 'The receptor', 'Variants', 'Statistics page', 'Links and files']
 
 # Lookbehind/lookahead word edges that also treat Δ, | and - as word characters.
@@ -153,7 +155,7 @@ GLOSSARY = [
          match=[_L + r'Contact-site' + _R]),
     dict(id='gnomad', group='Variants', term='gnomAD', full='Genome Aggregation Database',
          definition='Genetic variation seen in hundreds of thousands of people; the source of the missense '
-                    'variants and their frequencies (release v4.1, dataset gnomad_r4, accessed 2 February 2026).',
+                    'variants and their frequencies (' + dv.long_label('gnomad') + ').',
          href='https://gnomad.broadinstitute.org/',
          match=[_L + r'gnomAD' + _R]),
     dict(id='af', group='Variants', term='Allele frequency', full='AF',
@@ -164,8 +166,8 @@ GLOSSARY = [
                     'number of people who carry two copies).',
          match=[_L + r'Het count' + _R]),
     dict(id='hgvs', group='Variants', term='Protein change, DNA change', full='HGVS notation',
-         definition='The standard way to write a variant: p.Met159Ile is the methionine at protein position 159 '
-                    'replaced by isoleucine, and c.477G>A is the DNA letter change behind it.',
+         definition='The standard way to write a variant: p.Arg151Cys is the arginine at protein position 151 '
+                    'replaced by cysteine, and c.451C>T is the DNA letter change behind it.',
          match=[_L + r'(?:Protein|DNA) change' + _R]),
     dict(id='rsid', group='Variants', term='dbSNP, rsID',
          definition="A variant's identifier in dbSNP, NCBI's catalogue of genetic variants, such as rs1042713.",

@@ -301,6 +301,8 @@ def test_shifted_numbering_is_explained(open_page):
     title = page.locator('.sr-card-title').first.inner_text()
     assert 'Leu348' in title
     assert 'residue 348 in the model' in page.locator('.sr-note').first.inner_text()
+    assert 'numbering differs' in results_text(page)            # the badge on the folded notations
+    page.locator('.sr-notations summary').click()
     assert 'numbered differently' in results_text(page)
 
 
@@ -358,7 +360,7 @@ def test_unknown_gene_gets_a_plain_message(open_page):
 def test_garbage_gets_a_plain_message_and_examples(open_page):
     page = search_page(open_page, 'asdfgh qwerty')
     assert 'Could not read' in page.locator('.sr-message').inner_text()
-    for ex in ('NM_005242.6:c.477G>A', '5-76128909-G-A', 'rs115885685', '3.50x50'):
+    for ex in ('NM_000795.4:c.932C>G', '11-113283484-G-C', 'rs1801028', '6.48x48'):
         assert ex in results_text(page)
 
 
@@ -372,13 +374,58 @@ def test_did_you_mean_links_run_the_other_reading(open_page):
     assert 'q=' in page.url and 'Met1Arg' in page.url.replace('%20', ' ') or 'p.Met1Arg' in page.url
 
 
-def test_release_line_and_the_newer_data_note(open_page):
+def _registry():
+    return json.loads((BASE / 'data_versions.json').read_text(encoding='utf-8'))
+
+
+def test_release_line_reads_the_registry_and_says_reports_use_the_same_release(open_page):
     page = search_page(open_page, 'F2RL1 p.Met159Ile')
     rel = page.locator('#search-releases').inner_text()
-    for needle in ('gnomAD v4.1.2', 'ClinVar 2026-10-11', 'Ensembl 116', 'GRCh37', 'GRCh38',
-                   'newer variant data than the variant tables on the report pages'):
+    src = _registry()['sources']
+    for needle in (src['gnomad']['label'], src['clinvar']['label'], src['ensembl']['label'],
+                   src['alphamissense']['label'], src['hgnc']['label'], src['uniprot']['label'], 'GRCh37', 'GRCh38'):
         assert needle in rel, needle
+    # the report tables are built from the same release: no "newer data" caveat, one fine-print line instead
+    assert 'newer variant data' not in rel and 'How this differs' not in rel
+    note = page.locator('#search-releases .sr-releases-note')
+    expect(note).to_have_count(1)
+    assert 'same release as this search' in note.inner_text()
+    assert src['gnomad_batch']['label'] not in rel               # the February batch release is not the search or report release
     assert '—' not in rel and '–' not in rel
+
+
+def test_search_meta_releases_equal_the_registry():
+    meta = json.loads((BUILD_DIR / 'search2' / 'meta.json').read_text(encoding='utf-8'))['releases']
+    src = _registry()['sources']
+    for key in ('gnomad', 'clinvar', 'ensembl', 'hgnc', 'uniprot', 'alphamissense'):
+        assert meta[key]['label'] == src[key]['label'], key
+    assert meta['reportTable']['label'] == src['gnomad']['label'] and meta['reportTable']['sameAsSearch'] is True
+
+
+def _allele_with_third_decimal(gid):
+    """(rsid, '0.xxx') for an allele of `gid` whose AlphaMissense score has a non-zero third decimal."""
+    d = json.loads((BUILD_DIR / 'search2' / 'variants' / (gid + '.json')).read_text(encoding='utf-8'))
+    for in_table in ('1', '0'):                   # an allele the report table lists first, so the two can be compared
+        for am, rs, rt in zip(d['am'], d['rs'], d['rt']):
+            if rt == in_table and am is not None and am % 10 and rs and len(rs) == 1 and rs[0]:
+                return rs[0], '%.3f' % (am / 1000), in_table == '1'
+    return None
+
+
+def test_allele_alphamissense_reads_with_three_decimals_like_the_report(open_page):
+    found = _allele_with_third_decimal('adrb2_human')
+    if not found:
+        pytest.skip('no ADRB2 allele with a rsID and a 3-decimal AlphaMissense score in this build')
+    rsid, three, in_report = found
+    page = search_page(open_page, 'rs%d' % rsid)
+    text = results_text(page)
+    assert three in text, (three, text[:400])
+    # the same rule the report table uses (analysis/variant_correlation.py: fmt_decimal(digits=3))
+    rep = BUILD_DIR / 'reports' / 'adrb2_human.html'
+    if in_report and rep.is_file():
+        rows = [r for r in re.findall(r'<tr\b.*?</tr>', rep.read_text(encoding='utf-8'), re.S) if 'rs%d<' % rsid in r]
+        assert rows, 'rs%d is in the report table by the index flag but not in the report' % rsid
+        assert any('<td class="num">%s</td>' % three in r for r in rows), (three, rows[0][:600])
 
 
 def test_action_links_point_at_the_report_and_studio(open_page):
@@ -629,7 +676,7 @@ def _luminance(css):
 def test_landing_search_placeholder_mentions_variants(open_page):
     page = open_page('/index.html')
     ph = page.locator('#search-input').get_attribute('placeholder')
-    assert 'variant' in ph and 'PAR2 M159I' in ph
+    assert 'variant' in ph and 'MC1R R151C' in ph
     assert '—' not in ph
 
 
@@ -929,10 +976,13 @@ def test_phone_never_breaks_a_notation_in_the_middle(open_page):
 def test_no_arrow_key_text_on_a_touch_device(open_page):
     touch = open_page('/search/', viewport=PHONE_390, mobile=True)
     touch.wait_for_selector('.sr-help')
+    touch.locator('#search-howto summary').click()           # the key hints are fine print, folded by default
     assert 'arrow keys' not in touch.locator('#search-hint').inner_text()
     assert 'Tap' in touch.locator('#search-hint').inner_text()
     desktop = open_page('/search/')
     desktop.wait_for_selector('.sr-help')
+    assert 'arrow keys' not in desktop.locator('.sr-help, .sr-form, .search-section > div > div > header').first.inner_text()  # not in the main flow
+    desktop.locator('#search-howto summary').click()
     assert 'arrow keys' in desktop.locator('#search-hint').inner_text()
 
 
@@ -949,12 +999,17 @@ def test_phone_360_no_sideways_scroll_light_and_dark(open_page, q, scheme):
 def test_card_gives_the_numbers_their_context(open_page):
     page = search_page(open_page, 'PAR2 M159I')
     facts = page.locator('.sr-facts').inner_text()
-    assert re.search(r'\|ΔRRCS\| 4\.99\s*,\s*receptor threshold \d\.\d\d', facts), facts
+    assert re.search(r'\|ΔRRCS\| 4\.99, with Phe300', facts), facts
+    assert 'receptor threshold' not in facts                    # the threshold is fine print, below
     assert 'stronger in inactive' in facts                      # net delta, with a direction word
-    assert '0.96 on a 0 to 1 scale' in facts
+    assert '0.96' in facts and '0 to 1 scale' not in facts
     assert '0 variable' not in facts and '1 conserved' not in facts
-    assert 'AlphaMissense prediction' in facts
-    assert 'Rank 30 of the class-wide positions' in facts or 'rank 30 of the class-wide positions' in facts
+    assert 'AlphaMissense, residue mean' in facts
+    assert 'class-wide rank 30' in facts
+    about = page.locator('.sr-about')
+    about.locator('summary').click()
+    assert re.search(r"this receptor's threshold is \d\.\d\d", about.inner_text())
+    assert '0 to 1 scale' in about.inner_text()
     assert 'Contacts above this receptor' in facts               # kept distinct from the CFR rank
     assert 'AlphaMissense prediction' in page.locator('.sr-card thead').first.inner_text()
     net = page.locator('.sr-facts .sr-net').first
@@ -978,15 +1033,18 @@ def test_card_does_not_show_a_threshold_it_does_not_have(open_page):
 def test_lpar2_card_leads_with_what_you_typed_and_opens_the_notations(open_page):
     page = search_page(open_page, 'LPAR2 L351F')
     lead = page.locator('.sr-lead').inner_text()
-    assert 'LPAR2 L351F' in lead and 'Leu348' in lead and 'differently' in lead
+    assert 'LPAR2 L351F' in lead and 'Leu348' in lead
+    assert 'residue 348 in the model' in page.locator('.sr-note--warn').first.inner_text()   # the warning stays visible
     details = page.locator('.sr-notations')
-    assert details.get_attribute('open') is not None            # a mapping warning exists
+    assert details.get_attribute('open') is None                # the long table is folded; the badge says why it matters
     assert details.locator('summary').inner_text().startswith('All transcript notations')
+    assert 'numbering differs' in details.locator('summary').inner_text()
+    details.locator('summary').click()
     table = page.locator('.sr-table--tx')
     assert 'Genomic allele' in table.inner_text() and '19-19624261-G-A' in table.inner_text()
     # the card's essentials come before the folded table
     order = page.evaluate("""() => { const c = document.querySelector('.sr-card'); const kids = [...c.children].map(e => e.className);
-      return [kids.findIndex(k => k.includes('sr-lead')), kids.findIndex(k => k.includes('sr-row--wide'))]; }""")
+      return [kids.findIndex(k => k.includes('sr-lead')), kids.findIndex(k => k.includes('sr-card-fine'))]; }""")
     assert 0 <= order[0] < order[1]
 
 
@@ -1103,7 +1161,8 @@ def test_older_transcript_version_is_labelled_read_on_the_current_one(open_page)
     page = search_page(open_page, 'NM_005242.5:c.477G>A')
     assert page.locator('.sr-note[data-code="version_mismatch"]').count() == 1
     details = page.locator('.sr-notations')
-    assert details.get_attribute('open') is not None
+    assert details.get_attribute('open') is None               # folded; the version note above it stays visible
+    details.locator('summary').click()
     assert 'You typed NM_005242.5; read on NM_005242.6' in details.inner_text()
     assert 'Transcript you typed' not in results_text(page)
 
@@ -1172,9 +1231,13 @@ def test_report_clinvar_link_lands_on_the_list():
 
 
 def test_variant_table_link_only_for_changes_the_report_lists(open_page):
+    # GPR3's own allele at a residue past the cutoff: a row since the 2026-11-05 refresh
     page = search_page(open_page, '1-27393820-C-T')
-    assert page.get_by_role('link', name="Find in the report's variant table").count() == 0
-    assert 'does not list this change' in page.locator('.sr-action-note').inner_text()
+    href = page.get_by_role('link', name="Find in the report's variant table").get_attribute('href')
+    assert href.endswith('#sec=sec-variants&vq=p.Pro8Ser')
+    report = (BUILD_DIR / 'reports' / 'gpr3_human.html').read_text(encoding='utf-8')
+    assert '<td>p.Pro8Ser</td>' in re.search(r'<table class="v2-table" id="variants-table">(.*?)</table>',
+                                             report, re.S).group(1)
     page = search_page(open_page, 'PAR2 p.Met159Ile')
     href = page.get_by_role('link', name="Find in the report's variant table").get_attribute('href')
     assert href.endswith('#sec=sec-variants&vq=p.Met159Ile')

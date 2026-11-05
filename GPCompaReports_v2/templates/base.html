@@ -5,6 +5,7 @@
     static_prefix    — '' at site root, '../' for /reports/
     active_page      — 'home' | 'browse' | 'statistics' | 'report' | 'downloads' | 'contact'
     total_gpcrs      — int (used by footer)
+    data_versions    — optional dict from data_versions.json; the footer shows a "Data versions" fine-print line
     nav_home_url, nav_browse_url, nav_stats_url,
     nav_downloads_url, nav_contact_url — absolute-from-static_prefix strings
 
@@ -68,6 +69,7 @@
 <link rel="stylesheet" href="{{ static_prefix }}static/css/primer/primitives.css">
 <link rel="stylesheet" href="{{ static_prefix }}static/css/primer/primitives-dark.css">
 <link rel="stylesheet" href="{{ static_prefix }}static/css/site.css">
+<link rel="stylesheet" href="{{ static_prefix }}static/css/fine-print.css">
 <link rel="stylesheet" href="{{ static_prefix }}static/css/search-ui.css">
 {% for css in (extra_css or []) %}
 <link rel="stylesheet" href="{{ static_prefix }}{{ css }}">

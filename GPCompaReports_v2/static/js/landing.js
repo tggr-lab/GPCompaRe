@@ -77,3 +77,15 @@
     input.focus();
   });
 })();
+
+/* "Full list" in the footer links to #data-versions, a collapsed block: open it. */
+(function () {
+  'use strict';
+  function open() {
+    if (window.location.hash !== '#data-versions') return;
+    var d = document.getElementById('data-versions');
+    if (d && d.tagName === 'DETAILS') { d.open = true; d.scrollIntoView(); }
+  }
+  open();
+  window.addEventListener('hashchange', open);
+})();

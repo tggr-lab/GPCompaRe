@@ -15,7 +15,8 @@ import { search } from '../../static/js/search/resolve.js';
 import {
   renderAnswer, esc, html, compareModel, compareRows, compareCsv, compareDefaults, renderCompareBody,
   evidenceText, inReportTable, mismatchFix, residueFacts, direction, signed, CMP_PAGE_SIZE,
-  notationsText, subjectOf, csvField, clinvarGroups,
+  notationsText, subjectOf, csvField, clinvarGroups, finePrint, HELP, renderHelp, renderReleases,
+  reportTableRelease, allelesTable, fmtAm,
 } from '../../static/js/search-ui/render.js';
 import { suggestionsFor } from '../../static/js/search-ui/suggest.js';
 import { shardsFor } from '../../static/js/search/shards.js';
@@ -194,12 +195,15 @@ test('A4: the variant-table link is only offered for residues the report table c
   assert.equal(inReportTable({ inReportTable: true, residue: { dmax: 0.1 } }), true);
 });
 
-test('B2: card facts carry the threshold, a direction word and the 0 to 1 scale; no threshold means none is printed', { skip }, async () => {
+test('B2: card facts carry a direction word; the threshold and the 0 to 1 scale are in the fine print; no threshold means none is printed', { skip }, async () => {
   const out = renderAnswer(await search('PAR2 M159I', loader), 'PAR2 M159I', OPTS2).html;
   const text = visible(out);
-  assert.match(text, /\|ΔRRCS\| 4\.99<span class="sr-sub">, receptor threshold \d\.\d\d/);
+  assert.match(text, /\|ΔRRCS\| 4\.99<span class="sr-sub">, with Phe300/);
+  assert.ok(!/receptor threshold/.test(text.split('sr-card-fine')[0]), 'no threshold in the facts');
+  assert.match(text, /this receptor's threshold is \d\.\d\d/);
   assert.match(text, /stronger in inactive/);
-  assert.match(text, /0\.96 <span class="sr-sub">on a 0 to 1 scale/);
+  assert.match(text, /<dt>Conservation<\/dt><dd>0\.96<\/dd>/);
+  assert.match(text, /Conservation<\/strong> is on a 0 to 1 scale/);
   assert.ok(!text.includes('0 variable, 1 conserved'));
   assert.match(text, /AlphaMissense prediction/);
   const r = (await search('PAR2 M159I', loader)).results[0];
@@ -212,7 +216,7 @@ test('B2: card facts carry the threshold, a direction word and the 0 to 1 scale;
 test('C5: the lead line appears for a shifted numbering and for a typed transcript, not for a plain change', { skip }, async () => {
   const shifted = renderAnswer(await search('LPAR2 L351F', loader), 'LPAR2 L351F', OPTS2).html;
   assert.match(visible(shifted), /You typed<\/span> <span class="mono">LPAR2 L351F<\/span>.*Leu348.*differently/s);
-  assert.match(shifted, /<details class="sr-more sr-notations" open>/);
+  assert.match(shifted, /<details class="sr-more sr-notations">\s*<summary>All transcript notations <span class="sr-badge sr-badge--warn">numbering differs<\/span>/);
   const plain = renderAnswer(await search('PAR2 M159I', loader), 'PAR2 M159I', OPTS2).html;
   assert.ok(!plain.includes('sr-lead'));
   assert.match(plain, /<details class="sr-more sr-notations">/);
@@ -425,11 +429,13 @@ test('R2-6: "Find in the report\'s variant table" follows the report table membe
   const r3 = gpr3.results[0];
   assert.equal(r3.gid, 'gpr3_human');
   assert.equal(r3.alleles[0].hgvsp, 'p.Pro8Ser');
-  assert.equal(r3.alleles[0].inReportTable, false);
-  assert.ok(inReportTable(r3) === false && residueFacts(r3).dmax >= 3, 'above the cutoff, still not listed');
+  // since the 2026-11-05 refresh the report tables hold the same alleles as search: GPR3's own allele at a
+  // residue past the |dRRCS| 3.0 cutoff is a row (the old table listed GPR31's alleles instead)
+  assert.equal(r3.alleles[0].inReportTable, true);
+  assert.ok(inReportTable(r3) === true && residueFacts(r3).dmax >= 3, 'above the cutoff and listed');
   const h3 = renderAnswer(gpr3, '1-27393820-C-T', OPTS2).html;
-  assert.ok(!h3.includes("Find in the report's variant table"));
-  assert.match(h3, /that table was built from gnomAD v4\.1\.0 and does not list this change/);
+  assert.ok(h3.includes("Find in the report's variant table"));
+  assert.ok(!/does not list this change/.test(h3));
   const par2 = await search('PAR2 p.Met159Ile', loader);
   const r2 = par2.results[0];
   assert.ok(r2.alleles.length && r2.alleles.every((x) => x.inReportTable === true));
@@ -444,7 +450,7 @@ test('R2-6: "Find in the report\'s variant table" follows the report table membe
     const table = /<table class="v2-table" id="variants-table">([^]*?)<\/table>/.exec(readFileSync(page, 'utf8'))[1];
     assert.ok(table.includes(`<td>${vq}</td>`), 'p.Met159Ile is a row of the report table');
     const g3 = /<table class="v2-table" id="variants-table">([^]*?)<\/table>/.exec(readFileSync(join(DIR, '..', 'reports', 'gpr3_human.html'), 'utf8'))?.[1] ?? '';
-    assert.ok(!g3.includes('<td>p.Pro8Ser</td>'), 'p.Pro8Ser is not a row of the GPR3 report table');
+    assert.ok(g3.includes('<td>p.Pro8Ser</td>'), 'p.Pro8Ser is a row of the GPR3 report table');
   }
 });
 
@@ -458,4 +464,96 @@ test('R2-7: no exact match but grouped residues: W3.50 lists every receptor with
   assert.ok(!o.status.startsWith('No result'), o.status);
   assert.ok(!o.html.includes('sr-help'), 'no "you can search like this" block under a table');
   assert.ok(!visible(o.html).match(/undefined|NaN|\[object/));
+});
+
+// ---------------------------------------------------------------- fine print (reports v3)
+
+test('finePrint makes an aside, or a collapsed details with a summary', () => {
+  assert.equal(finePrint(html`<p>x</p>`).toString(), '<aside class="fine-print"><p>x</p></aside>');
+  assert.equal(finePrint(html`<p>x</p>`, { summary: 'About', page: true, id: 'a' }).toString(),
+    '<details class="fine-print fine-print--page" id="a"><summary>About</summary><p>x</p></details>');
+  assert.match(finePrint('x', { summary: 's', open: true }).toString(), /<details [^>]* open>/);
+  assert.ok(!finePrint('<b>', { summary: '<i>' }).toString().includes('<b>'), 'text is escaped');
+});
+
+test('the help examples name no favourite receptor and every one resolves to a card or a table', { skip }, async () => {
+  const all = HELP.flatMap(([, ex]) => ex);
+  assert.ok(all.length >= 20);
+  const text = all.join(' ');
+  for (const bad of ['M159I', 'Met159Ile', 'rs115885685', 'NM_005242']) assert.ok(!text.includes(bad), bad);
+  const receptors = new Set();
+  for (const q of all) {
+    const a = await search(q, loader);
+    assert.ok(a.expect !== 'unrecognised' && (a.results?.length || a.groups?.length), `${q} gives an answer`);
+    const o = renderAnswer(a, q, OPTS2);
+    assert.ok(o.html.includes('sr-card') || o.html.includes('sr-table'), `${q} draws a card or a table`);
+    for (const r of a.results ?? []) if (a.results.length < 5) receptors.add(r.gid);
+  }
+  assert.ok(receptors.size >= 5, [...receptors].join(','));
+  assert.ok(!renderHelp(OPTS2).toString().includes('M159I'));
+});
+
+test('a card keeps its essentials up front and moves explanations into its fine print', { skip }, async () => {
+  const q = 'DRD2 S311C';
+  const out = renderAnswer(await search(q, loader), q, OPTS2).html;
+  const [main, fine] = out.split('<aside class="fine-print sr-card-fine">');
+  assert.ok(fine, 'the card has a fine-print block');
+  // up front: the change, allele frequency, ClinVar and the database facts, and the actions
+  for (const need of ['p.Ser311Cys', 'Frequency', 'ClinVar', 'In this database', 'Open report at this residue']) assert.ok(main.includes(need), need);
+  // not up front: release labels, threshold and scale explanations, transcript tables
+  for (const gone of ['receptor threshold', '0 to 1 scale', 'sr-table--tx', 'mean over all substitutions']) assert.ok(!main.includes(gone), gone);
+  assert.match(fine, /gnomAD v4\.1\.2; ClinVar 2026-10-11\./);
+  assert.match(fine, /<details class="sr-about"><summary>About these numbers<\/summary>/);
+  assert.match(fine, /<details class="sr-more sr-notations">/);
+  assert.ok(!/<details class="sr-more sr-notations" open>/.test(out), 'the transcript table is always folded');
+});
+
+test('a warning that changes the meaning stays visible above the results', { skip }, async () => {
+  for (const [q, code] of [['PAR2 A159I', 'reference_mismatch'], ['NM_005242.999:c.477G>A', 'version_unknown']]) {
+    const out = renderAnswer(await search(q, loader), q, OPTS2).html;
+    const [main] = out.split('<aside class="fine-print sr-card-fine">');
+    assert.ok(main.includes(`data-code="${code}"`), `${q}: ${code} is in the main flow`);
+  }
+});
+
+test('the release line is visible; report tables and search share one release, said in fine print', () => {
+  const rel = { gnomad: { label: 'gnomAD v9' }, clinvar: { label: 'ClinVar X' }, ensembl: { label: 'Ensembl 1', grch38: 'a', grch37: 'b' }, hgnc: { label: 'HGNC' }, uniprot: { label: 'UniProt' }, alphamissense: { label: 'AM' } };
+  const same = { ...rel, reportTable: { label: 'gnomAD v9', key: 'gnomad', rule: '|dRRCS| >= 3.0', sameAsSearch: true } };
+  const h = renderReleases(same).toString();
+  assert.match(h, /<p class="sr-releases"><strong>Data in this search:<\/strong> gnomAD v9; ClinVar X;/);
+  assert.match(h, /<aside class="fine-print sr-releases-note">/);
+  assert.match(h, /use the same release as this search, gnomAD v9/);
+  assert.ok(!h.includes('newer variant data') && !h.includes('<details'), 'no "newer data" note when the release is shared');
+  assert.ok(!h.includes('—'));
+  // an index without the reportTable block is read as the same release
+  assert.match(renderReleases(rel).toString(), /same release as this search/);
+  // a note stays only when the registry says the two differ
+  const diff = renderReleases({ ...rel, reportTable: { label: 'gnomAD v8', key: 'gnomad_batch', sameAsSearch: false } }).toString();
+  assert.match(diff, /<details><summary>How this differs from the report pages<\/summary>/);
+  assert.match(diff, /list gnomAD v8 missense variants/);
+  assert.match(diff, /every missense allele and ClinVar X/);
+  assert.equal(reportTableRelease({ reportTable: { label: 'gnomAD v8' }, gnomad: { label: 'gnomAD v9' } }), 'gnomAD v8');
+  assert.equal(reportTableRelease({ gnomad: { label: 'gnomAD v9' } }), 'gnomAD v9');
+});
+
+test('allele AlphaMissense scores print with 3 decimals, like the report tables', () => {
+  assert.equal(fmtAm(0.999), '0.999');
+  assert.equal(fmtAm(0.91), '0.910');
+  assert.equal(fmtAm(1), '1.000');
+  assert.equal(fmtAm(null), 'n/a');
+  const al = (am) => ({ id: '1-2-A-C', hgvsc: 'c.1A>C', hgvsp: 'p.Met1Leu', rsids: [], ac: 1, an: 10, af: 0.1, hom: 0, am, amClass: 'pathogenic' });
+  const t = allelesTable([al(0.999), al(0.4)], { caption: 'x' }).toString();
+  assert.match(t, /data-label="AlphaMissense prediction">0\.999 <span class="sr-sub">pathogenic/);
+  assert.match(t, />0\.400 <span class="sr-sub">pathogenic/);
+  assert.ok(!/>1\.00 </.test(t) && !/>0\.40 </.test(t));
+});
+
+test('the comparison legend and the motif note are fine print under the table', { skip }, async () => {
+  const q = '3.50x50';
+  const out = renderAnswer(await search(q, loader), q, OPTS2).html;
+  assert.match(out, /<aside class="fine-print sr-legend"><p>Net ΔRRCS: /);
+  assert.ok(out.indexOf('data-cmp-body') < out.indexOf('sr-legend'), 'the legend follows the table');
+  const m = 'NPxxY in MC1R';
+  const h2 = renderAnswer(await search(m, loader), m, OPTS2).html;
+  assert.ok(!/<p class="sr-motif">[^]*?<\/p>/.exec(h2)?.[0].includes('. '), 'the motif line carries no sentence');
 });

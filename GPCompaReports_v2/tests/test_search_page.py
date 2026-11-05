@@ -126,7 +126,7 @@ def test_landing_hero_is_a_real_search_form():
     assert 'action="{{ static_prefix }}search/"' in form and 'method="get"' in form and 'data-suggest-host' in form
     inp = re.search(r'<input type="search" id="search-input"[^>]*>', tpl).group(0)
     assert 'name="q"' in inp and 'maxlength="300"' in inp
-    assert 'variant' in inp and 'PAR2 M159I' in inp
+    assert 'variant' in inp and 'MC1R R151C' in inp
     # the old separate receptor-only result list is gone: the shared autocomplete draws the suggestions
     assert 'id="search-results"' not in tpl
     js = (BASE / 'static' / 'js' / 'landing.js').read_text(encoding='utf-8')
@@ -143,6 +143,8 @@ def test_browse_text_field_is_a_table_filter_with_a_variant_hint():
 def test_search_page_hint_is_split_by_pointer_type():
     tpl = (BASE / 'templates' / 'search.html').read_text(encoding='utf-8')
     assert 'class="sr-fine-only">Use the arrow keys' in tpl and 'sr-touch-only' in tpl
+    # the key hints are fine print at the bottom of the page, not a line under the box
+    assert tpl.index('fine-print--page') < tpl.index('class="sr-fine-only"')
     css = (BASE / 'static' / 'css' / 'search-ui.css').read_text(encoding='utf-8')
     assert '@media (pointer: fine)' in css
 

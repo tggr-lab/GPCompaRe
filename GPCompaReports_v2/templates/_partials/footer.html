@@ -2,7 +2,9 @@
   Shared footer partial. Requires context vars:
     static_prefix  — path prefix to site root
     total_gpcrs    — number of GPCRs (for the brand subtext)
+    data_versions  — optional, from data_versions.json; adds the "Data versions" fine-print line
 #}
+{% from "_partials/fine_print.html" import data_versions_line %}
 <footer class="site-footer">
   <div class="section-inner footer-inner">
     <div class="footer-brand">
@@ -24,4 +26,7 @@
       <a href="{{ static_prefix }}contact.html">Contact</a>
     </nav>
   </div>
+  {% if data_versions is defined and data_versions %}
+  <div class="section-inner footer-versions">{{ data_versions_line(data_versions, static_prefix ~ 'index.html#data-versions') }}</div>
+  {% endif %}
 </footer>

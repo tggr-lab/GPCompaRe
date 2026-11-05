@@ -51,7 +51,7 @@
 /* --------------------------------------------------------------------------- search page */
 .search-section { padding: var(--s-6) 0 var(--s-8); }
 #search-app { max-width: 1040px; margin: 0 auto; }
-.sr-form { display: flex; gap: var(--s-2); margin: 0 0 var(--s-2); }
+.sr-form { display: flex; gap: var(--s-2); margin: 0 0 var(--s-3); }
 .sr-form .v2-input { flex: 1 1 auto; min-width: 0; font-size: 1.05rem; min-height: 46px; }
 .sr-form .btn { flex: 0 0 auto; }
 .sr-hint, .sr-sub { color: var(--fgColor-muted); font-size: 0.86rem; }
@@ -116,6 +116,21 @@
 .sr-copy:hover { border-color: var(--brand-primary); }
 .sr-more { margin-top: var(--s-2); }
 .sr-more summary { cursor: pointer; color: var(--fgColor-accent); }
+/* fine print inside a card: the releases line, "About these numbers" and the transcript tables */
+.sr-card-fine { margin: 0; max-width: none; padding: var(--s-3) var(--s-4); border-top: 1px solid var(--borderColor-muted); }
+.sr-card-fine .sr-card-releases { margin: 0 0 var(--s-2); }
+.sr-card-fine details { margin: 0 0 var(--s-2); }
+.sr-card-fine details:last-child { margin-bottom: 0; }
+.sr-card-fine .sr-more summary { color: var(--fgColor-muted); font-weight: 500; }
+.sr-card-fine .sr-notations > summary { font-weight: 500; }
+.sr-card-fine .sr-notations[open] > summary { margin-bottom: var(--s-2); }
+.sr-card-fine .sr-table { font-size: 0.85rem; }
+.sr-card-fine .sr-notations > :not(summary) { border-left: 0; padding-left: 0; max-width: none; }
+.sr-card-fine .sr-table-wrap { margin-top: var(--s-2); }
+.sr-card-fine .sr-about > ul { margin-top: 0; }
+.fine-print.sr-legend { margin: var(--s-3) 0 0; }
+.sr-motif-note { margin: 0 0 var(--s-3); }
+.sr-row .fine-print { margin-top: var(--s-2); }
 
 /* tables */
 .sr-table-wrap { overflow-x: auto; max-width: 100%; }
@@ -135,9 +150,7 @@
 .sr-lead .sr-label { margin-right: var(--s-1); }
 .sr-arrow { margin: 0 var(--s-1); color: var(--fgColor-muted); }
 .sr-row--wide { display: block; }
-.sr-notations > summary { font-weight: 600; }
 .sr-notations > summary .sr-badge { margin-left: var(--s-2); }
-.sr-notations[open] > summary { margin-bottom: var(--s-2); }
 .sr-notations .sr-table-wrap + .sr-table-wrap, .sr-notations .sr-table-wrap + p { margin-top: var(--s-3); }
 /* every ClinVar record of one receptor, grouped by classification */
 .sr-cvlist-all > summary { color: var(--fgColor-default); }
@@ -145,7 +158,7 @@
 .sr-cvgroup { margin-left: var(--s-3); }
 .sr-cvgroup .sr-table-wrap { max-height: 32rem; overflow-y: auto; }
 .sr-table--cv td { overflow-wrap: anywhere; }
-.sr-action-note { flex: 1 1 100%; margin: 0; font-size: 0.86rem; color: var(--fgColor-muted); }
+.sr-action-note { flex: 1 1 100%; margin: 0; max-width: none; }
 
 /* a typed reference residue that is not the model's: the correction is the main action */
 .sr-fix { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); margin: var(--s-3) var(--s-4) 0; padding: var(--s-3) var(--s-4); border: 1px solid var(--borderColor-attention-muted, var(--borderColor-default)); border-radius: var(--r-md); background: var(--bgColor-attention-muted); }
@@ -182,7 +195,7 @@
 .sr-help-list { display: grid; gap: var(--s-3); margin: var(--s-3) 0 0; }
 .sr-help-list dt { font-weight: 600; margin-bottom: var(--s-1); }
 .sr-help-list dd { margin: 0; }
-.sr-releases { color: var(--fgColor-muted); font-size: 0.85rem; margin: var(--s-4) 0 0; }
+.sr-releases { margin: 0 0 var(--s-2); }
 .sr-plain-list { columns: 3 220px; list-style: none; padding: 0; }
 
 .btn:focus-visible, .sr-chip:focus-visible, .sr-copy:focus-visible, .sr-seg:focus-visible, .sr-table--multi th button:focus-visible { outline: 2px solid var(--brand-primary); outline-offset: 2px; }
@@ -205,7 +218,7 @@
   .sr-table td { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-3); border: 0; padding: 2px 0; text-align: right; flex-wrap: wrap; }
   .sr-table td::before { content: attr(data-label); color: var(--fgColor-muted); font-size: 0.8rem; text-align: left; flex: 0 0 auto; }
   .sr-table--multi tr { padding: var(--s-2) var(--s-3); }
-  .sr-card-head, .sr-row, .sr-actions, .sr-lead { padding-left: var(--s-3); padding-right: var(--s-3); }
+  .sr-card-head, .sr-row, .sr-actions, .sr-lead, .sr-card-fine { padding-left: var(--s-3); padding-right: var(--s-3); }
   .sr-fix, .sr-notes { margin-left: var(--s-3); margin-right: var(--s-3); }
   .sr-notes { padding-left: 0; padding-right: 0; }
   .topbar-search .sg-list { width: 92vw; }

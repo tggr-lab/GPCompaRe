@@ -47,6 +47,8 @@ needs_build = pytest.mark.skipif(
 def _visible(path):
     """Rendered text a visitor reads. Attribute values are not visible copy."""
     h = path.read_text(encoding='utf-8')
+    # the footer's "Data versions" fine print is site-wide chrome, not the page's own copy
+    h = re.sub(r'<footer\b.*?</footer>', ' ', h, flags=re.S | re.I)
     h = re.sub(r'<script\b.*?</script>', ' ', h, flags=re.S | re.I)
     h = re.sub(r'<style\b.*?</style>', ' ', h, flags=re.S | re.I)
     return re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', h))
