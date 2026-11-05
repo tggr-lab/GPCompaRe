@@ -19,6 +19,7 @@ import {
   reportTableRelease, allelesTable, fmtAm, summarySentences, contactMeaning, amClassLabel, segmentKind, RESEARCH_NOTE, DB_NAME,
 } from '../../static/js/search-ui/render.js';
 import { suggestionsFor } from '../../static/js/search-ui/suggest.js';
+import * as L from '../../static/js/search-ui/links.js';
 import { shardsFor } from '../../static/js/search/shards.js';
 
 const BASE = resolvePath(fileURLToPath(new URL('../..', import.meta.url)));
@@ -102,6 +103,10 @@ test('a query over the limit gets a visible notice', () => {
 // ------------------------------------------------------------------ round 2: tables, cards, evidence
 
 const visible = (h) => h.replace(/data-[a-z-]+="[^"]*"/g, '');
+/** The markup with the result links unwrapped (a mono link reads as the mono span it replaced), for layout checks. */
+const unlinked = (h) => String(h)
+  .replace(/<a class="sr-(?:ext|int)([^"]*)" href="[^"]*" target="_blank" rel="[^"]*" title="[^"]*" aria-describedby="sr-newtab">([^]*?)<\/a>/g,
+    (m, cls, body) => (/\bmono\b/.test(cls) ? `<span class="mono">${body}</span>` : body));
 const OPTS2 = { ...OPTS, familyOf: () => '', pageUrl: 'https://example.org/search/' };
 
 test('a bare change gives a comparison table with the data columns and a precise link per row', { skip }, async () => {
@@ -197,7 +202,7 @@ test('A4: the variant-table link is only offered for residues the report table c
 
 test('B2: card facts carry a direction word; the threshold and the 0 to 1 scale are in the fine print; no threshold means none is printed', { skip }, async () => {
   const out = renderAnswer(await search('PAR2 M159I', loader), 'PAR2 M159I', OPTS2).html;
-  const text = visible(out);
+  const text = unlinked(out);
   assert.match(text, /\|ΔRRCS\| 4\.99<span class="sr-sub">, with Phe300/);
   assert.ok(!/receptor threshold/.test(text.split('sr-card-fine')[0]), 'no threshold in the facts');
   assert.match(text, /this receptor's threshold is \d\.\d\d/);
@@ -225,8 +230,8 @@ test('C5: the lead line appears for a shifted numbering and for a typed transcri
 });
 
 test('C5: each coding change sits in the row of its own genomic allele', { skip }, async () => {
-  const out = renderAnswer(await search('PAR2 M159I', loader), 'PAR2 M159I', OPTS2).html;
-  const rows = out.match(/<tr><td class="mono" data-label="Genomic allele \(GRCh38\)">[^<]+<\/td>.*?<\/tr>/gs) ?? [];
+  const out = unlinked(renderAnswer(await search('PAR2 M159I', loader), 'PAR2 M159I', OPTS2).html);
+  const rows = out.match(/<tr><td data-label="Genomic allele \(GRCh38\)"><span class="mono">[^<]+<\/span><\/td>.*?<\/tr>/gs) ?? [];
   assert.ok(rows.length >= 4, `${rows.length} rows`);
   for (const row of rows) {
     const allele = row.match(/5-76833084-G-([AT])/)[1];
@@ -332,7 +337,7 @@ test('R2-1: a reference mismatch keeps the typed change as the subject in the ev
   // the context-free call (r.typed on the result) gives the same subject
   assert.ok(notationsText(r).includes('p.Ala159Ile: position 159 is Met in F2RL1'));
   // card: header names the model residue as such, the change line is the typed change
-  assert.match(visible(o.html), /model residue <\/span><span class="mono">Met159/);
+  assert.match(unlinked(o.html), /model residue <\/span><span class="mono">Met159/);
   assert.match(o.html, /The model residue on each transcript/);
   assert.ok(!/<td class="mono" data-label="Protein change">p\.Met159Ile/.test(o.html));
   assert.equal(subjectOf(r, o.ctx).change, null);
@@ -440,7 +445,7 @@ test('R2-6: "Find in the report\'s variant table" follows the report table membe
   const r2 = par2.results[0];
   assert.ok(r2.alleles.length && r2.alleles.every((x) => x.inReportTable === true));
   const h2 = renderAnswer(par2, 'PAR2 p.Met159Ile', OPTS2).html;
-  const m = /href="[^"]*par2_human\.html#sec=sec-variants&(?:amp;)?vq=([^"]+)">Find in the report's variant table/.exec(h2);
+  const m = /href="[^"]*par2_human\.html#sec=sec-variants&(?:amp;)?vq=([^"]+)"[^>]*>Find in the report's variant table/.exec(h2);
   assert.ok(m, 'link present');
   const vq = decodeURIComponent(m[1]);
   assert.equal(vq, 'p.Met159Ile');
@@ -495,7 +500,7 @@ test('the help examples name no favourite receptor and every one resolves to a c
 
 test('a card keeps its essentials up front and moves explanations into its fine print', { skip }, async () => {
   const q = 'DRD2 S311C';
-  const out = renderAnswer(await search(q, loader), q, OPTS2).html;
+  const out = unlinked(renderAnswer(await search(q, loader), q, OPTS2).html);
   const [main, fine] = out.split('<aside class="fine-print sr-card-fine">');
   assert.ok(fine, 'the card has a fine-print block');
   // up front: the summary, the change, allele frequency, ClinVar, the predictions, the database facts and the actions
@@ -576,14 +581,14 @@ test('a change that needs two nucleotide substitutions says why gnomAD has no al
   const a = await search('ADRB2 R131Q', loader);
   const out = renderAnswer(a, 'ADRB2 R131Q', OPTS);
   assert.match(out.html, /This exact change is not listed in gnomAD v4\.1\.2\. <span class="sr-sub">This change needs two nucleotide substitutions in its codon \(CGC\); gnomAD alleles each change a single nucleotide, so no allele can carry it\./);
-  assert.match(out.html, /<dt>AlphaMissense, this change<\/dt><dd><strong>0\.972<\/strong> <span class="sr-am-class">likely pathogenic<\/span> <span class="sr-badge sr-badge--muted"[^>]*>prediction<\/span>/);
+  assert.match(unlinked(out.html), /<dt>AlphaMissense, this change<\/dt><dd><strong>0\.972<\/strong> <span class="sr-am-class">likely pathogenic<\/span> <span class="sr-badge sr-badge--muted"[^>]*>prediction<\/span>/);
   assert.ok(!out.html.includes('not available in this index'));
   assert.ok(!out.html.includes('\u2014'));
   const text = evidenceText(a.results[0], { query: 'ADRB2 R131Q', releases: {} });
   assert.match(text, /needs two nucleotide substitutions/);
   assert.match(text, /AlphaMissense, this change: 0\.972 \(likely pathogenic\)/);
   // a one-substitution change with no allele has a score too, and no codon note
-  const one = renderAnswer(await search('DRD2 S311A', loader), 'DRD2 S311A', OPTS).html;
+  const one = unlinked(renderAnswer(await search('DRD2 S311A', loader), 'DRD2 S311A', OPTS).html);
   assert.match(one, /<dt>AlphaMissense, this change<\/dt><dd><strong>0\.\d{3}<\/strong>/);
   assert.ok(!/nucleotide substitutions/.test(one));
 });
@@ -608,14 +613,15 @@ test('V2: the contacts table lists the threshold-passing pairs with partner, sig
   const a = await search('ADRB2 R131Q', loader);
   const r = a.results[0];
   const out = renderAnswer(a, 'ADRB2 R131Q', OPTS2).html;
-  const tbl = /<table class="sr-table sr-table--contacts">([^]*?)<\/table>/.exec(out)?.[1];
+  const tblRaw = /<table class="sr-table sr-table--contacts">([^]*?)<\/table>/.exec(out)?.[1] ?? '';
+  const tbl = unlinked(tblRaw);
   assert.ok(tbl, 'the contacts table is drawn');
   assert.equal((tbl.match(/<tr>/g) || []).length - 1, r.contacts.length, 'one row per contact');
   assert.match(tbl, /<span class="mono">Asp130<\/span> <span class="sr-sub">3\.49x49, TM3<\/span>/);
   assert.match(tbl, /<span class="sr-net sr-net--inactive">-5\.67<\/span>/);
   assert.match(tbl, /<span class="mono">Tyr141<\/span> <span class="sr-sub">34\.53x53, ICL2<\/span> <span class="sr-badge sr-badge--muted"[^>]*>loop<\/span>/);
   assert.match(tbl, /present in the inactive model only: lost in the active model/);
-  assert.match(tbl, /href="\.\.\/reports\/adrb2_human\.html#pair=130-131"/);
+  assert.match(tblRaw, /href="\.\.\/reports\/adrb2_human\.html#pair=130-131" target="_blank" rel="noopener"/);
   assert.match(out, /3 contacts above this receptor\u2019s threshold \(\|ΔRRCS\| ≥ 1\.97\), largest \|ΔRRCS\| first\./);
   // the rows follow the engine's order (largest |ΔRRCS| first)
   const partners = [...tbl.matchAll(/<span class="mono">([A-Z][a-z]{2}\d+)<\/span>/g)].map((m) => m[1]);
@@ -665,7 +671,7 @@ test('V4: a reference mismatch keeps the typed change unverifiable in the summar
   const S = summarySentences(a.results[0], out.ctx);
   assert.match(S[0], /^p\.Ala159Ile: position 159 is Met in F2RL1, so this change cannot be checked\. What follows is about the model residue Met159/);
   assert.ok(!S.some((s) => /Met159Ile/.test(s)), 'the corrected change is never the subject');
-  assert.match(out.html, /<dt>AlphaMissense, this change<\/dt><dd><span class="sr-na">not shown: the typed change is not the model residue<\/span>/);
+  assert.match(unlinked(out.html), /<dt>AlphaMissense, this change<\/dt><dd><span class="sr-na">not shown: the typed change is not the model residue<\/span>/);
   assert.ok(!/is-this/.test(out.html), 'no cell is marked as the typed change');
   assert.match(out.html, /every substitution at Met159 \(the model residue\)/);
 });
@@ -703,4 +709,124 @@ test('V7: ClinVar records show submissions and the last-evaluated date; gnomAD a
   const out = renderAnswer(await search('MC4R V103I', loader), 'MC4R V103I', OPTS2).html;
   assert.match(out, /<span class="sr-badge">Benign\/Likely benign<\/span> <span class="sr-stars"[^]*?<span class="sr-sub">\d+ submissions, last evaluated \d{4}-\d{2}-\d{2}<\/span>/);
   assert.match(out, /<td class="num" data-label="Allele count">[\d,]+<span class="sr-sub"> of [\d,]+, exomes<\/span><\/td>/);
+});
+
+// ------------------------------------------------------------- links: every identifier opens its record
+
+const REGISTRY = JSON.parse(readFileSync(join(BASE, 'data_versions.json'), 'utf8'));
+const REL = { gnomad: { dataset: REGISTRY.sources.gnomad.dataset }, alphamissense: { label: REGISTRY.sources.alphamissense.label, record: REGISTRY.sources.alphamissense.record } };
+
+test('L1: each identifier type builds its documented URL; a malformed id gives no link', () => {
+  assert.equal(L.dbsnpUrl('rs1042713'), 'https://www.ncbi.nlm.nih.gov/snp/rs1042713');
+  assert.equal(L.clinvarUrl(225937), 'https://www.ncbi.nlm.nih.gov/clinvar/variation/225937/');
+  assert.equal(L.gnomadVariantUrl('5-148826877-G-A', REL), 'https://gnomad.broadinstitute.org/variant/5-148826877-G-A?dataset=gnomad_r4');
+  assert.equal(L.gnomadGeneUrl('ENSG00000169252', REL), 'https://gnomad.broadinstitute.org/gene/ENSG00000169252?dataset=gnomad_r4');
+  assert.equal(L.ensemblUrl('ENST00000305988.6'), 'https://www.ensembl.org/id/ENST00000305988');
+  assert.equal(L.ensemblUrl('ENSP00000305372.4'), 'https://www.ensembl.org/id/ENSP00000305372');
+  assert.equal(L.refseqUrl('NM_000024.6'), 'https://www.ncbi.nlm.nih.gov/nuccore/NM_000024.6');
+  assert.equal(L.refseqUrl('NP_000015.2'), 'https://www.ncbi.nlm.nih.gov/protein/NP_000015.2');
+  assert.equal(L.uniprotUrl('P07550'), 'https://www.uniprot.org/uniprotkb/P07550/entry');
+  assert.equal(L.hgncUrl({ hgnc: 'HGNC:286', symbol: 'ADRB2' }), 'https://www.genenames.org/data/gene-symbol-report/#!/hgnc_id/HGNC:286');
+  assert.equal(L.hgncUrl({ symbol: 'ADRB2' }), 'https://www.genenames.org/tools/search/#!/?query=ADRB2');
+  assert.equal(L.gpcrdbUrl('ADRB2_HUMAN'), 'https://gpcrdb.org/protein/adrb2_human/');
+  assert.equal(L.ncbiGeneUrl('154'), 'https://www.ncbi.nlm.nih.gov/gene/154');
+  assert.equal(L.ucscUrl('5-148826877-G-A', 'GRCh38'), 'https://genome.ucsc.edu/cgi-bin/hgTracks?db=hg38&position=chr5:148826877-148826877');
+  assert.equal(L.ucscUrl('5-148206440-G-A', 'GRCh37'), 'https://genome.ucsc.edu/cgi-bin/hgTracks?db=hg19&position=chr5:148206440-148206440');
+  assert.equal(L.ucscUrl('5:76125825', 'GRCh37'), 'https://genome.ucsc.edu/cgi-bin/hgTracks?db=hg19&position=chr5:76125825-76125825');
+  assert.equal(L.ucscUrl('X-100-AT-A', 'GRCh38'), 'https://genome.ucsc.edu/cgi-bin/hgTracks?db=hg38&position=chrX:100-101');
+  // the AlphaMissense record comes from the registry, never from the code
+  assert.equal(L.alphamissenseUrl(REL), REGISTRY.sources.alphamissense.record);
+  assert.equal(L.alphamissenseUrl({}), null);
+  assert.equal(L.recordLabel(REGISTRY.sources.alphamissense.record), `Zenodo record ${/(\d+)$/.exec(REGISTRY.sources.alphamissense.record)[1]}`);
+  for (const [fn, bad] of [[L.dbsnpUrl, 'rs1x'], [L.gnomadVariantUrl, '5:148826877'], [L.ensemblUrl, 'ENSX1'], [L.refseqUrl, 'NM_x'], [L.uniprotUrl, 'p0 7550'], [L.gpcrdbUrl, 'adrb2'], [L.ucscUrl, 'chr5']]) {
+    assert.equal(fn(bad, REL), null, `${fn.name}(${bad})`);
+  }
+  assert.equal(L.glossaryUrl({ reports: '../reports/' }, 'cfr'), '../reports/../glossary.html#cfr');
+  assert.equal(L.glossaryUrl({ glossary: '../glossary.html' }, 'am'), '../glossary.html#am');
+});
+
+/** Every <a ...> of the markup, as {href, attrs}. */
+const anchors = (h) => [...String(h).matchAll(/<a ([^>]*)>/g)].map((m) => ({ attrs: m[1], href: /href="([^"]*)"/.exec(m[1])?.[1] ?? '' }));
+
+test('L2: the variant card links every identifier to its record, on the right assembly', { skip }, async () => {
+  const meta = await loader('meta.json');
+  const rel = meta.releases;
+  const F = meta.receptorFields;
+  const adrb2 = Object.fromEntries(F.map((k, i) => [k, meta.receptors.find((r) => r[0] === 'adrb2_human')[i]]));
+  const o = { ...OPTS2, releases: rel, glossary: '../glossary.html' };
+  const a = await search('rs1042713', loader);
+  const out = renderAnswer(a, 'rs1042713', o).html;
+  const hrefs = anchors(out).map((x) => x.href.replace(/&amp;/g, '&'));
+  const want = [
+    'https://www.ncbi.nlm.nih.gov/snp/rs1042713',
+    `https://www.ncbi.nlm.nih.gov/clinvar/variation/${a.results[0].clinvar[0].variationId}/`,
+    `https://gnomad.broadinstitute.org/variant/5-148826877-G-A?dataset=${rel.gnomad.dataset}`,
+    'https://genome.ucsc.edu/cgi-bin/hgTracks?db=hg38&position=chr5:148826877-148826877',
+    'https://genome.ucsc.edu/cgi-bin/hgTracks?db=hg19&position=chr5:148206440-148206440',
+    'https://www.ensembl.org/id/ENST00000305988',
+    'https://www.ensembl.org/id/ENSP00000305372',
+    'https://www.ncbi.nlm.nih.gov/nuccore/NM_000024.6',
+    'https://www.ncbi.nlm.nih.gov/protein/NP_000015.2',
+    `https://www.uniprot.org/uniprotkb/${adrb2.uniprot}/entry`,
+    `https://www.genenames.org/data/gene-symbol-report/#!/hgnc_id/${adrb2.hgnc}`,
+    'https://gpcrdb.org/protein/adrb2_human/',
+    `https://www.ncbi.nlm.nih.gov/gene/${adrb2.geneId}`,
+    `https://gnomad.broadinstitute.org/gene/${adrb2.ensg}?dataset=${rel.gnomad.dataset}`,
+    rel.alphamissense.record,
+    '../reports/adrb2_human.html',
+    '../reports/adrb2_human.html#sec=sec-snake&res=16',
+    '../studio/?db=adrb2_human',
+    '../glossary.html#am',
+    '../glossary.html#cfr',
+  ];
+  for (const w of want) assert.ok(hrefs.includes(w), `${w} not in\n${hrefs.join('\n')}`);
+  assert.equal(rel.alphamissense.record, REGISTRY.sources.alphamissense.record, 'the index carries the registry record');
+  // the copy button stays beside the rsID; the text opens, the button copies
+  assert.match(out, /title="dbSNP, opens in a new tab" aria-describedby="sr-newtab">rs1042713<\/a> <button type="button" class="sr-copy" data-copy="rs1042713"/);
+  // one hidden "opens in a new tab" text for every link to point at; the link text itself stays the bare id
+  assert.equal((out.match(/<span id="sr-newtab" hidden>Opens in a new tab<\/span>/g) ?? []).length, 1);
+});
+
+test('L3: every link out of a result opens a new tab: outbound ones (sr-ext, drawn with ↗) with noopener noreferrer, internal ones (sr-int, no ↗); search links stay', { skip }, async () => {
+  const meta = await loader('meta.json');
+  const o = { ...OPTS2, releases: meta.releases, glossary: '../glossary.html' };
+  let ext = 0; let int = 0; let srch = 0;
+  for (const q of ['rs1042713', 'ADRB2', 'ADRB2 ClinVar', 'M159I', 'DRD2 S311C', 'R3.50', 'LPAR2 L351F', 'PAR2 A159I', 'ADRB2 R131Q', 'ADRB', 'DRY in ADRB2']) {
+    const out = renderAnswer(await search(q, loader), q, o).html;
+    const m = /<a [^>]*>([^]*?)<\/a>/g;
+    for (const [whole, body] of out.matchAll(m)) {
+      const a = anchors(whole)[0];
+      if (/href="https?:/.test(a.attrs)) {
+        ext += 1;
+        assert.match(a.attrs, /target="_blank"/, `${q}: ${whole}`);
+        assert.match(a.attrs, /rel="noopener noreferrer"/, `${q}: ${whole}`);
+        assert.match(a.attrs, /title="[^"]*opens in a new tab" aria-describedby="sr-newtab"/, `${q}: ${whole}`);
+        assert.match(a.attrs, /^class="sr-ext\b/, `${q}: the ↗ class: ${whole}`);
+        assert.ok(!/↗|opens in a new tab/.test(body), `${q}: the link text is only the identifier: ${whole}`);
+      } else if (/data-q=/.test(a.attrs)) {
+        srch += 1;
+        assert.ok(!/target=/.test(a.attrs), `${q}: a search link stays on the page: ${whole}`);
+      } else {
+        int += 1;
+        assert.match(a.attrs, /target="_blank" rel="noopener"/, `${q}: ${whole}`);
+        assert.match(a.attrs, /title="[^"]*in a new tab" aria-describedby="sr-newtab"/, `${q}: ${whole}`);
+        assert.match(a.attrs, /^class="sr-int\b/, `${q}: internal links carry no ↗: ${whole}`);
+      }
+    }
+  }
+  assert.ok(ext > 50 && int > 30 && srch > 5, `${ext} outbound, ${int} internal, ${srch} search links`);
+  // the compare table body redrawn by the page (reports only) still opens reports in a new tab
+  const model = compareModel(await search('M159I', loader), { reports: '../reports/' });
+  const body = renderCompareBody(model, compareDefaults(), { reports: '../reports/' }).toString();
+  assert.match(body, /<a class="sr-int sr-sub sr-reportlink" href="\.\.\/reports\/par2_human\.html#sec=sec-snake&amp;res=159" target="_blank" rel="noopener"/);
+});
+
+test('L4: the exports are unchanged by the links', { skip }, async () => {
+  const a = await search('rs1042713', loader);
+  const o = renderAnswer(a, 'rs1042713', { ...OPTS2, releases: (await loader('meta.json')).releases });
+  const ev = evidenceText(o.results[0], o.ctx);
+  const nt = notationsText(o.results[0], o.ctx);
+  for (const t of [ev, nt]) assert.ok(!/↗|opens in a new tab|<a /.test(t), t);
+  const csv = compareCsv(compareModel(await search('M159I', loader), {}), compareDefaults());
+  assert.ok(!/https?:|↗/.test(csv));
 });

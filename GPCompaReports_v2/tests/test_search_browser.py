@@ -663,11 +663,14 @@ def test_search_text_does_not_reach_the_next_page_as_its_referrer(open_page, ser
     assert 'q=' in page.url
     link = page.locator('.sr-card a[href*="reports/"]').first
     expect(link).to_be_visible()
-    link.click()
-    page.wait_for_load_state('load')
-    assert '/reports/' in page.url
-    assert page.evaluate('document.referrer') == server + '/'
-    assert 'Met159' not in page.evaluate('document.referrer')
+    with page.expect_popup() as info:  # report links open in a new tab; the search stays put
+        link.click()
+    report = info.value
+    report.wait_for_load_state('load')
+    assert '/reports/' in report.url
+    assert 'q=' in page.url
+    assert report.evaluate('document.referrer') == server + '/'
+    assert 'Met159' not in report.evaluate('document.referrer')
 
 
 def test_every_search_box_has_a_length_cap(open_page):
@@ -1400,3 +1403,76 @@ def test_pathogenicity_classes_use_neutral_colours_and_direction_keeps_red_and_b
             assert neutral(rgb(page.locator(sel).first.evaluate('e => getComputedStyle(e).backgroundColor'))), sel
     blue = rgb(page.locator('.sr-table--contacts .sr-net--inactive').first.evaluate('e => getComputedStyle(e).color'))
     assert blue[2] > blue[0] + 40, blue
+
+
+# ------------------------------------------------------ links in results open in a new tab
+
+SHOTS = pathlib.Path(os.environ.get('SEARCH_LINK_SHOTS', '')) if os.environ.get('SEARCH_LINK_SHOTS') else None
+
+
+def test_clicking_an_rsid_opens_dbsnp_in_a_new_tab_and_nothing_is_fetched_before(open_page):
+    page = search_page(open_page, 'rs1042713')
+    calls = []
+
+    def stub(route):
+        calls.append(route.request.url)
+        route.fulfill(status=200, content_type='text/html', body='<!doctype html><title>stub</title>')
+
+    page.context.route(re.compile(r'^https://(www\.ncbi\.nlm\.nih\.gov|gnomad\.broadinstitute\.org|www\.ensembl\.org|'
+                                  r'genome\.ucsc\.edu|www\.uniprot\.org|gpcrdb\.org|www\.genenames\.org|zenodo\.org)/'), stub)
+    link = page.locator('.sr-sec[data-sec="ids"] a.sr-ext', has_text='rs1042713').first
+    expect(link).to_be_visible()
+    assert link.get_attribute('href') == 'https://www.ncbi.nlm.nih.gov/snp/rs1042713'
+    assert link.get_attribute('target') == '_blank'
+    assert link.get_attribute('rel') == 'noopener noreferrer'
+    assert link.inner_text() == 'rs1042713'  # the ↗ is drawn by CSS: copying the text gives the bare id
+    assert '\u2197' in link.evaluate("e => getComputedStyle(e, '::after').content")
+    assert page.locator('#sr-newtab').get_attribute('hidden') is not None
+    report = page.locator('.sr-card-title a.sr-int').first
+    assert report.get_attribute('target') == '_blank'
+    assert report.evaluate("e => getComputedStyle(e, '::after').content") in ('none', 'normal', '')
+    link.hover()
+    link.focus()
+    page.wait_for_timeout(300)
+    assert calls == [] and page.foreign == [], 'requested before the click: %s %s' % (calls, page.foreign)
+    with page.expect_popup() as info:
+        link.click()
+    tab = info.value
+    tab.wait_for_load_state('load')
+    assert tab.url == 'https://www.ncbi.nlm.nih.gov/snp/rs1042713'
+    assert calls == ['https://www.ncbi.nlm.nih.gov/snp/rs1042713']
+    assert tab.evaluate('window.opener') is None
+    assert tab.evaluate('document.referrer') == ''
+    assert 'q=rs1042713' in page.url  # the search stayed where it was
+    # the copy button beside it still copies, and opens nothing
+    page.context.grant_permissions(['clipboard-read', 'clipboard-write'])
+    n = len(page.context.pages)
+    page.locator('button.sr-copy[data-copy="rs1042713"]').first.click()
+    page.wait_for_timeout(200)
+    assert len(page.context.pages) == n
+    assert page.errors == []
+
+
+def test_result_links_are_tappable_on_a_phone_without_overflow(open_page):
+    for scheme in ('light', 'dark'):
+        page = search_page(open_page, 'rs1042713', viewport=PHONE, scheme=scheme, mobile=True)
+        assert page.evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth')
+        boxes = page.eval_on_selector_all(
+            '#search-results .sr-sec[open] a.sr-ext, #search-results .sr-card-head a.sr-int',
+            'els => els.filter(e => e.offsetParent).map(e => { const r = e.getBoundingClientRect(); '
+            'return [e.textContent.trim().slice(0, 30), r.left, r.right, r.height]; })')
+        assert len(boxes) >= 10, boxes
+        for text, left, right, height in boxes:
+            assert left >= 0 and right <= PHONE['width'] + 0.5, (text, left, right)
+            assert height >= 24, (text, height)
+        if SHOTS:
+            SHOTS.mkdir(parents=True, exist_ok=True)
+            page.screenshot(path=str(SHOTS / ('phone_rs1042713_%s.png' % scheme)), full_page=True)
+    desk = search_page(open_page, 'rs1042713')
+    desk.locator('.sr-sec[data-sec="ids"] a.sr-ext').first.focus()
+    outline = desk.evaluate("getComputedStyle(document.activeElement).outlineStyle")
+    assert outline not in ('', 'none'), outline
+    if SHOTS:
+        desk.screenshot(path=str(SHOTS / 'desktop_rs1042713.png'), full_page=True)
+        for q, name in (('ADRB2', 'desktop_receptor'), ('MC1R ClinVar', 'desktop_clinvar_list'), ('M159I', 'desktop_compare')):
+            search_page(open_page, q).screenshot(path=str(SHOTS / (name + '.png')), full_page=True)
