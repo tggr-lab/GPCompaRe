@@ -1435,16 +1435,19 @@ def test_pathogenicity_palette_is_legible_and_never_the_direction_red_or_blue(op
             strong = _rgb(style('.sr-path.sr-path--%s' % cls, 'color'))
             assert _contrast(strong, page_bg) >= 4.5, (scheme, cls, strong, page_bg)
         hues[cls] = _hue(fill)
-    # three distinct hues (teal, amber, purple), and none of them the red or the blue of active and inactive
+    # clinical tint (owner's choice 2026-11-05): green / neutral grey / crimson. The crimson is a different
+    # shade from the active red (always labelled), the grey is neutral, benign and pathogenic are far apart
     red = _hue(_rgb(page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--semantic-active').trim() && (() => { const s = document.createElement('span'); s.style.color = getComputedStyle(document.documentElement).getPropertyValue('--semantic-active'); document.body.append(s); const c = getComputedStyle(s).color; s.remove(); return c; })()")))
     blue = _hue(_rgb(page.evaluate("(() => { const s = document.createElement('span'); s.style.color = getComputedStyle(document.documentElement).getPropertyValue('--semantic-inactive'); document.body.append(s); const c = getComputedStyle(s).color; s.remove(); return c; })()")))
 
     def apart(a, b):
         d = abs(a - b) % 360
         return min(d, 360 - d)
-    for cls, h in hues.items():
-        assert apart(h, red) > 25 and apart(h, blue) > 25, (scheme, cls, h, red, blue)
-    assert apart(hues['benign'], hues['pathogenic']) > 60 and apart(hues['benign'], hues['ambiguous']) > 60 and apart(hues['ambiguous'], hues['pathogenic']) > 60, hues
+    assert apart(hues['benign'], red) > 60 and apart(hues['benign'], blue) > 60, (scheme, hues, red, blue)
+    assert apart(hues['pathogenic'], red) > 12 and apart(hues['pathogenic'], blue) > 60, (scheme, hues, red, blue)
+    amb = _rgb(style('.sr-am-cell.sr-am--ambiguous', 'backgroundColor'))
+    assert max(amb) - min(amb) <= 24, ('ambiguous fill must be a neutral grey', scheme, amb)
+    assert apart(hues['benign'], hues['pathogenic']) > 120, hues
     # the direction colours stay red and blue
     d = _rgb(style('.sr-table--contacts .sr-net--inactive, .sr-net--inactive', 'color')) if page.locator('.sr-net--inactive').count() else None
     assert page.errors == []

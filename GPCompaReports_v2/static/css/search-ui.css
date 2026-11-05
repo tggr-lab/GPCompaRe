@@ -319,27 +319,29 @@ h5.sr-subhead { margin: var(--s-3) 0 var(--s-1); font-size: 0.84rem; font-weight
 }
 
 /* ------------------------------------------------------------ variant card v2: palette and layout */
-/* Pathogenicity palette: teal (likely benign), amber (ambiguous), purple (likely pathogenic). Never the red and
-   blue of active and inactive. Text tokens sit on the page background, fill tokens take default text. */
+/* Pathogenicity palette (owner's choice, 2026-11-05, "clinical tint"): green (likely benign), neutral grey
+   (ambiguous), crimson (likely pathogenic), on light fills. The crimson is a different shade from the red of
+   "stronger in the active model", and every class always carries its text label. Text tokens sit on the page
+   background and on the fills; fill tokens are the tints. */
 :root {
-  --path-benign: #0F766E;      --path-benign-fill: #99F6E4;
-  --path-ambiguous: #B45309;   --path-ambiguous-fill: #FDE68A;
-  --path-pathogenic: #7E22CE;  --path-pathogenic-fill: #E9D5FF;
+  --path-benign: #2B6E2F;      --path-benign-fill: #E7F4E8;
+  --path-ambiguous: #555C68;   --path-ambiguous-fill: #F1F2F4;
+  --path-pathogenic: #B4234B;  --path-pathogenic-fill: #FBE7EC;
   --path-none: var(--fgColor-muted); --path-none-fill: var(--bgColor-muted);
   --band-rare: color-mix(in srgb, var(--fgColor-default) 6%, var(--bgColor-default));
   --band-low: color-mix(in srgb, var(--fgColor-default) 14%, var(--bgColor-default));
   --band-common: color-mix(in srgb, var(--fgColor-default) 24%, var(--bgColor-default));
 }
 [data-color-mode="dark"], [data-color-mode="auto"][data-light-theme="dark"] {
-  --path-benign: #5EEAD4;      --path-benign-fill: #134E4A;
-  --path-ambiguous: #FCD34D;   --path-ambiguous-fill: #6B4A00;
-  --path-pathogenic: #D8B4FE;  --path-pathogenic-fill: #581C87;
+  --path-benign: #81C784;      --path-benign-fill: #173A1C;
+  --path-ambiguous: #B0B4BC;   --path-ambiguous-fill: #2A2D33;
+  --path-pathogenic: #F48FB1;  --path-pathogenic-fill: #4A1426;
 }
 @media (prefers-color-scheme: dark) {
   [data-color-mode="auto"] {
-    --path-benign: #5EEAD4;      --path-benign-fill: #134E4A;
-    --path-ambiguous: #FCD34D;   --path-ambiguous-fill: #6B4A00;
-    --path-pathogenic: #D8B4FE;  --path-pathogenic-fill: #581C87;
+    --path-benign: #81C784;      --path-benign-fill: #173A1C;
+    --path-ambiguous: #B0B4BC;   --path-ambiguous-fill: #2A2D33;
+    --path-pathogenic: #F48FB1;  --path-pathogenic-fill: #4A1426;
   }
 }
 .sr-path { font-weight: 700; }
@@ -360,6 +362,10 @@ h5.sr-subhead { margin: var(--s-3) 0 var(--s-1); font-size: 0.84rem; font-weight
 .sr-am--ambiguous { background: var(--path-ambiguous-fill); border-color: var(--path-ambiguous); }
 .sr-am--pathogenic { background: var(--path-pathogenic-fill); border-color: var(--path-pathogenic); }
 .sr-am-cell .sr-am-aa { color: var(--fgColor-default); opacity: 0.8; }
+.sr-am-score { font-weight: 700; }
+.sr-am--benign .sr-am-score { color: var(--path-benign); }
+.sr-am--ambiguous .sr-am-score { color: var(--path-ambiguous); }
+.sr-am--pathogenic .sr-am-score { color: var(--path-pathogenic); }
 .sr-am-cell.is-this { outline: 3px solid var(--fgColor-default); outline-offset: 1px; }
 
 /* gauges */
