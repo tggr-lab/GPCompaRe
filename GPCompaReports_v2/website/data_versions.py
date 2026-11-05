@@ -24,6 +24,8 @@ _SEARCH_FIELDS = {
     'hgnc': ('label', 'fetched'),
     'uniprot': ('label', 'fetched'),
     'alphamissense': ('label',),
+    'conservation': ('label', 'fetched'),
+    'gpcrdb_numbering': ('label', 'fetched'),
 }
 
 

@@ -22,7 +22,8 @@ import pytest
 from GPCompaReports_v2.website.page_generators import search_index_v2 as v2
 
 BASE = Path(__file__).resolve().parent.parent
-BUDGET_GZIP = 6 * 1024 * 1024
+BUDGET_GZIP = 12 * 1024 * 1024  # raised from 6 MB on 2026-11-05 for detail/ (per-substitution AlphaMissense, about 4 MB gzip, fetched one receptor at a time)
+DETAIL_SHARD_GZIP = 48 * 1024   # the largest per-receptor detail shard a card may fetch
 
 
 def _batch_dir():
@@ -520,3 +521,72 @@ def test_report_table_membership_follows_the_report_variant_table(index_dir, sto
     gpr3 = _pack('gpr3_human')['variants']
     v = _load(index_dir, 'variants/gpr3_human.json')
     assert [v['rt'][i] for i, x in enumerate(gpr3) if x[11] == '1-27393820-C-T'] == ['1']
+
+
+# ------------------------------------------------------------------------------------ detail/
+
+
+def _significant(gid):
+    import csv
+    f = _batch_dir() / 'csv_data' / ('%s_significant_changes.csv' % gid)
+    if not f.exists():
+        pytest.skip('no batch csv for %s' % gid)
+    with open(f, newline='') as fh:
+        return list(csv.DictReader(fh))
+
+
+def test_detail_shard_per_substitution_alphamissense_equals_the_pack(index_dir):
+    meta = _load(index_dir, 'meta.json')
+    assert meta['shards']['detail'] == 1
+    alphabet = meta['amAlphabet']
+    for g in ('adrb2_human', 'mc4r_human', 'mshr_human', 'drd2_human', 'par2_human'):
+        d = _load(index_dir, 'detail/%s.json' % g)
+        p = _pack(g)
+        assert d['gid'] == g and len(d['am']) == len(p['sequence'])
+        for pos, entries in (p.get('am') or {}).items():
+            e = next((x for x in entries if x[0] == p['sequence'][int(pos) - 1]), entries[0])
+            row = d['am'][int(pos) - 1]
+            assert row == [None if v is None else int(round(v * 1000)) for v in e[1]], (g, pos)
+            # the class follows from the score, except where the pack's letter sits on a cutoff
+            derived = ''.join('-' if v is None else ('B' if v < 340 else 'P' if v > 564 else 'A') for v in row)
+            assert d['amx'].get(pos, derived) == e[2], (g, pos)
+            assert row[alphabet.index(p['sequence'][int(pos) - 1])] is None
+    # ADRB2 Arg131Gln (a two-nucleotide change with no gnomAD allele) has its score: 0.972
+    d = _load(index_dir, 'detail/adrb2_human.json')
+    assert d['am'][130][alphabet.index('Q')] == 972
+
+
+def test_detail_shard_pairs_are_the_threshold_passing_contacts_of_the_batch(index_dir):
+    for g in ('adrb2_human', 'mc4r_human', 'drd2_human'):
+        d = _load(index_dir, 'detail/%s.json' % g)
+        rows = _significant(g)
+        want = sorted(([int(r['res1']), int(r['res2']), int(round(float(r['delta_rrcs']) * 100)),
+                        int(round(float(r['active_rrcs']) * 100)), int(round(float(r['inactive_rrcs']) * 100))] for r in rows),
+                      key=lambda p: (-abs(p[2]), p[0], p[1]))
+        assert d['pairs'] == want, g
+        res = _load(index_dir, 'residues/%s.json' % g)
+        # the per-residue contact count of residues/ is the number of pairs the residue takes part in
+        counts = {}
+        for a, b, *_ in d['pairs']:
+            for q in ({a, b}):
+                counts[str(q)] = counts.get(str(q), 0) + 1
+        assert counts == res['nsig'], g
+
+
+def test_detail_shards_cover_every_receptor_and_stay_small(index_dir):
+    meta = _load(index_dir, 'meta.json')
+    largest = 0
+    for g, *_ in meta['receptors']:
+        f = index_dir / 'detail' / ('%s.json' % g)
+        assert f.exists(), g
+        largest = max(largest, len(gzip.compress(f.read_bytes(), 9)))
+    assert largest <= DETAIL_SHARD_GZIP, 'largest detail shard %.0f KB gzip' % (largest / 1024)
+
+
+def test_clinvar_rows_carry_submissions_and_last_evaluated(index_dir):
+    v = _load(index_dir, 'variants/mc4r_human.json')['clinvar']
+    assert v['fields'][-2:] == ['scv', 'evaluated']
+    scv = v['fields'].index('scv')
+    ev = v['fields'].index('evaluated')
+    assert any(isinstance(r[scv], int) and r[scv] >= 1 for r in v['rows'])
+    assert all(r[ev] == '' or len(r[ev]) == 10 for r in v['rows'])

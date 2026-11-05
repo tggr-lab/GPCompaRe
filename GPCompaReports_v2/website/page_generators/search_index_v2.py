@@ -43,6 +43,9 @@ Shards (all JSON, compact; the deploy gzips them; sizes are budgeted by tests):
   hgvsc/<NN>.json             gnomAD c. change -> receptor indices (NN = c. position mod HGVSC_SHARDS)
   subst/<NN>.json             observed substitution '<pos><ref><alt>' (model numbering; gnomAD allele or ClinVar
                               missense record) -> receptor indices (NN = pos mod SUBST_SHARDS), for bare changes
+  detail/<gid>.json           loaded only when a full residue card opens: the AlphaMissense prediction of every
+                              substitution at every residue (x1000, AM_ALPHABET order) and the receptor's
+                              threshold-passing contact pairs with their dRRCS and RRCS values; see build_detail
 
 Cheapest way to build only this index (about 30 s, no report pages):
     .venv-test/bin/python -m GPCompaReports_v2.website.page_generators.search_index_v2 \
@@ -354,6 +357,48 @@ def build_residues(gid, pack, store, cfr_rank, st=None):
         am.append(_i(amm.get(str(i)), 100))
     return {'gid': gid, 'aa': seq, 'segments': seg_runs, 'gn': gn_runs(gn), 'cfr': cfr, 'dmax': dmax,
             'nsig': ns, 'cons': cv, 'am': am}
+
+
+def _am_class(x1000):
+    """AlphaMissense class from a x1000 score: likely benign below 0.34, likely pathogenic above 0.564 (Cheng et
+    al. 2023), ambiguous between. The pack's own letters win where a score rounded onto a cutoff (build_detail amx)."""
+    if x1000 is None:
+        return '-'
+    return 'B' if x1000 < 340 else ('P' if x1000 > 564 else 'A')
+
+
+def build_detail(gid, pack, store, st=None):
+    """detail/<gid>.json: what a full residue card shows beyond residues/ and variants/, fetched only when one opens.
+
+    am    per residue (index 0 = residue 1): the AlphaMissense prediction of every substitution, x1000 integers in
+          AM_ALPHABET order (null at the reference residue; a whole residue is null when the pack has no prediction)
+    amx   {pos: 20 class letters} only where the pack's class differs from the cutoff rule applied to the x1000
+          score (a score such as 0.5641 rounds onto the cutoff); elsewhere the class follows from the score
+    pairs the receptor's threshold-passing contact pairs (store.significant_data, the pairs the report page lists):
+          [res1, res2, dRRCS x100, active RRCS x100, inactive RRCS x100], largest |dRRCS| first
+    """
+    seq = pack['sequence']
+    amp = pack.get('am') or {}
+    am, amx = [], {}
+    for i in range(1, len(seq) + 1):
+        entries = amp.get(str(i)) or []
+        e = next((x for x in entries if x[0] == seq[i - 1]), entries[0] if entries else None)
+        if not e:
+            am.append(None)
+            continue
+        scores = [_i(v, 1000) for v in e[1]]
+        am.append(scores)
+        derived = ''.join(_am_class(v) for v in scores)
+        if derived != e[2]:
+            amx[str(i)] = e[2]
+    pairs = []
+    s = store.significant_data.get(gid) if store is not None else None
+    if s is not None and len(s):
+        for a, b, d, act, inact in zip(s['res1'].astype(int), s['res2'].astype(int), s['delta_rrcs'].astype(float),
+                                       s['active_rrcs'].astype(float), s['inactive_rrcs'].astype(float)):
+            pairs.append([int(a), int(b), _i(d, 100), _i(act, 100), _i(inact, 100)])
+        pairs.sort(key=lambda p: (-abs(p[2]), p[0], p[1]))
+    return {'gid': gid, 'am': am, 'amx': amx, 'pairs': pairs}
 
 
 def residue_summary(pack, st):
@@ -878,7 +923,8 @@ def build_clinvar(gid, raw, pack, pmap, nmv, tx_maps, mcod_gene=None, stats=None
 
     Row: [variationId, accession, title, classification, stars, conditions, nm, gnomadId (GRCh38 SNV),
           pos, ref (model residue), alt (one letter or class token), kind, packed (1 = the database's P/LP
-          missense set), spdi]
+          missense set), spdi, scv (number of submissions, None when the cache lacks it),
+          evaluated (last evaluated, YYYY-MM-DD or '')]
     """
     seq = pack['sequence']
     packed = {r[5]: r for r in (pack.get('clinvar') or [])}
@@ -966,8 +1012,11 @@ def build_clinvar(gid, raw, pack, pmap, nmv, tx_maps, mcod_gene=None, stats=None
             if not gnomad_id and pk[17]:
                 gnomad_id = pk[17]
         ref = seq[pos - 1] if pos else None
+        scv = rec.get('scv')
+        evaluated = re.sub(r'^(\d{4})/(\d{2})/(\d{2}).*$', r'\1-\2-\3', g.get('lastEvaluated') or '')
         row = [vid, rec.get('accession'), title, desc, stars, traits, nm, gnomad_id, pos, ref, alt, kind,
-               1 if pk else 0, spdi]
+               1 if pk else 0, spdi, int(scv) if isinstance(scv, (int, float, str)) and str(scv).isdigit() else None,
+               evaluated if re.match(r'^\d{4}-\d{2}-\d{2}$', evaluated) else '']
         if pk:
             row[9] = pk[1]  # the record's own (RefSeq) reference residue
         rows.append(row)
@@ -976,16 +1025,17 @@ def build_clinvar(gid, raw, pack, pmap, nmv, tx_maps, mcod_gene=None, stats=None
 
 
 CLINVAR_FIELDS = ['variationId', 'version', 'title', 'class', 'stars', 'conditions', 'gnomadId', 'pos', 'ref',
-                  'alt', 'kind', 'packed', 'spdi']
+                  'alt', 'kind', 'packed', 'spdi', 'scv', 'evaluated']
 
 
 def compact_clinvar(rows):
     """Rows -> {fields, classes, conditions, rows}; class and conditions are indexes into the shard's
     tables, the accession is VCV + zero-padded id + '.' + version, the NM_ is read from the title, and
-    SPDI is kept only when there is no gnomAD-style id."""
+    SPDI is kept only when there is no gnomAD-style id. `scv` (submissions) and `evaluated` (last evaluated
+    date) are carried as they are."""
     classes, conds, out = [], [], []
     ci, di = {}, {}
-    for vid, acc, title, desc, stars, traits, nm, gid_, pos, ref, alt, kind, packed, spdi in rows:
+    for vid, acc, title, desc, stars, traits, nm, gid_, pos, ref, alt, kind, packed, spdi, scv, evaluated in rows:
         if desc not in ci:
             ci[desc] = len(classes)
             classes.append(desc)
@@ -996,7 +1046,7 @@ def compact_clinvar(rows):
                 conds.append(t)
             tl.append(di[t])
         ver = int(acc.rsplit('.', 1)[1]) if acc and '.' in acc else None
-        out.append([vid, ver, title, ci[desc], stars, tl, gid_, pos, ref, alt, kind, packed, '' if gid_ else spdi])
+        out.append([vid, ver, title, ci[desc], stars, tl, gid_, pos, ref, alt, kind, packed, '' if gid_ else spdi, scv, evaluated])
     return {'fields': CLINVAR_FIELDS, 'classes': classes, 'conditions': conds, 'rows': out}
 
 
@@ -1233,6 +1283,7 @@ def generate_search_index_v2(store, output_dir, studio=None, sources=None, gids=
         i = idx[g]
         st = _residue_struct(store, g) if store is not None else None
         put('residues', f'residues/{g}.json', build_residues(g, p, store, cfr_rank, st))
+        put('detail', f'detail/{g}.json', build_detail(g, p, store, st))
         summaries[g] = residue_summary(p, st)
         shifts = ((p['provenance'].get('cachesRekeyed') or {}).get('shifts') or {})
         up_off = int(next(iter(shifts))) if len(shifts) == 1 else 0
@@ -1325,7 +1376,7 @@ def generate_search_index_v2(store, output_dir, studio=None, sources=None, gids=
         'excluded': meta['excluded'],
         'windows': meta['windows'],
         'shards': {'rsid': RSID_SHARDS, 'clinvar': CLINVAR_SHARDS, 'hgvsc': HGVSC_SHARDS, 'subst': SUBST_SHARDS,
-                   'respos': RESPOS_BLOCK,
+                   'respos': RESPOS_BLOCK, 'detail': 1,
                    'generic': sorted(generic, key=lambda x: int(x)), 'transcripts': with_tx, 'cds': with_bases,
                    'variants': with_var},
         'cfrTop': CFR_TOP,
