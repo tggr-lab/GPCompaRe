@@ -1330,7 +1330,8 @@ def generate_search_index_v2(store, output_dir, studio=None, sources=None, gids=
                    'variants': with_var},
         'cfrTop': CFR_TOP,
         'cfrRank': cfr_rank,
-        'releases': RELEASES,
+        'releases': dict(RELEASES, reportTable=_data_versions.report_table_release(
+            getattr(store, 'report_variant_source', 'gnomad') if store is not None else 'gnomad')),
         'amAlphabet': AM_ALPHABET,
     }
     put('meta', 'meta.json', meta_out)

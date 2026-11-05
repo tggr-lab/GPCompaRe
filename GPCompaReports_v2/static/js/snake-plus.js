@@ -728,6 +728,17 @@
   function wireLegacy() {
     var api = window.SnakeAPI;
     var origState = api.getState;
+    // A link (#min=, #max=, #dir=) is applied to the approved plot before this layer starts:
+    // carry those filters over instead of starting from the defaults.
+    try {
+      var prev = origState ? origState() : null, lb = api.bounds ? api.bounds() : null;
+      if (prev && lb) {
+        if (typeof prev.min === 'number' && prev.min > lb.lo + 1e-9) S.magMin = clamp(prev.min, absMin, absMax);
+        if (typeof prev.max === 'number' && prev.max < lb.hi - 1e-9) S.magMax = clamp(prev.max, absMin, absMax);
+        if (S.magMin > S.magMax) S.magMin = S.magMax;
+      }
+      if (prev && (prev.dir === 'active' || prev.dir === 'inactive')) S.dir = prev.dir;
+    } catch (e) { /* keep the defaults */ }
     window.toggleSnakeLinks = setArcs;
     api.setLinksVisible = setArcs;
     api.setDirection = setDirection;
@@ -747,6 +758,7 @@
     if (minS) { minS.value = String(S.magMin); minS.addEventListener('input', function () { setMagRange(parseFloat(minS.value), S.magMax < parseFloat(minS.value) ? parseFloat(minS.value) : undefined); }); }
     if (maxS) { maxS.value = String(S.magMax); maxS.addEventListener('input', function () { setMagRange(S.magMin > parseFloat(maxS.value) ? parseFloat(maxS.value) : undefined, parseFloat(maxS.value)); }); }
     document.querySelectorAll('.snake-dir-btn').forEach(function (b) { b.addEventListener('click', function () { setDirection(b.dataset.dir); }); });
+    document.querySelectorAll('.snake-dir-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.dir === S.dir); });
     var reset = document.getElementById('snake-filter-reset');
     if (reset) reset.addEventListener('click', function () { S.segFilter = null; S.top = 0; if (ui.top) ui.top.value = '0'; setMagRange(absMin, absMax); setDirection('both'); paintGrid(); });
     var a = document.getElementById('snake-mag-min-val'), b = document.getElementById('snake-mag-max-val');
@@ -1204,9 +1216,14 @@
     parts.push(n + ' partner' + (n === 1 ? '' : 's') + ' above the threshold');
     return parts.join(', ');
   }
-  function announce() {
+  function announce(fromKeyboard) {
     if (!ui.live) return;
     var s = S.sel;
+    if (fromKeyboard && S.kbd !== null) {
+      var picked = (s.res === S.kbd && !s.pair) || (s.pair && (s.pair.a === S.kbd || s.pair.b === S.kbd));
+      ui.live.textContent = describe(S.kbd) + (picked ? ', selected' : '');
+      return;
+    }
     if (s.pair) ui.live.textContent = 'Selected contact ' + label(s.pair.a) + ' to ' + label(s.pair.b) + (s.pair.delta !== null && s.pair.delta !== undefined && !isNaN(s.pair.delta) ? ', dRRCS ' + fmtSigned(s.pair.delta) : '');
     else if (s.res !== null) ui.live.textContent = 'Selected ' + describe(s.res);
     else if (S.kbd !== null) ui.live.textContent = describe(S.kbd);
@@ -1233,7 +1250,7 @@
         else if (k === 'ArrowUp') i = Math.max(0, i - 10);
         S.kbd = vis[Math.max(0, i)];
         S.hover = { res: S.kbd, pair: null };
-        paintMarks(); announce();
+        paintMarks(); announce(true);
         if (S.zoom > 1) { var p = pointOf(S.kbd); if (p) { S.cx = p.x + tx; S.cy = p.y + ty; applyView(); } }
       } else if (k === 'Enter' || k === ' ') {
         if (S.kbd === null) return;

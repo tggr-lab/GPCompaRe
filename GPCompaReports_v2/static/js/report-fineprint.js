@@ -45,8 +45,9 @@
     if (d) d.open = true;
   }
   function openFromHash() {
-    var m = /(?:^#|&)sec=([\w-]+)(?:&|$)/.exec(window.location.hash || '');
-    if (m && m[1] === 'sec-methods') openFor('sec-methods');
+    var h = window.location.hash || '';
+    var m = /(?:^#|&)sec=([\w-]+)(?:&|$)/.exec(h);
+    if ((m && m[1] === 'sec-methods') || h === '#sec-methods') openFor('sec-methods');
   }
 
   MOVES.forEach(function (m) { fold(m[0], m[1], m[2]); });

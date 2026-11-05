@@ -670,3 +670,69 @@ def test_bar_docks_at_the_top_while_the_3d_view_is_under_it_and_hiding_it_keeps_
     page.wait_for_timeout(150)
     assert not page.evaluate("document.getElementById('rx-3d-pane').getAttribute('data-pair')")
     assert _errors(page) == []
+
+
+# ---- review fixes (Codex/Astra, round 3) ----------------------------------
+
+@needs_build
+def test_transcript_offset_sentence_has_the_right_direction():
+    # offset = model position minus transcript number: LPAR2 p.Arg304His sits at Position 301
+    path = REPORTS_DIR / 'lpar2_human.html'
+    if not path.exists():
+        pytest.skip('lpar2_human not in this build')
+    html = path.read_text(encoding='utf-8')
+    assert 'run 3 higher than the Position column (Position = transcript number -3)' in html
+
+
+def test_a_deliberate_pick_of_a_pairs_first_residue_selects_it_alone(open_report):
+    gid = _pick()
+    page = open_report(gid)
+    chip = _first_chip(page)
+    page.evaluate('(c) => window.GPCSelect.selectPair(c.a, c.b, c.d, "test")', chip)
+    page.wait_for_timeout(900)   # past the plot's echo of the first residue
+    cur = page.evaluate('window.GPCSelect.current()')
+    assert cur['pair'] and cur['pair']['a'] == chip['a'], 'the echo must leave the pair a pair'
+    assert page.evaluate('location.hash').startswith('#pair=')
+    page.evaluate('(a) => window.GPCSelect.select(a, "table")', chip['a'])
+    page.wait_for_timeout(200)
+    cur = page.evaluate('window.GPCSelect.current()')
+    assert cur['pair'] is None and cur['res'] == chip['a']
+    assert page.evaluate('location.hash') == '#res=%d' % chip['a']
+    assert _errors(page) == []
+
+
+def test_filter_deep_links_survive_the_snake_layer_start(open_report):
+    gid = _pick()
+    page = open_report(gid, '#dir=inactive', wait=300)
+    page.locator('#snake-plot-container').scroll_into_view_if_needed()
+    page.wait_for_timeout(800)
+    st = page.evaluate('window.SnakeAPI.getState()')
+    assert st['dir'] == 'inactive'
+    b = page.evaluate('window.SnakeAPI.bounds()')
+    mid = round((b['lo'] + b['hi']) / 2, 2)
+    page2 = open_report(gid, '#min=%.2f' % mid, wait=300)
+    page2.locator('#snake-plot-container').scroll_into_view_if_needed()
+    page2.wait_for_timeout(800)
+    assert abs(page2.evaluate('window.SnakeAPI.getState()')['min'] - mid) < 0.011
+    assert _errors(page) == [] and _errors(page2) == []
+
+
+def test_a_plain_methods_fragment_opens_the_methods_fine_print(open_report):
+    page = open_report(_pick(), '#sec-methods')
+    assert page.evaluate("(() => { var d = document.getElementById('sec-methods-about'); return !d || d.open; })()")
+
+
+def test_arrow_keys_announce_the_cursor_not_the_old_selection(open_report):
+    page = open_report(_pick())
+    svg = page.locator('#snake-plot-container svg').first
+    svg.scroll_into_view_if_needed()
+    page.wait_for_timeout(600)
+    svg.focus()
+    page.keyboard.press('ArrowRight')
+    page.keyboard.press('Enter')
+    page.wait_for_timeout(200)
+    first = page.locator('.sp-live').inner_text()
+    page.keyboard.press('ArrowRight')
+    page.wait_for_timeout(150)
+    moved = page.locator('.sp-live').inner_text()
+    assert moved != first and not moved.startswith('Selected')

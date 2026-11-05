@@ -61,6 +61,7 @@
 
   var state = { res: null, pair: null };   // pair: {a, b, delta}
   var dismissed = false;                   // the bar was hidden by the reader; the selection stays
+  var pairEcho = null;                     // {pos, until}: the plot's echo of a pair's first residue
   var applying = false;                    // set while this module changes things, so its own echoes are ignored
   var marked = [];                         // elements carrying a selection class
 
@@ -298,10 +299,12 @@
   function selectResidue(pos, source, opts) {
     opts = opts || {};
     if (typeof pos !== 'number' || isNaN(pos)) return;
-    // The residue already selected, alone or as the first residue of the selected pair:
-    // nothing changes. (The plot announces the residue it was told to select and the
-    // drawer passes that on; a selected pair must stay a pair everywhere and in the hash.)
-    if (state.res === pos) { paintAll(); return; }
+    // Selecting a pair marks its first residue on the plot, and the plot and the drawer
+    // announce that residue back shortly after. That echo must leave the pair a pair (on the
+    // page and in the hash). A deliberate pick of the same residue later selects it alone.
+    if (state.pair && state.pair.a === pos && pairEcho && pairEcho.pos === pos &&
+        Date.now() < pairEcho.until && (source === 'snake' || source === 'drawer')) { paintAll(); return; }
+    if (state.res === pos && !state.pair) { paintAll(); return; }
     state.res = pos;
     state.pair = null;
     dismissed = false;
@@ -319,6 +322,7 @@
     if (same(a, { a: a, b: b })) { paintAll(); return; }
     state.res = a;
     state.pair = { a: a, b: b, delta: delta };
+    pairEcho = { pos: a, until: Date.now() + 600 };
     dismissed = false;
     snakeShowLinks();
     snakeSelect(a);
