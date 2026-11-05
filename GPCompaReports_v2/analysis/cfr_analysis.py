@@ -21,6 +21,13 @@ import plotly.graph_objects as go
 #: variant enrichment all read it, so the number a reader sees and the number
 #: the statistics are computed from cannot drift apart. tests/test_cfr_cutoff.py
 #: fails if they do.
+#:
+#: It is also the size of the one class-wide CFR set the whole site marks
+#: (owner decision, 2026-11-05): the report snake plots and residue table, the
+#: search index (meta.json cfrTop), every CFR feature of search, the glossary
+#: and the Statistics and landing pages. The set itself is
+#: manuscript_stats.class_cfr_set(). tests/test_cfr_set_size.py fails if any
+#: of them states or uses another size.
 CFR_TOP_N = 50
 
 

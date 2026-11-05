@@ -64,9 +64,12 @@ from collections import defaultdict
 from pathlib import Path
 
 from .. import data_versions as _data_versions
+from ...analysis.cfr_analysis import CFR_TOP_N
 
 RSID_SHARDS = 64
-CFR_TOP = 30  # the report snake plots colour the top 30 CFR positions
+# The class-wide CFR set: the CFR_TOP_N (50) top-ranked generic positions by CFR score, the set the report
+# snake plots and residue table, the Statistics page and the paper's Figure 3 use (analysis/cfr_analysis.py).
+CFR_TOP = CFR_TOP_N
 CLINVAR_SHARDS = 32
 HGVSC_SHARDS = 32
 SUBST_SHARDS = 32
@@ -1271,13 +1274,10 @@ def generate_search_index_v2(store, output_dir, studio=None, sources=None, gids=
             if f'{ch}:{p}' in s['direct_maps']:
                 _DIRECT_OWNER[(ch, int(p))] = g
 
-    # CFR rank by generic number, from the database (report snake plots colour the top 30)
-    cfr_rank = {}
-    if store is not None:
-        from ...analysis.cfr_analysis import identify_cfrs
-        table = identify_cfrs(store)
-        for _, r in table.iterrows():
-            cfr_rank[r['generic_number']] = int(r['rank'])
+    # CFR rank by generic number: the submitted class-wide ranking by CFR score (manuscript_stats.class_cfr_ranks,
+    # the ranks the Statistics page shows); residues at a rank <= CFR_TOP are the CFR positions the reports mark
+    from ...analysis.manuscript_stats import class_cfr_ranks
+    cfr_rank = class_cfr_ranks()
 
     idx = {g: i for i, g in enumerate(gids)}
     lift_blocks = {}

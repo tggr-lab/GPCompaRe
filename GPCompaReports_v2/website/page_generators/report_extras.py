@@ -16,6 +16,7 @@ import re
 from pathlib import Path
 
 from .. import motifs as _motifs
+from ...analysis.cfr_analysis import CFR_TOP_N
 
 BASE = Path(__file__).resolve().parent.parent.parent
 
@@ -186,8 +187,8 @@ def _json_for_script(obj):
 
 
 def cfr_flags(annotation, cfr_generics, positions):
-    """{position: True} for residues whose generic number is among the top
-    cross-receptor CFR positions.
+    """{position: True} for residues whose generic number is one of the class-wide
+    CFR positions (the CFR_TOP_N top-ranked by CFR score, manuscript_stats.class_cfr_set).
 
     This is the rule the report snake plot and the search use (a CFR is a
     position, named by its generic number, that recurs across receptors; it is
@@ -407,6 +408,8 @@ def build_extras(gid, annot_map, residue_metrics, models_root, gene_name=''):
         'gene': gene_name or '',
         # the registry's motif definitions; snake-plus.js shows a chip for each one this receptor carries
         'motifs': _motifs.definitions(),
+        # how many class-wide CFR positions the page marks (the residue table says it; search meta.json cfrTop)
+        'cfrTop': CFR_TOP_N,
     }
     # JS needs only a few fields per record
     config['clinvar'] = [

@@ -22,6 +22,8 @@ from . import report_extras
 from .. import data_versions
 from ..plotly_theming import theme_overrides
 from ..seo import report_description, report_title
+from ...analysis.cfr_analysis import CFR_TOP_N
+from ...analysis.manuscript_stats import class_cfr_set
 
 
 _UNIPROT_NAMES = Path(__file__).resolve().parent.parent.parent / 'search_sources' / 'uniprot' / 'uniprot_names.tsv.gz'
@@ -204,15 +206,12 @@ def _quantile_grades(scores_by_pos):
     return grades
 
 
-def _cfr_generic_numbers(analysis_results, top_n=30):
-    """Extract the top-N CFR generic numbers (strings like '3.50') from the
-    cross-GPCR analysis. Returns an empty set if unavailable."""
-    cfr_block = (analysis_results or {}).get('cfr', {})
-    cfr_table = cfr_block.get('cfr_table')
-    if cfr_table is None or getattr(cfr_table, 'empty', True):
-        return set()
-    top = cfr_table.head(top_n)
-    return set(str(x) for x in top['generic_number'].tolist() if x)
+def _cfr_generic_numbers(analysis_results=None):
+    """The class-wide CFR positions the report marks (generic numbers such as '3.50x50'): the
+    CFR_TOP_N top-ranked positions by CFR score, manuscript_stats.class_cfr_set(). The one set of
+    the whole site (search, Statistics page, the paper's Figure 3); `analysis_results` is not read
+    and stays for callers that pass it."""
+    return class_cfr_set()
 
 
 def _am_bucket_color(score):
@@ -328,8 +327,10 @@ def _patch_snake_views(snake_json_str, annot_map, cfr_generic_numbers, var_df,
     cfr_view['legend_type'] = 'categorical'
     cfr_view['legend_items'] = [{'color': CFR_COLOR, 'label': 'CFR position'}]
     cfr_view['description'] = (
-        f'Top cross-GPCR Core Functional Residues ({len(cfr_colors)} mapped to this receptor)'
-        if cfr_colors else 'No top CFRs mapped to this receptor'
+        f'The {CFR_TOP_N} top-ranked class-wide CFR positions (by CFR score): '
+        f'{len(cfr_colors)} on this receptor'
+        if cfr_colors else
+        f'None of the {CFR_TOP_N} top-ranked class-wide CFR positions (by CFR score) is numbered on this receptor'
     )
 
     # --- AlphaMissense (categorical) ---

@@ -16,9 +16,14 @@ So the statistics page reads the submitted tables rather than recomputing.
 Provenance, including the source workbook's sha256, is in
 data/manuscript_2026-08-24/PROVENANCE.md.
 
-This module feeds the statistics page ONLY. Report pages keep their own
-report-generation data and stay frozen against
-tests/fixtures/freeze_manifest.json.
+This module feeds the statistics page, and it is the one source of the
+class-wide CFR set the whole site marks (class_cfr_ranks, class_cfr_set): the
+submitted ranking by CFR score (Supplementary Table S4, the same ranks as the
+paper's full_cfr_positions.tsv), cut at CFR_TOP_N. The report snake plots and
+residue table, the search index and every CFR feature of search read it, so
+they mark the positions the Statistics page lists and the paper's Figure 3
+uses. Report pages otherwise keep their own report-generation data and stay
+frozen against tests/fixtures/freeze_manifest.json.
 """
 import json
 import pathlib
@@ -48,6 +53,25 @@ def _require(path):
             'the source workbook. Re-extract with '
             'scripts/extract_manuscript_tables.py.' % path)
     return path
+
+
+def class_cfr_ranks():
+    """{generic number: CFR score rank} for every recurrent position of the submitted catalogue (S4, 368 positions).
+
+    The class-wide CFR ranking the site shows next to a residue ("class-wide rank N"). Ranks are the
+    submitted cfr_score_rank, never recomputed from the site's own annotation layer.
+    """
+    table = pd.read_csv(_require(ALL_CSV), usecols=['generic_number', 'cfr_score_rank'])
+    return {str(g): int(r) for g, r in zip(table['generic_number'], table['cfr_score_rank'])}
+
+
+def class_cfr_set(ranks=None):
+    """The class-wide CFR positions the site marks: the CFR_TOP_N top-ranked generic positions by CFR score.
+
+    The set of the paper's Figure 3 and of the Statistics page's ranked table (S3); one set everywhere.
+    """
+    ranks = class_cfr_ranks() if ranks is None else ranks
+    return {g for g, r in ranks.items() if r <= CFR_TOP_N}
 
 
 def load_manuscript_stats():
