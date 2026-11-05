@@ -25,6 +25,7 @@ const opts = {
   reports: app.dataset.reports,
   studio: app.dataset.studio,
   glossary: app.dataset.glossary,
+  models: app.dataset.models ?? `${app.dataset.reports}../models/`,
   base: '',
 };
 const loader = makeLoader(indexUrl);
@@ -217,8 +218,85 @@ async function copyText(text) {
   }
 }
 
+// ------------------------------------------------------------ card section nav and the receptor map
+
+/** A section link opens its target (a folded <details>) before the browser scrolls to it. */
+function onNavClick(e) {
+  const a = e.target.closest('a[data-nav]');
+  if (!a) return false;
+  const id = a.getAttribute('href').slice(1);
+  const target = document.getElementById(id);
+  if (!target) return false;
+  if (target.tagName === 'DETAILS') target.open = true;
+  e.preventDefault();
+  try { history.replaceState(history.state, '', `#${id}`); } catch (err) { /* ignore */ }
+  target.scrollIntoView({ block: 'start' });
+  const focusable = target.tagName === 'DETAILS' ? target.querySelector('summary') : target;
+  if (focusable) { focusable.setAttribute('tabindex', '-1'); focusable.focus({ preventScroll: true }); }
+  const card = a.closest('.sr-card');
+  card?.querySelectorAll('.sr-nav a').forEach((x) => x.classList.toggle('is-current', x === a || (x.getAttribute('href') === a.getAttribute('href'))));
+  return true;
+}
+
+/** Clicking the receptor map's track searches the residue under the pointer. */
+function onMapClick(e) {
+  const hit = e.target.closest('[data-map-hit]');
+  if (!hit) return false;
+  const fig = hit.closest('.sr-map');
+  const svg = fig?.querySelector('svg');
+  if (!fig || !svg) return false;
+  const box = svg.getBoundingClientRect();
+  const n = Number(fig.dataset.length);
+  if (!(box.width > 0) || !(n > 0)) return false;
+  const pos = Math.min(n, Math.max(1, Math.ceil(((e.clientX - box.left) / box.width) * n)));
+  go(`${fig.dataset.symbol} ${pos}`);
+  window.scrollTo({ top: 0 });
+  return true;
+}
+
+out.addEventListener('submit', (e) => {
+  const form = e.target.closest('form[data-map-go]');
+  if (!form) return;
+  e.preventDefault();
+  const fig = form.closest('.sr-map');
+  const n = Number(form.pos.value);
+  if (!fig || !(n >= 1) || n > Number(fig.dataset.length)) { setStatus(`Residue numbers run from 1 to ${fig?.dataset.length ?? '?'}.`); return; }
+  go(`${fig.dataset.symbol} ${n}`);
+  window.scrollTo({ top: 0 });
+});
+
+/** "Show in 3D": the viewer and the models load only now, into the card's own pane. */
+const viewers = new Map();
+async function onShow3d(e) {
+  const btn = e.target.closest('button[data-3d]');
+  if (!btn) return false;
+  const idx = Number(btn.dataset['3d']);
+  const r = current.results[idx];
+  const box = btn.closest('.sr-3d');
+  const pane = box?.querySelector('.sr-3d-pane');
+  const statusEl3 = box?.querySelector('.sr-3d-status');
+  if (!r || !pane) return false;
+  const open = btn.getAttribute('aria-expanded') !== 'true';
+  btn.setAttribute('aria-expanded', String(open));
+  btn.textContent = open ? 'Hide 3D' : 'Show in 3D';
+  pane.hidden = !open;
+  if (!open || viewers.has(idx)) return true;
+  viewers.set(idx, true);
+  const say = (text, state) => { if (statusEl3) { statusEl3.textContent = text; statusEl3.dataset.state = state; } };
+  try {
+    const { mount3d } = await import('./view3d.js');
+    await mount3d(pane, { gid: r.gid, pos: r.pos, contacts: r.contacts ?? [], models: opts.models, studio: opts.studio, status: say });
+  } catch (err) {
+    viewers.delete(idx);
+  }
+  return true;
+}
+
 out.addEventListener('click', async (e) => {
   if (onCompareClick(e)) return;
+  if (onNavClick(e)) return;
+  if (onMapClick(e)) return;
+  if (await onShow3d(e)) return;
   const a = e.target.closest('a[data-q]');
   if (a && !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button)) {
     e.preventDefault();

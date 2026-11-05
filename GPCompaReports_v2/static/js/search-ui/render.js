@@ -383,7 +383,7 @@ export const amClassLabel = (c) => AM_CLASS_LABEL[c] ?? (c ?? '');
 
 function amCell(a) {
   if (a.am === null || a.am === undefined) return html`<span class="sr-na">no score</span>`;
-  return html`${fmtAm(a.am)} <span class="sr-sub">${amClassLabel(a.amClass)}</span>`;
+  return html`<span class="sr-path sr-path--${a.amClass}">${fmtAm(a.am)}</span> ${pathChip(a.amClass)}`;
 }
 
 const sourceWord = (s) => (s === 'exome' ? 'exomes' : s === 'genome' ? 'genomes' : null);
@@ -533,8 +533,8 @@ export const DB_NAME = 'the GPCompaRe database';
  * A collapsible evidence section of a card: a <details> whose summary carries the heading, open by default for
  * the decision-relevant evidence. `key` is the data-sec hook for tests and styles.
  */
-function section(key, title, sub, body, { open = true } = {}) {
-  return html`<details class="sr-sec" data-sec="${key}"${open ? raw(' open') : ''}>
+function section(key, title, sub, body, { open = true, idx = 0 } = {}) {
+  return html`<details class="sr-sec" data-sec="${key}" id="sr-${idx}-${key}"${open ? raw(' open') : ''}>
     <summary><h4 class="sr-sec-title">${title}</h4>${sub ? html` <span class="sr-sub">${sub}</span>` : ''}</summary>
     <div class="sr-sec-body">${body}</div></details>`;
 }
@@ -546,8 +546,8 @@ export const segmentKind = (seg) => (!seg || HELICES.has(seg) ? '' : (seg === 'N
 
 // ------------------------------------------------------------------------------ identifiers
 
-/** The "Identifiers" section: gene, HGVS on every transcript held, genome ids on both assemblies, rsID, ClinVar. */
-function identifiersSection(r, sub, o, open) {
+/** "Notations and references": gene, HGVS on every transcript held, genome ids on both assemblies, rsID, ClinVar, records elsewhere. */
+function refsSection(r, sub, o, open) {
   const rec = r.receptor ?? {};
   const rel = o.releases;
   const rows = [];
@@ -590,7 +590,7 @@ function identifiersSection(r, sub, o, open) {
   const body = html`<dl class="sr-ids">${rows.map(([k, v]) => html`<div class="sr-id"><dt>${k}</dt><dd>${v}</dd></div>`)}</dl>
     ${ids38.length ? html`<p class="sr-sub">Genome ids read chromosome-position-reference-alternate on the forward strand. GRCh38 allele ids open in the gnomAD browser; UCSC opens the genome browser at the same position.</p>` : ''}
     ${notationsDetails(r, sub.mismatch, rel)}`;
-  return section('ids', 'Identifiers', 'gene, transcripts, genome, rsID, ClinVar', body, { open });
+  return section('refs', 'Notations and references', 'gene, transcripts, genome, rsID, ClinVar, records elsewhere', body, { open, idx: o.idx });
 }
 
 // ------------------------------------------------------------------------------- population
@@ -604,7 +604,7 @@ function populationSection(r, o, mismatch) {
   const label = r.releases?.gnomad ?? releases?.gnomad?.label ?? 'gnomAD';
   let body;
   if (alleles.length) {
-    body = allelesTable(alleles, { caption: `${label} alleles for this change`, rel: releases, o });
+    body = html`${afBars(r)}${allelesTable(alleles, { caption: `${label} alleles for this change`, rel: releases, o })}`;
   } else if (mismatch) {
     // the residue is not the one typed: nothing is claimed about the typed change
     body = html`<p>Not looked up: the residue you typed is not the model residue.</p>`;
@@ -617,7 +617,7 @@ function populationSection(r, o, mismatch) {
   const more = others.length
     ? html`<details class="sr-more"><summary>${alleles.length ? 'Other' : 'All'} ${others.length} ${label} missense allele${others.length === 1 ? '' : 's'} at ${where}</summary>${allelesTable(others, { caption: `Other ${label} alleles at this residue`, rel: releases, o })}</details>`
     : '';
-  return section('population', 'Population evidence', label, html`${body}${more}`);
+  return section('population', 'Population', label, html`${body}${more}`, { idx: o.idx });
 }
 
 // --------------------------------------------------------------------------------- clinical
@@ -628,19 +628,20 @@ function clinvarRecord(c) {
   if (c.evaluated) facts.push(`last evaluated ${c.evaluated}`);
   return html`<li>
         ${extLink(c.url ?? L.clinvarUrl(c.variationId), c.accession, SITE.clinvar)}
-        <span class="sr-badge">${c.classification || 'no classification'}</span> ${stars(c.stars)}${facts.length ? html` <span class="sr-sub">${facts.join(', ')}</span>` : ''}
+        ${pathChip(cvClassKey(c.classification), c.classification || 'no classification')} ${stars(c.stars)}${facts.length ? html` <span class="sr-sub">${facts.join(', ')}</span>` : ''}
         ${c.conditions?.length ? html`<div class="sr-sub">${c.conditions.join('; ')}</div>` : ''}
         <div class="sr-sub">${c.title}</div></li>`;
 }
 
-function clinicalSection(r, releases, mismatch = false) {
+function clinicalSection(r, o, mismatch = false) {
+  const releases = o.releases;
   const recs = r.clinvar ?? [];
   const label = r.releases?.clinvar ?? releases?.clinvar?.label ?? 'ClinVar';
   const at = mismatch && r.pos ? `the model residue ${three(r.residue?.aa ?? r.ref)}${r.pos}` : null;
   const body = recs.length
     ? html`${at ? html`<p class="sr-sub">Records at ${at}, not of the change you typed:</p>` : ''}<ul class="sr-list">${recs.map(clinvarRecord)}</ul>`
     : html`<p>${at ? `No ClinVar record at ${at}.` : 'No ClinVar record matches this query.'}</p>`;
-  return section('clinical', 'Clinical evidence', label, body);
+  return section('clinical', 'Clinical', label, body, { idx: o.idx });
 }
 
 // ---------------------------------------------------------------------------- computational
@@ -677,31 +678,58 @@ function amSource(o) {
   return html`<p class="sr-sub sr-am-source">Scores from ${o.releases?.alphamissense?.label ?? 'AlphaMissense'}, ${extLink(u, L.recordLabel(u), 'Zenodo', { cls: '' })}.</p>`;
 }
 
-function computationalSection(r, sub, o) {
+function predictionsSection(r, sub, o) {
   const f = residueFacts(r);
   const am = amForChange(r, sub);
   let amThis;
   if (sub.mismatch) amThis = html`<span class="sr-na">not shown: the typed ${sub.what} is not the model residue</span>`;
-  else if (am) amThis = html`<strong>${fmtAm(am.am)}</strong> <span class="sr-am-class">${amClassLabel(am.amClass)}</span> <span class="sr-badge sr-badge--muted" title="A computational prediction, not an observation">prediction</span>`;
+  else if (am) amThis = html`<strong class="sr-path sr-path--${am.amClass}">${fmtAm(am.am)}</strong> ${pathChip(am.amClass)} <span class="sr-badge sr-badge--muted" title="A computational prediction, not an observation">prediction</span>`;
   else if (r.kind === 'missense' && r.alt) amThis = html`<span class="sr-na">not available in this index</span>`;
   else amThis = html`<span class="sr-na">not a missense change</span>`;
   const body = html`<dl class="sr-facts">
     ${r.alt || sub.mismatch ? cell(html`${term(o, 'am', 'AlphaMissense')}, this change`, amThis) : ''}
     ${cell(html`${term(o, 'am', 'AlphaMissense')}, residue mean`, f.amMean === null ? html`<span class="sr-na">not available</span>` : f.amMean.toFixed(2))}
     ${cell(term(o, 'conservation', 'Conservation'), f.conservation === null ? html`<span class="sr-na">not available</span>` : f.conservation.toFixed(2))}
-  </dl>${amStrip(r, sub)}${amSource(o)}`;
-  return section('computational', 'Computational predictions', 'AlphaMissense, conservation', body);
+  </dl>
+  <div class="sr-gauge-row"><span class="sr-gauge-label">${sub.mismatch ? 'Residue mean' : (am ? 'This change' : 'Residue mean')}</span>${amGauge(sub.mismatch ? f.amMean : (am ? am.am : f.amMean))}</div>
+  ${amStrip(r, sub)}${pathLegend()}${amSource(o)}
+  <div class="sr-gauge-row"><span class="sr-gauge-label">${term(o, 'conservation', 'Conservation')}</span>${plainGauge(f.conservation, 'Conservation')}</div>`;
+  return section('predictions', 'Predictions', 'AlphaMissense, conservation', body, { idx: o.idx });
 }
 
 // --------------------------------------------------------------------------------- structure
 
+/** The change from the inactive to the active model in two words: forms, breaks, strengthens, weakens. */
+export function activationWord(c) {
+  if (c.inactive === 0 && c.active > 0) return 'forms on activation';
+  if (c.active === 0 && c.inactive > 0) return 'breaks on activation';
+  if (c.delta > 0) return 'strengthens on activation';
+  if (c.delta < 0) return 'weakens on activation';
+  return 'unchanged on activation';
+}
+
 /** Plain words for one contact: what the two models show, never what the variant does. */
 export function contactMeaning(c) {
-  if (c.inactive === 0 && c.active > 0) return 'forms in the active model: no contact in the inactive model';
-  if (c.active === 0 && c.inactive > 0) return 'present in the inactive model only: lost in the active model';
-  if (c.delta > 0) return 'present in both models, stronger in the active model';
-  if (c.delta < 0) return 'present in both models, stronger in the inactive model';
-  return 'present in both models, unchanged';
+  if (c.inactive === 0 && c.active > 0) return 'forms on activation: no contact in the inactive model, present in the active model';
+  if (c.active === 0 && c.inactive > 0) return 'breaks on activation: present in the inactive model, no contact in the active model';
+  if (c.delta > 0) return 'strengthens on activation: present in both models, stronger in the active model';
+  if (c.delta < 0) return 'weakens on activation: present in both models, stronger in the inactive model';
+  return 'unchanged: present in both models at the same strength';
+}
+
+/** The net ΔRRCS of a residue in activation terms: "its contacts weaken on activation (net ΔRRCS -13.0)". */
+export function netSentence(net, { value = true } = {}) {
+  if (net === null || net === undefined) return 'no contact in either model';
+  const w = net > 0 ? 'strengthen' : net < 0 ? 'weaken' : 'do not change';
+  return `overall its contacts ${w} on activation${value ? ` (net ΔRRCS ${signed(net, 1)})` : ''}`;
+}
+
+/** A partner's own badges: CFR rank and the motifs it carries. */
+function partnerBadges(c) {
+  const b = [];
+  if (c.partnerCfr) b.push(html`<span class="sr-badge sr-badge--cfr" title="Core functional residue, class-wide rank ${c.partnerCfrRank}">CFR ${c.partnerCfrRank}</span>`);
+  for (const m of c.partnerMotifs ?? []) b.push(html`<span class="sr-badge sr-badge--cfr">${m}</span>`);
+  return b.length ? html` ${b}` : '';
 }
 
 const partnerName = (c) => `${c.partnerAa ? three(c.partnerAa) : ''}${c.partnerPos}`;
@@ -716,11 +744,11 @@ function contactsTable(r, o) {
     const d = direction(c.delta);
     const kind = segmentKind(c.partnerSegment);
     return html`<tr>
-      <td data-label="Partner">${intLink(L.residueUrl(o, r.gid, c.partnerPos), partnerName(c), { cls: 'mono', title: 'Report at this residue' })}${c.partnerGeneric || c.partnerSegment ? html` <span class="sr-sub">${[c.partnerGeneric, c.partnerSegment].filter(Boolean).join(', ')}</span>` : ''}${kind ? html` <span class="sr-badge sr-badge--muted" title="${kind === 'terminus' ? 'A residue in a terminus' : 'A residue in a loop'}: loops and termini are less reliably modelled">${kind}</span>` : ''}</td>
+      <td data-label="Partner">${intLink(L.residueUrl(o, r.gid, c.partnerPos), partnerName(c), { cls: 'mono', title: 'Report at this residue' })}${c.partnerGeneric || c.partnerSegment ? html` <span class="sr-sub">${[c.partnerGeneric, c.partnerSegment].filter(Boolean).join(', ')}</span>` : ''}${kind ? html` <span class="sr-badge sr-badge--muted" title="${kind === 'terminus' ? 'A residue in a terminus' : 'A residue in a loop'}: loops and termini are less reliably modelled">${kind}</span>` : ''}${partnerBadges(c)}</td>
       <td class="num" data-label="ΔRRCS"><span class="sr-net sr-net--${d.cls}">${signed(c.delta)}</span><span class="sr-sr-only"> (${d.word})</span></td>
       <td class="num" data-label="Active RRCS">${c.active.toFixed(2)}</td>
       <td class="num" data-label="Inactive RRCS">${c.inactive.toFixed(2)}</td>
-      <td data-label="What the models show">${contactMeaning(c)}</td>
+      <td data-label="What the models show"><strong>${activationWord(c)}</strong><span class="sr-sub">: ${contactMeaning(c).split(': ')[1] ?? ''}</span></td>
       <td data-label="Report">${intLink(L.reportUrl(o, r.gid, `pair=${c.a}-${c.b}`), `pair ${c.a}-${c.b}`, { title: 'Report at this contact pair' })}</td></tr>`;
   });
   return html`<p class="sr-sub">${list.length} contact${list.length === 1 ? '' : 's'} above ${thrText}, largest |ΔRRCS| first.</p>
@@ -731,12 +759,33 @@ function contactsTable(r, o) {
     ${finePrint(html`<p><span class="sr-net sr-net--active">Red, positive</span>: stronger in the active model. <span class="sr-net sr-net--inactive">Blue, negative</span>: stronger in the inactive model. RRCS is the residue-residue contact score of each AlphaFold-Multistate model.</p>`, { cls: 'sr-contacts-legend' })}`;
 }
 
+/** "Show in 3D": a button and an empty pane; search-page.js mounts the Studio pair viewer into it on demand. */
+function show3dBlock(r, o) {
+  if (!r.pos || !r.residue) return '';
+  const idx = o.idx ?? 0;
+  const n = r.contacts?.length ?? 0;
+  return html`<div class="sr-3d" data-3d-box="${idx}">
+    <button type="button" class="btn btn-ghost btn-sm" data-3d="${idx}" aria-expanded="false" aria-controls="sr-${idx}-3d-pane">Show in 3D</button>
+    <span class="sr-sub">the two models superposed, ${three(r.residue.aa)}${r.pos} framed${n ? `, its ${n} contact${n === 1 ? '' : 's'} drawn red and blue` : ''}; loads the viewer and the models only when pressed</span>
+    <span class="sr-3d-status" role="status" aria-live="polite"></span>
+    <div class="sr-3d-pane rx-3d-pane" id="sr-${idx}-3d-pane" hidden role="group" aria-label="Active and inactive models of ${r.receptor?.symbol ?? r.gid}, superposed"></div>
+  </div>`;
+}
+
+/** A motif as a badge; a motif the receptor does not carry is said so; the x of xMY is a window position. */
+function motifBadge(m, aa) {
+  const carried = m.carried !== false;
+  const variable = !m.required;
+  return html`<strong>${m.name}</strong> <span class="sr-sub">position ${m.position}${variable ? ' (the variable x of the window)' : m.canonical ? (m.canonical.includes(aa) ? `, canonical ${three(aa)}` : `, canonical ${m.canonical.split('').map(three).join(' or ')}; this receptor has ${three(aa)}`) : ''}${m.carried === false ? '; this receptor does not carry the full motif' : ''}</span>${m.key === 'xmy' && carried ? html` <span class="sr-sub">(${m.note})</span>` : ''}`;
+}
+
 function motifsCell(r) {
   const ms = r.motifs;
   if (ms === undefined) return '';
-  if (!ms.length) return cell('Motif', html`<span class="sr-na">not a motif position</span>`);
+  const shown = ms.filter((m) => m.key !== 'xmy' || m.carried !== false);   // xMY is named only where the receptor carries it
+  if (!shown.length) return cell('Motif', html`<span class="sr-na">not a motif position</span>`);
   const aa = r.residue?.aa ?? r.ref;
-  return cell('Motif', html`${ms.map((m, i) => html`${i ? raw(', ') : ''}<strong>${m.name}</strong> <span class="sr-sub">position ${m.position}${m.canonical ? (m.canonical.includes(aa) ? `, canonical ${three(aa)}` : `, canonical ${m.canonical.split('').map(three).join(' or ')}; this receptor has ${three(aa)}`) : ''}</span>`)}`);
+  return cell('Motif', html`${shown.map((m, i) => html`${i ? raw(', ') : ''}${motifBadge(m, aa)}`)}`);
 }
 
 function structureSection(r, o) {
@@ -753,13 +802,15 @@ function structureSection(r, o) {
     ${cell(term(o, 'gn', 'Numbering'), html`${x.generic ? html`<span class="mono">${x.generic}</span> ` : ''}${x.bw ? html`<span class="sr-sub">BW ${x.bw}, GPCRdb ${x.gpcrdb}, ${x.segment}</span>` : html`<span class="sr-na">no generic number (${x.segment || 'outside the helices'})</span>`}`)}
     ${cell(html`Core functional residue (${term(o, 'cfr', 'CFR')}), class-wide`, cfr)}
     ${motifsCell(r)}
-    ${cell(term(o, 'maxdelta', 'Largest contact change'), largest)}
-    ${f.net !== null ? cell(html`${term(o, 'signed', 'Net ΔRRCS')} over this residue’s contacts`, netHtml(f.net)) : ''}
-    ${cell(html`Contacts above this receptor’s ${term(o, 'threshold', 'threshold')}`, f.nsig ?? 0)}
+    ${cell(term(o, 'maxdelta', 'Largest contact change'), html`${largest}${r.rank?.rank ? html`<br><span class="sr-sub">rank ${r.rank.rank} of ${r.rank.of} residues in ${r.receptor?.symbol ?? r.gid} by largest |ΔRRCS|</span>` : ''}`)}
+    ${f.net !== null ? cell(html`${term(o, 'signed', 'Net ΔRRCS')} over this residue’s contacts`, html`${netHtml(f.net)}<span class="sr-sub">: ${netSentence(f.net, { value: false })}</span>`) : ''}
+    ${cell(html`Contacts above this receptor’s ${term(o, 'threshold', 'threshold')}`, html`${f.nsig ?? 0}${f.threshold !== null ? html` <span class="sr-sub">(|ΔRRCS| ≥ ${f.threshold.toFixed(2)})</span>` : ''}`)}
   </dl>
   <h5 class="sr-subhead">Important contacts</h5>
-  ${contactsTable(r, o)}`;
-  return section('structure', `In ${DB_NAME}`, 'generic number, CFR, motif, contacts', body);
+  ${contactDumbbells(r)}
+  ${contactsTable(r, o)}
+  ${show3dBlock(r, o)}`;
+  return section('structure', 'Contacts and structure', `in ${DB_NAME}`, body, { idx: o.idx });
 }
 
 // --------------------------------------------------------------------------- evidence summary
@@ -809,13 +860,14 @@ export function summarySentences(r, o = {}) {
   if (x) {
     const parts = [];
     if (x.cfr) parts.push(`a core functional residue (CFR, class-wide rank ${f.cfrRank})`);
-    if (r.motifs?.length) parts.push(`part of the ${r.motifs.map((m) => motifPhrase(m.name)).join(' and the ')}`);
+    const carried = (r.motifs ?? []).filter((m) => m.carried !== false && m.required);
+    if (carried.length) parts.push(`part of the ${carried.map((m) => motifPhrase(m.name)).join(' and the ')}`);
     let contacts;
     if (r.contacts === undefined) contacts = 'its contact list is not available in this index';
     else if (!r.contacts.length) contacts = 'it takes part in no contact above the receptor’s threshold';
     else {
       const t = r.contacts[0];
-      contacts = `it takes part in ${r.contacts.length} contact${r.contacts.length === 1 ? '' : 's'} above the receptor’s threshold; the largest, with ${partnerName(t)}${t.partnerGeneric ? ` (${t.partnerGeneric})` : ''}, is ${dirText(t.delta)} (ΔRRCS ${signed(t.delta)})`;
+      contacts = `it takes part in ${r.contacts.length} contact${r.contacts.length === 1 ? '' : 's'} above the receptor’s threshold; the largest, with ${partnerName(t)}${t.partnerGeneric ? ` (${t.partnerGeneric})` : ''}, ${activationWord(t)} (ΔRRCS ${signed(t.delta)}, ${dirText(t.delta)})${f.net !== null ? `; ${netSentence(f.net)}` : ''}`;
     }
     S.push(`In the GPCompaRe models, ${res} is ${parts.length ? `${parts.join(' and ')}; ` : 'not a CFR; '}${contacts}.`);
   }
@@ -824,13 +876,264 @@ export function summarySentences(r, o = {}) {
 
 /** Research-use note, one sentence, shown under the summary and in the evidence text. */
 export const RESEARCH_NOTE = 'Research use only. This card summarises database records and computational predictions; it is not a clinical classification and ACMG criteria are not applied.';
+/** The same, as the one line of fine print on the card. */
+export const RESEARCH_NOTE_SHORT = 'Research use only: not a clinical classification; ACMG criteria are not applied.';
 
-function summaryBlock(r, o) {
+// ----------------------------------------------------------------- pathogenicity palette, gauges
+
+/** AlphaMissense class cutoffs (Cheng et al. 2023, Science): likely benign below 0.34, likely pathogenic above 0.564. */
+export const AM_CUTS = Object.freeze({ benign: 0.34, pathogenic: 0.564 });
+export const amClassOfScore = (v) => (v < AM_CUTS.benign ? 'benign' : v > AM_CUTS.pathogenic ? 'pathogenic' : 'ambiguous');
+/**
+ * The pathogenicity palette, one CSS token pair per class (static/css/search-ui.css --path-<class> for text and
+ * marks, --path-<class>-fill for cells and bars). Teal, amber and purple: distinguishable for the common colour
+ * vision deficiencies and never the red and blue that mean active and inactive. Every use carries a label too.
+ */
+export const PATH_CLASSES = Object.freeze(['benign', 'ambiguous', 'pathogenic']);
+const pct = (x) => `${(Math.max(0, Math.min(1, x)) * 100).toFixed(1)}%`;
+
+/** A pathogenicity class as a labelled chip. `none` is the neutral chip. */
+export const pathChip = (cls, label) => html`<span class="sr-path-chip sr-path-chip--${cls ?? 'none'}">${label ?? amClassLabel(cls)}</span>`;
+
+/** A 0..1 gauge with the three AlphaMissense class zones, the two cutoffs and a marker at `value` (null = none). */
+export function amGauge(value, { label = 'AlphaMissense' } = {}) {
+  const cls = value === null || value === undefined ? null : amClassOfScore(value);
+  const text = cls ? `${label} ${fmtAm(value)}, ${amClassLabel(cls)}` : `${label}: no score`;
+  return html`<div class="sr-gauge sr-gauge--am" role="img" aria-label="${text}">
+    <div class="sr-gauge-zones"><span class="sr-zone sr-zone--benign" style="width:${pct(AM_CUTS.benign)}"></span><span class="sr-zone sr-zone--ambiguous" style="width:${pct(AM_CUTS.pathogenic - AM_CUTS.benign)}"></span><span class="sr-zone sr-zone--pathogenic" style="width:${pct(1 - AM_CUTS.pathogenic)}"></span></div>
+    ${cls ? html`<span class="sr-gauge-mark sr-gauge-mark--${cls}" style="left:${pct(value)}"></span>` : ''}
+    <div class="sr-gauge-ticks"><span style="left:${pct(AM_CUTS.benign)}">${AM_CUTS.benign}</span><span style="left:${pct(AM_CUTS.pathogenic)}">${AM_CUTS.pathogenic}</span></div>
+  </div>`;
+}
+
+/** A neutral 0..1 gauge (conservation): one grey ramp and a marker. */
+export function plainGauge(value, label) {
+  const has = value !== null && value !== undefined;
+  return html`<div class="sr-gauge sr-gauge--plain" role="img" aria-label="${label} ${has ? value.toFixed(2) : 'not available'} on a 0 to 1 scale">
+    <div class="sr-gauge-zones"><span class="sr-zone sr-zone--ramp" style="width:100%"></span></div>
+    ${has ? html`<span class="sr-gauge-mark" style="left:${pct(value)}"></span>` : ''}
+    <div class="sr-gauge-ticks"><span style="left:0">0</span><span style="left:50%">0.5</span><span style="left:100%">1</span></div>
+  </div>`;
+}
+
+/** Rarity bands for an allele frequency (descriptive, not a classification rule). */
+export const AF_BANDS = Object.freeze([
+  { key: 'rare', label: 'rare', max: 0.001, text: 'below 0.1%' },
+  { key: 'low', label: 'low frequency', max: 0.01, text: '0.1% to 1%' },
+  { key: 'common', label: 'common', max: 1, text: 'above 1%' },
+]);
+export const afBand = (af) => (af === null || af === undefined ? null : AF_BANDS.find((b) => af < b.max) ?? AF_BANDS[AF_BANDS.length - 1]);
+const AF_FLOOR = 1e-6;
+const afPos = (af) => Math.max(0, Math.min(1, (Math.log10(Math.max(af, AF_FLOOR)) + 6) / 6));
+
+/** Allele frequency on a log scale from 1e-6 to 1 with the three rarity bands (neutral greys) and a marker. */
+export function afGauge(af, label = 'Allele frequency') {
+  const band = afBand(af);
+  const w = (lo, hi) => pct(afPos(hi) - afPos(lo));
+  return html`<div class="sr-gauge sr-gauge--af" role="img" aria-label="${label} ${af === null || af === undefined ? 'not listed' : `${fmtAf(af)}, ${band.label}`}">
+    <div class="sr-gauge-zones"><span class="sr-zone sr-zone--rare" style="width:${w(AF_FLOOR, 0.001)}"></span><span class="sr-zone sr-zone--low" style="width:${w(0.001, 0.01)}"></span><span class="sr-zone sr-zone--common" style="width:${w(0.01, 1)}"></span></div>
+    ${band ? html`<span class="sr-gauge-mark" style="left:${pct(afPos(af))}"></span>` : ''}
+    <div class="sr-gauge-ticks"><span style="left:${pct(afPos(0.001))}">0.1%</span><span style="left:${pct(afPos(0.01))}">1%</span></div>
+  </div>`;
+}
+
+/** The pathogenicity class of a ClinVar classification: P/LP, B/LB, VUS or conflicting (ambiguous), else none. */
+export function cvClassKey(classification) {
+  const k = CLINVAR_GROUPS.find((g) => g.test(String(classification ?? '')))?.key;
+  return { plp: 'pathogenic', blb: 'benign', vus: 'ambiguous', conflict: 'ambiguous' }[k] ?? 'none';
+}
+
+/** One legend for every place the pathogenicity palette is used. */
+export function pathLegend({ cuts = true } = {}) {
+  return html`<ul class="sr-path-legend" aria-label="Pathogenicity classes">${PATH_CLASSES.map((c) => html`<li><span class="sr-path-swatch sr-path-swatch--${c}" aria-hidden="true"></span>${amClassLabel(c)}${cuts ? html` <span class="sr-sub">${c === 'benign' ? `below ${AM_CUTS.benign}` : c === 'pathogenic' ? `above ${AM_CUTS.pathogenic}` : `${AM_CUTS.benign} to ${AM_CUTS.pathogenic}`}</span>` : ''}</li>`)}</ul>`;
+}
+
+// ------------------------------------------------------------------------------------- tiles
+
+const NAV = Object.freeze([
+  ['summary', 'Summary'], ['structure', 'Contacts and structure'], ['region', 'Receptor map'], ['predictions', 'Predictions'],
+  ['population', 'Population'], ['clinical', 'Clinical'], ['refs', 'Notations and references'],
+]);
+const secId = (idx, key) => `sr-${idx}-${key}`;
+
+/** The section navigation of one card: a sticky column on wide screens, a chip row on phones. */
+function navBlock(idx, keys) {
+  return html`<nav class="sr-nav" aria-label="Sections of this result"><ul>${NAV.filter(([k]) => keys.has(k)).map(([k, l]) => html`<li><a href="#${secId(idx, k)}" data-nav="${idx}">${l}</a></li>`)}</ul></nav>`;
+}
+
+/** The summary tiles: five facts readable in a few seconds, each linking to its section. */
+function tiles(r, o, sub) {
+  const f = residueFacts(r);
+  const x = r.residue;
+  const idx = o.idx ?? 0;
+  const na = html`<span class="sr-na">not available</span>`;
+  const tile = (key, title, body, foot = '') => html`<li class="sr-tile sr-tile--${key}"><a class="sr-tile-k" href="#${secId(idx, key)}" data-nav="${idx}">${title}</a><div class="sr-tile-v">${body}</div>${foot ? html`<div class="sr-tile-f">${foot}</div>` : ''}</li>`;
+  // structure: CFR, motif, contacts
+  const top = r.contacts?.[0];
+  const motifs = (r.motifs ?? []).filter((m) => m.carried !== false && m.required);
+  const structHead = x ? html`<span class="sr-big">${x.cfr ? `CFR, rank ${f.cfrRank}` : (f.cfrRank ? `Not a CFR, rank ${f.cfrRank}` : 'Not a CFR')}</span>${motifs.length ? html` ${motifs.map((m) => html`<span class="sr-badge sr-badge--cfr">${m.name}</span> `)}` : ''}` : na;
+  const structFoot = !x ? '' : r.contacts === undefined ? 'contact list not available'
+    : !r.contacts.length ? 'no contact above the threshold'
+      : html`${r.contacts.length} contact${r.contacts.length === 1 ? '' : 's'} above threshold; strongest with <span class="mono">${partnerName(top)}</span> <span class="sr-net sr-net--${direction(top.delta).cls}">${signed(top.delta)}</span> ${activationWord(top)}${f.net !== null ? html`; ${netSentence(f.net).replace('overall its contacts', 'overall they')}` : ''}`;
+  // AlphaMissense
+  const am = amForChange(r, sub);
+  const missense = r.kind === 'missense' && /^[A-Z]$/.test(r.alt ?? '');
+  let amBody; let amVal = null;
+  if (sub.mismatch) amBody = html`<span class="sr-na">typed ${sub.what} not checkable</span>`;
+  else if (am) { amBody = html`<span class="sr-big sr-path sr-path--${am.amClass}">${fmtAm(am.am)}</span> ${pathChip(am.amClass)}`; amVal = am.am; }
+  else if (missense) amBody = html`<span class="sr-na">no score for this change</span>`;
+  else if (f.amMean !== null) { amBody = html`<span class="sr-big">${f.amMean.toFixed(2)}</span> <span class="sr-sub">residue mean</span>`; amVal = f.amMean; }
+  else amBody = na;
+  // population
+  const alleles = r.alleles ?? [];
+  const best = alleles.length ? alleles.reduce((p, a) => ((a.af ?? -1) > (p.af ?? -1) ? a : p)) : null;
+  const gl = r.releases?.gnomad ?? o.releases?.gnomad?.label ?? 'gnomAD';
+  let popBody; let popFoot = '';
+  if (best) {
+    popBody = html`<span class="sr-big">${fmtAf(best.af)}</span> <span class="sr-badge sr-badge--muted">${afBand(best.af)?.label}</span>`;
+    popFoot = html`${fmtInt(best.ac)} of ${fmtInt(best.an)} alleles, ${fmtInt(best.hom)} ${best.hom === 1 ? 'homozygote' : 'homozygotes'}${alleles.length > 1 ? `; ${alleles.length} alleles give this change` : ''}`;
+  } else if (sub.mismatch) popBody = html`<span class="sr-na">not looked up</span>`;
+  else if (missense) popBody = html`<span class="sr-na">not in ${gl}</span>`;
+  else popBody = html`<span class="sr-big">${(r.residueAlleles ?? []).length}</span> <span class="sr-sub">missense allele${(r.residueAlleles ?? []).length === 1 ? '' : 's'} at this residue</span>`;
+  // ClinVar
+  const cv = sub.mismatch ? [] : (r.clinvar ?? []);
+  const c0 = cv[0];
+  const cvBody = c0
+    ? html`${pathChip(cvClassKey(c0.classification), c0.classification || 'no classification')} ${stars(c0.stars)}`
+    : html`<span class="sr-na">${sub.mismatch ? 'not looked up' : 'no record'}</span>`;
+  const cvFoot = c0 ? html`${c0.conditions?.length ? `${c0.conditions.slice(0, 2).join('; ')}${c0.conditions.length > 2 ? '; more' : ''}` : 'no condition given'}${cv.length > 1 ? `; ${cv.length} records` : ''}` : '';
+  return html`<ul class="sr-tiles">
+    ${tile('structure', 'Structure', structHead, structFoot)}
+    ${tile('predictions', 'AlphaMissense', html`${amBody}${amGauge(amVal)}`, html`<span class="sr-sub">prediction, not an observation</span>`)}
+    ${tile('population', 'Population', html`${popBody}${afGauge(best?.af ?? null)}`, popFoot)}
+    ${tile('clinical', 'ClinVar', cvBody, cvFoot)}
+    ${tile('predictions', 'Conservation', html`<span class="sr-big">${f.conservation === null ? html`<span class="sr-na">n/a</span>` : f.conservation.toFixed(2)}</span>${plainGauge(f.conservation, 'Conservation')}`, html`<span class="sr-sub">0 variable to 1 conserved</span>`)}
+  </ul>`;
+}
+
+/** The compact identifier line under the title: c. on MANE, GRCh38 allele, rsID, ClinVar record, UniProt. */
+function idLine(r, o, sub) {
+  if (!r.pos) return '';
+  const rel = o.releases;
+  const items = [];
+  const tv = r.transcriptViews ?? [];
+  const mane = tv.find((t) => t.role === 'mane' && t.c) ?? tv.find((t) => t.c);
+  if (mane && !sub.mismatch) items.push(html`<span class="mono">${mane.transcript}:${mane.c}</span>`);
+  for (const a of (r.alleles ?? []).slice(0, 2)) items.push(g38Link(a.id, rel));
+  for (const rs of [...new Set((r.alleles ?? []).flatMap((a) => a.rsids ?? []))].slice(0, 2)) items.push(extLink(L.dbsnpUrl(rs), rs, SITE.dbsnp));
+  if (!sub.mismatch) for (const c of (r.clinvar ?? []).slice(0, 2)) items.push(extLink(c.url ?? L.clinvarUrl(c.variationId), c.accession, SITE.clinvar));
+  if (r.receptor?.uniprot) items.push(extLink(L.uniprotUrl(r.receptor.uniprot), r.receptor.uniprot, 'UniProt'));
+  if (!items.length) return '';
+  return html`<p class="sr-idline">${items.map((it, i) => html`${i ? html`<span class="sr-dot" aria-hidden="true">·</span>` : ''}${it}`)}</p>`;
+}
+
+// -------------------------------------------------------------------------------- bar charts
+
+/**
+ * The residue's contacts as inactive-to-active dumbbells: one dot at the inactive RRCS, one at the active RRCS,
+ * the line between them blue when the contact weakens on activation and red when it strengthens; the words
+ * beside each. Largest |ΔRRCS| first.
+ */
+function contactDumbbells(r) {
+  const list = r.contacts;
+  if (!list?.length) return '';
+  const max = Math.max(...list.map((c) => Math.max(c.active, c.inactive))) || 1;
+  return html`<ol class="sr-dbs" aria-label="Contacts of this residue, inactive to active model">${list.map((c) => {
+    const d = direction(c.delta);
+    const xi = pct(c.inactive / max); const xa = pct(c.active / max);
+    const lo = Math.min(c.inactive, c.active) / max; const hi = Math.max(c.inactive, c.active) / max;
+    return html`<li class="sr-db-row"><span class="sr-db-label"><span class="mono">${partnerName(c)}</span>${c.partnerGeneric ? html` <span class="sr-sub">${c.partnerGeneric}</span>` : ''}${partnerBadges(c)}</span><span class="sr-db-track" title="inactive ${c.inactive.toFixed(2)}, active ${c.active.toFixed(2)}"><span class="sr-db-line sr-db-line--${d.cls}" style="left:${pct(lo)};width:${pct(hi - lo)}"></span><span class="sr-db-dot sr-db-dot--inactive" style="left:${xi}"><span class="sr-sr-only">inactive RRCS ${c.inactive.toFixed(2)}</span></span><span class="sr-db-dot sr-db-dot--active" style="left:${xa}"><span class="sr-sr-only">active RRCS ${c.active.toFixed(2)}</span></span></span><span class="sr-db-val"><span class="sr-net sr-net--${d.cls}">${signed(c.delta)}</span> <span class="sr-db-word">${activationWord(c)}</span></span></li>`;
+  })}</ol>
+  <p class="sr-db-legend"><span class="sr-db-dot sr-db-dot--inactive sr-db-key" aria-hidden="true"></span> inactive model <span class="sr-db-dot sr-db-dot--active sr-db-key" aria-hidden="true"></span> active model, RRCS on one scale; <span class="sr-net sr-net--active">red</span> strengthens or forms on activation, <span class="sr-net sr-net--inactive">blue</span> weakens or breaks.</p>`;
+}
+
+/** Allele frequency bars, one per gnomAD allele of the change, with the rarity bands and the homozygote count. */
+function afBars(r) {
+  const alleles = r.alleles ?? [];
+  if (!alleles.length) return '';
+  return html`<div class="sr-afbars">${alleles.map((a) => html`<div class="sr-afbar">
+      <span class="sr-afbar-label">${sourceWord(a.source) ?? 'gnomAD'}${alleles.length > 1 ? html` <span class="sr-sub mono">${a.id}</span>` : ''}</span>
+      ${afGauge(a.af, `Allele frequency, ${sourceWord(a.source) ?? 'gnomAD'}`)}
+      <span class="sr-afbar-val"><strong>${fmtAf(a.af)}</strong> <span class="sr-sub">${afBand(a.af)?.label ?? ''}; ${fmtInt(a.hom)} ${a.hom === 1 ? 'homozygote' : 'homozygotes'}</span></span></div>`)}
+    <ul class="sr-band-legend" aria-label="Rarity bands">${AF_BANDS.map((b) => html`<li><span class="sr-band-swatch sr-band-swatch--${b.key}" aria-hidden="true"></span>${b.label} <span class="sr-sub">${b.text}</span></li>`)}</ul>
+    <p class="sr-sub">One count per allele is held (exomes where present, else genomes); a combined or per-population frequency is not.</p></div>`;
+}
+
+// ------------------------------------------------------------------------------ receptor map
+
+/**
+ * The receptor map: a linear track of the receptor with the helices, the queried residue, its contact partners as
+ * arcs (red = stronger in the active model, blue = inactive), CFR positions, the mean AlphaMissense per residue
+ * as a heat band, and ticks where gnomAD and ClinVar hold records. Data: result.track (residues and variants
+ * shards already loaded for the card) and result.contacts.
+ */
+export function receptorMap(r, o) {
+  const t = r.track;
+  if (!t || !r.pos) return '';
+  const idx = o.idx ?? 0;
+  const sym = r.receptor?.symbol ?? r.gid;
+  const W = 1000; const n = t.length;
+  const xOf = (p) => ((p - 0.5) / n) * W;
+  const Y = { arc: 50, cfr: 46, seg: 56, segH: 16, am: 78, amH: 6, allele: 88, cv: 95, axis: 112 };
+  const segs = t.segments.map(([name, a, b]) => {
+    const helix = HELICES.has(name);
+    const x1 = ((a - 1) / n) * W; const x2 = (b / n) * W;
+    return html`<rect class="sr-map-seg ${helix ? 'is-helix' : 'is-loop'}" x="${x1.toFixed(1)}" y="${helix ? Y.seg : Y.seg + 5}" width="${(x2 - x1).toFixed(1)}" height="${helix ? Y.segH : Y.segH - 10}"><title>${name}: residues ${a} to ${b}</title></rect>${helix && x2 - x1 > 26 ? html`<text class="sr-map-seglabel" x="${((x1 + x2) / 2).toFixed(1)}" y="${Y.seg + 12}" text-anchor="middle">${name}</text>` : ''}`;
+  });
+  const runs = [];
+  let run = null;
+  t.am.forEach((v, i) => {
+    const k = v === null || v === undefined ? 'none' : amClassOfScore(v);
+    if (run && run.k === k) run.b = i + 1;
+    else { if (run) runs.push(run); run = { k, a: i + 1, b: i + 1 }; }
+  });
+  if (run) runs.push(run);
+  const heat = runs.map(({ k, a, b }) => html`<rect class="sr-map-am sr-map-am--${k}" x="${(((a - 1) / n) * W).toFixed(1)}" y="${Y.am}" width="${(((b - a + 1) / n) * W).toFixed(1)}" height="${Y.amH}"/>`);
+  const ticks = (ps, y, cls, h) => ps.map((p) => html`<rect class="${cls}" x="${(xOf(p) - 0.7).toFixed(1)}" y="${y}" width="1.4" height="${h}"/>`);
+  const cfr = t.cfr.map((p) => html`<path class="sr-map-cfr${p === r.pos ? ' is-this' : ''}" d="M${xOf(p).toFixed(1)} ${Y.cfr - 4} l3.5 4 l-3.5 4 l-3.5 -4 z"><title>CFR position, residue ${p}</title></path>`);
+  const contacts = r.contacts ?? [];
+  const cmax = Math.max(...contacts.map((c) => Math.abs(c.delta)), 0.01);
+  const arcs = contacts.map((c) => {
+    const x1 = xOf(r.pos); const x2 = xOf(c.partnerPos);
+    const h = Math.min(44, 10 + Math.abs(x2 - x1) / 6);
+    const d = direction(c.delta);
+    return html`<path class="sr-map-arc sr-map-arc--${d.cls}" d="M${x1.toFixed(1)} ${Y.arc} Q${((x1 + x2) / 2).toFixed(1)} ${(Y.arc - 2 * h).toFixed(1)} ${x2.toFixed(1)} ${Y.arc}" style="stroke-width:${(1 + 2.5 * Math.abs(c.delta) / cmax).toFixed(1)}"><title>${partnerName(c)}: ΔRRCS ${signed(c.delta)}, ${d.word}</title></path>`;
+  });
+  const xr = xOf(r.pos);
+  const res = `${three(r.residue?.aa ?? r.ref)}${r.pos}`;
+  const step = n > 700 ? 200 : 100;
+  const axis = [];
+  for (let p = step; p <= n; p += step) axis.push(html`<text class="sr-map-axis" x="${xOf(p).toFixed(1)}" y="${Y.axis}" text-anchor="middle">${p}</text>`);
+  const label = `${sym}, ${n} residues; ${res} marked${contacts.length ? `, ${contacts.length} contact partner${contacts.length === 1 ? '' : 's'} drawn as arcs` : ''}; ${t.cfr.length} CFR positions; ${t.alleles.length} residues with gnomAD alleles; ${t.clinvar.length} with ClinVar records`;
+  return html`<figure class="sr-map" data-map="${idx}" data-length="${n}" data-symbol="${sym}">
+    <svg class="sr-map-svg" viewBox="0 0 ${W} 118" preserveAspectRatio="none" role="img" aria-label="${label}">
+      ${arcs}
+      ${segs}${cfr}${heat}
+      ${ticks(t.alleles, Y.allele, 'sr-map-tick sr-map-tick--allele', 5)}
+      ${ticks(t.clinvar, Y.cv, 'sr-map-tick sr-map-tick--cv', 5)}
+      ${axis}
+      <line class="sr-map-res" x1="${xr.toFixed(1)}" x2="${xr.toFixed(1)}" y1="${Y.arc - 2}" y2="${Y.cv + 6}"/>
+      <text class="sr-map-reslabel" x="${xr.toFixed(1)}" y="${Y.axis}" text-anchor="${xr < 60 ? 'start' : xr > W - 60 ? 'end' : 'middle'}">${res}</text>
+      <rect class="sr-map-hit" data-map-hit="${idx}" x="0" y="${Y.cfr - 8}" width="${W}" height="${Y.cv + 8 - (Y.cfr - 8)}" fill="transparent"><title>Click a position to search it</title></rect>
+    </svg>
+    <figcaption class="sr-map-legend">
+      <ul class="sr-map-keys"><li><span class="sr-map-key sr-map-key--helix" aria-hidden="true"></span>helix</li><li><span class="sr-map-key sr-map-key--loop" aria-hidden="true"></span>loop or terminus</li><li><span class="sr-map-key sr-map-key--cfr" aria-hidden="true"></span>CFR position</li><li><span class="sr-map-key sr-map-key--arc-active" aria-hidden="true"></span><span class="sr-map-key sr-map-key--arc-inactive" aria-hidden="true"></span>contact, stronger in the active / inactive model</li><li><span class="sr-map-key sr-map-key--am" aria-hidden="true"></span>mean AlphaMissense per residue (class colours)</li><li><span class="sr-map-key sr-map-key--tick" aria-hidden="true"></span>gnomAD allele (upper) and ClinVar record (lower)</li></ul>
+      <form class="sr-map-go" data-map-go="${idx}"><label>Residue <input type="number" class="v2-input" name="pos" min="1" max="${n}" value="${r.pos}" inputmode="numeric"></label> <button type="submit" class="btn btn-ghost btn-sm">Search</button> ${intLink(L.residueUrl(o, r.gid, r.pos), `${res} in the report`, { cls: 'btn btn-ghost btn-sm', title: 'Report at this residue' })}<span class="sr-sub sr-map-hint">Click the track to search a position.</span></form>
+    </figcaption>
+  </figure>`;
+}
+
+function regionSection(r, o) {
+  const map = receptorMap(r, o);
+  if (!map) return '';
+  return section('region', 'Receptor map', 'segments, CFR positions, contacts, records', map, { idx: o.idx });
+}
+
+/** The plain-language summary, folded at the end of the card (the "Copy evidence summary" text carries it too). */
+function proseSection(r, o) {
   const S = summarySentences(r, o);
   if (!S.length) return '';
-  return html`<div class="sr-summary"><h4 class="sr-sr-only">Evidence summary</h4>
-    <p class="sr-summary-text">${S.map((s, i) => html`${i ? raw(' ') : ''}<span class="sr-sentence">${s}</span>`)}</p>
-    ${finePrint(html`<p>${RESEARCH_NOTE}</p>`, { cls: 'sr-research-note' })}</div>`;
+  return section('prose', 'In words', 'the evidence as sentences', html`<p class="sr-summary-text">${S.map((s, i) => html`${i ? raw(' ') : ''}<span class="sr-sentence">${s}</span>`)}</p>`, { open: false, idx: o.idx });
 }
 
 // --------------------------------------------------------------- copy buttons' text
@@ -975,15 +1278,16 @@ export function evidenceText(r, ctx = {}) {
     L.push('In the GPCompaRe database:');
     L.push(`  Numbering: ${x.generic ? `${x.generic} (BW ${x.bw}, GPCRdb ${x.gpcrdb}), ${x.segment}` : `no generic number (${x.segment || 'outside the helices'})`}`);
     L.push(`  Core functional residue (class-wide): ${x.cfr ? `yes, rank ${f.cfrRank} of the class-wide positions` : (f.cfrRank ? `no, its generic position ranks ${f.cfrRank}` : 'not ranked (no generic number)')}`);
-    if (r.motifs) L.push(`  Motif: ${r.motifs.length ? r.motifs.map((m) => `${m.name} (position ${m.position}${m.canonical ? `, canonical ${m.canonical.split('').map(three).join(' or ')}` : ''})`).join('; ') : 'not a motif position'}`);
+    if (r.motifs) { const ms = r.motifs.filter((m) => m.key !== 'xmy' || m.carried !== false); L.push(`  Motif: ${ms.length ? ms.map((m) => `${m.name} (position ${m.position}${!m.required ? ', the variable x' : m.canonical ? `, canonical ${m.canonical.split('').map(three).join(' or ')}` : ''}${m.carried === false ? '; not carried in full by this receptor' : ''}${m.key === 'xmy' ? `; ${m.note}` : ''})`).join('; ') : 'not a motif position'}`); }
     L.push(`  Largest contact change: ${f.dmax === null ? 'no contacts' : `|dRRCS| ${f.dmax.toFixed(2)}${f.threshold !== null ? `, receptor threshold ${f.threshold.toFixed(2)}` : ''}${f.partner ? `, with ${f.partner}` : ''}`}`);
-    if (f.net !== null) L.push(`  Net dRRCS: ${signed(f.net, 1)} (${direction(f.net).word}; red = active, blue = inactive)`);
+    if (f.net !== null) L.push(`  Net dRRCS: ${signed(f.net, 1)} (${direction(f.net).word}; red = active, blue = inactive): ${netSentence(f.net)}`);
+    if (r.rank?.rank) L.push(`  Rank by largest |dRRCS|: ${r.rank.rank} of ${r.rank.of} residues in ${r.receptor?.symbol ?? r.gid}`);
     L.push(`  Contacts above this receptor's threshold: ${f.nsig ?? 0}`);
     if (r.contacts === undefined) L.push('  Contact list: not available in this index');
     else if (!r.contacts.length) L.push('  Contact list: this residue takes part in no contact above the threshold');
     else {
       L.push('  Contacts, largest |dRRCS| first (dRRCS; active RRCS; inactive RRCS; what the models show):');
-      for (const c of r.contacts) L.push(`    ${partnerName(c)}${c.partnerGeneric ? ` (${c.partnerGeneric}, ${c.partnerSegment})` : (c.partnerSegment ? ` (${c.partnerSegment})` : '')}: dRRCS ${signed(c.delta)}; active ${c.active.toFixed(2)}; inactive ${c.inactive.toFixed(2)}; ${contactMeaning(c)}; report pair ${c.a}-${c.b}`);
+      for (const c of r.contacts) L.push(`    ${partnerName(c)}${c.partnerGeneric ? ` (${c.partnerGeneric}, ${c.partnerSegment})` : (c.partnerSegment ? ` (${c.partnerSegment})` : '')}${c.partnerCfr ? `, CFR rank ${c.partnerCfrRank}` : ''}${c.partnerMotifs?.length ? `, ${c.partnerMotifs.join(', ')}` : ''}: dRRCS ${signed(c.delta)}; active ${c.active.toFixed(2)}; inactive ${c.inactive.toFixed(2)}; ${contactMeaning(c)}; report pair ${c.a}-${c.b}`);
     }
   }
   if ((r.notes ?? []).length) {
@@ -1135,6 +1439,7 @@ function badgesFor(r) {
 function card(r, o, idx) {
   const x = r.residue;
   const rec = r.receptor;
+  const oc = { ...o, idx };
   const reportHref = `${o.reports}${r.gid}.html`;
   const title = intLink(reportHref, recFull(rec), { title: 'Report page' });
   const sub = subjectOf(r, o);
@@ -1142,22 +1447,30 @@ function card(r, o, idx) {
   const noResidue = !r.pos && r.type === 'not_in_resource'; // e.g. an unknown transcript version: nothing to show but the note
   const status = r.type === 'not_in_resource' && !mismatch && !noResidue ? html`<span class="sr-badge sr-badge--muted">not analysed here</span>` : '';
   const hasEvidence = !noResidue && r.type !== 'not_coding' && !(r.type === 'not_in_resource' && !r.residue);
-  // the identifiers open on a single card; with several cards on the page they start folded
-  const idsOpen = (o.cardCount ?? 1) <= 1;
+  // the notations open on a single card; with several cards on the page they start folded
+  const refsOpen = (o.cardCount ?? 1) <= 1;
+  const keys = new Set(['summary', 'structure', 'predictions', 'population', 'clinical', 'refs']);
+  if (r.track && r.pos) keys.add('region');
+  if (!x) { keys.delete('structure'); keys.delete('predictions'); keys.delete('region'); }
   return html`<article class="sr-card sr-card--${r.type}" aria-labelledby="sr-card-${idx}">
     <header class="sr-card-head">
       <h3 id="sr-card-${idx}" class="sr-card-title">${title}${r.pos ? html`<span class="sr-dot" aria-hidden="true">·</span>${mismatch ? html`<span class="sr-sub">model residue </span>` : ''}${intLink(L.residueUrl(o, r.gid, r.pos), `${three(r.residue?.aa ?? r.ref)}${r.pos}`, { cls: 'mono', title: 'Report at this residue' })}` : ''}${x?.generic ? html`<span class="sr-dot" aria-hidden="true">·</span><span class="mono" title="Generic residue number">${x.generic}</span>` : ''}${x?.segment ? html`<span class="sr-dot" aria-hidden="true">·</span><span class="sr-nowrap">${x.segment}</span>` : ''}</h3>
       ${noResidue ? '' : html`<div class="sr-change">${changeLine(r, fix, mismatch)} ${status} ${badgesFor(r)}</div>`}
+      ${hasEvidence ? idLine(r, oc, sub) : ''}
     </header>
     ${leadLine(r, o)}
     ${notesBlock(r.notes)}
     ${fixBlock(fix, o)}
-    ${hasEvidence ? summaryBlock(r, o) : ''}
-    ${noResidue ? '' : html`${hasEvidence ? identifiersSection(r, sub, o, idsOpen) : ''}
-    ${hasEvidence ? populationSection(r, o, mismatch) : ''}
-    ${clinicalSection(r, o.releases, mismatch)}
-    ${hasEvidence && r.residue ? computationalSection(r, sub, o) : ''}
-    ${structureSection(r, o)}`}
+    ${noResidue ? '' : hasEvidence ? html`<div class="sr-body">${navBlock(idx, keys)}<div class="sr-main">
+      <section class="sr-sec sr-sec--summary" id="${secId(idx, 'summary')}" aria-label="Summary"><h4 class="sr-sr-only">Summary</h4>${tiles(r, oc, sub)}</section>
+      ${structureSection(r, oc)}
+      ${regionSection(r, oc)}
+      ${x ? predictionsSection(r, sub, oc) : ''}
+      ${populationSection(r, oc, mismatch)}
+      ${clinicalSection(r, oc, mismatch)}
+      ${refsSection(r, sub, oc, refsOpen)}
+      ${proseSection(r, oc)}
+    </div></div>` : html`${clinicalSection(r, oc, mismatch)}${structureSection(r, oc)}`}
     ${actions(r, o, idx, mismatch)}
     ${cardFinePrint(r, o, mismatch, noResidue)}
   </article>`;
@@ -1185,7 +1498,7 @@ function cardFinePrint(r, o, mismatch, noResidue) {
     about.push(html`<li><strong>${term(o, 'conservation', 'Conservation')}</strong> is on a 0 to 1 scale. <strong>${term(o, 'am', 'AlphaMissense')}</strong> scores are predictions (0 to 1; likely benign below 0.34, likely pathogenic above 0.564); <strong>residue mean</strong> is the mean over all substitutions at the residue.</li>`);
   }
   if (!releases.length && !about.length) return '';
-  return finePrint(html`${hasRows && releases.length ? html`<p class="sr-card-releases">${releases.join('; ')}.</p>` : ''}
+  return finePrint(html`${hasRows ? html`<p class="sr-research-note">${RESEARCH_NOTE_SHORT}</p>` : ''}${hasRows && releases.length ? html`<p class="sr-card-releases">${releases.join('; ')}.</p>` : ''}
     ${about.length ? html`<details class="sr-about"><summary>About these numbers</summary><ul>${about}</ul></details>` : ''}`, { cls: 'sr-card-fine' });
 }
 
@@ -1223,7 +1536,7 @@ function clinvarListTable(recs, caption) {
       const acc = c.accession ?? `VCV${String(c.variationId).padStart(9, '0')}`;
       const q = `VCV${String(c.variationId).padStart(9, '0')}`;
       return html`<tr>
-      <td data-label="Classification">${c.classification || html`<span class="sr-na">not given</span>`}</td>
+      <td data-label="Classification">${c.classification ? pathChip(cvClassKey(c.classification), c.classification) : html`<span class="sr-na">not given</span>`}</td>
       <td data-label="Review">${stars(c.stars)}</td>
       <td data-label="Condition">${c.conditions?.length ? c.conditions.join('; ') : html`<span class="sr-na">not given</span>`}</td>
       <td data-label="Residue">${c.pos ? html`<a class="mono" href="?q=${encodeURIComponent(q)}" data-q="${q}" title="Details for ${acc}">${c.ref ? three(c.ref) : ''}${c.pos}</a>` : html`<span class="sr-na">not placed</span>`}</td>
