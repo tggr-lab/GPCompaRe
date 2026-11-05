@@ -118,7 +118,15 @@ export function decodeResidues(raw, meta) {
     }
     return out;
   };
-  return { gid: raw.gid, seq: raw.aa, length: n, residue, findGeneric };
+  /** The receptor map's data: segment runs, CFR positions, per-residue mean AlphaMissense (0..1) and |ΔRRCS| max. */
+  const track = () => ({
+    length: n,
+    segments: raw.segments.map(([name, a, b]) => [name, a, b]),
+    cfr: Object.keys(raw.cfr).map(Number).sort((a, b) => a - b),
+    am: raw.am.map(scale),
+    dmax: raw.dmax.map(scale),
+  });
+  return { gid: raw.gid, seq: raw.aa, length: n, residue, findGeneric, track };
 }
 
 // ------------------------------------------------------------------------ residue summaries

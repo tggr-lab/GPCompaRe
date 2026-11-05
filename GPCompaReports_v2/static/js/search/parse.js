@@ -225,6 +225,9 @@ export const MOTIFS = Object.freeze({
   sodium: { name: 'Sodium pocket', positions: ['2.50', '3.39', '7.45', '7.46', '7.49'], canonical: { '2.50': 'D', 3.39: 'S', 7.45: 'N' }, note: 'allosteric Na+ site around D2.50' },
   ioniclock: { name: 'Ionic lock', positions: ['3.50', '6.30'], canonical: { '3.50': 'R', '6.30': 'DE' }, note: 'R3.50 salt bridge with D/E6.30 in the inactive state' },
   toggle: { name: 'Toggle switch', positions: ['6.48'], canonical: { 6.48: 'W' }, note: 'W6.48 of the CWxP motif' },
+  // the paper's definition: Met3.36 and Tyr3.37, preceded by a variable residue at 3.35; 30 of 283 Class A receptors
+  // carry it (packs, 2026-11-05). `required` names the positions the motif fixes; the x position is only the window.
+  xmy: { name: 'xMY motif', positions: ['3.35', '3.36', '3.37'], required: ['3.36', '3.37'], canonical: { 3.36: 'M', 3.37: 'Y' }, note: 'Met 3.36 and Tyr 3.37, preceded by a variable residue at 3.35; carried by 30 of 283 Class A receptors (GPCompaRe study)' },
 });
 
 const MOTIF_WORDS = [
@@ -235,6 +238,7 @@ const MOTIF_WORDS = [
   ['sodium', '(?:sodium|na\\+?)\\s*(?:ion\\s*)?(?:binding\\s+)?(?:pocket|site)'],
   ['ioniclock', 'ionic[\\s-]*lock'],
   ['toggle', '(?:w6\\.48\\s+)?(?:rotamer\\s+)?toggle[\\s-]*switch'],
+  ['xmy', 'x-?m-?y'],
 ];
 const MOTIF_RE = new RegExp(`^(?:the\\s+)?(?:(.+?)\\s+)?(?:the\\s+)?(${MOTIF_WORDS.map(([, r]) => `(?:${r})`).join('|')})(?:\\s+(?:motif|microswitch|switch))?(?:\\s*(?:\\s(?:in|of|for)\\s|[\\s:,])\\s*(.+?))?$`, 'i');
 

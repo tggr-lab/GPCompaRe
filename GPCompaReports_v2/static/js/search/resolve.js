@@ -76,11 +76,17 @@
  *   amAll?: {[alt]: {am, amClass}}|null,   // full results: the AlphaMissense prediction of every substitution at the
  *                               // residue (detail/ shard; null when the pack has none; absent for an index without detail/)
  *   amThis?: {am, amClass},     // the prediction for this missense change (also for changes with no gnomAD allele)
- *   contacts?: [{a, b, partnerPos, partnerAa, partnerGeneric, partnerSegment, delta, active, inactive}],
+ *   contacts?: [{a, b, partnerPos, partnerAa, partnerGeneric, partnerSegment, partnerCfr, partnerCfrRank, partnerMotifs: string[],
+ *               delta, active, inactive}],
  *                               // the residue's threshold-passing contacts, largest |ΔRRCS| first (the report's
  *                               // pair list); [] when it has none; absent for an index without detail/
- *   motifs?: [{key, name, position, canonical, note}],   // Class A motifs (parse MOTIFS) holding the residue's
- *                               // BW number; [] when none; `canonical` = the letters the motif fixes there, or null
+ *   motifs?: [{key, name, position, canonical, required, carried, note}],   // Class A motifs (parse MOTIFS) holding the
+ *                               // residue's BW number; [] when none; `canonical` = the letters the motif fixes there (null at
+ *                               // a variable position, `required` false); `carried` = the receptor has every fixed residue
+ *   rank?: {rank: number|null, of: number, withContact: number},   // the residue's place in its receptor by largest |ΔRRCS|
+ *   track?: {length, segments: [[name, from, to]], cfr: number[], am: (number|null)[], dmax: (number|null)[],
+ *           alleles: number[], clinvar: number[]},   // the receptor map (residues/ + variants/ shards): CFR positions,
+ *                               // mean AlphaMissense and |ΔRRCS| max per residue (index 0 = residue 1), residues with records
  *   clinvarList?: true,         // receptor results: `clinvar` holds every indexed record of the receptor and
  *                               // the reader asked for that list ("ADRB2 ClinVar")
  *   summary?: {                 // every result with a residue (light or full): the compact residue summary
@@ -518,7 +524,19 @@ async function makeResult(ctx, gid, pos, o = {}) {
   if (alleles.length && alleles.every((a) => typeof a.inReportTable === 'boolean')) r.inReportTable = alleles.some((a) => a.inReportTable);
   if (pos) {
     r.summary = await summaryAt(ctx, gid, pos, gene.res?.seq);
-    r.motifs = motifsAt(residue?.bw);
+    r.motifs = motifsAt(residue?.bw, gene.res);
+    // where this residue stands in its receptor by its largest contact change
+    if (gene.res?.track) {
+      const dm = gene.res.track().dmax;
+      const mine = dm[pos - 1];
+      r.rank = { of: dm.length, rank: mine === null || mine === undefined ? null : 1 + dm.filter((v) => v !== null && v > mine).length, withContact: dm.filter((v) => v !== null).length };
+    }
+    // the receptor map: segments, CFR positions, mean AlphaMissense per residue, and where gnomAD and ClinVar have records
+    if (gene.res?.track) {
+      r.track = gene.res.track();
+      r.track.alleles = gene.vars ? [...gene.vars.byPos.keys()].sort((a, b) => a - b) : [];
+      r.track.clinvar = gene.vars ? [...new Set(gene.vars.clinvar.filter((c) => c.pos).map((c) => c.pos))].sort((a, b) => a - b) : [];
+    }
     // the card's evidence beyond residues/ and variants/: per-substitution AlphaMissense and the contact pairs
     const det = await ctx.S.detail(gid);
     if (det) {
@@ -527,18 +545,28 @@ async function makeResult(ctx, gid, pos, o = {}) {
       r.contacts = det.contactsOf(pos).map((p) => {
         const other = p.a === pos ? p.b : p.a;
         const o2 = gene.res?.residue(other);
-        return { a: p.a, b: p.b, partnerPos: other, partnerAa: o2?.aa ?? null, partnerGeneric: o2?.generic || null, partnerSegment: o2?.segment || null, delta: p.delta, active: p.active, inactive: p.inactive };
+        return { a: p.a, b: p.b, partnerPos: other, partnerAa: o2?.aa ?? null, partnerGeneric: o2?.generic || null, partnerSegment: o2?.segment || null,
+          partnerCfr: !!o2?.cfr, partnerCfrRank: o2?.cfrRank ?? null, partnerMotifs: motifsAt(o2?.bw, gene.res).filter((m) => m.carried !== false && m.required).map((m) => m.name),
+          delta: p.delta, active: p.active, inactive: p.inactive };
       });
     }
   }
   return r;
 }
 
-/** The Class A motifs (parse MOTIFS, the report snake layer's definitions) that hold a BW number. */
-function motifsAt(bw) {
+/**
+ * The Class A motifs (parse MOTIFS, the report snake layer's definitions) that hold a BW number. `carried` says
+ * whether this receptor has the canonical residue at every position the motif fixes (null without a residue
+ * table); `required` is false at a window position the motif leaves variable (the x of xMY).
+ */
+function motifsAt(bw, res = null) {
   if (!bw) return [];
-  return Object.entries(MOTIFS).filter(([, m]) => m.positions.includes(bw))
-    .map(([key, m]) => ({ key, name: m.name, position: bw, canonical: m.canonical?.[bw] ?? null, note: m.note }));
+  const aaAt = (p) => { const pos = res?.findGeneric(p, null)?.[0]; return pos ? res.residue(pos)?.aa ?? null : null; };
+  return Object.entries(MOTIFS).filter(([, m]) => m.positions.includes(bw)).map(([key, m]) => {
+    const fixed = Object.entries(m.canonical ?? {});
+    const carried = !res || !fixed.length ? null : fixed.every(([p, letters]) => { const aa = aaAt(p); return aa ? letters.includes(aa) : false; });
+    return { key, name: m.name, position: bw, canonical: m.canonical?.[bw] ?? null, required: !m.required || m.required.includes(bw), carried, note: m.note };
+  });
 }
 
 const BASES = ['A', 'C', 'G', 'T'];
