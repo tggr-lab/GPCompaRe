@@ -94,12 +94,14 @@
 .rx-drawer-on #top-changes-table tbody td:nth-child(2),
 .rx-drawer-on #top-changes-table tbody td:nth-child(3),
 .rx-drawer-on #variants-table tbody td:nth-child(1),
+.rx-drawer-on #variants-table tbody td:nth-child(2),
 .rx-drawer-on #rrcs-table tbody td:nth-child(1),
 .rx-drawer-on #rrcs-table tbody td:nth-child(3),
 .rx-drawer-on #tm-summary-table .tm-res { cursor: pointer; }
 .rx-drawer-on #top-changes-table tbody td:nth-child(2):hover,
 .rx-drawer-on #top-changes-table tbody td:nth-child(3):hover,
 .rx-drawer-on #variants-table tbody td:nth-child(1):hover,
+.rx-drawer-on #variants-table tbody td:nth-child(2):hover,
 .rx-drawer-on #rrcs-table tbody td:nth-child(1):hover,
 .rx-drawer-on #rrcs-table tbody td:nth-child(3):hover,
 .rx-drawer-on #tm-summary-table .tm-res:hover {

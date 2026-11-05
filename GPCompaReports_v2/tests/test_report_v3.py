@@ -372,7 +372,7 @@ def test_a_table_cell_and_the_snake_plot_feed_the_same_selection(open_report):
     page.keyboard.press('Escape')
     expect(page.locator('#rx-drawer')).to_be_hidden()
     expect(bar).to_be_visible()
-    page.click('.report-title')   # the focus leaves the plot (inside it, Escape clears at once)
+    page.click('.report-title')
     page.keyboard.press('Escape')
     expect(bar).to_be_hidden()
     assert page.evaluate("window.GPCSelect.current().res") == other
@@ -383,18 +383,37 @@ def test_a_table_cell_and_the_snake_plot_feed_the_same_selection(open_report):
     assert page.evaluate("window.GPCSelect.current().res") is None
     assert _events(page, 'gpc:select-residue')[-1][1]['res'] is None
     assert page.evaluate("[].every.call(document.querySelectorAll('#snake-plot-container circle[id]'), c => c.getAttribute('stroke-width') !== '4')")
-    # with the focus inside the plot, its own keyboard model holds: once the drawer (which a
-    # click opened) is closed, one Escape clears, without the bar-hiding step
+    # with the focus inside the plot the order is the page's: the drawer (which a click
+    # opened), then the bar (the selection stays), then the selection
     page.click('#snake-plot-container circle[id="%d"]' % other, force=True)
     page.wait_for_timeout(200)
     assert page.evaluate("window.GPCSelect.current().res") == other
+    assert page.evaluate("!!document.activeElement.closest('#snake-plot-container')")
     page.keyboard.press('Escape')
     expect(page.locator('#rx-drawer')).to_be_hidden()
     assert page.evaluate("window.GPCSelect.current().res") == other
     page.keyboard.press('Escape')
     page.wait_for_timeout(150)
-    assert page.evaluate("window.GPCSelect.current().res") is None
     expect(bar).to_be_hidden()
+    assert page.evaluate("window.GPCSelect.current().res") == other, 'the bar hides first, the selection stays'
+    page.keyboard.press('Escape')
+    page.wait_for_timeout(150)
+    assert page.evaluate("window.GPCSelect.current().res") is None
+    # a keyboard cursor in the plot goes before all of that
+    page.focus('#snake-plot-container svg')
+    page.keyboard.press('ArrowRight')
+    page.keyboard.press('Enter')
+    page.wait_for_timeout(150)
+    picked = page.evaluate("window.GPCSelect.current().res")
+    assert picked is not None and page.evaluate("window.SnakePlus.cursor()") == picked
+    page.keyboard.press('Escape')
+    assert page.evaluate("window.SnakePlus.cursor()") is None
+    assert page.evaluate("window.GPCSelect.current().res") == picked
+    expect(bar).to_be_visible()
+    page.keyboard.press('Escape')
+    expect(bar).to_be_hidden()
+    page.keyboard.press('Escape')
+    assert page.evaluate("window.GPCSelect.current().res") is None
     assert _errors(page) == []
 
 

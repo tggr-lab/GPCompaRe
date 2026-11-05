@@ -196,6 +196,9 @@
 
   var absMax = passing.reduce(function (m, c) { return Math.max(m, Math.abs(c.delta)); }, 0);
   var absMin = passing.reduce(function (m, c) { return Math.min(m, Math.abs(c.delta)); }, absMax);
+  // the lower end of the |dRRCS| range is the page's threshold, the number the page states
+  // ("|dRRCS| >= 1.97"), not the smallest change that happens to pass it
+  if (threshold !== null && threshold > 0 && threshold <= absMin) absMin = threshold;
   var stateMax = passing.reduce(function (m, c) {
     return Math.max(m, c.active === null ? 0 : c.active, c.inactive === null ? 0 : c.inactive);
   }, 0);
@@ -390,7 +393,7 @@
     }
     if (ui.tourLabel) {
       var list = tourList();
-      ui.tourLabel.textContent = list.length ? ((S.tour >= 0 ? (S.tour + 1) : '-') + ' / ' + list.length) : '0';
+      ui.tourLabel.textContent = (S.tour >= 0 && list.length ? (S.tour + 1) : 0) + ' of ' + list.length;
       ui.tourPrev.disabled = ui.tourNext.disabled = !list.length;
     }
   }
@@ -820,7 +823,7 @@
 
     // largest changes: step through
     var g2 = el('div', 'sp-group');
-    g2.appendChild(el('span', 'sp-lab', 'Largest'));
+    g2.appendChild(el('span', 'sp-lab sp-tour-lab', 'Step through the largest changes'));
     ui.tourPrev = btn('‹', 'sp-step', 'Previous of the largest changes shown');
     ui.tourPrev.setAttribute('aria-label', 'Previous largest change');
     ui.tourLabel = el('span', 'sp-tour-n', '');
@@ -980,7 +983,7 @@
     var fine = el('aside', 'fine-print sp-fine');
     fine.innerHTML = '<p>Arcs: the contact pairs on this page at or above the threshold' + (threshold !== null ? ' (|ΔRRCS| ≥ ' + threshold.toFixed(2) + ')' : '') +
       ', drawn between the two residues. Red: stronger in the active model. Blue: stronger in the inactive model. Width: the size of the change, or, in "By state", the contact’s RRCS in the inactive model, the active model, or a point between them (a straight blend of the two values; the models are the two endpoints and nothing in between is simulated). ' +
-      'Pairs with a residue inside a collapsed loop are drawn when the loop is opened. The grid counts the same pairs by helix. Hover a residue to see its partners; choose a contact to mark it in the tables, the charts and the 3D view. Keyboard: Tab to the plot, arrows along the chain, Enter to select, Escape to clear.</p>';
+      'Pairs with a residue inside a collapsed loop are drawn when the loop is opened. The grid counts the same pairs by helix. Hover a residue to see its partners; choose a contact to mark it in the tables, the charts and the 3D view. Keyboard: Tab to the plot, arrows along the chain, Enter to select, Escape to step back (the cursor first, then the details, the selection bar and the selection).</p>';
     panels.parentNode.insertBefore(fine, panels.nextSibling);
     ui.fine = fine;
   }
@@ -1083,7 +1086,7 @@
     if (!ui.stateText) return;
     if (S.mode !== 'state') { ui.stateText.textContent = ''; return; }
     var pct = Math.round(S.t * 100);
-    ui.stateText.textContent = pct === 0 ? 'inactive model' : pct === 100 ? 'active model' : pct + '% of the way to active';
+    ui.stateText.textContent = 'Showing: ' + (pct === 0 ? 'the inactive model' : pct === 100 ? 'the active model' : pct + '% of the way to the active model');
     ui.slider.setAttribute('aria-valuetext', ui.stateText.textContent);
   }
   function play() {
@@ -1233,7 +1236,7 @@
     chain = Object.keys(circles).map(function (k) { return parseInt(k, 10); }).sort(function (a, b) { return a - b; });
     svg.setAttribute('tabindex', '0');
     svg.setAttribute('role', 'group');
-    svg.setAttribute('aria-label', 'Snake plot of ' + (cfg.gene || GID) + '. Use the arrow keys to move along the chain, Enter to select a residue, Escape to clear.');
+    svg.setAttribute('aria-label', 'Snake plot of ' + (cfg.gene || GID) + '. Use the arrow keys to move along the chain, Enter to select a residue, Escape to step back one step at a time.');
     svg.addEventListener('keydown', function (ev) {
       var k = ev.key, i;
       if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'ArrowLeft' || k === 'ArrowUp' || k === 'Home' || k === 'End') {
@@ -1257,10 +1260,16 @@
         ev.preventDefault();
         if (S.sel.res === S.kbd && !S.sel.pair) clearSelection(); else selectResidue(S.kbd);
       } else if (k === 'Escape') {
-        if (S.kbd !== null || S.sel.res !== null) ev.preventDefault();
-        S.kbd = null; S.hover = { res: null, pair: null };
-        paintMarks(); announce();
-        if (S.sel.res !== null) clearSelection();
+        // the keyboard cursor goes first; then the page's order (report-select.js: the
+        // residue drawer, the selection bar, the selection), which it runs itself
+        if (S.kbd !== null) {
+          ev.preventDefault();
+          S.kbd = null; S.hover = { res: null, pair: null };
+          paintMarks(); announce();
+          return;
+        }
+        if (window.GPCSelect) return;
+        if (S.sel.res !== null) { ev.preventDefault(); clearSelection(); }
       } else if (k === '+' || k === '=') { ev.preventDefault(); zoomBy(1.5); }
       else if (k === '-') { ev.preventDefault(); zoomBy(1 / 1.5); }
       else if (k === '0') { ev.preventDefault(); S.zoom = 1; applyView(); }
@@ -1334,7 +1343,8 @@
     step: tourStep,
     setRing: function (v) { S.ring = views[v] ? v : 'none'; if (ui.ring) ui.ring.value = S.ring; drawRings(); ringLegend(); },
     toggleMotif: function (id) { S.motifs[id] = !S.motifs[id]; var c = ui.motifs && ui.motifs.querySelector('[data-motif="' + id + '"]'); if (c) { c.classList.toggle('is-on', !!S.motifs[id]); c.setAttribute('aria-pressed', String(!!S.motifs[id])); } drawMotifs(); },
-    exportPlot: exportPlot
+    exportPlot: exportPlot,
+    cursor: function () { return S.kbd; }
   };
   window.SnakePlus = PUBLIC;
 

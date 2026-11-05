@@ -404,10 +404,13 @@
     emit(d.residue, 'snake');
   });
 
-  // Report tables: the cells that name a residue.
+  // Report tables: the cells that name a residue. A fourth entry 'row' reads the residue from
+  // the row's first cell: the variant table's protein change is numbered on gnomAD's
+  // transcript, which can differ from the model's Position.
   var CELLS = [
     ['top-changes-table', 'td:nth-child(2), td:nth-child(3)', /^[A-Za-z]+(\d+)/],
     ['variants-table', 'td:nth-child(1)', /^(\d+)/],
+    ['variants-table', 'td:nth-child(2)', /^(\d+)/, 'row'],
     ['rrcs-table', 'td:nth-child(1), td:nth-child(3)', /^(\d+)/],
     ['tm-summary-table', '.tm-res', /^(\d+)/]
   ];
@@ -415,8 +418,9 @@
   function residueOfCell(cell, table) {
     for (var i = 0; i < CELLS.length; i++) {
       if (CELLS[i][0] !== table.id) continue;
-      if (!cell.matches(CELLS[i][1])) return null;
-      var m = CELLS[i][2].exec(cell.textContent.trim());
+      if (!cell.matches(CELLS[i][1])) continue;
+      var src = CELLS[i][3] === 'row' ? (cell.parentNode && cell.parentNode.cells && cell.parentNode.cells[0]) : cell;
+      var m = src ? CELLS[i][2].exec(src.textContent.trim()) : null;
       return m ? parseInt(m[1], 10) : null;
     }
     return null;
@@ -436,7 +440,9 @@
   function makeCellsFocusable() {
     CELLS.forEach(function (c) {
       var table = document.getElementById(c[0]);
-      if (!table) return;
+      // a cell that reads its residue from the row's first cell is a click target only: the
+      // first cell is already the row's keyboard stop
+      if (!table || c[3] === 'row') return;
       Array.prototype.forEach.call(table.querySelectorAll('tbody ' + c[1].split(',').join(', tbody ')), function (cell) {
         if (residueOfCell(cell, table) === null) return;
         cell.setAttribute('tabindex', '0');

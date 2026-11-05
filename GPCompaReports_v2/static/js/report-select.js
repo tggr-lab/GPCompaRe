@@ -9,6 +9,9 @@
    button, hides the bar and keeps the selection (the plot, tables and 3D view stay
    marked); "Clear" or a second Escape clears the selection everywhere. While the open 3D
    view would sit under the bar, the bar docks at the top of the screen instead.
+   The bar sits in the page order right after the summary (its place on screen is fixed),
+   and a selection made with the keyboard hands the next Tab to the bar's first button;
+   Tab past its last button goes on from the control that made the selection.
 
    Events (plain CustomEvents on document, the shared contract):
      listens  gpc:select-residue {gid, res, source}     gpc:select-pair {gid, a, b, delta, source}
@@ -252,7 +255,22 @@
       if (row) return parseFloat(row.cells[6].textContent);
     }
     var chip = document.querySelector('.gpc-pair[data-gpc-a="' + a + '"][data-gpc-b="' + b + '"], .gpc-pair[data-gpc-a="' + b + '"][data-gpc-b="' + a + '"]');
-    return chip ? parseFloat(chip.getAttribute('data-gpc-delta')) : NaN;
+    if (chip) return parseFloat(chip.getAttribute('data-gpc-delta'));
+    var block = readJSON('rx-contacts');
+    var pairs = (block && block.pairs) || [];
+    for (var i = 0; i < pairs.length; i++) {
+      var p = pairs[i];
+      if ((p[0] === a && p[1] === b) || (p[0] === b && p[1] === a)) {
+        if (typeof p[4] === 'number') return p[4];
+        if (typeof p[2] === 'number' && typeof p[3] === 'number') return p[2] - p[3];
+      }
+    }
+    return NaN;
+  }
+  // A residue the page has (a link can name any number): in the residue data, the
+  // annotation or the snake plot.
+  function known(pos) {
+    return typeof pos === 'number' && !isNaN(pos) && (!!byPos[pos] || !!ann[String(pos)] || !!snakeCircle(pos));
   }
 
   // ------------------------------------------------------------------ the snake plot
@@ -308,6 +326,7 @@
     state.res = pos;
     state.pair = null;
     dismissed = false;
+    noteOrigin(source);
     if (source !== 'snake') snakeSelect(pos);
     if (window.ReportExtras && window.ReportExtras.refresh) window.ReportExtras.refresh(pos);
     if (window.ReportExtras && window.ReportExtras.markPair) window.ReportExtras.markPair(null);
@@ -324,6 +343,7 @@
     state.pair = { a: a, b: b, delta: delta };
     pairEcho = { pos: a, until: Date.now() + 600 };
     dismissed = false;
+    noteOrigin(source);
     snakeShowLinks();
     snakeSelect(a);
     if (window.ReportExtras && window.ReportExtras.refresh) window.ReportExtras.refresh(a);
@@ -416,7 +436,81 @@
     actions = el('div', 'gpc-selbar-actions');
     bar.appendChild(what);
     bar.appendChild(actions);
-    document.body.appendChild(bar);
+    // in the page order right after the summary, so Tab reaches it from there; on screen it
+    // is fixed to the bottom (or the top) whatever its place in the page
+    var summary = document.getElementById('sec-summary');
+    if (summary && summary.parentNode) summary.parentNode.insertBefore(bar, summary.nextSibling);
+    else document.body.appendChild(bar);
+    if ('ResizeObserver' in window) {
+      new ResizeObserver(function () { syncBarHeight(); }).observe(bar);
+    }
+  }
+  // the residue drawer keeps above the bar: its bottom offset follows the bar's height
+  // (zero while the bar is hidden or docked at the top)
+  function syncBarHeight() {
+    var h = (!bar || bar.hidden || bar.classList.contains('gpc-selbar--top')) ? 0 : bar.offsetHeight + 8;
+    document.documentElement.style.setProperty('--gpc-selbar-h', h + 'px');
+  }
+
+  // ------------------------------------------------------------------ keyboard reach of the bar
+  // A selection made with the keyboard (Enter or Space on a chip, a table cell, the plot)
+  // remembers the control it came from. The next Tab from that control goes to the bar's
+  // first button, Shift+Tab from there goes back, and Tab past the bar's last button goes
+  // on to whatever follows the control in the page.
+  var lastKey = { t: 0, el: null };
+  var kbdOrigin = null;
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Enter' || ev.key === ' ') lastKey = { t: Date.now(), el: ev.target };
+  }, true);
+  document.addEventListener('pointerdown', function () { lastKey = { t: 0, el: null }; }, true);
+  function noteOrigin(source) {
+    var e = lastKey.el;
+    kbdOrigin = (source !== 'hash' && e && e !== document.body && Date.now() - lastKey.t < 600 &&
+      !(bar && bar.contains(e))) ? e : null;
+  }
+  var FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  function focusables(root) {
+    return Array.prototype.filter.call(root.querySelectorAll(FOCUSABLE), function (n) {
+      if (n.closest('[inert], [hidden], [aria-hidden="true"]')) return false;
+      var r = n.getBoundingClientRect();
+      return (r.width > 0 || r.height > 0) && getComputedStyle(n).visibility !== 'hidden';
+    });
+  }
+  function focusAfter(node) {
+    var list = focusables(document).filter(function (n) { return !bar.contains(n); });
+    for (var i = 0; i < list.length; i++) {
+      var n = list[i];
+      if (n !== node && !node.contains(n) && (node.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING)) {
+        n.focus();
+        return;
+      }
+    }
+  }
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key !== 'Tab' || ev.altKey || ev.ctrlKey || ev.metaKey) return;
+    if (!bar || bar.hidden || !kbdOrigin || !document.contains(kbdOrigin)) return;
+    var a = document.activeElement;
+    var list = focusables(bar);
+    if (!list.length) return;
+    if (a === kbdOrigin && !ev.shiftKey) { ev.preventDefault(); list[0].focus(); return; }
+    if (!bar.contains(a)) return;
+    if (ev.shiftKey && a === list[0]) { ev.preventDefault(); kbdOrigin.focus(); return; }
+    if (!ev.shiftKey && a === list[list.length - 1]) {
+      ev.preventDefault();
+      var o = kbdOrigin;
+      kbdOrigin = null;
+      focusAfter(o);
+    }
+  }, true);
+  document.addEventListener('focusin', function (ev) {
+    if (kbdOrigin && ev.target !== kbdOrigin && !(bar && bar.contains(ev.target))) kbdOrigin = null;
+  });
+  // the bar is about to hide: a focus inside it goes back to where the selection was made
+  function releaseFocus() {
+    if (!bar || !bar.contains(document.activeElement)) return;
+    var o = kbdOrigin && document.contains(kbdOrigin) ? kbdOrigin : null;
+    if (o) o.focus({ preventScroll: true });
+    else { var s = document.getElementById('sec-summary'); if (s) { s.setAttribute('tabindex', '-1'); s.focus({ preventScroll: true }); } }
   }
   function button(text, title, onClick, cls) {
     var b = el('button', 'gpc-selbar-btn' + (cls ? ' ' + cls : ''), text);
@@ -465,9 +559,10 @@
   }
 
   function hideBar() {
+    releaseFocus();
     bar.hidden = true;
     bar.classList.remove('gpc-selbar--top');
-    document.documentElement.style.setProperty('--gpc-selbar-h', '0px');
+    syncBarHeight();
     document.documentElement.classList.remove('gpc-has-selection');
   }
   function dismissBar() {
@@ -487,7 +582,10 @@
     var r = threeDRect();
     var h = bar.offsetHeight + 24;
     var top = !!r && r.bottom > window.innerHeight - h && r.top < window.innerHeight;
-    bar.classList.toggle('gpc-selbar--top', top);
+    if (top !== bar.classList.contains('gpc-selbar--top')) {
+      bar.classList.toggle('gpc-selbar--top', top);
+      syncBarHeight();
+    }
   }
   var docking = false;
   function scheduleDock() {
@@ -504,6 +602,7 @@
     if (!bar) return;
     var res = state.res, pair = state.pair;
     if (res === null || dismissed) { hideBar(); return; }
+    var focusIdx = bar.contains(document.activeElement) ? focusables(bar).indexOf(document.activeElement) : -1;
     what.textContent = '';
     actions.textContent = '';
     var r = byPos[res];
@@ -560,14 +659,15 @@
     x.setAttribute('aria-label', 'Hide this bar, keep the selection');
     x.textContent = '×';
     actions.appendChild(x);
+    // a selection made with the keyboard: say where the actions are
+    if (kbdOrigin) what.appendChild(el('span', 'gpc-sr', 'Press Tab for the actions on this selection.'));
     bar.hidden = false;
     document.documentElement.classList.add('gpc-has-selection');
-    document.documentElement.style.setProperty('--gpc-selbar-h', (bar.offsetHeight + 8) + 'px');
+    syncBarHeight();
     dock();
+    if (focusIdx >= 0) { var again = focusables(bar); if (again.length) again[Math.min(focusIdx, again.length - 1)].focus({ preventScroll: true }); }
   }
-  window.addEventListener('resize', function () {
-    if (bar && !bar.hidden) document.documentElement.style.setProperty('--gpc-selbar-h', (bar.offsetHeight + 8) + 'px');
-  });
+  window.addEventListener('resize', syncBarHeight);
 
   // ------------------------------------------------------------------ inbound events
   function foreign(d) { return d.gid && GID && d.gid !== GID; }
@@ -617,22 +717,27 @@
     }
   });
 
-  // Escape, once the drawer is closed (the drawer takes the first one): hides the bar and
-  // keeps the selection; pressed again, clears the selection everywhere.
-  // Capture phase, so the order holds wherever the focus is (the snake plot has its own
-  // Escape, which clears): each step that is taken here stops the event.
+  // Escape, the same order everywhere on the page: the residue drawer closes first; next,
+  // the bar hides and the selection stays; next, the selection clears everywhere.
+  // In the snake plot a keyboard cursor (the residue the arrow keys reached) is cleared
+  // first, by the plot itself (snake-plus.js), and the page order follows.
+  // Capture phase, so the order holds wherever the focus is: each step taken here stops
+  // the event. The menu and the game take their own Escape.
   document.addEventListener('keydown', function (ev) {
     if (ev.key !== 'Escape') return;
     var t = ev.target;
     if (t && t.tagName && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+    if (t && t.closest && t.closest('.rrcs-tetris, #mobile-drawer')) return;
+    var menu = document.getElementById('mobile-drawer');
+    if (menu && menu.getAttribute('aria-hidden') === 'false') return;
+    var sp = window.SnakePlus;
+    if (t && t.closest && t.closest('#snake-plot-container') && sp && sp.cursor && sp.cursor() !== null) return;
     var drawer = document.getElementById('rx-drawer');
     if (drawer && !drawer.hidden) {
       if (window.ReportExtras && window.ReportExtras.close) { window.ReportExtras.close(); ev.stopPropagation(); }
       return;
     }
     if (state.res === null) return;
-    // inside the plot its own keyboard model holds: Escape clears (snake-plus.js)
-    if (t && t.closest && t.closest('#snake-plot-container')) return;
     if (!dismissed && bar && !bar.hidden) { dismissBar(); ev.stopPropagation(); return; }
     clear('keyboard');
   }, true);
@@ -666,8 +771,16 @@
   };
 
   // ------------------------------------------------------------------ start
+  // A link names residues and pairs the page may not have: a residue that is not on the page
+  // is ignored, and a pair that is not a contact on the page falls back to its first residue
+  // (when the page has it). Whatever is ignored leaves the link.
   function applyHash(landing) {
     var p = pairFromHash();
+    if (p && (!known(p.a) || !known(p.b) || p.a === p.b || isNaN(deltaOf(p.a, p.b)))) {
+      if (known(p.a)) selectResidue(p.a, 'hash');
+      else writeSelectionHash();
+      return;
+    }
     if (p) {
       selectPair(p.a, p.b, undefined, 'hash');
       if (landing) {
@@ -679,7 +792,10 @@
       return;
     }
     var m = /(?:^#|&)res=(\d+)(?:&|$)/.exec(window.location.hash || '');
-    if (m) selectResidue(parseInt(m[1], 10), 'hash');
+    if (!m) return;
+    var pos = parseInt(m[1], 10);
+    if (known(pos)) selectResidue(pos, 'hash');
+    else writeSelectionHash();
   }
 
   buildBar();

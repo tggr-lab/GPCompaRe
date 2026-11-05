@@ -173,6 +173,15 @@
 /* docked under the sticky chrome while the open 3D view would sit under it */
 .gpc-selbar--top { bottom: auto; top: calc(var(--topbar-height, 68px) + 56px); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14); }
 .gpc-selbar-note { font-size: 0.75rem; color: var(--fgColor-muted); }
+/* read by screen readers only */
+.gpc-sr {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
 
 /* the residue drawer sits above the bar when both are open (bottom offset set by report-select.js) */
 .rx-drawer { bottom: calc(var(--s-4) + var(--gpc-selbar-h, 0px)); }
@@ -198,11 +207,15 @@
     border-radius: var(--r-md) var(--r-md) 0 0;
     padding: var(--s-2) var(--s-3) calc(var(--s-2) + env(safe-area-inset-bottom, 0px));
   }
-  .gpc-selbar-actions { overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
-  .gpc-selbar-actions::-webkit-scrollbar { display: none; }
-  .gpc-selbar-close { margin-left: auto; }
+  /* every action stays on the screen: the buttons wrap, and the close button sits in the
+     top right corner beside the description instead of at the end of the row */
+  .gpc-selbar-what { padding-right: 40px; }
+  .gpc-selbar-actions { flex-wrap: wrap; gap: 6px; padding-bottom: 2px; }
+  .gpc-selbar-close { position: absolute; top: var(--s-2); right: var(--s-2); margin: 0; min-width: 32px; min-height: 32px; }
   .gpc-selbar--top { top: calc(var(--topbar-height, 68px) + 48px); bottom: auto; border-radius: 0 0 var(--r-md) var(--r-md); padding-bottom: var(--s-2); }
-  .rx-drawer { bottom: var(--gpc-selbar-h, 0px); }
+  /* flush on the bar (its height variable carries an 8px gap for the floating desktop layout) */
+  .rx-drawer { bottom: max(0px, calc(var(--gpc-selbar-h, 0px) - 8px)); }
+  .gpc-selbar--top .gpc-selbar-close { top: var(--s-2); }
 
   /* the snake plot's contact-link filter row (switched on by a pair selection) was wider
      than a phone: let it wrap and keep the sliders inside the page */
@@ -210,6 +223,24 @@
   .snake-filter-group { flex-wrap: wrap; max-width: 100%; }
   .snake-filter-group input[type="range"] { width: 96px; min-width: 0; }
 }
+
+/* the drawer as a bottom sheet on a phone: the full width, above the bar, its partner table
+   (with the 3D column) inside the screen */
+@media (max-width: 600px) {
+  .rx-drawer {
+    left: 0; right: 0; width: auto;
+    max-height: min(60vh, calc(100vh - var(--gpc-selbar-h, 0px) - 96px));
+  }
+  .rx-drawer .rx-pairs th, .rx-drawer .rx-pairs td { padding-left: 4px; padding-right: 4px; }
+  .rx-drawer .rx-pairs small { font-size: 0.72rem; }
+  .rx-drawer .rx-pair-focus { padding: 0 6px; }
+}
+
+/* ---------------------------------------------------------------- variant fine print */
+/* the line under the variant table, or in its place when a receptor has none, keeps the
+   section spacing before the ClinVar heading */
+.fine-print.rx-variants-fine { margin: calc(var(--s-3) - var(--s-7)) 0 var(--s-7); }
+.fine-print.rx-variants-none { margin: 0 0 var(--s-7); }
 
 /* ---------------------------------------------------------------- fine print under section headings */
 .gpc-fine { margin: calc(-1 * var(--s-2)) 0 var(--s-4); }

@@ -421,9 +421,9 @@ def test_largest_changes_step_through_pairs(open_report):
     first = page.evaluate("(() => { const p = Array.from(document.querySelectorAll('#sp-arcs .sp-arc')).sort((x, y) => Math.abs(y.dataset.delta) - Math.abs(x.dataset.delta))[0]; return [parseInt(p.dataset.a,10), parseInt(p.dataset.b,10)]; })()")
     pairs = page.evaluate('window.__pairs')
     assert pairs and [pairs[-1]['a'], pairs[-1]['b']] == first
-    assert page.evaluate("document.querySelector('#sp-bar .sp-tour-n').textContent").startswith('1 / ')
+    assert page.evaluate("document.querySelector('#sp-bar .sp-tour-n').textContent").startswith('1 of ')
     page.click('#sp-bar .sp-step[aria-label="Next largest change"]')
-    assert page.evaluate("document.querySelector('#sp-bar .sp-tour-n').textContent").startswith('2 / ')
+    assert page.evaluate("document.querySelector('#sp-bar .sp-tour-n').textContent").startswith('2 of ')
     assert not page.errors
 
 
@@ -481,6 +481,16 @@ def test_keyboard_moves_along_the_chain_and_selects(open_report):
     page.wait_for_timeout(100)
     assert page.evaluate("window.GPCSelect.current().res") == kbd2
     assert page.evaluate("document.getElementById('sp-live').textContent").startswith('Selected ')
+    # Escape steps back the way it does on the rest of the page: the keyboard cursor first,
+    # then the selection bar (the selection stays), then the selection
+    page.keyboard.press('Escape')
+    page.wait_for_timeout(100)
+    assert page.evaluate("document.querySelectorAll('#sp-marks .sp-kbd').length") == 0
+    assert page.evaluate("window.GPCSelect.current().res") == kbd2
+    page.keyboard.press('Escape')
+    page.wait_for_timeout(100)
+    assert page.evaluate("window.GPCSelect.current().res") == kbd2
+    assert page.evaluate("document.getElementById('gpc-selbar').hidden")
     page.keyboard.press('Escape')
     page.wait_for_timeout(100)
     assert page.evaluate("window.GPCSelect.current().res") is None
