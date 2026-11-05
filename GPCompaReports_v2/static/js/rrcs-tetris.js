@@ -10,7 +10,11 @@
    (↑ ↑ ↓ ↓ ← → ← → B A) anywhere on the page.
 
    Controls: ← → move · ↑ / X rotate · Z rotate back · ↓ soft drop
-             Space hard drop · P pause · Esc exit. Touch buttons on mobile. */
+             Space hard drop · P pause · Esc exit. Touch buttons on mobile.
+   The game takes the keys only while the focus is on it (the board is focused when the game
+   starts; a click on it focuses it again), and the moves only while a game is running, so the
+   arrow keys scroll the page otherwise. Focus leaving the game pauses it. The board is sized to
+   fit the screen under the sticky chrome. */
 (function() {
   'use strict';
 
@@ -369,10 +373,39 @@
     return c;
   }
 
+  // The sticky chrome at the top of the screen (the top bar and the section menu).
+  function chromeHeight() {
+    var h = 0;
+    ['.topbar', '.v3-secnav'].forEach(function(sel) {
+      var e = document.querySelector(sel);
+      if (!e) return;
+      var pos = getComputedStyle(e).position;
+      if (pos === 'sticky' || pos === 'fixed') h += e.offsetHeight;
+    });
+    return h;
+  }
+  // Space the board's box needs besides the board: the box's padding and border, a margin
+  // above and below it, and the touch buttons when they sit under the board.
+  function frameHeight() {
+    var cs = getComputedStyle(wrapEl);
+    var h = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth) + 16;
+    var touch = wrapEl.querySelector('.rrcs-tetris-touch');
+    if (touch && getComputedStyle(touch).display !== 'none') h += touch.offsetHeight + parseFloat(cs.rowGap || 0);
+    return h;
+  }
   function cellSize() {
-    var avail = Math.min(window.innerHeight * 0.75, 640) - M.t - M.b;
+    var avail = window.innerHeight - chromeHeight() - frameHeight() - M.t - M.b;
     var byWidth = (wrapEl.clientWidth - 32 - M.l - M.r) / COLS;
-    return Math.max(14, Math.floor(Math.min(avail / ROWS, byWidth, 26)));
+    return Math.max(8, Math.floor(Math.min(avail / ROWS, byWidth, 26)));
+  }
+  // Bring the whole board on screen under the sticky chrome.
+  function reveal() {
+    var r = wrapEl.getBoundingClientRect();
+    var top = chromeHeight() + 8;
+    var board = canvas.getBoundingClientRect();
+    if (r.top < top || board.bottom > window.innerHeight) {
+      window.scrollBy({ top: r.top - top, behavior: 'auto' });
+    }
   }
 
   function resize() {
@@ -563,6 +596,9 @@
     return null;
   }
 
+  function focused() {
+    return !!wrapEl && wrapEl.contains(document.activeElement);
+  }
   function onKey(e) {
     if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -571,9 +607,13 @@
       if (code) start(true, code.msg);
       return;
     }
+    // the keys belong to the page unless the game has the focus
+    if (!focused()) return;
     if (e.key === 'Enter' && state.over) { e.preventDefault(); act('restart'); return; }
     var action = KEYMAP[e.key];
     if (!action) return;
+    // a paused or finished game lets the moves through (the page scrolls); P and Esc still work
+    if (action !== 'pause' && action !== 'exit' && (state.over || state.paused)) return;
     e.preventDefault();
     act(action);
   }
@@ -584,6 +624,10 @@
     wrapEl = document.createElement('div');
     wrapEl.className = 'rrcs-tetris';
     wrapEl.hidden = true;
+    // focusable, so the game can hold the keys; a click anywhere on it focuses it
+    wrapEl.setAttribute('tabindex', '-1');
+    wrapEl.setAttribute('role', 'group');
+    wrapEl.setAttribute('aria-label', 'RRCS Tetris. Arrow keys move and rotate, Space drops, P pauses, Escape returns to the chart.');
     wrapEl.innerHTML =
       '<div class="rrcs-tetris-board"><canvas aria-label="RRCS Tetris board" role="img"></canvas></div>' +
       '<div class="rrcs-tetris-side">' +
@@ -621,7 +665,21 @@
     ui.pause.setAttribute('data-a', 'pause');
     wrapEl.addEventListener('click', function(e) {
       var b = e.target.closest('[data-a]');
-      if (b) { act(b.getAttribute('data-a')); b.blur(); }
+      if (b) { act(b.getAttribute('data-a')); if (active) wrapEl.focus({ preventScroll: true }); }
+    });
+    // focus leaving the game pauses it (the page has the keys again)
+    wrapEl.addEventListener('focusout', function(e) {
+      if (!active || !state || state.over || state.paused) return;
+      if (e.relatedTarget && wrapEl.contains(e.relatedTarget)) return;
+      state.paused = true;
+      flash('Paused. Click the board or press P on it to play.', true);
+    });
+    wrapEl.addEventListener('pointerdown', function(e) {
+      if (e.target.closest && e.target.closest('button')) return;
+      if (active && state && state.paused && !state.over && document.activeElement !== wrapEl) {
+        state.paused = false;
+        flash('');
+      }
     });
   }
 
@@ -634,7 +692,8 @@
     if (ui.toggle) ui.toggle.setAttribute('aria-pressed', 'true');
     newGame(msg);
     resize();
-    if (scrollIntoView) wrapEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    reveal();
+    wrapEl.focus({ preventScroll: true });
     state.last = performance.now();
     rafId = requestAnimationFrame(tick);
   }
@@ -644,9 +703,11 @@
     active = false;
     cancelAnimationFrame(rafId);
     if (state.score > state.best) writeBest(state.score);
+    var hadFocus = focused();
     wrapEl.hidden = true;
     chartEl.hidden = false;
     if (ui.toggle) ui.toggle.setAttribute('aria-pressed', 'false');
+    if (hadFocus && ui.toggle) ui.toggle.focus({ preventScroll: true });
     if (window.Plotly && chartEl.data) Plotly.Plots.resize(chartEl);
   }
 

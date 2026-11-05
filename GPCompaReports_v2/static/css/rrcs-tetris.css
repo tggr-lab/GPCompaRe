@@ -30,6 +30,8 @@
   padding: var(--s-3, 12px);
 }
 .rrcs-tetris[hidden] { display: none; }
+.rrcs-tetris:focus { outline: none; }
+.rrcs-tetris:focus-visible { outline: 2px solid var(--fgColor-accent); outline-offset: 2px; }
 
 .rrcs-tetris-board canvas {
   display: block;
