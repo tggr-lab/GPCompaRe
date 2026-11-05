@@ -60,7 +60,11 @@
     var drawer = document.getElementById('mobile-drawer');
     if (!trigger || !drawer) return;
 
+    // Closed, the drawer is inert (set in the markup too) and hidden by the stylesheet, so
+    // its search box and links are not in the page's Tab order.
+    drawer.setAttribute('inert', '');
     function open() {
+      drawer.removeAttribute('inert');
       drawer.setAttribute('aria-hidden', 'false');
       trigger.setAttribute('aria-expanded', 'true');
       document.body.style.overflow = 'hidden';
@@ -69,6 +73,7 @@
     }
     function close() {
       drawer.setAttribute('aria-hidden', 'true');
+      drawer.setAttribute('inert', '');
       trigger.setAttribute('aria-expanded', 'false');
       document.body.style.overflow = '';
       trigger.focus();

@@ -334,11 +334,16 @@ p  { margin: 0 0 var(--s-4); }
   z-index: 50;
   pointer-events: none;
   opacity: 0;
-  transition: opacity var(--t-base) var(--ease-out);
+  /* closed: hidden as well as transparent, so nothing in it takes the focus; the
+     visibility switch waits for the fade-out */
+  visibility: hidden;
+  transition: opacity var(--t-base) var(--ease-out), visibility 0s linear var(--t-base);
 }
 .mobile-drawer[aria-hidden="false"] {
   pointer-events: auto;
   opacity: 1;
+  visibility: visible;
+  transition: opacity var(--t-base) var(--ease-out), visibility 0s linear 0s;
 }
 .mobile-drawer-backdrop {
   position: absolute;
@@ -691,11 +696,14 @@ p  { margin: 0 0 var(--s-4); }
 }
 .badge-active   { background: var(--semantic-active-soft);   color: var(--semantic-active); }
 .badge-inactive { background: var(--semantic-inactive-soft); color: var(--semantic-inactive); }
-.badge-pathogenic { background: var(--semantic-inactive-soft); color: var(--semantic-inactive); }
+/* AlphaMissense "Pathogenic" and the HIGH / MED / LOW change badges are neutral (solid ink,
+   outlined grey, muted), never red or blue, which on these pages mean stronger in the
+   active / inactive model. Light and dark both follow the ink and canvas tokens. */
+.badge-pathogenic,
+.badge-high { background: var(--fgColor-default); color: var(--bgColor-default); }
 .badge-benign     { background: color-mix(in srgb, #10B981 20%, transparent); color: #047857; }
 .badge-ambiguous  { background: color-mix(in srgb, #F59E0B 20%, transparent); color: #B45309; }
-.badge-high { background: var(--semantic-inactive-soft); color: var(--semantic-inactive); }
-.badge-med  { background: color-mix(in srgb, var(--brand-accent) 18%, transparent); color: var(--brand-accent); }
+.badge-med  { background: var(--bgColor-neutral-muted, var(--bgColor-muted)); color: var(--fgColor-default); box-shadow: inset 0 0 0 1px var(--fgColor-muted); }
 .badge-low  { background: var(--bgColor-muted); color: var(--fgColor-muted); }
 [data-color-mode="dark"] .badge-benign { color: #34D399; }
 [data-color-mode="dark"] .badge-ambiguous { color: #FCD34D; }
