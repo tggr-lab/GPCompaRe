@@ -499,26 +499,24 @@ def test_respos_and_generic_cover_every_residue(index_dir):
 
 
 def test_report_table_membership_follows_the_report_variant_table(index_dir, store):
-    """`rt` marks an allele '1' exactly when its protein change is a row of the report page's variant table
-    (the report's own selection, _prepare_variants_full over store.variant_data). GPR3 p.Pro8Ser passes the
-    |dRRCS| cutoff but is not a row; PAR2 p.Met159Ile is."""
-    import pandas as pd
-    from GPCompaReports_v2.website.page_generators import gpcr_report_helpers as h
+    """`rt` marks an allele '1' exactly when it (its gnomAD variant id) is a row of the report page's variant
+    table: the report layer (store.report_variants, analysis/pack_layer.py), i.e. every pack allele at a
+    residue of a pair with |dRRCS| >= 3.0. Since the 2026-11-05 refresh the table and search read the same
+    packs, so GPR3 p.Pro8Ser (GPR3's own allele, at a residue past the cutoff) is a row, as is PAR2 p.Met159Ile."""
+    from GPCompaReports_v2.analysis.pack_layer import significant_positions
     meta = _load(index_dir, 'meta.json')
     gids = [r[0] for r in meta['receptors']]
+    assert meta['releases']['reportTable']['label'] == meta['releases']['gnomad']['label']
     for g in gids:
         v = _load(index_dir, 'variants/%s.json' % g)
         assert len(v['rt']) == v['n'] and set(v['rt']) <= {'0', '1'}, g
-    picks = ['par2_human', 'gpr3_human', 'adrb2_human', 'lpar2_human'] + random.Random(11).sample(gids, 10)
-    for g in picks:
-        v = _load(index_dir, 'variants/%s.json' % g)
-        rows = h._prepare_variants_full(store.variant_data.get(g, pd.DataFrame()), store.delta_data.get(g, pd.DataFrame()))
-        listed = {r['hgvsp'] for r in rows}
+        listed = set(store.report_variants(g)['variant_id']) if not store.report_variants(g).empty else set()
+        sig = significant_positions(store.delta_data.get(g))
         for i, x in enumerate(_pack(g)['variants'] or []):
-            assert (v['rt'][i] == '1') == (x[3] in listed), (g, x[3])
+            assert (v['rt'][i] == '1') == (x[11] in listed) == (x[0] in sig), (g, x[11])
     par2 = _pack('par2_human')['variants']
     v = _load(index_dir, 'variants/par2_human.json')
     assert {v['rt'][i] for i, x in enumerate(par2) if x[3] == 'p.Met159Ile'} == {'1'}
     gpr3 = _pack('gpr3_human')['variants']
     v = _load(index_dir, 'variants/gpr3_human.json')
-    assert [v['rt'][i] for i, x in enumerate(gpr3) if x[11] == '1-27393820-C-T'] == ['0']
+    assert [v['rt'][i] for i, x in enumerate(gpr3) if x[11] == '1-27393820-C-T'] == ['1']

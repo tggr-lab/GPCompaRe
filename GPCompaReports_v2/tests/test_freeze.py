@@ -109,6 +109,25 @@ def _approved_content_hash(html, gpcr_id=None):
     return hashlib.sha256(blob).hexdigest(), len(sections)
 
 
+_SECTION_HEAD_RE = re.compile(r'<section class="report-section"([^>]*)>(?:.*?)</section>', re.S)
+_ID_ATTR_RE = re.compile(r'\bid="([^"]+)"')
+
+
+def _changed_sections(html, gpcr_id, baseline):
+    """' Changed sections: ...' from the per-section hashes a refreshed manifest records (empty without)."""
+    recorded = {s['id']: s['sha256'] for s in baseline.get('sections') or []}
+    if not recorded:
+        return ''
+    ids = []
+    for i, attrs in enumerate(_SECTION_HEAD_RE.findall(html)):
+        m = _ID_ATTR_RE.search(attrs)
+        ids.append(m.group(1) if m else '#%d' % i)
+    now = {i: hashlib.sha256(b.encode('utf-8')).hexdigest()
+           for i, b in zip(ids, _approved_sections(html, gpcr_id))}
+    diff = sorted(i for i in set(recorded) | set(now) if recorded.get(i) != now.get(i))
+    return ' Changed sections: %s.' % ', '.join(diff)
+
+
 def _load_manifest():
     # This must fail, not skip, when the manifest is missing. A missing
     # baseline means the freeze safeguard itself is absent, which is exactly
@@ -202,7 +221,8 @@ class TestBuildAgainstManifest:
             assert digest == baseline['sha256'], (
                 '%s: approved content hash changed. The PI-approved '
                 'report-section content for this receptor no longer matches '
-                'the frozen baseline in %s.' % (gpcr_id, MANIFEST_PATH.name))
+                'the frozen baseline in %s.%s' % (gpcr_id, MANIFEST_PATH.name,
+                                                  _changed_sections(html, gpcr_id, baseline)))
             checked += 1
         assert checked > 0, (
             'no receptor in the build at %s matched the manifest; nothing '

@@ -26,9 +26,9 @@ Shards (all JSON, compact; the deploy gzips them; sizes are budgeted by tests):
   residues/<gid>.json         every model residue: aa, segment, generic number, CFR rank, max |dRRCS|,
                               threshold-passing contacts, conservation, mean AlphaMissense
   variants/<gid>.json         gnomAD alleles (columnar), dropped alleles, ClinVar records (all classes), and
-                              `rt`: one '1' or '0' per allele, '1' when its protein change is a row of the
-                              report page's own variant table (the frozen gnomAD v4.1.0 table); see
-                              report_table_changes
+                              `rt`: one '1' or '0' per allele, '1' when the allele (gnomAD variant id) is a
+                              row of the report page's own variant table (the same pack alleles at residues
+                              with a |dRRCS| >= 3.0 contact, analysis/pack_layer.py); see report_table_ids
   transcripts/<gid>.json      every transcript: exons, CDS segments (c. <-> g. blocks), strand, protein
                               ids, protein->model map; NM_ version relations; GRCh38->GRCh37 lift blocks
   cds/<gid>.json              reference bases of every coding exon (GRCh38, plus strand), for codon and
@@ -59,6 +59,8 @@ import unicodedata
 from collections import defaultdict
 from pathlib import Path
 
+from .. import data_versions as _data_versions
+
 RSID_SHARDS = 64
 CFR_TOP = 30  # the report snake plots colour the top 30 CFR positions
 CLINVAR_SHARDS = 32
@@ -87,16 +89,9 @@ for _i, _a in enumerate(_B):
             CODON[_a + _b + _c] = _AAS[_i * 16 + _j * 4 + _k]
 COMP = str.maketrans('ACGTN', 'TGCAN')
 
-RELEASES = {
-    'gnomad': {'label': 'gnomAD v4.1.2', 'dataset': 'gnomad_r4', 'fetched': '2026-10-18'},
-    'clinvar': {'label': 'ClinVar 2026-10-11', 'build': 'Build261011-1710.1', 'fetched': '2026-10-19'},
-    'ensembl': {'label': 'Ensembl 116', 'grch38': 'GRCh38.p14', 'grch37': 'GRCh37.p13', 'fetched': '2026-11-04'},
-    'refseq': {'label': 'NCBI RefSeq (Ensembl otherfeatures GRCh38; UCSC hg19.ncbiRefSeq 2024-09-18)', 'fetched': '2026-11-04'},
-    'hgnc': {'label': 'HGNC 2026-10-30', 'fetched': '2026-11-04'},
-    'uniprot': {'label': 'UniProt 2026_04', 'fetched': '2026-11-04'},
-    'alphamissense': {'label': 'AlphaMissense (Cheng et al. 2023)'},
-    'database': {'label': 'GPCompaRe RRCS batch 2026-02-02'},
-}
+# Release labels come from the version registry (GPCompaReports_v2/data_versions.json), the one place a
+# release is spelled; `reportTable` says what the report pages' variant tables are built from.
+RELEASES = _data_versions.search_releases()
 
 STAR = {
     'practice guideline': 4,
@@ -715,7 +710,7 @@ def _am_of(pack, pos, ref, alt):
     return None, '-'
 
 
-def build_variants(gid, pack, g37map, clinvar_rows, strand=1, report_changes=None):
+def build_variants(gid, pack, g37map, clinvar_rows, strand=1, report_ids=None):
     vs = pack.get('variants') or []
     prov = pack['provenance'].get('gnomad') or {}
     cols = {k: [] for k in ('pos', 'tx', 'c', 'g', 'g37', 'rs', 'ac', 'an', 'hom', 'src', 'am', 'amc')}
@@ -766,8 +761,8 @@ def build_variants(gid, pack, g37map, clinvar_rows, strand=1, report_changes=Non
         cols['am'].append(None if s is None else round(s * 1000))
         cols['amc'].append(c)
         conflict.append(1 if conf else 0)
-        if report_changes is not None:
-            in_table.append('1' if hgvsp in report_changes else '0')
+        if report_ids is not None:
+            in_table.append('1' if vid in report_ids else '0')
     out = {
         'gid': gid, 'chrom': chrom, 'strand': strand,
         'gnomad': {'tx': prov.get('transcript'), 'v': prov.get('transcriptVersion'),
@@ -781,7 +776,7 @@ def build_variants(gid, pack, g37map, clinvar_rows, strand=1, report_changes=Non
         'dropped': prov.get('droppedVariants', []) if prov else [],
         'clinvar': compact_clinvar(clinvar_rows),
     }
-    if report_changes is not None:
+    if report_ids is not None:
         out['rt'] = ''.join(in_table)
     return out
 
@@ -1057,16 +1052,25 @@ def _threshold(store, gid):
     return round(float(_calc_significance_threshold(store.delta_data.get(gid, pd.DataFrame()))), 3)
 
 
-def report_table_changes(store, gid):
-    """The protein changes (hgvsp strings) listed in the report page's variant table for gid, or None
-    when there is no store. The selection is the report's own (gpcr_report_helpers._prepare_variants_full
-    over store.variant_data), so search links to that table only for a change the page really shows."""
+def report_table_ids(store, gid):
+    """The gnomAD variant ids listed in the report page's variant table for gid, or None when there is no
+    store. The rows are the report's own (store.report_variants, the pack layer the report pages render
+    through gpcr_report_helpers._prepare_variants_full), so search links to that table only for an allele the
+    page really shows."""
     if store is None:
         return None
-    import pandas as pd
-    from .gpcr_report_helpers import _prepare_variants_full
-    rows = _prepare_variants_full(store.variant_data.get(gid, pd.DataFrame()), store.delta_data.get(gid, pd.DataFrame()))
-    return {str(v['hgvsp']) for v in rows if v.get('hgvsp')}
+    df = store.report_variants(gid)
+    if df is None or df.empty or 'variant_id' not in df.columns:
+        return set()
+    return {str(v) for v in df['variant_id'] if isinstance(v, str) and v}
+
+
+def report_layer_release(store):
+    """The pack release the store's report layer was read from (None without one)."""
+    layer = getattr(store, 'report_layer', None) if store is not None else None
+    if layer is None and store is not None and hasattr(store, '_layer'):
+        layer = store._layer()
+    return getattr(layer, 'release_id', None)
 
 
 def build_meta(gids, packs, s, store, lift_blocks=None):
@@ -1173,6 +1177,11 @@ def generate_search_index_v2(store, output_dir, studio=None, sources=None, gids=
 
     index = json.loads((pack_dir / 'index.json').read_text())
     pack_gids = [r['gid'] for r in index['receptors']]
+    # The `rt` flags and the report tables must come from the same packs as these shards.
+    rel = report_layer_release(store)
+    if rel is not None and rel != (index.get('release') or {}).get('id'):
+        raise ValueError('the report layer read pack release %s, search reads %s at %s'
+                         % (rel, (index.get('release') or {}).get('id'), pack_dir))
     if gids is None:
         gids = sorted(store.gpcr_ids) if store is not None else pack_gids
     missing = sorted(set(gids) - set(pack_gids))
@@ -1254,7 +1263,7 @@ def generate_search_index_v2(store, output_dir, studio=None, sources=None, gids=
             raw = _gz(f)
         cv_rows = build_clinvar(g, raw, p, s['pmap'], s['nmv'], None, s['mcod'].get(g), cv_stats, b)
         strand = ((s['ens_cds'].get(g) or {}).get('grch38') or {}).get('strand', 1)
-        v = build_variants(g, p, g37.get(g, {}), cv_rows, strand, report_table_changes(store, g))
+        v = build_variants(g, p, g37.get(g, {}), cv_rows, strand, report_table_ids(store, g))
         put('variants', f'variants/{g}.json', v)
         with_var.append(i)
         for k, rsl in enumerate(v['rs']):
@@ -1351,6 +1360,7 @@ def main(argv=None):
     from ...analysis.data_loader import GPCRDataStore
     store = GPCRDataStore(batch_dir=a.batch_dir, metadata_csv=a.metadata)
     store.load_all()
+    store.load_report_layer()
     r = generate_search_index_v2(store, Path(a.output), studio=a.studio_root, sources=a.sources)
     print('  %.1f s' % (time.time() - t), file=sys.stderr)
     return r

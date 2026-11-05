@@ -23,6 +23,7 @@ from .page_generators.statistics_page import generate_statistics_page
 from .page_generators.contact_page import generate_contact_page
 from .page_generators.downloads_page import generate_downloads_page
 from .page_generators.info_pages import generate_glossary_page, generate_privacy_page
+from . import data_versions
 from .seo import SITE_URL, write_robots, write_sitemap, write_gene_redirects
 from .page_generators.search_index import generate_search_index
 from .page_generators.search_index_v2 import generate_search_index_v2
@@ -68,6 +69,13 @@ class SiteGenerator:
 
         print("\n[1/5] Loading data...")
         self.store.load_all()
+        # The report pages' variant and annotation layer comes from the Studio packs (the
+        # source search v2 uses); the batch layer stays for the family-wide analyses below.
+        layer = self.store.load_report_layer()
+        if layer is not None:
+            print("Report variant layer: Studio packs %s (release %s), %d alleles in %d tables" % (
+                layer.folder, layer.release_id, sum(layer.counts().values()),
+                sum(1 for n in layer.counts().values() if n)))
 
         print("\n[2/5] Running cross-GPCR analysis...")
         self.analysis_results['cross_gpcr'] = run_cross_gpcr_analysis(self.store)
@@ -98,6 +106,10 @@ class SiteGenerator:
         print("\n[5/5] Generating website pages...")
         env = Environment(loader=FileSystemLoader(str(self.template_dir)))
         env.globals['site_url'] = SITE_URL
+        # data_versions.json: every template reads release labels from `data_versions`,
+        # and JS from <site>/data_versions.json
+        data_versions.install(env)
+        data_versions.write_site_copy(self.output_dir)
 
         print("  Landing page...")
         generate_landing_page(env, self.store, self.output_dir)

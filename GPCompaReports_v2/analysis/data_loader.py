@@ -34,6 +34,12 @@ class GPCRDataStore:
         self.variant_data = {}        # gpcr_id -> DataFrame
         self.gpcr_info = {}           # gpcr_id -> dict with metadata + summary stats
         self.name_map = {}            # filesystem id -> uniprot name (uppercase)
+        # The report pages' variant and annotation layer (analysis/pack_layer.py), read from the
+        # Studio packs on first use. variant_data and annotation_data above stay the batch run's:
+        # the family-wide analyses (CFR ranking, statistics page, paper numbers) read those.
+        self.report_layer = None
+        self._report_layer_tried = False
+        self.report_variant_source = 'gnomad_batch'  # data_versions.json key of what report_variants() returns
 
     def load_all(self):
         """Load all data sources."""
@@ -195,25 +201,96 @@ class GPCRDataStore:
             }
             self.gpcr_info[gid] = info
 
+    # ------------------------------------------------------------ report layer (Studio packs)
+
+    def load_report_layer(self, folder=None, required=False):
+        """Read the report layer from the Studio packs (pack_layer.ReportLayer) and point the browse
+        counts (gpcr_info['variants_found']) at it; the batch count is kept as 'variants_found_batch'.
+
+        Without packs the reports keep the batch layer and say so through report_variant_source, unless
+        `required`, which raises instead."""
+        from .pack_layer import ReportLayer
+        self._report_layer_tried = True
+        try:
+            self.report_layer = ReportLayer(self, folder)
+        except FileNotFoundError as exc:
+            if required:
+                raise
+            print('WARNING: %s; the report variant tables use the batch layer (gnomAD v4.1.0)' % exc)
+            self.report_layer = None
+            self.report_variant_source = 'gnomad_batch'
+            return None
+        self.report_variant_source = 'gnomad'
+        from .pack_layer import WRONG_RECEPTOR_ANNOTATION
+        for gid, info in self.gpcr_info.items():
+            info.setdefault('variants_found_batch', info['variants_found'])
+            info['variants_found'] = len(self.report_layer.variants.get(gid, ()))
+            # The batch took GPR31's, GPR42's and CXCR1's accession for these three (substring match);
+            # the report header, its UniProt link and the protein name use the receptor's own.
+            if gid in WRONG_RECEPTOR_ANNOTATION and self.report_layer.uniprot.get(gid):
+                info.setdefault('uniprot_id_batch', info['uniprot_id'])
+                info['uniprot_id'] = self.report_layer.uniprot[gid]
+        return self.report_layer
+
+    def _layer(self):
+        if self.report_layer is None and not self._report_layer_tried:
+            self.load_report_layer()
+        return self.report_layer
+
+    def report_variants(self, gpcr_id):
+        """The rows the report's variant table lists (batch CSV columns)."""
+        layer = self._layer()
+        if layer is not None:
+            return layer.variants.get(gpcr_id, pd.DataFrame())
+        return self.variant_data.get(gpcr_id, pd.DataFrame())
+
+    def get_report_annotation_map(self, gpcr_id):
+        """get_annotation_map for the report pages: the pack's numbering for the three receptors whose
+        batch annotation belongs to another receptor, the batch annotation (identical to the pack at
+        every row) for the rest."""
+        layer = self._layer()
+        if layer is not None and gpcr_id in layer.annotation:
+            return _annotation_map(layer.annotation[gpcr_id])
+        return self.get_annotation_map(gpcr_id)
+
+    def report_hgvs_numbering(self, gpcr_id):
+        """pack_layer.hgvs_numbering for the report table (None for most receptors and without packs)."""
+        layer = self._layer()
+        return None if layer is None else layer.hgvs_numbering(gpcr_id)
+
+    def report_conservation(self, gpcr_id):
+        """{position: conservation} from the packs, or None without the report layer."""
+        layer = self._layer()
+        return None if layer is None else layer.conservation.get(gpcr_id, {})
+
+    def report_am_mean(self, gpcr_id):
+        """{position: mean AlphaMissense score} from the packs, or None without the report layer."""
+        layer = self._layer()
+        return None if layer is None else layer.am_mean.get(gpcr_id, {})
+
     def get_all_info_df(self):
         """Return a DataFrame of all GPCR info for ranking/comparison."""
         return pd.DataFrame(list(self.gpcr_info.values()))
 
     def get_annotation_map(self, gpcr_id):
         """Return position -> annotation dict for a GPCR."""
-        df = self.annotation_data.get(gpcr_id, pd.DataFrame())
-        if df.empty:
-            return {}
-        result = {}
-        for _, row in df.iterrows():
-            pos = int(row['position'])
-            result[pos] = {
-                'amino_acid': _safe_str(row.get('amino_acid', '')),
-                'generic_number': _safe_str(row.get('generic_number', '')),
-                'display_number': _safe_str(row.get('display_number', '')),
-                'protein_segment': _safe_str(row.get('protein_segment', '')),
-            }
-        return result
+        return _annotation_map(self.annotation_data.get(gpcr_id, pd.DataFrame()))
+
+
+def _annotation_map(df):
+    """position -> annotation dict from an annotations frame (batch CSV columns)."""
+    if df.empty:
+        return {}
+    result = {}
+    for _, row in df.iterrows():
+        pos = int(row['position'])
+        result[pos] = {
+            'amino_acid': _safe_str(row.get('amino_acid', '')),
+            'generic_number': _safe_str(row.get('generic_number', '')),
+            'display_number': _safe_str(row.get('display_number', '')),
+            'protein_segment': _safe_str(row.get('protein_segment', '')),
+        }
+    return result
 
 
 def _safe_str(val):

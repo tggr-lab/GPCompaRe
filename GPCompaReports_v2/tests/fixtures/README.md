@@ -63,3 +63,33 @@ and, ideally, a diff against the previous manifest, before running
 committing. Never regenerate this file as part of a build, a test run, or
 any automated script; it exists specifically to catch a build overwriting
 the thing it is supposed to protect.
+
+## Deliberate data refresh
+
+A change to the data inside a frozen section (not its wording) is refreshed
+section by section, never by regenerating the whole baseline:
+
+```
+python3 scripts/build_freeze_manifest.py --refresh OLD_BUILD NEW_BUILD \
+    --allow sec-variants --allow sec-changes=gpr3_human,gpr4_human,xcr1_human \
+    --keep-old freeze_manifest.pre_<what>_<date>.json --reason "..."
+```
+
+`OLD_BUILD` must pass the current manifest. Every section that differs
+between the two builds must be named by an `--allow` (for every receptor, or
+`=gid,...` for some), or nothing is written. Only the receptors whose
+sections changed get a new hash; each receptor also gets per-section hashes
+(`sections`), which `test_freeze.py` uses to name the section that moved. The
+previous manifest stays beside this one under the `--keep-old` name, and the
+refresh is recorded in the manifest's `refreshes` list.
+
+Refreshes so far:
+
+* 2026-11-05, report variant layer from the Studio packs (gnomAD v4.1.2, one
+  AlphaMissense score per allele, model numbering, the right receptor for
+  GPR3, GPR4 and XCR1): `sec-variants` for every receptor, plus `sec-changes`
+  and `sec-tm` (generic numbers and segments) for GPR3, GPR4 and XCR1.
+  Previous manifest: `freeze_manifest.pre_variant_refresh_2026-11-05.json`.
+  Changelog: `~/scratch/2026-11-05_reports_v3/C_REFRESH_CHANGELOG.tsv`. The
+  gnomAD label in Methods and Understanding is handled by the approved-edit
+  rule `gnomad-release-2026-11-05`, not by the refresh.

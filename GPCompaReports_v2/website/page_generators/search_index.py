@@ -61,11 +61,13 @@ def _residue_max_abs_delta(delta_df):
 
 
 def _variant_shard(gid, store):
-    var_df = store.variant_data.get(gid, pd.DataFrame())
+    # the report page's own variant layer (Studio packs, analysis/pack_layer.py), so a found allele
+    # carries exactly the strings the report table shows
+    var_df = store.report_variants(gid)
     if var_df.empty:
         return None
     delta_df = store.delta_data.get(gid, pd.DataFrame())
-    annot = store.get_annotation_map(gid)
+    annot = store.get_report_annotation_map(gid)
     rows = v1._prepare_variants_full(var_df, delta_df)
 
     ref_aa = {}

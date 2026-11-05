@@ -57,9 +57,9 @@ def test_par2_m159i_is_indexed_as_the_report_shows_it():
     assert sorted(r[3] for r in rows) == ['5-76833084-G-A', '5-76833084-G-T']
     for r in rows:
         assert r[10] == ['rs115885685']
-        # AlphaMissense and conservation are empty for these alleles in the
-        # database (the known per-position join gap): the index must not fill them.
-        assert r[7] == '-' and r[8] == '-' and r[9] == '-'
+        # Each allele carries its own AlphaMissense score (the batch CSV left these
+        # empty, the per-position join gap fixed by the 2026-11-05 refresh).
+        assert r[7] == '0.910' and r[8] == 'PATHOGENIC' and r[9] != '-'
 
     report = BUILD_DIR / 'reports' / 'par2_human.html'
     if report.exists():
