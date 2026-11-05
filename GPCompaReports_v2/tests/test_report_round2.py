@@ -689,7 +689,7 @@ def test_phone_tables_keep_delta_rrcs_in_view_and_rsids_on_one_line(open_report,
     gid = _pick('id="top-changes-table"', 'id="variants-table"')
     page = open_report(gid, viewport=PHONE, dark=dark)
     assert _no_horizontal_overflow(page)
-    for table, col, label in (('top-changes-table', 6, 'ΔRRCS'), ('variants-table', 6, 'ΔRRCS')):
+    for table, col, label in (('top-changes-table', 6, 'ΔRRCS'), ('variants-table', 6, '|ΔRRCS|')):
         scroll = page.locator('#%s' % table).locator('xpath=ancestor::div[contains(@class,"v2-table-scroll")]')
         scroll.scroll_into_view_if_needed()
         sbox = scroll.bounding_box()
