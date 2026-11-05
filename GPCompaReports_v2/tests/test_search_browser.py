@@ -1582,3 +1582,130 @@ def test_conservation_has_its_own_section_not_under_predictions(open_page):
     assert page.locator('.sr-tile--conservation').count() == 1
     assert page.locator('nav [href$="-conservation"], [data-nav] [href$="-conservation"], a[href$="-conservation"]').count() >= 1
     assert page.errors == []
+
+
+# ------------------------------------------------------------ CFR neighbourhood (owner, 2026-11-05)
+# "we also need in the search something about variants that are near CFRs or connected to CFRs"
+
+def _no_overflow(page, scope):
+    """Nothing inside `scope` reaches past its right edge unless it scrolls in its own wrap; no page scroll."""
+    box = page.locator(scope).first.bounding_box()
+    right = box['x'] + box['width']
+    bad = page.evaluate("""([scope, right]) => {
+        const out = [];
+        const root = document.querySelector(scope);
+        for (const w of root.querySelectorAll('.sr-table-wrap')) {
+          const r = w.getBoundingClientRect();
+          if (w.scrollWidth > w.clientWidth + 1 && !['auto', 'scroll'].includes(getComputedStyle(w).overflowX)) out.push('wrap without scroll: ' + (w.querySelector('caption')?.textContent ?? ''));
+          if (r.right > right + 1) out.push('wrap past the edge');
+        }
+        for (const t of root.querySelectorAll('.sr-cfr-tiles, .sr-cfr-chips, .sr-cfrhood-list, .sr-cmp-controls, .sr-pager, .sr-tiles')) {
+          if (t.getBoundingClientRect().right > right + 1) out.push('past the edge: ' + t.className);
+        }
+        return out;
+      }""", [scope, right])
+    assert bad == [], bad
+    assert page.evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth') <= 1
+
+
+@pytest.mark.parametrize('scheme', ['light', 'dark'])
+@pytest.mark.parametrize('viewport', [DESKTOP, PHONE_390])
+def test_card_shows_the_cfr_neighbourhood(open_page, viewport, scheme):
+    page = search_page(open_page, 'ADRB2 Phe290', viewport=viewport, scheme=scheme, mobile=viewport is PHONE_390)
+    assert page.errors == [] and page.foreign == []
+    # the Structure tile names the connected CFR in one line
+    assert page.locator('[data-cfr-tile]').first.inner_text() == 'Connected to CFR Phe208 (5.47, rank 24)'
+    block = page.locator('.sr-cfrhood').first
+    assert block.get_attribute('data-cfrhood') == 'connected'
+    text = block.inner_text()
+    assert '30 top-ranked generic positions' in text and 'What is a CFR?' in text
+    assert block.locator('a[href$="glossary.html#cfr"]').count() >= 1
+    row = block.locator('[data-cfr-rel="connected"] tbody tr').first
+    assert 'Phe208' in row.inner_text() and '5.47x47' in row.inner_text()
+    assert row.locator('.sr-net--inactive').inner_text() == '-5.34'
+    assert 'weakens on activation' in row.inner_text()
+    # red/blue are the active/inactive tokens, not the pathogenicity palette
+    colour = row.locator('.sr-net--inactive').evaluate('e => getComputedStyle(e).color')
+    token = page.evaluate("() => { const d = document.createElement('span'); d.style.color = 'var(--semantic-inactive)'; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; }")
+    assert colour == token
+    # the receptor map marks the connected CFR
+    assert page.locator('.sr-map-cfr.is-partner[data-cfr-partner="208"]').count() == 1
+    _no_overflow(page, '.sr-card')
+
+
+def test_card_near_and_at_a_cfr(open_page):
+    page = search_page(open_page, 'ADRB2 Leu284')
+    assert page.locator('[data-cfr-tile]').first.inner_text() == '2 residues away from CFR Phe282 (6.44, rank 6)'
+    near = page.locator('[data-cfr-rel="near"]').first.inner_text()
+    assert 'Phe282' in near and 'Trp286' in near and '2 residues away' in near and 'TM6' in near
+    page = search_page(open_page, 'ADRB2 R131Q')
+    assert page.locator('[data-cfr-tile]').count() == 0
+    assert 'yes, class-wide rank 1' in page.locator('[data-cfr-rel="at"]').first.inner_text()
+    assert page.locator('.sr-cfrhood').first.get_attribute('data-cfrhood') == 'at'
+
+
+@pytest.mark.parametrize('q', ['ADRB2 CFR variants', 'CFR variants in MC4R'])
+def test_receptor_cfr_list_counts_filters_and_csv(open_page, q, tmp_path):
+    page = search_page(open_page, q)
+    assert page.errors == [] and page.foreign == []
+    assert 'at, connected to or near its CFR positions' in read_line(page)
+    lst = page.locator('[data-cfrlist]')
+    assert lst.count() == 1
+    counts = {g: int(page.locator('[data-cfr-count="%s"]' % g).inner_text()) for g in ('at', 'connected', 'near', 'touch')}
+    assert all(v > 0 for v in counts.values()), counts
+    rows = page.locator('[data-cfr-table] tbody tr')
+    pager = page.locator('[data-cfr-body] .sr-pager-info').first
+    total = sum(counts.values())
+    assert ('of %d' % total) in pager.inner_text()
+    page.get_by_role('button', name='Show all %d' % total).click()
+    assert rows.count() == total
+    # each group chip shows exactly that group's tile count
+    for g, n in counts.items():
+        page.locator('[data-cfr-group="%s"]' % g).click()
+        assert page.locator('[data-cfr-group="%s"]' % g).get_attribute('aria-pressed') == 'true'
+        # "Show all" stays on across filters
+        assert rows.count() == n, g
+        assert str(n) in page.locator('[data-cfr-body] .sr-pager-info').first.inner_text()
+        assert page.locator('[data-cfr-table] tbody tr:not([data-cfr-row="%s"])' % g).count() == 0
+    # source: gnomAD rows carry an allele frequency, P/LP rows a pathogenic ClinVar class
+    page.locator('[data-cfr-group=""]').click()
+    page.locator('[data-cfr-source="clinvar"]').click()
+    n_cv = int(page.locator('[data-cfr-source="clinvar"] .sr-sub').inner_text())
+    assert rows.count() == n_cv
+    assert page.locator('[data-cfr-table] td.sr-c-clinvar .sr-na').count() == 0
+    # CSV = the filtered table
+    page.locator('[data-cfr-source=""]').click()
+    page.locator('[data-cfr-group="connected"]').click()
+    with page.expect_download() as dl:
+        page.locator('[data-cfr-csv]').click()
+    path = tmp_path / 'cfr.csv'
+    dl.value.save_as(str(path))
+    import csv as _csv
+    data = list(_csv.DictReader(path.read_text(encoding='utf-8').splitlines()))
+    assert len(data) == counts['connected']
+    assert all(r['group'] == 'Connected to a CFR' and r['cfr_partners'] for r in data)
+    for col in ('residue', 'generic_number', 'change_model_numbering', 'allele_frequency', 'clinvar_classification', 'alphamissense'):
+        assert col in data[0], col
+    # links open in a new tab: the search card, the report residue
+    first = rows.first
+    assert first.locator('a', has_text='card').get_attribute('target') == '_blank'
+    assert first.locator('a', has_text='report').get_attribute('target') == '_blank'
+
+
+@pytest.mark.parametrize('scheme', ['light', 'dark'])
+@pytest.mark.parametrize('viewport', [DESKTOP, PHONE_390])
+def test_receptor_cfr_list_is_not_clipped(open_page, viewport, scheme):
+    page = search_page(open_page, 'ADRB2 CFR variants', viewport=viewport, scheme=scheme, mobile=viewport is PHONE_390)
+    page.get_by_role('button', name=re.compile(r'^Show all \d+$')).click()
+    _no_overflow(page, '.sr-card')
+    # the AlphaMissense column uses the clinical tint palette
+    chip = page.locator('[data-cfr-table] td.sr-c-am .sr-path-chip').first
+    assert re.search(r'sr-path-chip--(benign|ambiguous|pathogenic)', chip.get_attribute('class'))
+
+
+def test_autocomplete_offers_the_cfr_list(open_page):
+    page = open_page('/search/')
+    box = page.locator('#search-input')
+    box.fill('ADRB2 cf')
+    expect(page.locator('#search-form .sg-list')).to_be_visible()
+    assert 'ADRB2 CFR variants' in page.locator('#search-form .sg-list').inner_text()

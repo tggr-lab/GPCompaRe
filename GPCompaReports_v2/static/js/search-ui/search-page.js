@@ -9,6 +9,7 @@ import { makeLoader } from './loader.js';
 import {
   renderAnswer, renderHelp, renderReleases, notationsText, evidenceText,
   renderCompareBody, compareDefaults, compareCsv, compareRows,
+  renderCfrListBody, cfrListDefaults, cfrListCsv, cfrListRows,
 } from './render.js';
 import { attachSuggest, rememberQuery, readRecent, clearRecent } from './suggest.js';
 
@@ -31,7 +32,7 @@ const opts = {
 const loader = makeLoader(indexUrl);
 
 let run = 0;
-let current = { results: [], compare: null, state: null, ctx: {} };
+let current = { results: [], compare: null, state: null, cfr: null, cfrState: null, ctx: {} };
 
 function setStatus(text) { statusEl.textContent = text || ''; }
 
@@ -70,7 +71,7 @@ async function show(q, { remember = true } = {}) {
   const r = renderAnswer(answer, q, { ...opts, releases, symbolOf, familyOf, pageUrl });
   out.innerHTML = r.html;
   out.removeAttribute('aria-busy');
-  current = { results: r.results, compare: r.compare, state: r.compare ? compareDefaults() : null, ctx: r.ctx };
+  current = { results: r.results, compare: r.compare, state: r.compare ? compareDefaults() : null, cfr: r.cfr, cfrState: r.cfr ? cfrListDefaults() : null, ctx: r.ctx };
   setStatus(r.status);
   if (releasesEl && releases) releasesEl.innerHTML = renderReleases(releases).toString();
   if (remember && answer.expect !== 'unrecognised' && answer.results?.length) rememberQuery(q);
@@ -147,10 +148,7 @@ function cmpSort(key) {
   s.page = 1;
 }
 
-function downloadCsv() {
-  const { compare, state } = current;
-  if (!compare) return;
-  const text = compareCsv(compare, state);
+function saveCsv(text) {
   const slug = (input.value || 'search').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'search';
   const blob = new Blob([text], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -162,6 +160,61 @@ function downloadCsv() {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
   setStatus('Table saved as CSV.');
+}
+
+function downloadCsv() {
+  const { compare, state } = current;
+  if (compare) saveCsv(compareCsv(compare, state));
+}
+
+// ------------------------------------------------------ the CFR variant table of one receptor
+
+/** Redraw the CFR table body (chips, table, pager) after a state change; keeps focus on the control used. */
+function cfrUpdate(focusSel) {
+  const { cfr, cfrState: s } = current;
+  const body = out.querySelector('[data-cfr-body]');
+  if (!cfr || !s || !body) return;
+  body.innerHTML = renderCfrListBody(cfr, s, opts).toString();
+  const sortSel = out.querySelector('[data-cfr-sortsel]');
+  if (sortSel) sortSel.value = s.sort;
+  const dir = out.querySelector('[data-cfr-dir]');
+  if (dir) {
+    dir.disabled = s.sort === 'orig';
+    dir.textContent = s.dir === 'desc' ? 'High to low' : 'Low to high';
+    dir.setAttribute('aria-label', `Sort direction: ${s.dir === 'desc' ? 'high to low' : 'low to high'}. Press to reverse.`);
+  }
+  if (focusSel) body.querySelector(focusSel)?.focus();
+  setStatus(`${cfrListRows(cfr, s).length} variants.`);
+}
+
+function cfrSort(key) {
+  const s = current.cfrState;
+  if (s.sort === key) s.dir = s.dir === 'asc' ? 'desc' : 'asc';
+  else {
+    s.sort = key;
+    s.dir = key !== 'orig' && current.cfr.cols.find((c) => c.key === key)?.num ? 'desc' : 'asc';
+  }
+  s.page = 1;
+}
+
+function onCfrClick(e) {
+  const s = current.cfrState;
+  if (!current.cfr || !s) return false;
+  const t = e.target;
+  const sort = t.closest('[data-cfr-sort]');
+  if (sort) { cfrSort(sort.dataset.cfrSort); cfrUpdate(`[data-cfr-sort="${sort.dataset.cfrSort}"]`); return true; }
+  const grp = t.closest('[data-cfr-group]');
+  if (grp) { s.group = grp.dataset.cfrGroup; s.page = 1; cfrUpdate(`[data-cfr-group="${s.group}"]`); return true; }
+  const src = t.closest('[data-cfr-source]');
+  if (src) { s.source = src.dataset.cfrSource; s.page = 1; cfrUpdate(`[data-cfr-source="${s.source}"]`); return true; }
+  const pg = t.closest('[data-cfr-page]');
+  if (pg) { s.page = Math.max(1, s.page + (pg.dataset.cfrPage === 'next' ? 1 : -1)); cfrUpdate(`[data-cfr-page="${pg.dataset.cfrPage}"]:not([disabled])`); return true; }
+  const all = t.closest('[data-cfr-all]');
+  if (all) { s.all = all.dataset.cfrAll === '1'; s.page = 1; cfrUpdate('[data-cfr-all]'); return true; }
+  const dir = t.closest('[data-cfr-dir]');
+  if (dir) { if (s.sort !== 'orig') s.dir = s.dir === 'asc' ? 'desc' : 'asc'; s.page = 1; cfrUpdate(); return true; }
+  if (t.closest('[data-cfr-csv]')) { saveCsv(cfrListCsv(current.cfr, s)); return true; }
+  return false;
 }
 
 function onCompareClick(e) {
@@ -186,6 +239,12 @@ function onCompareClick(e) {
 }
 
 out.addEventListener('change', (e) => {
+  if (e.target.matches('[data-cfr-sortsel]') && current.cfr && current.cfrState) {
+    current.cfrState.sort = '';
+    cfrSort(e.target.value);
+    cfrUpdate();
+    return;
+  }
   const s = current.state;
   if (!current.compare || !s) return;
   if (e.target.matches('[data-cmp-family]')) { s.family = e.target.value; s.page = 1; cmpUpdate(); }
@@ -294,6 +353,7 @@ async function onShow3d(e) {
 
 out.addEventListener('click', async (e) => {
   if (onCompareClick(e)) return;
+  if (onCfrClick(e)) return;
   if (onNavClick(e)) return;
   if (onMapClick(e)) return;
   if (await onShow3d(e)) return;

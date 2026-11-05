@@ -14,6 +14,7 @@
 import { three } from '../search/shards.js';
 import { gnomadIdOf } from '../search/genomic.js';
 import { MAX_QUERY_LENGTH } from '../search/parse.js';
+import { CFR_GROUPS, NEAR_SEQ, isPlp } from '../search/cfrhood.js';
 import * as L from './links.js';
 
 // ------------------------------------------------------------------------------ html helper
@@ -181,6 +182,7 @@ export function readAsText(answer, query) {
       const t = i.receptorId ? `the ${({ uniprot: 'UniProt accession', entry: 'UniProt entry name', ensg: 'Ensembl gene ID', hgnc: 'HGNC ID', geneid: 'NCBI Gene ID' })[i.receptorId.type] ?? 'identifier'} ${i.receptorId.value}` : `the name “${i.receptorTerm ?? query}”`;
       if (rs.length > 1) return `${rs.length} receptors whose names start with “${i.receptorTerm ?? query}”`;
       if (rec && first.clinvarList) return `every ClinVar record of ${rec}`;
+      if (rec && first.cfrList !== undefined) return `the variants of ${rec} at, connected to or near its CFR positions`;
       return rec ? `the receptor ${rec}, from ${t}` : `a receptor, from ${t}`;
     }
     case 'protein':
@@ -798,6 +800,98 @@ function motifsCell(r) {
   return cell('Motif', html`${shown.map((m, i) => html`${i ? raw(', ') : ''}${motifBadge(m, aa)}`)}`);
 }
 
+// ------------------------------------------------------------------------ CFR neighbourhood
+
+/** How many class-wide CFR positions the card, the snake plots and every CFR feature of search mark (search_index_v2 CFR_TOP). */
+export const CFR_TOP_N = 30;
+/** The CFR set in one plain line. */
+export const CFR_SET_TEXT = `CFR positions are the ${CFR_TOP_N} top-ranked generic positions of the class-wide CFR ranking, the positions the card and the snake plots mark as CFR.`;
+/** The group names of the CFR neighbourhood (search/cfrhood.js), as headings. */
+export const CFR_GROUP_LABEL = Object.freeze({
+  at: 'At a CFR position', connected: 'Connected to a CFR', near: 'Near a CFR in sequence', touch: 'In contact with a CFR, below threshold',
+});
+/** The same, in a few words, for chips and tiles. */
+export const CFR_GROUP_SHORT = Object.freeze({ at: 'At a CFR', connected: 'Connected to a CFR', near: 'Near in sequence', touch: 'Contact below threshold' });
+/** What each group means, in one sentence each (the glossary entries say the same). */
+export const CFR_GROUP_DEF = Object.freeze({
+  at: 'the residue sits at a CFR position.',
+  connected: 'the residue takes part in a contact above the receptor’s ΔRRCS threshold whose partner sits at a CFR position.',
+  near: `the residue is within ${NEAR_SEQ} residues of a CFR position along the chain, in the same segment.`,
+  touch: 'the residue has a contact with a CFR residue in at least one model (RRCS above 0), below the threshold.',
+});
+const bwOf = (g) => (g ? String(g).split('x')[0] : null);
+/** "Phe300 (6.48, rank 3)": a CFR residue with its BW number and class-wide rank. */
+export const cfrName = (c) => {
+  const bits = [bwOf(c.generic), c.rank ? `rank ${c.rank}` : null].filter(Boolean);
+  return `${c.aa ? three(c.aa) : ''}${c.pos}${bits.length ? ` (${bits.join(', ')})` : ''}`;
+};
+const awayText = (k) => `${Math.abs(k)} residue${Math.abs(k) === 1 ? '' : 's'} away`;
+
+/** One line for the Structure tile when the residue is not a CFR: connected to one, else near one in sequence. */
+export function cfrTileLine(r) {
+  const h = r.cfrHood;
+  if (!h || h.at) return '';
+  if (h.connected.length) return `Connected to CFR ${cfrName(h.connected[0])}${h.connected.length > 1 ? ` and ${h.connected.length - 1} more` : ''}`;
+  if (h.near.length) return `${awayText(h.near[0].offset)} from CFR ${cfrName(h.near[0])}`;
+  return '';
+}
+
+/** The residue's relation to the CFR positions in plain words, for the evidence summary and the copied text. */
+export function cfrHoodSentence(r) {
+  const h = r.cfrHood;
+  if (!h) return null;
+  const bits = [];
+  if (h.connected.length) bits.push(`connected by ${h.connected.length === 1 ? 'a contact' : 'contacts'} above the threshold to CFR ${h.connected.map((c) => `${cfrName(c)} (ΔRRCS ${signed(c.delta)}, ${activationWord(c)})`).join(', ')}`);
+  if (h.near.length) bits.push(`within ${NEAR_SEQ} residues in sequence of CFR ${h.near.map((c) => `${cfrName(c)}, ${awayText(c.offset)}`).join('; ')}`);
+  if (h.touch?.length) bits.push(`in contact below the threshold with CFR ${h.touch.map((c) => cfrName(c)).join(', ')}`);
+  if (!bits.length) return h.at ? null : `not connected to a CFR, not within ${NEAR_SEQ} residues of one${h.touch ? ' and not in contact with one' : ''}`;
+  return bits.join('; ');
+}
+
+/**
+ * "CFR neighbourhood" in the Contacts and structure section: whether the residue is at a CFR position, the CFR
+ * residues it is connected to by above-threshold contacts (with ΔRRCS and the activation words), the CFR positions
+ * within NEAR_SEQ residues in the same segment, and the CFR residues it touches below the threshold. What the models
+ * show, nothing about what a variant does.
+ */
+function cfrHoodBlock(r, o) {
+  const h = r.cfrHood;
+  if (!h) return '';
+  const res = `${three(r.residue?.aa ?? r.ref)}${r.pos}`;
+  const items = [];
+  items.push(html`<li data-cfr-rel="at"><span class="sr-cfrhood-k">At a CFR position</span> ${h.at ? html`<strong>yes</strong>, class-wide rank ${h.rank}` : 'no'}</li>`);
+  if (h.connected.length) {
+    const rows = h.connected.map((c) => {
+      const d = direction(c.delta);
+      return html`<tr>
+        <td data-label="CFR partner">${intLink(L.residueUrl(o, r.gid, c.pos), `${three(c.aa)}${c.pos}`, { cls: 'mono', title: 'Report at this residue' })}${c.generic ? html` <span class="sr-sub">${c.generic}${c.segment ? `, ${c.segment}` : ''}</span>` : ''}</td>
+        <td class="num" data-label="CFR rank">${c.rank ?? ''}</td>
+        <td class="num" data-label="ΔRRCS"><span class="sr-net sr-net--${d.cls}">${signed(c.delta)}</span><span class="sr-sr-only"> (${d.word})</span></td>
+        <td data-label="What the models show"><strong>${activationWord(c)}</strong></td>
+        <td data-label="Report">${intLink(L.reportUrl(o, r.gid, `pair=${c.a}-${c.b}`), `pair ${c.a}-${c.b}`, { title: 'Report at this contact pair' })}</td></tr>`;
+    });
+    items.push(html`<li data-cfr-rel="connected"><span class="sr-cfrhood-k">${term(o, 'cfr-connected', 'Connected to a CFR')}</span> ${h.connected.length} CFR partner${h.connected.length === 1 ? '' : 's'} by contacts above the threshold
+      <div class="sr-table-wrap"><table class="sr-table sr-table--cfrhood">
+      <caption class="sr-sr-only">CFR residues connected to ${res} by contacts above the threshold</caption>
+      <thead><tr><th scope="col">CFR partner</th><th scope="col" class="num">CFR rank</th><th scope="col" class="num">${term(o, 'delta', 'ΔRRCS')}</th><th scope="col">What the models show</th><th scope="col">Report</th></tr></thead>
+      <tbody>${rows}</tbody></table></div></li>`);
+  } else items.push(html`<li data-cfr-rel="connected"><span class="sr-cfrhood-k">${term(o, 'cfr-connected', 'Connected to a CFR')}</span> no contact above the threshold with a CFR residue</li>`);
+  items.push(html`<li data-cfr-rel="near"><span class="sr-cfrhood-k">${term(o, 'cfr-near', 'Near a CFR in sequence')}</span> ${h.near.length
+    ? html`${h.near.map((c, i) => html`${i ? '; ' : ''}${intLink(L.residueUrl(o, r.gid, c.pos), `${three(c.aa)}${c.pos}`, { cls: 'mono', title: 'Report at this residue' })} <span class="sr-sub">(${[bwOf(c.generic), c.rank ? `rank ${c.rank}` : null].filter(Boolean).join(', ')})</span>, ${awayText(c.offset)}`)} <span class="sr-sub">in ${r.residue?.segment ?? 'the same segment'}</span>`
+    : `no CFR position within ${NEAR_SEQ} residues in the same segment`}</li>`);
+  if (h.touch) {
+    items.push(html`<li data-cfr-rel="touch"><span class="sr-cfrhood-k">${term(o, 'cfr-touch', 'In contact, below threshold')}</span> ${h.touch.length
+      ? html`${h.touch.map((c, i) => { const d = direction(c.delta); return html`${i ? '; ' : ''}${intLink(L.residueUrl(o, r.gid, c.pos), `${three(c.aa)}${c.pos}`, { cls: 'mono', title: 'Report at this residue' })} <span class="sr-sub">(${[bwOf(c.generic), c.rank ? `rank ${c.rank}` : null].filter(Boolean).join(', ')})</span> <span class="sr-net sr-net--${d.cls}">${signed(c.delta)}</span>`; })}`
+      : (h.connected.length ? 'no other contact with a CFR residue in either model' : 'no contact with a CFR residue in either model')}</li>`);
+  }
+  return html`<div class="sr-cfrhood" data-cfrhood="${h.group ?? 'none'}">
+    <h5 class="sr-subhead">CFR neighbourhood</h5>
+    <p class="sr-sub sr-cfrhood-set">${CFR_SET_TEXT} ${term(o, 'cfr', 'What is a CFR?')}</p>
+    <ul class="sr-cfrhood-list">${items}</ul>
+    ${finePrint(html`<p>${CFR_GROUP_LABEL.connected}: ${CFR_GROUP_DEF.connected} ${CFR_GROUP_LABEL.near}: ${CFR_GROUP_DEF.near} ${CFR_GROUP_LABEL.touch}: ${CFR_GROUP_DEF.touch} These describe the two models, not the effect of a variant. <span class="sr-net sr-net--active">Red, positive</span> ΔRRCS: stronger in the active model; <span class="sr-net sr-net--inactive">blue, negative</span>: stronger in the inactive model.</p>`, { cls: 'sr-cfrhood-note' })}
+  </div>`;
+}
+
 function structureSection(r, o) {
   const x = r.residue;
   if (!x) return '';
@@ -819,6 +913,7 @@ function structureSection(r, o) {
   <h5 class="sr-subhead">Important contacts</h5>
   ${contactDumbbells(r)}
   ${contactsTable(r, o)}
+  ${cfrHoodBlock(r, o)}
   ${show3dBlock(r, o)}`;
   return section('structure', 'Contacts and structure', `in ${DB_NAME}`, body, { idx: o.idx });
 }
@@ -880,6 +975,8 @@ export function summarySentences(r, o = {}) {
       contacts = `it takes part in ${r.contacts.length} contact${r.contacts.length === 1 ? '' : 's'} above the receptor’s threshold; the largest, with ${partnerName(t)}${t.partnerGeneric ? ` (${t.partnerGeneric})` : ''}, ${activationWord(t)} (ΔRRCS ${signed(t.delta)}, ${dirText(t.delta)})${f.net !== null ? `; ${netSentence(f.net)}` : ''}`;
     }
     S.push(`In the GPCompaRe models, ${res} is ${parts.length ? `${parts.join(' and ')}; ` : 'not a CFR; '}${contacts}.`);
+    const hood = x.cfr ? null : cfrHoodSentence(r);
+    if (hood && (r.cfrHood?.connected.length || r.cfrHood?.near.length)) S.push(`It is ${hood}.`);
   }
   return S;
 }
@@ -982,9 +1079,11 @@ function tiles(r, o, sub) {
   const top = r.contacts?.[0];
   const motifs = (r.motifs ?? []).filter((m) => m.carried !== false && m.required);
   const structHead = x ? html`<span class="sr-big">${x.cfr ? `CFR, rank ${f.cfrRank}` : (f.cfrRank ? `Not a CFR, rank ${f.cfrRank}` : 'Not a CFR')}</span>${motifs.length ? html` ${motifs.map((m) => html`<span class="sr-badge sr-badge--cfr">${m.name}</span> `)}` : ''}` : na;
+  const cfrLine = x ? cfrTileLine(r) : '';
+  const cfrFoot = cfrLine ? html`<span class="sr-tile-line sr-tile-cfr" data-cfr-tile>${cfrLine}</span>` : '';
   const structFoot = !x ? '' : r.contacts === undefined ? 'contact list not available'
-    : !r.contacts.length ? 'no contact above the threshold'
-      : html`<span class="sr-tile-line"><span class="mono">${partnerName(top)}</span> <span class="sr-net sr-net--${direction(top.delta).cls}">${signed(top.delta)}</span>, ${activationWord(top)}</span><span class="sr-tile-line">${r.contacts.length} contact${r.contacts.length === 1 ? '' : 's'} above threshold</span>`;
+    : !r.contacts.length ? html`${cfrFoot}<span class="sr-tile-line">no contact above the threshold</span>`
+      : html`${cfrFoot}<span class="sr-tile-line"><span class="mono">${partnerName(top)}</span> <span class="sr-net sr-net--${direction(top.delta).cls}">${signed(top.delta)}</span>, ${activationWord(top)}</span><span class="sr-tile-line">${r.contacts.length} contact${r.contacts.length === 1 ? '' : 's'} above threshold</span>`;
   // AlphaMissense
   const am = amForChange(r, sub);
   const missense = r.kind === 'missense' && /^[A-Z]$/.test(r.alt ?? '');
@@ -1100,7 +1199,12 @@ export function receptorMap(r, o) {
   if (run) runs.push(run);
   const heat = runs.map(({ k, a, b }) => html`<rect class="sr-map-am sr-map-am--${k}" x="${(((a - 1) / n) * W).toFixed(1)}" y="${Y.am}" width="${(((b - a + 1) / n) * W).toFixed(1)}" height="${Y.amH}"/>`);
   const ticks = (ps, y, cls, h) => ps.map((p) => html`<rect class="${cls}" x="${(xOf(p) - 0.7).toFixed(1)}" y="${y}" width="1.4" height="${h}"/>`);
-  const cfr = t.cfr.map((p) => html`<path class="sr-map-cfr${p === r.pos ? ' is-this' : ''}" d="M${xOf(p).toFixed(1)} ${Y.cfr - 4} l3.5 4 l-3.5 4 l-3.5 -4 z"><title>CFR position, residue ${p}</title></path>`);
+  const partners = new Set((r.cfrHood?.connected ?? []).map((c) => c.pos));
+  const cfr = t.cfr.map((p) => {
+    const cls = p === r.pos ? ' is-this' : partners.has(p) ? ' is-partner' : '';
+    const sz = partners.has(p) && p !== r.pos ? 1.6 : 1;
+    return html`<path class="sr-map-cfr${cls}"${partners.has(p) ? html` data-cfr-partner="${p}"` : ''} d="M${xOf(p).toFixed(1)} ${(Y.cfr - 4 * sz).toFixed(1)} l${(3.5 * sz).toFixed(1)} ${(4 * sz).toFixed(1)} l${(-3.5 * sz).toFixed(1)} ${(4 * sz).toFixed(1)} l${(-3.5 * sz).toFixed(1)} ${(-4 * sz).toFixed(1)} z"><title>${partners.has(p) ? `CFR position connected to ${three(r.residue?.aa ?? r.ref)}${r.pos}, residue ${p}` : `CFR position, residue ${p}`}</title></path>`;
+  });
   const contacts = r.contacts ?? [];
   const cmax = Math.max(...contacts.map((c) => Math.abs(c.delta)), 0.01);
   const arcs = contacts.map((c) => {
@@ -1114,7 +1218,7 @@ export function receptorMap(r, o) {
   const step = n > 700 ? 200 : 100;
   const axis = [];
   for (let p = step; p <= n; p += step) axis.push(html`<text class="sr-map-axis" x="${xOf(p).toFixed(1)}" y="${Y.axis}" text-anchor="middle">${p}</text>`);
-  const label = `${sym}, ${n} residues; ${res} marked${contacts.length ? `, ${contacts.length} contact partner${contacts.length === 1 ? '' : 's'} drawn as arcs` : ''}; ${t.cfr.length} CFR positions; ${t.alleles.length} residues with gnomAD alleles; ${t.clinvar.length} with ClinVar records`;
+  const label = `${sym}, ${n} residues; ${res} marked${contacts.length ? `, ${contacts.length} contact partner${contacts.length === 1 ? '' : 's'} drawn as arcs` : ''}; ${t.cfr.length} CFR positions${partners.size ? `, ${partners.size} of them connected to ${res} (larger marks)` : ''}; ${t.alleles.length} residues with gnomAD alleles; ${t.clinvar.length} with ClinVar records`;
   return html`<figure class="sr-map" data-map="${idx}" data-length="${n}" data-symbol="${sym}">
     <svg class="sr-map-svg" viewBox="0 0 ${W} 118" preserveAspectRatio="none" role="img" aria-label="${label}">
       ${arcs}
@@ -1127,7 +1231,7 @@ export function receptorMap(r, o) {
       <rect class="sr-map-hit" data-map-hit="${idx}" x="0" y="${Y.cfr - 8}" width="${W}" height="${Y.cv + 8 - (Y.cfr - 8)}" fill="transparent"><title>Click a position to search it</title></rect>
     </svg>
     <figcaption class="sr-map-legend">
-      <ul class="sr-map-keys"><li><span class="sr-map-key sr-map-key--helix" aria-hidden="true"></span>helix</li><li><span class="sr-map-key sr-map-key--loop" aria-hidden="true"></span>loop or terminus</li><li><span class="sr-map-key sr-map-key--cfr" aria-hidden="true"></span>CFR position</li><li><span class="sr-map-key sr-map-key--arc-active" aria-hidden="true"></span><span class="sr-map-key sr-map-key--arc-inactive" aria-hidden="true"></span>contact, stronger in the active / inactive model</li><li><span class="sr-map-key sr-map-key--am" aria-hidden="true"></span>mean AlphaMissense per residue (class colours)</li><li><span class="sr-map-key sr-map-key--tick" aria-hidden="true"></span>gnomAD allele (upper) and ClinVar record (lower)</li></ul>
+      <ul class="sr-map-keys"><li><span class="sr-map-key sr-map-key--helix" aria-hidden="true"></span>helix</li><li><span class="sr-map-key sr-map-key--loop" aria-hidden="true"></span>loop or terminus</li><li><span class="sr-map-key sr-map-key--cfr" aria-hidden="true"></span>CFR position</li>${partners.size ? html`<li><span class="sr-map-key sr-map-key--cfr-partner" aria-hidden="true"></span>CFR connected to ${three(r.residue?.aa ?? r.ref)}${r.pos}</li>` : ''}<li><span class="sr-map-key sr-map-key--arc-active" aria-hidden="true"></span><span class="sr-map-key sr-map-key--arc-inactive" aria-hidden="true"></span>contact, stronger in the active / inactive model</li><li><span class="sr-map-key sr-map-key--am" aria-hidden="true"></span>mean AlphaMissense per residue (class colours)</li><li><span class="sr-map-key sr-map-key--tick" aria-hidden="true"></span>gnomAD allele (upper) and ClinVar record (lower)</li></ul>
       <form class="sr-map-go" data-map-go="${idx}"><label>Residue <input type="number" class="v2-input" name="pos" min="1" max="${n}" value="${r.pos}" inputmode="numeric"></label> <button type="submit" class="btn btn-ghost btn-sm">Search</button> ${intLink(L.residueUrl(o, r.gid, r.pos), `${res} in the report`, { cls: 'btn btn-ghost btn-sm', title: 'Report at this residue' })}<span class="sr-sub sr-map-hint">Click the track to search a position.</span></form>
     </figcaption>
   </figure>`;
@@ -1288,6 +1392,7 @@ export function evidenceText(r, ctx = {}) {
     L.push('In the GPCompaRe database:');
     L.push(`  Numbering: ${x.generic ? `${x.generic} (BW ${x.bw}, GPCRdb ${x.gpcrdb}), ${x.segment}` : `no generic number (${x.segment || 'outside the helices'})`}`);
     L.push(`  Core functional residue (class-wide): ${x.cfr ? `yes, rank ${f.cfrRank} of the class-wide positions` : (f.cfrRank ? `no, its generic position ranks ${f.cfrRank}` : 'not ranked (no generic number)')}`);
+    if (r.cfrHood) L.push(`  CFR neighbourhood (CFR = top ${CFR_TOP_N} class-wide positions): ${cfrHoodSentence(r) ?? 'at a CFR position, no other relation'}`);
     if (r.motifs) { const ms = r.motifs.filter((m) => m.key !== 'xmy' || m.carried !== false); L.push(`  Motif: ${ms.length ? ms.map((m) => `${m.name} (position ${m.position}${!m.required ? ', the variable x' : m.canonical ? `, canonical ${m.canonical.split('').map(three).join(' or ')}` : ''}${m.carried === false ? '; not carried in full by this receptor' : ''}${m.key === 'xmy' ? `; ${m.note}` : ''})`).join('; ') : 'not a motif position'}`); }
     L.push(`  Largest contact change: ${f.dmax === null ? 'no contacts' : `|dRRCS| ${f.dmax.toFixed(2)}${f.threshold !== null ? `, receptor threshold ${f.threshold.toFixed(2)}` : ''}${f.partner ? `, with ${f.partner}` : ''}`}`);
     if (f.net !== null) L.push(`  Net dRRCS: ${signed(f.net, 1)} (${direction(f.net).word}; red = active, blue = inactive): ${netSentence(f.net)}`);
@@ -1579,15 +1684,210 @@ export function clinvarListSection(r, o = {}) {
     ${body}</details></div>`;
 }
 
+// ------------------------------------------- variants in the CFR neighbourhood of one receptor
+
+/** The worst ClinVar class of a row's records, for sorting (P/LP first) and the chip: 0 P/LP .. 4 other, 9 none. */
+const cvRank = (recs) => (recs?.length ? Math.min(...recs.map((c) => CLINVAR_GROUPS.findIndex((g) => g.test(String(c.classification ?? ''))))) : 9);
+const pChange = (row) => `p.${three(row.ref)}${row.pos}${three(row.alt)}`;
+/** The row's CFR relations as one plain text (CSV and screen readers). */
+function cfrPartnerText(row) {
+  const h = row.hood;
+  const parts = [];
+  if (h.connected.length) parts.push(...h.connected.map((c) => `${cfrName(c)} dRRCS ${signed(c.delta)} ${activationWord(c)}`));
+  if (row.group === 'near') parts.push(...h.near.map((c) => `${cfrName(c)} ${awayText(c.offset)}`));
+  if (row.group === 'touch') parts.push(...(h.touch ?? []).map((c) => `${cfrName(c)} dRRCS ${signed(c.delta)} below threshold`));
+  return parts.join('; ');
+}
+
+/** Sources a row can be filtered by. */
+export const CFR_SOURCES = Object.freeze([['gnomad', 'gnomAD'], ['clinvar', 'ClinVar'], ['plp', 'P/LP only']]);
+const sourceTest = {
+  gnomad: (row) => !!row.allele,
+  clinvar: (row) => row.clinvar.length > 0,
+  plp: (row) => row.clinvar.some(isPlp),
+};
+
+/**
+ * The data behind the receptor's CFR variant table (result.cfrList from the engine): rows with their sort keys.
+ * @param {object} r a receptor result with `cfrList`
+ */
+export function cfrListModel(r, o = {}) {
+  const L0 = r.cfrList;
+  if (!L0) return null;
+  const rows = L0.rows.map((row, i) => ({ ...row, i, order: CFR_GROUPS.indexOf(row.group), cv: cvRank(row.clinvar), af: row.allele?.af ?? null }));
+  const cols = [
+    { key: 'res', label: 'Residue', num: true, sort: (x) => x.pos },
+    { key: 'grp', label: 'Group', sort: (x) => x.order },
+    { key: 'partners', label: 'CFR partner', sort: null },
+    { key: 'change', label: 'Change', sort: (x) => x.pos * 100 + 'ACDEFGHIKLMNPQRSTVWY'.indexOf(x.alt) },
+    { key: 'af', label: 'Allele frequency', num: true, sort: (x) => x.af },
+    { key: 'clinvar', label: 'ClinVar', sort: (x) => (x.cv === 9 ? null : -x.cv) },
+    { key: 'am', label: 'AlphaMissense', num: true, sort: (x) => x.am },
+    { key: 'links', label: 'Open', sort: null },
+  ];
+  return {
+    gid: r.gid, symbol: r.receptor?.symbol ?? r.gid, receptor: r.receptor, rows, cols, counts: L0.counts, cfr: L0.cfr,
+    skipped: L0.skipped, hasTouch: L0.hasTouch, hasContacts: L0.hasContacts, hasVariants: L0.hasVariants, threshold: L0.threshold,
+    releases: r.releases ?? {}, reports: o.reports,
+  };
+}
+
+export const cfrListDefaults = () => ({ group: '', source: '', sort: 'orig', dir: 'asc', page: 1, all: false });
+
+/** Rows after the group and source filters and the sort. */
+export function cfrListRows(model, state, { ignoreGroup = false } = {}) {
+  let rows = model.rows.filter((x) => (ignoreGroup || !state.group || x.group === state.group) && (!state.source || sourceTest[state.source](x)));
+  const col = state.sort && state.sort !== 'orig' ? model.cols.find((c) => c.key === state.sort && c.sort) : null;
+  if (col) {
+    const sgn = state.dir === 'desc' ? -1 : 1;
+    rows = [...rows].sort((a, b) => {
+      const x = col.sort(a); const y = col.sort(b);
+      const xn = x === null || x === undefined; const yn = y === null || y === undefined;
+      if (xn || yn) return xn === yn ? a.i - b.i : (xn ? 1 : -1);
+      return (sgn * (x - y)) || a.i - b.i;
+    });
+  }
+  return rows;
+}
+
+function cfrPartnerCell(row, o, gid) {
+  const h = row.hood;
+  const link = (c) => intLink(L.residueUrl(o, gid, c.pos), `${three(c.aa)}${c.pos}`, { cls: 'mono', title: 'Report at this residue' });
+  const meta = (c) => html` <span class="sr-sub">(${[bwOf(c.generic), c.rank ? `rank ${c.rank}` : null].filter(Boolean).join(', ')})</span>`;
+  const out = [];
+  for (const c of h.connected) {
+    const d = direction(c.delta);
+    out.push(html`<li>${link(c)}${meta(c)} <span class="sr-net sr-net--${d.cls}">${signed(c.delta)}</span> <span class="sr-sub">${activationWord(c)}</span> ${intLink(L.reportUrl(o, gid, `pair=${c.a}-${c.b}`), 'pair', { cls: 'sr-sub', title: `Report at contact pair ${c.a}-${c.b}` })}</li>`);
+  }
+  if (row.group === 'near') for (const c of h.near) out.push(html`<li>${link(c)}${meta(c)} <span class="sr-sub">${awayText(c.offset)}</span></li>`);
+  if (row.group === 'touch') {
+    const t = h.touch ?? [];
+    for (const c of t.slice(0, 3)) { const d = direction(c.delta); out.push(html`<li>${link(c)}${meta(c)} <span class="sr-net sr-net--${d.cls}">${signed(c.delta)}</span> <span class="sr-sub">below threshold</span></li>`); }
+    if (t.length > 3) out.push(html`<li class="sr-sub">and ${t.length - 3} more</li>`);
+  }
+  if (!out.length) return row.group === 'at' ? html`<span class="sr-na">itself a CFR</span>` : '';
+  return html`<ul class="sr-cfr-partners">${out}</ul>`;
+}
+
+function cfrCell(col, row, model, o) {
+  const sym = model.symbol;
+  const gid = model.gid;
+  switch (col.key) {
+    case 'res': return html`<span class="mono">${three(row.hood.aa ?? row.ref)}${row.pos}</span>${row.hood.generic ? html` <span class="sr-sub">${row.hood.generic}</span>` : ''}`;
+    case 'grp': return html`<span class="sr-cfr-grp sr-cfr-grp--${row.group}">${CFR_GROUP_SHORT[row.group]}</span>${row.group === 'at' && row.hood.rank ? html` <span class="sr-badge sr-badge--cfr" title="Class-wide CFR rank of this generic position">rank ${row.hood.rank}</span>` : ''}`;
+    case 'partners': return cfrPartnerCell(row, o, gid);
+    case 'change': return html`<span class="mono">${pChange(row)}</span>${row.allele ? html`<br><span class="sr-sub">${g38Link(row.allele.id, model.releases)}</span>` : ''}`;
+    case 'af': return row.allele ? html`${fmtAf(row.allele.af)}<br><span class="sr-sub">${fmtInt(row.allele.ac)} of ${fmtInt(row.allele.an)}</span>` : html`<span class="sr-na">not in gnomAD</span>`;
+    case 'clinvar': return row.clinvar.length
+      ? html`${row.clinvar.map((c, i) => html`${i ? html`<br>` : ''}${c.classification ? pathChip(cvClassKey(c.classification), c.classification) : html`<span class="sr-na">not given</span>`} ${stars(c.stars)} ${extLink(c.url ?? L.clinvarUrl(c.variationId), c.accession ?? `VCV${String(c.variationId).padStart(9, '0')}`, SITE.clinvar, { cls: 'mono sr-sub' })}`)}`
+      : html`<span class="sr-na">no record</span>`;
+    case 'am': return row.am === null || row.am === undefined ? html`<span class="sr-na">no score</span>` : html`<span class="sr-cfr-am"><span class="sr-path sr-path--${row.amClass}">${fmtAm(row.am)}</span> ${pathChip(row.amClass)}</span>`;
+    case 'links': {
+      const q = `${sym} ${pChange(row)}`;
+      return html`<span class="sr-cfr-links">${intLink(`?q=${encodeURIComponent(q)}`, 'card', { title: `Search card for ${q}` })} ${intLink(L.residueUrl(o, gid, row.pos), 'report', { title: 'Report at this residue' })}</span>`;
+    }
+    default: return '';
+  }
+}
+
+/** Group and source chips with their counts under the current filters (they redraw with the body). */
+function cfrChips(model, state) {
+  const bySource = cfrListRows(model, state, { ignoreGroup: true });
+  const groups = CFR_GROUPS.filter((g) => g !== 'touch' || model.hasTouch);
+  const n = (g) => bySource.filter((x) => x.group === g).length;
+  const srcN = (k) => model.rows.filter((x) => (!state.group || x.group === state.group) && sourceTest[k](x)).length;
+  return html`<div class="sr-groups sr-cfr-chips" role="group" aria-label="Show group"><span class="sr-label">Group</span>
+      <button type="button" class="sr-seg" data-cfr-group="" aria-pressed="${state.group === '' ? 'true' : 'false'}">All <span class="sr-sub">${bySource.length}</span></button>
+      ${groups.map((g) => html`<button type="button" class="sr-seg" data-cfr-group="${g}" aria-pressed="${state.group === g ? 'true' : 'false'}" title="${CFR_GROUP_LABEL[g]}">${CFR_GROUP_SHORT[g]} <span class="sr-sub">${n(g)}</span></button>`)}</div>
+    <div class="sr-groups sr-cfr-chips" role="group" aria-label="Show source"><span class="sr-label">Source</span>
+      <button type="button" class="sr-seg" data-cfr-source="" aria-pressed="${state.source === '' ? 'true' : 'false'}">All</button>
+      ${CFR_SOURCES.map(([k, label]) => html`<button type="button" class="sr-seg" data-cfr-source="${k}" aria-pressed="${state.source === k ? 'true' : 'false'}">${label} <span class="sr-sub">${srcN(k)}</span></button>`)}</div>`;
+}
+
+export function renderCfrListBody(model, state, o = {}) {
+  const rows = cfrListRows(model, state);
+  const total = rows.length;
+  const pages = Math.max(1, Math.ceil(total / CMP_PAGE_SIZE));
+  const page = state.all ? 1 : Math.min(Math.max(1, state.page), pages);
+  const slice = state.all ? rows : rows.slice((page - 1) * CMP_PAGE_SIZE, page * CMP_PAGE_SIZE);
+  const first = total ? (state.all ? 1 : (page - 1) * CMP_PAGE_SIZE + 1) : 0;
+  const last = state.all ? total : first + slice.length - (total ? 1 : 0);
+  const ariaSort = (c) => (state.sort === c.key ? (state.dir === 'desc' ? 'descending' : 'ascending') : 'none');
+  const pager = total > CMP_PAGE_SIZE
+    ? html`<div class="sr-pager"><span class="sr-pager-info" role="status">${state.all ? `All ${total} variants` : `Variants ${first} to ${last} of ${total}`}</span>
+        ${state.all ? html`<button type="button" class="btn btn-ghost btn-sm" data-cfr-all="0">Show ${CMP_PAGE_SIZE} per page</button>` : html`
+          <button type="button" class="btn btn-ghost btn-sm" data-cfr-page="prev"${page <= 1 ? raw(' disabled') : ''}>Previous</button>
+          <span class="sr-pager-info">Page ${page} of ${pages}</span>
+          <button type="button" class="btn btn-ghost btn-sm" data-cfr-page="next"${page >= pages ? raw(' disabled') : ''}>Next</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-cfr-all="1">Show all ${total}</button>`}</div>`
+    : html`<div class="sr-pager"><span class="sr-pager-info" role="status">${total === 1 ? '1 variant' : `${total} variants`}</span></div>`;
+  const oo = { ...o, reports: o.reports ?? model.reports };
+  return html`${cfrChips(model, state)}
+    ${total ? html`<div class="sr-table-wrap"><table class="sr-table sr-table--multi sr-table--cmp sr-table--cfr" data-cfr-table>
+    <caption class="sr-sr-only">${total} variants of ${model.symbol} at residues in the CFR neighbourhood. Column headings with buttons sort the table.</caption>
+    <thead><tr>${model.cols.map((c) => html`<th scope="col"${c.sort ? html` aria-sort="${ariaSort(c)}"` : ''} class="${c.num ? 'num' : ''}">${c.sort ? html`<button type="button" data-cfr-sort="${c.key}">${c.label}</button>` : c.label}</th>`)}</tr></thead>
+    <tbody>${slice.map((row) => html`<tr data-cfr-row="${row.group}">${model.cols.map((c) => html`<td data-label="${c.label}" class="sr-c-${c.key}${c.num ? ' num' : ''}">${cfrCell(c, row, model, oo)}</td>`)}</tr>`)}</tbody></table></div>`
+    : html`<p class="sr-message sr-message--info">No variant matches these filters.</p>`}
+    ${pager}`;
+}
+
+/** Count tiles, the CFR positions, filters, sort, CSV and the table, as the initial markup. */
+export function renderCfrList(model, state, o = {}) {
+  if (!model) return html`<p class="sr-na">The residue table of this receptor is not in this index.</p>`;
+  const sym = model.symbol;
+  const groups = CFR_GROUPS.filter((g) => g !== 'touch' || model.hasTouch);
+  const gl = model.releases?.gnomad ?? 'gnomAD';
+  const cl = model.releases?.clinvar ?? 'ClinVar';
+  const tiles = html`<ul class="sr-cfr-tiles" aria-label="Variants per group">${groups.map((g) => html`<li class="sr-cfr-tile" data-cfr-tile="${g}">
+      <span class="sr-cfr-tile-k">${term(o, { at: 'cfr', connected: 'cfr-connected', near: 'cfr-near', touch: 'cfr-touch' }[g], CFR_GROUP_LABEL[g])}</span>
+      <span class="sr-big" data-cfr-count="${g}">${model.counts[g]?.variants ?? 0}</span> <span class="sr-sub">variant${model.counts[g]?.variants === 1 ? '' : 's'} at ${model.counts[g]?.residues ?? 0} residue${model.counts[g]?.residues === 1 ? '' : 's'}</span></li>`)}</ul>`;
+  const cfrList = model.cfr.length
+    ? html`<details class="sr-more sr-cfr-positions"><summary>The ${model.cfr.length} CFR positions of ${sym}</summary><ul class="sr-chips">${[...model.cfr].sort((a, b) => a.pos - b.pos).map((c) => html`<li>${intLink(L.residueUrl(o, model.gid, c.pos), cfrName(c), { cls: 'sr-chip', title: 'Report at this residue' })}</li>`)}</ul></details>`
+    : html`<p>${sym} has no residue at a CFR position.</p>`;
+  return html`<div class="sr-cfrlist" data-cfrlist>
+    <p class="sr-cfr-set">${CFR_SET_TEXT} ${term(o, 'cfr', 'What is a CFR?')}</p>
+    ${tiles}
+    ${cfrList}
+    <div class="sr-cmp-controls">
+      <div class="sr-cmp-sort"><label class="sr-cmp-field">Sort by
+        <select class="v2-select" data-cfr-sortsel><option value="orig"${state.sort === 'orig' ? raw(' selected') : ''}>Group, then residue</option>${model.cols.filter((c) => c.sort).map((c) => html`<option value="${c.key}"${state.sort === c.key ? raw(' selected') : ''}>${c.label}</option>`)}</select></label>
+        <button type="button" class="btn btn-ghost btn-sm" data-cfr-dir${state.sort === 'orig' ? raw(' disabled') : ''} aria-label="Sort direction: ${state.dir === 'desc' ? 'high to low' : 'low to high'}. Press to reverse.">${state.dir === 'desc' ? 'High to low' : 'Low to high'}</button></div>
+      <button type="button" class="btn btn-ghost btn-sm sr-cmp-csv" data-cfr-csv>Download CSV</button>
+    </div>
+    <div data-cfr-body>${renderCfrListBody(model, state, o)}</div>
+    ${finePrint(html`<p>Each residue is counted once, in the first group that applies: ${groups.map((g) => `${CFR_GROUP_LABEL[g][0].toLowerCase()}${CFR_GROUP_LABEL[g].slice(1)} (${CFR_GROUP_DEF[g].replace(/\.$/, '')})`).join('; ')}. The CFR partner column lists the CFR residues a residue is connected to by contacts above ${sym}’s threshold${model.threshold !== null && model.threshold !== undefined ? ` (|ΔRRCS| ≥ ${model.threshold.toFixed(2)})` : ''}; <span class="sr-net sr-net--active">red, positive</span> ΔRRCS is stronger in the active model, <span class="sr-net sr-net--inactive">blue, negative</span> stronger in the inactive model. These describe the two models, not the effect of a variant.</p>
+      <p>Variants: every ${gl} missense allele and every ${cl} missense record at these residues (a record of a ${gl} allele shares its row)${model.skipped ? `; ${model.skipped} ClinVar record${model.skipped === 1 ? '' : 's'} of other kinds (synonymous, stop, frameshift) at these residues ${model.skipped === 1 ? 'is' : 'are'} not listed` : ''}. AlphaMissense scores are predictions. ${RESEARCH_NOTE_SHORT}</p>`, { cls: 'sr-cfrlist-note' })}
+  </div>`;
+}
+
+/** The table as CSV: every row after the filters and the sort, not just the visible page. */
+export function cfrListCsv(model, state) {
+  const rows = cfrListRows(model, state);
+  const head = ['receptor', 'gene_symbol', 'gpcr_id', 'group', 'residue', 'residue_number', 'generic_number', 'segment', 'cfr_rank',
+    'cfr_partners', 'change_model_numbering', 'gnomad_hgvsp', 'gnomad_id', 'rsids', 'allele_count', 'allele_number', 'allele_frequency',
+    'clinvar_ids', 'clinvar_classification', 'clinvar_stars', 'alphamissense', 'alphamissense_class', 'receptor_threshold'];
+  const lines = [head.join(',')];
+  for (const x of rows) {
+    const a = x.allele;
+    const v = [recShort(model.receptor ?? { symbol: model.symbol }), model.symbol, model.gid, CFR_GROUP_LABEL[x.group], `${three(x.hood.aa ?? x.ref)}${x.pos}`, x.pos,
+      x.hood.generic ?? '', x.hood.segment ?? '', x.hood.rank ?? '', cfrPartnerText(x), pChange(x), a?.hgvsp ?? '', a?.id ?? '', (a?.rsids ?? []).join(' '),
+      a ? a.ac : '', a ? a.an : '', a?.af === null || a?.af === undefined ? '' : Number(a.af.toPrecision(4)), x.clinvar.map((c) => c.accession ?? c.variationId).join(' '), x.clinvar.map((c) => c.classification ?? '').join('; '),
+      x.clinvar.map((c) => c.stars ?? 0).join(' '), x.am ?? '', x.amClass ? amClassLabel(x.amClass) : '', model.threshold ?? ''];
+    lines.push(v.map(csvField).join(','));
+  }
+  return `${lines.join('\r\n')}\r\n`;
+}
+
 function receptorCard(r, o, idx) {
   const rec = r.receptor;
   return html`<article class="sr-card sr-card--receptor" aria-labelledby="sr-card-${idx}">
     <header class="sr-card-head"><h3 id="sr-card-${idx}" class="sr-card-title">${intLink(L.reportUrl(o, r.gid), recFull(rec), { title: 'Report page' })}</h3>
     <div class="sr-change"><span class="sr-sub">${rec.name}</span></div></header>
+    ${r.cfrList !== undefined ? html`<div class="sr-row sr-row--wide sr-cfrlist-row" id="sr-cfrlist"><h4>Variants at, connected to or near a CFR</h4><div>${renderCfrList(o.cfrModel ?? cfrListModel(r, o), o.cfrState ?? cfrListDefaults(), o)}</div></div>` : ''}
     ${receptorLinks(rec, o) ? html`<div class="sr-row"><h4>Records elsewhere</h4><div>${receptorLinks(rec, o)}</div></div>` : ''}
     ${r.clinvarList ? clinvarListSection(r, o) : ''}
     <div class="sr-row"><h4>Search inside this receptor</h4><div><ul class="sr-chips">
-      ${[`${rec.symbol} 3.50`, `${rec.symbol} 6.48`, `${rec.symbol} 159`].map((q) => html`<li><a class="sr-chip" href="?q=${encodeURIComponent(q)}" data-q="${q}">${q}</a></li>`)}
+      ${[`${rec.symbol} 3.50`, `${rec.symbol} 6.48`, `${rec.symbol} 159`, ...(r.cfrList !== undefined ? [] : [`${rec.symbol} CFR variants`])].map((q) => html`<li><a class="sr-chip" href="?q=${encodeURIComponent(q)}" data-q="${q}">${q}</a></li>`)}
     </ul>${finePrint(html`<p>Add a protein change, a residue number, a generic number or a coding change to the receptor name.</p>`)}</div></div>
     ${r.clinvarList ? '' : clinvarListSection(r, o)}
     <div class="sr-actions">${intLink(L.reportUrl(o, r.gid), 'Open report', { cls: 'btn btn-primary btn-sm' })}
@@ -1880,9 +2180,10 @@ function groupedOnlyMessage(answer) {
  * @param {string} query what was typed
  * @param {{reports: string, studio: string, releases?: object, symbolOf?: (gid:string)=>string,
  *          familyOf?: (gid:string)=>string, pageUrl?: string, base?: string}} o
- * @returns {{html: string, status: string, results: object[], compare: object|null, ctx: object}}
+ * @returns {{html: string, status: string, results: object[], compare: object|null, cfr: object|null, ctx: object}}
  *   `results` are the cards' results (index = the data-copy-* number); `compare` is the model of the
- *   cross-receptor table when one was drawn; `ctx` is what evidenceText() needs.
+ *   cross-receptor table when one was drawn; `cfr` the model of a receptor's CFR variant table ("ADRB2 CFR
+ *   variants"); `ctx` is what evidenceText() needs.
  */
 export function renderAnswer(answer, query, o) {
   const base = o.base ?? '';
@@ -1918,6 +2219,7 @@ export function renderAnswer(answer, query, o) {
   }
 
   let compare = null;
+  let cfr = null;
   if (rs.length) {
     const receptors = new Set(rs.map((r) => r.gid));
     const receptorsOnly = rs.every((r) => r.type === 'receptor');
@@ -1933,7 +2235,8 @@ export function renderAnswer(answer, query, o) {
     } else {
       statusBits.push(`${rs.length} ${rs.length === 1 ? 'result' : 'results'}`);
       const motif = motifBlock(answer.motif);
-      const co = { ...ro, cardCount: rs.length };
+      if (rs.length === 1 && rs[0].cfrList) { cfr = cfrListModel(rs[0], o); statusBits.push(`${cfr.rows.length} variants in the CFR neighbourhood`); }
+      const co = { ...ro, cardCount: rs.length, cfrModel: cfr };
       out += html`<section class="sr-results" aria-label="Results">${motif}${rs.map((r, i) => (r.type === 'receptor' ? receptorCard(r, co, i) : card(r, co, i)))}</section>`.s;
     }
   } else if (groupedOnly) {
@@ -1946,5 +2249,5 @@ export function renderAnswer(answer, query, o) {
   }
 
   if ((!rs.length && !groupedOnly) || answer.expect === 'unrecognised') out += renderHelp(o).s;
-  return { html: out, status: statusBits.join(', '), results: rs, compare, ctx };
+  return { html: out, status: statusBits.join(', '), results: rs, compare, cfr, ctx };
 }

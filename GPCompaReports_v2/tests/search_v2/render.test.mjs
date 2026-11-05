@@ -18,6 +18,7 @@ import {
   notationsText, subjectOf, csvField, clinvarGroups, finePrint, HELP, renderHelp, renderReleases,
   reportTableRelease, allelesTable, fmtAm, summarySentences, contactMeaning, amClassLabel, segmentKind, RESEARCH_NOTE, RESEARCH_NOTE_SHORT, DB_NAME,
   activationWord, netSentence, amClassOfScore, AM_CUTS, afBand, cvClassKey, receptorMap, PATH_CLASSES,
+  cfrListModel, cfrListRows, cfrListCsv, cfrListDefaults, renderCfrListBody, cfrTileLine, CFR_SET_TEXT, CFR_TOP_N,
 } from '../../static/js/search-ui/render.js';
 import { suggestionsFor } from '../../static/js/search-ui/suggest.js';
 import * as L from '../../static/js/search-ui/links.js';
@@ -985,4 +986,74 @@ test('W6: the section nav lists every section of the card in order and every tar
   assert.ok(out.indexOf('<nav class="sr-nav"') < out.indexOf('<ul class="sr-tiles">'));
   // the compact identifier line under the title
   assert.match(out, /<p class="sr-idline"><span class="mono">NM_000795\.4:c\.932C&gt;G<\/span><span class="sr-dot" aria-hidden="true">·<\/span><a class="sr-ext mono" href="https:\/\/gnomad[^"]*11-113412762-G-C/);
+});
+
+// ------------------------------------------------------------------------------ CFR neighbourhood
+
+test('the CFR set is the card flag\'s top 30, said in one line with a glossary link', { skip }, async () => {
+  const meta = await shardsFor(loader).meta();
+  assert.equal(meta.cfrTop, CFR_TOP_N, 'the index and the UI use the same CFR set');
+  assert.match(CFR_SET_TEXT, /30 top-ranked generic positions/);
+  const a = await search('ADRB2 Phe290', loader);
+  const h = renderAnswer(a, 'ADRB2 Phe290', OPTS).html;
+  assert.match(h, /<div class="sr-cfrhood" data-cfrhood="connected">/);
+  assert.ok(h.includes(CFR_SET_TEXT));
+  assert.match(h, /href="[^"]*glossary\.html#cfr-connected"/);
+});
+
+test('card: a residue connected to a CFR says so in the tile, the block and the map', { skip }, async () => {
+  const a = await search('ADRB2 Phe290', loader);
+  const r = a.results[0];
+  assert.equal(r.cfrHood.group, 'connected');
+  assert.deepEqual(r.cfrHood.connected.map((c) => [c.pos, c.generic, c.rank]), [[208, '5.47x47', 24]]);
+  assert.equal(cfrTileLine(r), 'Connected to CFR Phe208 (5.47, rank 24)');
+  const h = renderAnswer(a, 'ADRB2 Phe290', OPTS).html;
+  assert.match(h, /data-cfr-tile>Connected to CFR Phe208 \(5\.47, rank 24\)</);
+  assert.match(h, /data-cfr-rel="connected">[\s\S]*?Phe208[\s\S]*?sr-net--inactive">-5\.34<[\s\S]*?weakens on activation/);
+  assert.match(h, /class="sr-map-cfr is-partner" data-cfr-partner="208"/);
+  // a CFR residue: no tile line, its own rank in the block
+  const b = await search('ADRB2 R131Q', loader);
+  assert.equal(cfrTileLine(b.results[0]), '');
+  assert.match(renderAnswer(b, 'ADRB2 R131Q', OPTS).html, /data-cfr-rel="at">[^]*?<strong>yes<\/strong>, class-wide rank 1/);
+  // near in sequence: two residues from two CFRs in TM6
+  const c = await search('ADRB2 Leu284', loader);
+  assert.deepEqual(c.results[0].cfrHood.near.map((x) => [x.pos, x.offset]), [[282, -2], [286, 2]]);
+  assert.equal(cfrTileLine(c.results[0]), '2 residues away from CFR Phe282 (6.44, rank 6)');
+});
+
+test('"ADRB2 CFR variants": counts, groups, filters and CSV agree with the rows', { skip }, async () => {
+  for (const q of ['ADRB2 CFR variants', 'CFR variants in MC4R']) {
+    const a = await search(q, loader);
+    assert.equal(a.expect, 'receptor', q);
+    const r = a.results[0];
+    const out = renderAnswer(a, q, OPTS);
+    const m = out.cfr;
+    assert.ok(m && m.rows.length > 20, q);
+    const total = Object.values(r.cfrList.counts).reduce((x, c) => x + c.variants, 0);
+    assert.equal(total, m.rows.length, 'the tiles add up to the table');
+    for (const g of ['at', 'connected', 'near', 'touch']) {
+      assert.equal(cfrListRows(m, { ...cfrListDefaults(), group: g }).length, r.cfrList.counts[g].variants, `${q} ${g}`);
+      assert.match(out.html, new RegExp(`data-cfr-count="${g}">${r.cfrList.counts[g].variants}<`));
+    }
+    // every row is in the CFR neighbourhood by the rules
+    for (const x of m.rows) {
+      if (x.group === 'at') assert.ok(x.hood.at);
+      if (x.group === 'connected') assert.ok(!x.hood.at && x.hood.connected.length);
+      if (x.group === 'near') assert.ok(!x.hood.connected.length && x.hood.near.every((c) => Math.abs(c.offset) <= 2 && c.segment === x.hood.segment));
+    }
+    // source filters
+    const plp = cfrListRows(m, { ...cfrListDefaults(), source: 'plp' });
+    assert.ok(plp.every((x) => x.clinvar.some((c) => /^(pathogenic|likely pathogenic)/i.test(c.classification))));
+    assert.ok(cfrListRows(m, { ...cfrListDefaults(), source: 'gnomad' }).every((x) => x.allele));
+    // the visible page is 25 rows, "Show all" is every row
+    const body = renderCfrListBody(m, { ...cfrListDefaults(), all: true }, OPTS).toString();
+    assert.equal((body.match(/<tr data-cfr-row=/g) ?? []).length, m.rows.length);
+    // CSV: one line per filtered row, a header, and the formula guard on text cells
+    const csv = cfrListCsv(m, { ...cfrListDefaults(), group: 'connected' }).trim().split('\r\n');
+    assert.equal(csv.length - 1, r.cfrList.counts.connected.variants);
+    assert.match(csv[0], /^receptor,gene_symbol,gpcr_id,group,residue,/);
+    assert.ok(csv.slice(1).every((l) => !/(^|,)[=+@]/.test(l)));
+    assert.ok(!out.html.includes('—'), 'no em dashes');
+    assert.match(out.html, /I read this as<\/span> <strong>the variants of \S+ at, connected to or near its CFR positions/);
+  }
 });
