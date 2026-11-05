@@ -18,6 +18,9 @@ DELTAS = json.loads(
     (BASE / 'tests' / 'fixtures' / 'freeze_approved_deltas.json')
     .read_text(encoding='utf-8'))
 RULES = [r for r in DELTAS['reversal'] if r.get('approved_on') == '2026-10-19']
+#: Later approved literal edits of the same text (e.g. gnomad-release-2026-11-05, the gnomAD label of the
+#: variant refresh). They are undone first, so each 2026-10-19 fix is checked against the text it wrote.
+LATER = [r for r in DELTAS['reversal'] if r['kind'] == 'literal' and r.get('approved_on', '') > '2026-10-19']
 
 _env = os.environ.get('FREEZE_BUILD_DIR')
 if _env:
@@ -70,6 +73,9 @@ def test_each_fix_appears_and_the_wrong_text_is_gone(gpcr_id):
     if not path.exists():
         pytest.skip('%s not in this build' % gpcr_id)
     body = _sections(path)
+    for r in LATER:
+        assert r['after'] in body, '%s: corrected text missing' % r['id']
+        body = body.replace(r['after'], r['before'])
     for r in RULES:
         if r['kind'] == 'literal':
             assert r['after'] in body, '%s: corrected text missing' % r['id']

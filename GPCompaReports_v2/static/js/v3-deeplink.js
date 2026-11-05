@@ -1,4 +1,4 @@
-/* v3-deeplink.js — put snake-plot state in the URL hash so a link can point at a view.
+/* v3-deeplink.js: put snake-plot state in the URL hash so a link can point at a view.
    Grammar: #view=cfr&min=0.5&max=3&dir=active&sec=sec-changes
    Focus (written by the Browse page search, read only):
      res=159        select residue 159 on the snake plot and show its contact arcs;
@@ -27,6 +27,10 @@
     if (typeof state.min === 'number' && state.min > b.lo) parts.push('min=' + state.min.toFixed(2));
     if (typeof state.max === 'number' && state.max < b.hi) parts.push('max=' + state.max.toFixed(2));
     if (state.dir && state.dir !== 'both') parts.push('dir=' + state.dir);
+    // the current selection (res= or pair=, written by report-select.js) stays in the link
+    (window.location.hash || '').replace(/^#/, '').split('&').forEach(function (p) {
+      if (/^(res|pair)=/.test(p)) parts.push(p);
+    });
     var hash = parts.length ? '#' + parts.join('&') : '';
     if (hash !== window.location.hash) {
       history.replaceState(null, '', window.location.pathname + window.location.search + hash);

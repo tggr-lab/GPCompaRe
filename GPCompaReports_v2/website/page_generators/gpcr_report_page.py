@@ -19,6 +19,7 @@ from jinja2 import Environment
 
 from . import gpcr_report_helpers as v1
 from . import report_extras
+from .. import data_versions
 from ..plotly_theming import theme_overrides
 from ..seo import report_description, report_title
 
@@ -28,9 +29,17 @@ _protein_names_cache = None
 
 
 def recommended_name(protein_names):
-    """UniProt's recommended name: the text before the first ' (' of the
-    protein_names field (alternative names and short names follow in brackets)."""
-    return re.sub(r'\s*[(\[].*$', '', protein_names or '').strip()
+    """UniProt's recommended name: the protein_names field without the alternative
+    and short names that follow it in trailing brackets. Only trailing groups are
+    removed, one at a time, so a bracket inside the name itself stays:
+    '12-(S)-hydroxy-5,8,10,14-eicosatetraenoic acid receptor' keeps its '(S)'."""
+    name = (protein_names or '').strip()
+    while True:
+        m = re.search(r'\s*(\([^()]*\)|\[[^\[\]]*\])\s*$', name)
+        if not m or m.start() == 0:
+            break
+        name = name[:m.start()].rstrip()
+    return name
 
 
 def load_protein_names(path=None):
@@ -471,8 +480,16 @@ def generate_all_reports(env: Environment, store, output_dir, analysis_results=N
 
         info = store.gpcr_info[gid]
         delta_df = store.delta_data.get(gid, pd.DataFrame())
-        var_df = store.variant_data.get(gid, pd.DataFrame())
-        annot_map = store.get_annotation_map(gid)
+        # The report's variant and annotation layer (Studio packs, analysis/pack_layer.py); the
+        # store's batch layer stays the source of the family-wide analyses.
+        var_df = store.report_variants(gid)
+        annot_map = store.get_report_annotation_map(gid)
+        cons_layer = store.report_conservation(gid)
+        am_layer = store.report_am_mean(gid)
+        if cons_layer is None:
+            cons_layer = _load_conservation_cache(gid, output_dir)
+        if am_layer is None:
+            am_layer = _load_am_landscape_cache(gid, output_dir)
 
         sig_threshold = v1._calc_significance_threshold(delta_df)
 
@@ -516,13 +533,11 @@ def generate_all_reports(env: Environment, store, output_dir, analysis_results=N
         snake_svg, snake_json = v1._prepare_snake_plot(gid, delta_df, var_df, sig_threshold)
         has_snake_plot = snake_svg is not None
         if has_snake_plot:
-            cons_cache = _load_conservation_cache(gid, output_dir)
-            am_cache = _load_am_landscape_cache(gid, output_dir)
             snake_json = _patch_snake_views(
                 snake_json, annot_map, cfr_generics, var_df,
-                conservation_cache=cons_cache,
+                conservation_cache=cons_layer,
                 residue_metrics=residue_metrics,
-                am_landscape_cache=am_cache,
+                am_landscape_cache=am_layer,
             )
 
         rx = report_extras.build_extras(gid, annot_map, residue_metrics, models_root,
@@ -532,10 +547,13 @@ def generate_all_reports(env: Environment, store, output_dir, analysis_results=N
         else:
             rx_residue_json = report_extras.json_for_script(report_extras.residue_table_extras(
                 delta_df, sig_threshold,
-                _load_am_landscape_cache(gid, output_dir),
-                _load_conservation_cache(gid, output_dir),
+                am_layer,
+                cons_layer,
                 residue_metrics['position'].tolist(),
                 annotation=rx['annotation'], cfr_generics=cfr_generics))
+
+        # "What changes most": the page's own above-threshold pairs, by segment
+        rx_summary = report_extras.contact_summary(delta_df, sig_threshold, rx['annotation'])
 
         max_increase = float(delta_df['delta_rrcs'].max()) if not delta_df.empty else 0.0
         max_decrease = float(delta_df['delta_rrcs'].min()) if not delta_df.empty else 0.0
@@ -584,6 +602,12 @@ def generate_all_reports(env: Environment, store, output_dir, analysis_results=N
             tm_summary=tm_summary,
             variants=variants,
             total_variants=len(var_df),
+            # data_versions.json entry of the variant table's gnomAD release ('gnomad', or
+            # 'gnomad_batch' when a build has no packs): .label, .long_label, .fetched
+            variant_release=data_versions.source(store.report_variant_source),
+            # None, or {'transcript', 'offset', 'rows'} when the table's HGVS protein numbers (gnomAD's
+            # transcript) differ from its Position column (the model): LPAR2, MCHR1, NPFFR2
+            variant_numbering=store.report_hgvs_numbering(gid),
             complete_rrcs=complete_rrcs,
             # Total modelled contact pairs for this receptor, so the
             # section can say how many of them the table shows.
@@ -592,6 +616,8 @@ def generate_all_reports(env: Environment, store, output_dir, analysis_results=N
             residue_summary_json=residue_summary_json,
             rx=rx,
             rx_residue_json=rx_residue_json,
+            rx_summary=rx_summary,
+            rx_summary_json=report_extras.json_for_script(rx_summary),
             rx_clinvar_label=report_extras.clinvar_label(rx['clinvar']),
             rx_clinvar_scope=report_extras.CLINVAR_SCOPE,
             layout_light_json=layout_light_json,

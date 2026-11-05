@@ -1,0 +1,236 @@
+/* report-v3.css: the report experience additions (2026-11-05).
+   The summary block ("What changes most"), the linked-selection marks on the snake plot,
+   tables and chips, the selection bar, and the placement of the fine print that
+   report-fineprint.js folds under each section heading. Colours come from the site
+   tokens, so light and dark are both covered: red = stronger in the active model,
+   blue = stronger in the inactive model. Nothing here touches the approved text. */
+
+/* ---------------------------------------------------------------- summary block */
+.gpc-summary {
+  margin: 0 0 var(--s-5);
+  padding: var(--s-4) var(--s-5) var(--s-3);
+  background: var(--bgColor-default);
+  border: 1px solid var(--borderColor-muted);
+  border-radius: var(--r-lg);
+}
+.gpc-summary-head { margin: 0 0 var(--s-3); }
+.gpc-summary-title {
+  font-family: var(--font-serif);
+  font-size: clamp(1.15rem, 1.8vw, 1.4rem);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0 0 var(--s-1);
+}
+.gpc-summary-lead { margin: 0 0 var(--s-2); max-width: 72ch; font-size: 0.98rem; line-height: 1.5; }
+.gpc-summary-lead strong { font-weight: 600; }
+.gpc-summary-key { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-4); margin: 0; font-size: 0.8rem; color: var(--fgColor-muted); }
+.gpc-key { display: inline-flex; align-items: center; gap: 6px; }
+.gpc-key-dot { width: 10px; height: 10px; border-radius: 2px; }
+.gpc-key-up { background: var(--semantic-active); }
+.gpc-key-down { background: var(--semantic-inactive); }
+
+.gpc-summary-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--s-4) var(--s-6); }
+.gpc-summary-sub {
+  font: 600 0.78rem/1.3 var(--font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fgColor-muted);
+  margin: 0 0 var(--s-2);
+}
+
+/* segment rows: name, a diverging bar (blue left, red right), the two sums and the count */
+.gpc-segs { list-style: none; margin: 0; padding: 0; }
+.gpc-seg + .gpc-seg { margin-top: 2px; }
+.gpc-seg-details > summary { list-style: none; cursor: pointer; border-radius: var(--r-sm); }
+.gpc-seg-details > summary::-webkit-details-marker { display: none; }
+.gpc-seg-row {
+  display: grid;
+  grid-template-columns: 4rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 2px var(--s-2);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+.gpc-seg-row:hover, .gpc-seg-details[open] > .gpc-seg-row { background: var(--bgColor-muted); }
+.gpc-seg-details > summary:focus-visible { outline: 2px solid var(--fgColor-accent); outline-offset: 1px; }
+.gpc-seg-name { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.gpc-seg-lead .gpc-seg-name { color: var(--fgColor-default); }
+.gpc-seg-name::after { content: "▸"; margin-left: 4px; font-size: 0.7em; color: var(--fgColor-muted); opacity: 0.7; }
+.gpc-seg-details[open] .gpc-seg-name::after { content: "▾"; }
+.gpc-seg-bar { display: grid; grid-template-columns: 1fr 1fr; height: 10px; }
+.gpc-seg-half { position: relative; height: 100%; }
+.gpc-seg-left { border-right: 1px solid var(--borderColor-default); }
+.gpc-seg-fill { position: absolute; top: 0; height: 100%; min-width: 0; border-radius: 2px; }
+.gpc-seg-left .gpc-seg-fill { right: 0; background: var(--semantic-inactive); opacity: 0.85; }
+.gpc-seg-right .gpc-seg-fill { left: 0; background: var(--semantic-active); opacity: 0.85; }
+.gpc-seg-nums { display: inline-flex; gap: var(--s-2); font-variant-numeric: tabular-nums; font-size: 0.78rem; white-space: nowrap; }
+.gpc-seg-nums .is-active, .gpc-seg-nums .is-inactive { font-weight: 600; min-width: 3.2em; text-align: right; }
+.gpc-seg-count { color: var(--fgColor-muted); min-width: 3.6em; text-align: right; }
+.gpc-seg-details > .gpc-pairs { padding: var(--s-1) 0 var(--s-2) 4rem; }
+
+/* contact chips */
+.gpc-pairs { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.gpc-pairs[hidden] { display: none; }
+.gpc-pairs-top { counter-reset: gpc; flex-direction: column; align-items: flex-start; gap: 4px; }
+.gpc-pairs-top > li { counter-increment: gpc; display: inline-flex; align-items: center; gap: 6px; max-width: 100%; }
+.gpc-pairs-top .gpc-pair { max-width: calc(100% - 1.5em); overflow: hidden; text-overflow: ellipsis; }
+.gpc-pairs-top > li::before { content: counter(gpc); font-size: 0.72rem; color: var(--fgColor-muted); min-width: 1.1em; text-align: right; }
+.gpc-pair {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--r-pill);
+  background: var(--bgColor-default);
+  color: var(--fgColor-default);
+  font-size: 0.83rem;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color var(--t-fast), background-color var(--t-fast);
+}
+.gpc-pair small { color: var(--fgColor-muted); font-size: 0.85em; }
+.gpc-pair-arrow { color: var(--fgColor-muted); }
+.gpc-pair-delta { font-weight: 600; font-variant-numeric: tabular-nums; }
+.gpc-pair:hover, .gpc-pair.gpc-hover { border-color: var(--fgColor-accent); background: var(--bgColor-muted); color: var(--fgColor-default); }
+.gpc-pair:focus-visible { outline: 2px solid var(--fgColor-accent); outline-offset: 2px; }
+.gpc-pair.gpc-sel-pair { border-color: var(--fgColor-accent); box-shadow: 0 0 0 2px var(--bgColor-accent-muted); background: var(--bgColor-accent-muted); }
+.gpc-summary-fine { margin-top: var(--s-3); }
+.gpc-summary-subrow { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-1) var(--s-3); margin: 0 0 var(--s-2); }
+.gpc-summary-subrow .gpc-summary-sub { margin: 0; }
+.gpc-summary-scope { text-transform: none; letter-spacing: 0; font-weight: 500; }
+.gpc-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--fgColor-muted); cursor: pointer; }
+.gpc-toggle input { accent-color: var(--brand-primary); margin: 0; }
+.gpc-tail {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fgColor-muted);
+  border: 1px solid var(--borderColor-muted);
+  border-radius: var(--r-sm);
+  padding: 0 4px;
+  align-self: center;
+}
+
+/* ---------------------------------------------------------------- selection marks */
+/* table rows and TM-analysis residues */
+.v2-table tbody tr.gpc-sel td, .v2-table tbody tr.gpc-sel-b td, .rx-rt-table tbody tr.gpc-sel td { background: var(--bgColor-accent-muted); }
+.v2-table tbody tr.gpc-sel td:first-child, .rx-rt-table tbody tr.gpc-sel td:first-child { box-shadow: inset 3px 0 0 var(--fgColor-accent); }
+.v2-table tbody tr.gpc-sel-pair td { background: color-mix(in srgb, var(--brand-primary) 22%, var(--bgColor-default)); font-weight: 600; }
+.v2-table tbody tr.gpc-hover td { background: var(--bgColor-muted); }
+.tm-res.gpc-sel, .tm-res.gpc-sel-b { background: var(--bgColor-accent-muted); border-radius: var(--r-sm); box-shadow: 0 0 0 2px var(--bgColor-accent-muted); }
+.tm-res.gpc-hover { background: var(--bgColor-muted); border-radius: var(--r-sm); }
+/* the drawer's partner rows */
+.rx-pairs tr.gpc-sel td { background: var(--bgColor-accent-muted); font-weight: 600; }
+.rx-pair-pick { text-align: left; }
+
+/* the snake plot draws its own marks from the bus events (snake-plus.css) */
+
+/* ---------------------------------------------------------------- selection bar */
+.gpc-selbar {
+  position: fixed;
+  left: 50%;
+  bottom: var(--s-3);
+  transform: translateX(-50%);
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  max-width: min(960px, calc(100vw - 2 * var(--s-4)));
+  padding: var(--s-2) var(--s-3);
+  background: var(--bgColor-default);
+  color: var(--fgColor-default);
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--r-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  font-size: 0.85rem;
+}
+[data-color-mode="dark"] .gpc-selbar { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); }
+.gpc-selbar[hidden] { display: none; }
+.gpc-selbar-what { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; min-width: 0; }
+.gpc-selbar-kind { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--fgColor-muted); }
+.gpc-selbar-what b { font-family: var(--font-serif); font-size: 1rem; font-weight: 600; }
+.gpc-selbar-arrow { color: var(--fgColor-muted); }
+.gpc-selbar-delta { font-weight: 600; font-variant-numeric: tabular-nums; }
+.gpc-selbar-dir { font-size: 0.78rem; color: var(--fgColor-muted); }
+.gpc-selbar-meta { font-size: 0.78rem; color: var(--fgColor-muted); }
+.gpc-selbar-actions { display: flex; align-items: center; gap: var(--s-1); flex-shrink: 0; }
+.gpc-selbar-btn {
+  font: 500 0.78rem/1 var(--font-ui);
+  color: var(--fgColor-default);
+  background: var(--bgColor-muted);
+  border: 1px solid var(--borderColor-muted);
+  border-radius: var(--r-pill);
+  padding: 6px 10px;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.gpc-selbar-btn:hover { border-color: var(--fgColor-accent); color: var(--fgColor-accent); }
+.gpc-selbar-btn:focus-visible { outline: 2px solid var(--fgColor-accent); outline-offset: 2px; }
+.gpc-selbar-close { font-size: 1.05rem; padding: 2px 9px; line-height: 1; }
+/* docked under the sticky chrome while the open 3D view would sit under it */
+.gpc-selbar--top { bottom: auto; top: calc(var(--topbar-height, 68px) + 56px); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14); }
+.gpc-selbar-note { font-size: 0.75rem; color: var(--fgColor-muted); }
+
+/* the residue drawer sits above the bar when both are open (bottom offset set by report-select.js) */
+.rx-drawer { bottom: calc(var(--s-4) + var(--gpc-selbar-h, 0px)); }
+
+@media (max-width: 720px) {
+  .gpc-summary { padding: var(--s-3) var(--s-3) var(--s-2); border-radius: var(--r-md); }
+  .gpc-summary-grid { grid-template-columns: minmax(0, 1fr); }
+  .gpc-seg-row { grid-template-columns: 3.4rem minmax(0, 1fr) auto; font-size: 0.78rem; }
+  .gpc-seg-nums { gap: 6px; }
+  .gpc-seg-nums .is-active, .gpc-seg-nums .is-inactive { min-width: 2.6em; }
+  .gpc-seg-count { min-width: 1.4em; }
+  .gpc-seg-unit { display: none; }
+  .gpc-seg-details > .gpc-pairs { padding-left: 0; }
+  .gpc-pair { font-size: 0.78rem; padding: 3px 8px; }
+
+  .gpc-selbar {
+    left: 0; right: 0; bottom: 0;
+    transform: none;
+    max-width: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--s-1);
+    border-radius: var(--r-md) var(--r-md) 0 0;
+    padding: var(--s-2) var(--s-3) calc(var(--s-2) + env(safe-area-inset-bottom, 0px));
+  }
+  .gpc-selbar-actions { overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .gpc-selbar-actions::-webkit-scrollbar { display: none; }
+  .gpc-selbar-close { margin-left: auto; }
+  .gpc-selbar--top { top: calc(var(--topbar-height, 68px) + 48px); bottom: auto; border-radius: 0 0 var(--r-md) var(--r-md); padding-bottom: var(--s-2); }
+  .rx-drawer { bottom: var(--gpc-selbar-h, 0px); }
+
+  /* the snake plot's contact-link filter row (switched on by a pair selection) was wider
+     than a phone: let it wrap and keep the sliders inside the page */
+  .snake-filter-panel { max-width: 100%; }
+  .snake-filter-group { flex-wrap: wrap; max-width: 100%; }
+  .snake-filter-group input[type="range"] { width: 96px; min-width: 0; }
+}
+
+/* ---------------------------------------------------------------- fine print under section headings */
+.gpc-fine { margin: calc(-1 * var(--s-2)) 0 var(--s-4); }
+.gpc-fine .callout {
+  border: 0;
+  background: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  border-radius: 0;
+}
+.gpc-fine .section-sub { margin: 0 0 var(--s-2); color: inherit; font-size: inherit; }
+.gpc-fine .callout p { font-size: inherit; }
+/* a folded section (Compact view) hides its fine print with the rest */
+.report-section.v3-folded .gpc-fine { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gpc-pair, .gpc-seg-name::after { transition: none; }
+}
+@media print {
+  .gpc-selbar { display: none !important; }
+  .gpc-fine[open] > summary { display: none; }
+  .gpc-fine { display: block; }
+}

@@ -239,6 +239,120 @@ def json_for_script(obj):
     return _json_for_script(obj)
 
 
+# Segments in receptor order, for the summary block.
+SEGMENT_ORDER = ['N-term', 'TM1', 'ICL1', 'TM2', 'ECL1', 'TM3', 'ICL2', 'TM4', 'ECL2',
+                 'TM5', 'ICL3', 'TM6', 'ECL3', 'TM7', 'H8', 'C-term']
+HELICES = {'TM1', 'TM2', 'TM3', 'TM4', 'TM5', 'TM6', 'TM7', 'H8'}
+
+
+def _aa3(name):
+    n = str(name or '').strip()
+    if len(n) == 3 and n.isalpha():
+        return n[0].upper() + n[1:].lower()
+    return _ONE_TO_THREE.get(n.upper(), n)
+
+
+def contact_summary(delta_df, sig_threshold, annotation, top_n=8, per_segment=3):
+    """What changes most in this receptor, from numbers the page already shows.
+
+    Takes the contact pairs at or above the receptor's own threshold (the rows the
+    tables highlight) and groups them by the segment of each residue, using the
+    numbering the residue table shows. Returns a dict for the template:
+
+      sig        the threshold
+      n_total    contact pairs modelled
+      n_above    pairs at or above the threshold
+      segments   [{seg, n, up, down, up_pct, down_pct, top: [pair, ...]}] in receptor
+                 order, only segments with at least one such pair; up = sum of the
+                 positive dRRCS (stronger in the active model), down = sum of |dRRCS|
+                 of the negative ones; the pct values scale the bars to the largest
+      lead       the three helices (TM1 to TM7, H8) with the largest total |dRRCS|, by name
+      pairs      the top_n largest changes with both residues in a helix (the structured core)
+      pairs_all  the top_n largest changes overall; each pair carries tail: '' | 'loop' | 'tail'
+      n_tail     how many of pairs_all involve a loop ('loop') or a terminus ('tail')
+
+    A pair between two segments counts once for each; a pair within one segment
+    counts once. Each pair is {a, aa, b, ab, d, act, inact, ga, gb, sa, sb}:
+    positions, three-letter residue names, dRRCS, active and inactive RRCS,
+    generic numbers and segments.
+    """
+    out = {'sig': round(float(sig_threshold), 2), 'n_total': 0, 'n_above': 0,
+           'segments': [], 'lead': [], 'pairs': [], 'pairs_all': [], 'n_tail': 0}
+    if delta_df is None or delta_df.empty:
+        return out
+    ann = annotation or {}
+
+    def seg_of(pos):
+        a = ann.get(str(int(pos)))
+        return (a[0] if a else '') or ''
+
+    def gn_of(pos):
+        a = ann.get(str(int(pos)))
+        return (a[1] if a else '') or ''
+
+    hit = delta_df[delta_df['delta_rrcs'].abs() >= float(sig_threshold)]
+    hit = hit.reindex(hit['delta_rrcs'].abs().sort_values(ascending=False).index)
+    out['n_total'] = int(len(delta_df))
+    out['n_above'] = int(len(hit))
+
+    def pair_of(r):
+        a, b = int(r['res1']), int(r['res2'])
+        sa, sb = seg_of(a), seg_of(b)
+        return {'a': a, 'aa': _aa3(r['res1_name']), 'b': b, 'ab': _aa3(r['res2_name']),
+                'd': round(float(r['delta_rrcs']), 2),
+                'act': round(float(r['active_rrcs']), 2), 'inact': round(float(r['inactive_rrcs']), 2),
+                'ga': gn_of(a), 'gb': gn_of(b), 'sa': sa, 'sb': sb, 'tail': _tail_kind(sa, sb)}
+
+    segs = {}
+    for _, r in hit.iterrows():
+        p = pair_of(r)
+        for seg in {p['sa'], p['sb']}:
+            if not seg:
+                continue
+            s = segs.setdefault(seg, {'seg': seg, 'n': 0, 'up': 0.0, 'down': 0.0, 'top': []})
+            s['n'] += 1
+            if p['d'] >= 0:
+                s['up'] += p['d']
+            else:
+                s['down'] += -p['d']
+            if len(s['top']) < per_segment:
+                s['top'].append(p)
+    order = {name: i for i, name in enumerate(SEGMENT_ORDER)}
+    ordered = sorted(segs.values(), key=lambda s: (order.get(s['seg'], len(order)), s['seg']))
+    vmax = max([max(s['up'], s['down']) for s in ordered] or [0.0])
+    for s in ordered:
+        s['up_pct'] = min(100.0, round(100.0 * s['up'] / vmax, 1)) if vmax else 0.0
+        s['down_pct'] = min(100.0, round(100.0 * s['down'] / vmax, 1)) if vmax else 0.0
+        s['up'] = round(s['up'], 1)
+        s['down'] = round(s['down'], 1)
+    out['segments'] = ordered
+    helices = [s for s in ordered if s['seg'] in HELICES]
+    out['lead'] = [s['seg'] for s in sorted(helices, key=lambda s: -(s['up'] + s['down']))[:3]]
+    out['pairs_all'] = [pair_of(r) for _, r in hit.head(top_n).iterrows()]
+    out['n_tail'] = sum(1 for p in out['pairs_all'] if p['tail'])
+    core = []
+    for _, r in hit.iterrows():
+        p = pair_of(r)
+        if not p['tail']:
+            core.append(p)
+            if len(core) >= top_n:
+                break
+    out['pairs'] = core
+    return out
+
+
+def _tail_kind(sa, sb):
+    """'' when both residues sit in a helix, 'tail' when either is in a terminus, else 'loop'."""
+    kinds = []
+    for seg in (sa, sb):
+        if not seg or seg in HELICES:
+            continue
+        kinds.append('tail' if seg in ('N-term', 'C-term') else 'loop')
+    if not kinds:
+        return ''
+    return 'tail' if 'tail' in kinds else 'loop'
+
+
 def build_extras(gid, annot_map, residue_metrics, models_root, gene_name=''):
     """Template context for one report: the `rx` dict.
 

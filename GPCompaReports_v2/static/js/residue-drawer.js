@@ -172,7 +172,17 @@
       var tr = el('tr');
       if (i >= PAIRS_SHOWN) tr.hidden = true;
       var ann = annotation[String(p.other)] || [];
-      var td = el('td', null, p.name + p.other);
+      tr.setAttribute('data-gpc-b', String(p.other));
+      // the partner picks the contact pair: it is then marked on the plot, in the tables and charts
+      var td = el('td');
+      var pick = el('button', 'rx-res-link rx-pair-pick', p.name + p.other);
+      pick.type = 'button';
+      pick.setAttribute('data-gpc-pick', '');
+      pick.setAttribute('data-gpc-a', String(pos));
+      pick.setAttribute('data-gpc-b', String(p.other));
+      pick.setAttribute('data-gpc-delta', String(p.delta));
+      pick.setAttribute('aria-label', 'Select the contact with ' + p.name + p.other);
+      td.appendChild(pick);
       if (ann[1]) { td.appendChild(document.createTextNode(' ')); td.appendChild(el('small', 'muted', '(' + ann[1] + ')')); }
       tr.appendChild(td);
       tr.appendChild(el('td', 'num', p.active.toFixed(2)));
@@ -322,7 +332,14 @@
     }
   }
 
+  // The page's selection hub (report-select.js) marks the residue everywhere and tells the
+  // 3D view; before it is up (a #res= landing runs first) the older event does the same.
   function emit(pos, source) {
+    if (window.GPCSelect) {
+      if (pos === null || pos === undefined) window.GPCSelect.clear(source || 'drawer');
+      else window.GPCSelect.select(pos, source || 'drawer');
+      return;
+    }
     document.dispatchEvent(new CustomEvent('rx:residue', { detail: { pos: pos, source: source || '' } }));
   }
 
@@ -361,6 +378,17 @@
   RX.select = select;
   RX.close = close;
   RX.current = function () { return current; };
+  // The selection hub (report-select.js) keeps an open drawer on the selected residue
+  // without opening it, and marks the partner row of a selected contact pair.
+  RX.refresh = function (pos) {
+    if (drawer.hidden || typeof pos !== 'number' || isNaN(pos)) return;
+    if (pos !== current) { current = pos; render(pos); }
+  };
+  RX.markPair = function (b) {
+    Array.prototype.forEach.call(bodyEl.querySelectorAll('.rx-pairs tr'), function (tr) {
+      tr.classList.toggle('gpc-sel', tr.getAttribute('data-gpc-b') === String(b));
+    });
+  };
 
   // Snake plot -> drawer. Only a real click opens the drawer; a residue
   // selected by a link (#res=) or by code leaves it closed.

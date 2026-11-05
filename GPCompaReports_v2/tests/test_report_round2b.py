@@ -23,7 +23,9 @@ from .test_report_round2 import (  # noqa: F401  (fixtures)
     BASE, BUILD_DIR, REPORTS_DIR, PLOTLY_JS, needs_build, needs_plotly, server, browser,
     open_report, _errors, _pages)
 
-PROBLEM_LAYER = {'gpr3_human', 'gpr4_human', 'xcr1_human'}  # report annotation is another receptor's
+# The report annotation of these three was another receptor's until the 2026-11-05 refresh
+# (analysis/pack_layer.py); their snake CFR marks now follow the right numbering like every other.
+FIXED_LAYER = {'gpr3_human', 'gpr4_human', 'xcr1_human'}
 JSON_RE = r'<script type="application/json" id="%s">(.*?)</script>'
 
 
@@ -112,7 +114,7 @@ def _stage_cfr_top():
 @needs_build
 def test_every_report_flags_cfr_residues_by_its_own_numbering_and_agrees_with_search():
     """All reports of the stage: the table's flag equals the search index's CFR marks, and
-    the snake plot's marks are a subset of it except where its annotation layer is wrong.
+    the snake plot's marks are a subset of it (GPR3, GPR4 and XCR1 included since the refresh).
     The snake plot marks only residues that have a row in the database annotation file, so
     on the other receptors the table flags more, never fewer (reported, not hidden)."""
     top = _stage_cfr_top()
@@ -133,11 +135,9 @@ def test_every_report_flags_cfr_residues_by_its_own_numbering_and_agrees_with_se
         search = {int(p) for p in json.loads(sidx.read_text(encoding='utf-8'))['cfr']}
         assert flags == search & set(positions), gid
         snake_cfr = {int(p) for p in snake['views']['cfr']['colors']}
-        if gid in PROBLEM_LAYER:
+        if gid in FIXED_LAYER:
             wrong_layer_seen.add(gid)
-            assert snake_cfr - flags, '%s: expected the snake plot to disagree' % gid
-        else:
-            assert snake_cfr <= flags, (gid, sorted(snake_cfr - flags))
+        assert snake_cfr <= flags, (gid, sorted(snake_cfr - flags))
         # pages built with the fix carry the flag in the table data, and it is the same set
         extra = _json(html, 'rx-residue-extra')
         rows = (extra or {}).get('rows', {})
@@ -146,7 +146,7 @@ def test_every_report_flags_cfr_residues_by_its_own_numbering_and_agrees_with_se
         checked += 1
     assert checked >= 5
     if checked > 100:
-        assert wrong_layer_seen == PROBLEM_LAYER
+        assert wrong_layer_seen == FIXED_LAYER
 
 
 @needs_build

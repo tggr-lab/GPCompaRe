@@ -543,21 +543,11 @@ p  { margin: 0 0 var(--s-4); }
   -webkit-overflow-scrolling: touch;
 }
 
-.browse-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-3);
-  margin-bottom: var(--s-3);
-  padding: var(--s-3) var(--s-4);
-  background: var(--bgColor-muted);
-  border: 1px solid var(--borderColor-muted);
-  border-radius: var(--r-md);
-  font-size: 0.9rem;
-  color: var(--fgColor-default);
-}
-.browse-legend > strong { flex-basis: 100%; margin-bottom: 4px; }
-.browse-legend > span { flex: 1 1 240px; color: var(--fgColor-muted); }
-.browse-legend > span b { color: var(--fgColor-default); }
+.browse-legend { margin: var(--s-3) 0 0; max-width: none; }
+.browse-legend > summary { color: var(--fgColor-muted); }
+.browse-legend-body { display: grid; gap: var(--s-1); }
+.browse-legend-body > span { color: var(--fgColor-muted); }
+.browse-legend-body > span b { color: var(--fgColor-default); font-weight: 600; }
 
 .th-help {
   margin-left: 4px;

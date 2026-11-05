@@ -4,6 +4,8 @@
 {% include "_partials/plotly-lazy.html" %}
 <link rel="stylesheet" href="{{ static_prefix }}static/css/v3.css">
 <link rel="stylesheet" href="{{ static_prefix }}static/css/report-extras.css">
+<link rel="stylesheet" href="{{ static_prefix }}static/css/report-v3.css">
+<link rel="stylesheet" href="{{ static_prefix }}static/css/snake-plus.css">
 {% endblock %}
 
 {% block breadcrumbs %}
@@ -17,6 +19,12 @@
 {% endblock %}
 
 {% block content %}
+{% from "_partials/fine_print.html" import fine_print %}
+{#- A contact pair as a chip. The link form works without JavaScript (the hash selects the
+    pair on load); report-select.js takes the click and selects it in place. -#}
+{% macro pair_chip(p) -%}
+<a class="gpc-pair" href="#pair={{ p.a }}-{{ p.b }}" data-gpc-a="{{ p.a }}" data-gpc-b="{{ p.b }}" data-gpc-delta="{{ p.d }}" aria-label="{{ p.aa }}{{ p.a }} and {{ p.ab }}{{ p.b }}, ΔRRCS {{ '%+.2f'|format(p.d) }}, {{ 'stronger in the active model' if p.d >= 0 else 'stronger in the inactive model' }}"><span class="gpc-pair-res">{{ p.aa }}{{ p.a }}{% if p.ga %} <small>{{ p.ga }}</small>{% endif %}</span><span class="gpc-pair-arrow" aria-hidden="true">↔</span><span class="gpc-pair-res">{{ p.ab }}{{ p.b }}{% if p.gb %} <small>{{ p.gb }}</small>{% endif %}</span><span class="gpc-pair-delta {{ 'is-active' if p.d >= 0 else 'is-inactive' }}">{{ '%+.1f'|format(p.d) }}</span>{% if p.tail %}<small class="gpc-tail" title="{{ 'A residue in a terminus' if p.tail == 'tail' else 'A residue in a loop' }}">{{ p.tail }}</small>{% endif %}</a>
+{%- endmacro %}
 <div class="report-page">
   <div class="section-inner">
 
@@ -63,6 +71,58 @@
         <div class="report-stat-label">Max Decrease</div>
       </div>
     </div>
+
+    {# -------------- What changes most: the page's own above-threshold pairs by segment (report_extras.contact_summary) -------------- #}
+    {% if rx_summary and rx_summary.segments %}
+    <section class="report-extra gpc-summary" id="sec-summary" aria-labelledby="gpc-summary-title">
+      <div class="gpc-summary-head">
+        <h2 id="gpc-summary-title" class="gpc-summary-title">What changes most</h2>
+        <p class="gpc-summary-lead">Between the inactive and active models, contacts change most in <strong>{{ rx_summary.lead|join(', ') }}</strong>. {{ rx_summary.n_above }} of {{ "{:,}".format(rx_summary.n_total) }} contact pairs change by at least this receptor's threshold (|ΔRRCS| ≥ {{ '%.2f'|format(rx_summary.sig) }}).</p>
+        <p class="gpc-summary-key"><span class="gpc-key"><span class="gpc-key-dot gpc-key-up" aria-hidden="true"></span>Stronger in the active model</span><span class="gpc-key"><span class="gpc-key-dot gpc-key-down" aria-hidden="true"></span>Stronger in the inactive model</span></p>
+      </div>
+      <div class="gpc-summary-grid">
+        <div class="gpc-summary-col">
+          <h3 class="gpc-summary-sub">By segment</h3>
+          <ul class="gpc-segs" role="list">
+          {% for s in rx_summary.segments %}
+            <li class="gpc-seg{% if s.seg in rx_summary.lead %} gpc-seg-lead{% endif %}" data-gpc-seg="{{ s.seg }}">
+              <details class="gpc-seg-details">
+                <summary class="gpc-seg-row" aria-label="{{ s.seg }}: {{ s.n }} contact{{ '' if s.n == 1 else 's' }} above the threshold, {{ '%.1f'|format(s.up) }} stronger in the active model, {{ '%.1f'|format(s.down) }} stronger in the inactive model. Show the largest.">
+                  <span class="gpc-seg-name">{{ s.seg }}</span>
+                  <span class="gpc-seg-bar" aria-hidden="true"><span class="gpc-seg-half gpc-seg-left"><span class="gpc-seg-fill gpc-seg-down" style="width:{{ s.down_pct }}%"></span></span><span class="gpc-seg-half gpc-seg-right"><span class="gpc-seg-fill gpc-seg-up" style="width:{{ s.up_pct }}%"></span></span></span>
+                  <span class="gpc-seg-nums" aria-hidden="true"><span class="is-inactive">{{ '%.1f'|format(-s.down) if s.down else '0' }}</span><span class="is-active">{{ '+%.1f'|format(s.up) if s.up else '0' }}</span><span class="gpc-seg-count">{{ s.n }}<span class="gpc-seg-unit"> pair{{ '' if s.n == 1 else 's' }}</span></span></span>
+                </summary>
+                <ul class="gpc-pairs" role="list">
+                {% for p in s.top %}<li>{{ pair_chip(p) }}</li>{% endfor %}
+                </ul>
+              </details>
+            </li>
+          {% endfor %}
+          </ul>
+        </div>
+        <div class="gpc-summary-col">
+          <div class="gpc-summary-subrow">
+            <h3 class="gpc-summary-sub">Largest changes<span class="gpc-summary-scope" id="gpc-scope-note"> in the helices</span></h3>
+            {% if rx_summary.pairs_all|length and rx_summary.pairs|length %}
+            <label class="gpc-toggle"><input type="checkbox" id="gpc-include-tails" aria-controls="gpc-pairs-all gpc-pairs-core"> Include loops and termini</label>
+            {% endif %}
+          </div>
+          {% if rx_summary.pairs %}
+          <ol class="gpc-pairs gpc-pairs-top" id="gpc-pairs-core" data-gpc-set="core">
+          {% for p in rx_summary.pairs %}<li>{{ pair_chip(p) }}</li>{% endfor %}
+          </ol>
+          {% endif %}
+          <ol class="gpc-pairs gpc-pairs-top" id="gpc-pairs-all" data-gpc-set="all"{% if rx_summary.pairs %} hidden{% endif %}>
+          {% for p in rx_summary.pairs_all %}<li>{{ pair_chip(p) }}</li>{% endfor %}
+          </ol>
+        </div>
+      </div>
+      {% call fine_print(summary='About this summary', cls='gpc-summary-fine') %}
+      <p>Built from the RRCS results on this page: the contact pairs whose |ΔRRCS| is at or above this receptor's threshold, grouped by the segment of each residue (a pair between two segments counts for both). The bars show the sum of ΔRRCS in each direction, scaled to the largest segment; the number is how many such pairs touch the segment. Open a segment to see its largest changes. Choosing a pair marks it on the snake plot, in the tables, in the charts and in the 3D view.</p>
+      <p>The one-line answer and the "Largest changes" list cover the helices TM1 to TM7 and H8, where the models are best constrained.{% if rx_summary.n_tail %} {{ rx_summary.n_tail }} of the {{ rx_summary.pairs_all|length }} largest changes overall involve a loop or a terminus; "Include loops and termini" lists them, marked loop or tail. Treat those with more caution.{% else %} None of the {{ rx_summary.pairs_all|length }} largest changes overall involves a loop or a terminus.{% endif %}</p>
+      {% endcall %}
+    </section>
+    {% endif %}
 
     {# -------------- Snake plot -------------- #}
     {% if has_snake_plot %}
@@ -143,13 +203,14 @@
         <div class="rx-3d-pane" id="rx-3d-pane" role="group" aria-label="Active and inactive models of {{ uniprot_name|e }}, superposed"></div>
         <p class="rx-caption">Colour: net ΔRRCS per residue. <span class="is-active">Red:</span> stronger in active. <span class="is-inactive">Blue:</span> stronger in inactive.</p>
       </div>
-      <p class="rx-attr">
-        Models: <a href="https://gpcrdb.org" target="_blank" rel="noopener">GPCRdb</a> AlphaFold-Multistate models (2024-05-15 build),
+      <aside class="fine-print rx-attr">
+        {%- set _models_label = data_versions.sources.gpcrdb_models.label %}
+        Models: <a href="https://gpcrdb.org" target="_blank" rel="noopener">GPCRdb</a> {{ _models_label[7:] if _models_label.startswith('GPCRdb ') else _models_label }},
         <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.
         Heo L, Feig M. <a href="https://doi.org/10.1002/prot.26382" target="_blank" rel="noopener">Multi-state modeling of G-protein coupled receptors at experimental accuracy</a>. Proteins 90:1873-1885 (2022).
         Viewer: <a href="https://molstar.org" target="_blank" rel="noopener">Mol*</a> (MIT licence).
         <a href="{{ static_prefix }}static/notices/models-and-viewer.txt">Notices</a>
-      </p>
+      </aside>
     </section>
     {% endif %}
 
@@ -324,8 +385,8 @@
                 <th data-sort="pos" data-tooltip="Residue position in the protein">Position</th>
                 <th data-sort="hgvsp" data-tooltip="HGVS protein-level annotation">Protein change</th>
                 <th data-sort="hgvsc" data-tooltip="HGVS coding-DNA annotation">DNA change</th>
-                <th data-sort="af" data-tooltip="Population frequency from gnomAD v4.1 (dataset gnomad_r4, accessed 2 February 2026): lower = rarer variant">Allele freq</th>
-                <th data-tooltip="Heterozygote allele count from gnomAD v4.1 (dataset gnomad_r4, accessed 2 February 2026)">Het count</th>
+                <th data-sort="af" data-tooltip="Population frequency from {{ variant_release.long_label }}: lower = rarer variant">Allele freq</th>
+                <th data-tooltip="Heterozygote allele count from {{ variant_release.long_label }}">Het count</th>
                 <th data-sort="delta" data-tooltip="Max |ΔRRCS| at this position">ΔRRCS</th>
                 <th data-sort="am" data-tooltip="AlphaMissense score: 0 = benign-like, 1 = pathogenic-like">AM score</th>
                 <th data-sort="path" data-tooltip="AlphaMissense pathogenicity class">Pathogenicity</th>
@@ -354,6 +415,11 @@
         <div class="v2-pagination" data-table-pagination="variants-table"></div>
       </div>
     </section>
+    {# fine print for the variant table: releases from the registry, never spelled here #}
+    <aside class="fine-print rx-variants-fine" id="variants-fine-print">
+      <p>{{ variant_release.long_label }}: missense alleles on one transcript per gene, placed on the model's residues. One AlphaMissense score per substitution ({{ data_versions.sources.alphamissense.label }}); conservation from {{ data_versions.sources.conservation.label }}.{% if variant_numbering is defined and variant_numbering %} Protein and DNA changes follow gnomAD's transcript {{ variant_numbering.transcript }}, whose residue numbers differ from the Position column by {{ '%+d'|format(variant_numbering.offset) }}.{% endif %}</p>
+      {% if data_versions.sources.gnomad_batch %}<p>The paper's database variant counts come from the earlier query ({{ data_versions.sources.gnomad_batch.label }}); this table uses {{ variant_release.label }}, the release the search also shows.</p>{% endif %}
+    </aside>
     {% endif %}
 
     {# -------------- ClinVar P/LP missense records: opt-in (collapsed), outside every report section -------------- #}
@@ -400,7 +466,7 @@
         {% else %}
         <p class="rx-none">Uncertain, conflicting and benign records are not listed here: use the ClinVar search above.</p>
         {% endif %}
-        <p class="rx-attr">Source: <a href="https://www.ncbi.nlm.nih.gov/clinvar/" target="_blank" rel="noopener">NCBI ClinVar</a>, release {{ rx.clinvar.release|e }}. {{ rx.clinvar.scope[:1]|upper|e }}{{ rx.clinvar.scope[1:]|e }}.</p>
+        <aside class="fine-print rx-attr">Source: <a href="https://www.ncbi.nlm.nih.gov/clinvar/" target="_blank" rel="noopener">NCBI ClinVar</a>, release {{ rx.clinvar.release|e }}. {{ rx.clinvar.scope[:1]|upper|e }}{{ rx.clinvar.scope[1:]|e }}.</aside>
       </details>
     </section>
     {% endif %}
@@ -504,7 +570,7 @@
         </p>
         <p>
           <strong>Variant data.</strong> Population frequencies from
-          <a href="https://gnomad.broadinstitute.org/" target="_blank" rel="noopener">gnomAD v4.1 (dataset gnomad_r4, accessed 2 February 2026)</a> (Chen et al., Nature 2024, doi 10.1038/s41586-023-06045-0);
+          <a href="https://gnomad.broadinstitute.org/" target="_blank" rel="noopener">{{ variant_release.long_label }}</a> (Chen et al., Nature 2024, doi 10.1038/s41586-023-06045-0);
           pathogenicity predictions from
           <a href="https://zenodo.org/records/10813168" target="_blank" rel="noopener">AlphaMissense</a> (Cheng et al., Science 2023; predictions copyright 2023 DeepMind Technologies Limited, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>);
           conservation from VarSite scores served by
@@ -561,7 +627,7 @@
             Highly conserved positions are often functionally important, but conservation alone is not proof of function.
           </p>
           <p>
-            <strong>Allele frequency.</strong> Population frequency of the variant in gnomAD v4.1 (dataset gnomad_r4, accessed 2 February 2026). Rare variants
+            <strong>Allele frequency.</strong> Population frequency of the variant in {{ variant_release.long_label }}. Rare variants
             are common across the genome and many are undersampled; rarity alone is not evidence of pathogenicity.
           </p>
         </div>
@@ -577,17 +643,17 @@
       <div class="rx-drawer-body" id="rx-drawer-body"></div>
     </aside>
 
-    {# -------------- Credits condensed -------------- #}
-    <p class="report-refs">
-      Sources:
+    {# -------------- Credits condensed: fine print at the page bottom (the footer carries the data versions line) -------------- #}
+    <aside class="fine-print fine-print--page report-refs">
+      <span class="fine-print-title">Sources:</span>
       <a href="https://github.com/huhlim/alphafold-multistate" target="_blank" rel="noopener">AlphaFold multistate</a> ·
       <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6954041/" target="_blank" rel="noopener">RRCS</a> ·
-      <a href="https://gnomad.broadinstitute.org/" target="_blank" rel="noopener">gnomAD v4.1</a> ·
+      <a href="https://gnomad.broadinstitute.org/" target="_blank" rel="noopener">{{ variant_release.label }}</a> ·
       <a href="https://zenodo.org/records/10813168" target="_blank" rel="noopener">AlphaMissense</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>) ·
       <a href="https://gpcrdb.org/" target="_blank" rel="noopener">GPCRdb</a> ·
       <a href="https://www.uniprot.org/" target="_blank" rel="noopener">UniProt</a> ·
       <a href="https://www.ebi.ac.uk/ProtVar/" target="_blank" rel="noopener">ProtVar</a> (VarSite conservation)
-    </p>
+    </aside>
 
   </div>
 
@@ -716,17 +782,8 @@
     .v2-table .mono { font-family: var(--font-mono); font-size: 0.85rem; }
     .v2-table .muted { color: var(--fgColor-muted); }
 
-    .report-refs {
-      margin: var(--s-6) 0 0;
-      padding: var(--s-4) var(--s-5);
-      background: var(--bgColor-muted);
-      border: 1px solid var(--borderColor-muted);
-      border-radius: var(--r-md);
-      color: var(--fgColor-muted);
-      font-size: 0.85rem;
-      line-height: 1.8;
-    }
-    .report-refs a { color: var(--brand-primary); white-space: nowrap; }
+    /* The sources line is fine print (fine-print.css); links stay on one line each. */
+    .report-refs a { white-space: nowrap; }
 
     /* Plot containers bare on this page (shadow, no border). */
     .report-section .v2-chart {
@@ -1275,4 +1332,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="{{ static_prefix }}static/js/residue-drawer.js" defer></script>
 <script src="{{ static_prefix }}static/js/viewer3d.js" defer></script>
 <script src="{{ static_prefix }}static/js/residue-table.js" defer></script>
+<script src="{{ static_prefix }}static/js/report-select.js" defer></script>
+<script src="{{ static_prefix }}static/js/snake-plus.js" defer></script>
+<script src="{{ static_prefix }}static/js/report-fineprint.js" defer></script>
 {% endblock %}

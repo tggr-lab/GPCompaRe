@@ -112,6 +112,7 @@
     var frag = document.createDocumentFragment();
     list.forEach(function (r) {
       var tr = el('tr');
+      tr.setAttribute('data-gpc-res', String(r.pos));   // the page's linked selection marks rows by this
       var td = el('td');
       var b = el('button', 'rx-res-link', (r.aa ? THREE[r.aa] || r.aa : '') + r.pos);
       b.type = 'button';
@@ -131,6 +132,7 @@
     });
     tbody.textContent = '';
     tbody.appendChild(frag);
+    if (window.GPCSelect && window.GPCSelect.repaint) window.GPCSelect.repaint();
     countEl.textContent = list.length + ' of ' + rows.length + ' residues';
     csvBtn.textContent = 'Download CSV (' + list.length + ' rows)';
     Array.prototype.forEach.call(table.tHead.rows[0].cells, function (th) {

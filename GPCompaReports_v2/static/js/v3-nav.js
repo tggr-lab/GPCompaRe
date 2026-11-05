@@ -32,7 +32,7 @@
     });
 
     var host = document.querySelector('.report-page .section-inner');
-    var anchor = document.querySelector('.report-stats');
+    var anchor = navAnchor();
     if (!host || !anchor) return;
     anchor.parentNode.insertBefore(nav, anchor.nextSibling);
 
@@ -83,10 +83,16 @@
   V3Nav.readFlag = readFlag;
   V3Nav.writeFlag = writeFlag;
 
+  // The menu and the toolbar sit under the summary block when the page has one, else
+  // under the stat cards.
+  function navAnchor() {
+    return document.getElementById('sec-summary') || document.querySelector('.report-stats');
+  }
+
   function ensureToolbar() {
     var existing = document.querySelector('.v3-toolbar');
     if (existing) return existing;
-    var anchor = document.querySelector('.report-stats');
+    var anchor = navAnchor();
     if (!anchor) return null;
     var bar = document.createElement('div');
     bar.className = 'v3-toolbar';

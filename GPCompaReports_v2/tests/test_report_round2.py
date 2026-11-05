@@ -247,11 +247,15 @@ def test_the_new_scripts_request_nothing_from_studio_or_models():
 # unit checks (no build needed)
 # --------------------------------------------------------------------------
 
-def test_recommended_name_takes_the_text_before_the_first_bracket():
+def test_recommended_name_strips_only_trailing_brackets():
     f = gpcr_report_page.recommended_name
     assert f('Beta-2 adrenergic receptor (Beta-2 adrenoreceptor) (Beta-2 adrenoceptor)') == 'Beta-2 adrenergic receptor'
     assert f('Rhodopsin (Opsin-2)') == 'Rhodopsin'
     assert f('Proteinase-activated receptor 2 (PAR-2) [Cleaved into: x]') == 'Proteinase-activated receptor 2'
+    # a bracket inside the name is part of it (GPR31)
+    assert f('12-(S)-hydroxy-5,8,10,14-eicosatetraenoic acid receptor (12-HETE receptor)') == '12-(S)-hydroxy-5,8,10,14-eicosatetraenoic acid receptor'
+    assert f('12-(S)-hydroxy-5,8,10,14-eicosatetraenoic acid receptor') == '12-(S)-hydroxy-5,8,10,14-eicosatetraenoic acid receptor'
+    assert f('(Only a bracket)') == '(Only a bracket)'
     assert f('') == '' and f(None) == ''
 
 
