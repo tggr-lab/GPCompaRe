@@ -19,7 +19,9 @@ import {
   reportTableRelease, allelesTable, fmtAm, summarySentences, contactMeaning, amClassLabel, segmentKind, RESEARCH_NOTE, RESEARCH_NOTE_SHORT, DB_NAME,
   activationWord, netSentence, amClassOfScore, AM_CUTS, afBand, cvClassKey, receptorMap, PATH_CLASSES,
   cfrListModel, cfrListRows, cfrListCsv, cfrListDefaults, renderCfrListBody, cfrTileLine, cfrSetText, cfrOneOf,
+  fmtRrcs, contactPresence, amGauge, pathLegend, AM_CUTS_TEXT, AM_INTERVAL,
 } from '../../static/js/search-ui/render.js';
+import { decodeDetail } from '../../static/js/search/shards.js';
 import { suggestionsFor } from '../../static/js/search-ui/suggest.js';
 import * as L from '../../static/js/search-ui/links.js';
 import { shardsFor } from '../../static/js/search/shards.js';
@@ -208,7 +210,8 @@ test('B2: card facts carry a direction word; the threshold and the 0 to 1 scale 
   assert.match(text, /\|ΔRRCS\| 4\.99<span class="sr-sub">, with Phe300/);
   assert.ok(!/receptor threshold/.test(text.split('sr-card-fine')[0]), 'no threshold in the facts');
   assert.match(text, /this receptor's threshold is \d\.\d\d/);
-  assert.match(text, /stronger in inactive/);
+  assert.match(text, /stronger in the inactive model/);
+  assert.ok(!/stronger in inactive\b|on activation/.test(text), 'one direction phrasing: stronger in the active / inactive model');
   assert.match(text, /<dt>Conservation at this residue<\/dt><dd>0\.96<\/dd>/);
   assert.match(text, /Conservation<\/strong> is on a 0 to 1 scale/);
   assert.ok(!text.includes('0 variable, 1 conserved'));
@@ -393,7 +396,7 @@ test('R2-2: CSV cells that a spreadsheet would run as formulas are neutralised; 
   const lines = csv.split('\r\n');
   assert.ok(lines[1].startsWith("'=1+1,'=1+1,g0,,'@SUM(1+1),"), lines[1]);
   assert.ok(lines[2].startsWith("'-cmd,'-cmd,g1,"), lines[2]);
-  assert.match(lines[1], /,-1\.3,stronger in inactive,/);
+  assert.match(lines[1], /,-1\.3,stronger in the inactive model,/);
   for (const l of lines.slice(1)) for (const cell of l.split(',')) assert.ok(!/^[=+@\t\r]/.test(cell) && !/^-[^\d.]/.test(cell), cell);
 });
 
@@ -623,7 +626,7 @@ test('V2: the contacts table lists the threshold-passing pairs with partner, sig
   assert.match(tbl, /<span class="mono">Asp130<\/span> <span class="sr-sub">3\.49x49, TM3<\/span>/);
   assert.match(tbl, /<span class="sr-net sr-net--inactive">-5\.67<\/span>/);
   assert.match(tbl, /<span class="mono">Tyr141<\/span> <span class="sr-sub">34\.53x53, ICL2<\/span> <span class="sr-badge sr-badge--muted"[^>]*>loop<\/span>/);
-  assert.match(tbl, /<strong>breaks on activation<\/strong><span class="sr-sub">: present in the inactive model, no contact in the active model/);
+  assert.match(tbl, /<strong>present only in the inactive model<\/strong><span class="sr-sub">: no contact in the active model/);
   assert.match(tblRaw, /href="\.\.\/reports\/adrb2_human\.html#pair=130-131" target="_blank" rel="noopener"/);
   assert.match(out, /3 contacts above this receptor\u2019s threshold \(\|ΔRRCS\| ≥ 1\.97\), largest \|ΔRRCS\| first\./);
   // the rows follow the engine's order (largest |ΔRRCS| first)
@@ -634,12 +637,16 @@ test('V2: the contacts table lists the threshold-passing pairs with partner, sig
   assert.match(none, /This residue takes part in no contact above this receptor\u2019s threshold \(\|ΔRRCS\| ≥ 2\.42\)\./);
   assert.ok(!none.includes('sr-table--contacts'));
   // meanings never claim what a variant does
-  assert.equal(contactMeaning({ delta: 2, active: 2, inactive: 0 }), 'forms on activation: no contact in the inactive model, present in the active model');
-  assert.equal(contactMeaning({ delta: -2, active: 0, inactive: 2 }), 'breaks on activation: present in the inactive model, no contact in the active model');
-  assert.equal(contactMeaning({ delta: -1.5, active: 1, inactive: 2.5 }), 'weakens on activation: present in both models, stronger in the inactive model');
-  assert.equal(activationWord({ delta: 1.5, active: 2.5, inactive: 1 }), 'strengthens on activation');
-  assert.equal(netSentence(-13.04), 'overall its contacts weaken on activation (net ΔRRCS -13.0)');
-  assert.equal(netSentence(2.3), 'overall its contacts strengthen on activation (net ΔRRCS +2.3)');
+  assert.equal(contactMeaning({ delta: 2, active: 2, inactive: 0 }), 'present only in the active model: no contact in the inactive model');
+  assert.equal(contactMeaning({ delta: -2, active: 0, inactive: 2 }), 'present only in the inactive model: no contact in the active model');
+  assert.equal(contactMeaning({ delta: -1.5, active: 1, inactive: 2.5 }), 'stronger in the inactive model: present in both models');
+  assert.equal(activationWord({ delta: 1.5, active: 2.5, inactive: 1 }), 'stronger in the active model');
+  // presence comes from the index flag, never from a rounded 0.00: a positive score below 0.005 is still a contact
+  assert.equal(activationWord({ delta: -8.49, active: 0, inactive: 8.49, activePresent: true, inactivePresent: true }), 'stronger in the inactive model');
+  assert.equal(contactMeaning({ delta: -8.49, active: 0, inactive: 8.49, activePresent: true, inactivePresent: true }), 'stronger in the inactive model: present in both models');
+  assert.equal(activationWord({ delta: -8.49, active: 0, inactive: 8.49, activePresent: false, inactivePresent: true }), 'present only in the inactive model');
+  assert.equal(netSentence(-13.04), 'overall its contacts are stronger in the inactive model (net ΔRRCS -13.0)');
+  assert.equal(netSentence(2.3), 'overall its contacts are stronger in the active model (net ΔRRCS +2.3)');
   assert.ok(!out.includes('disrupt'));
   assert.equal(segmentKind('ICL2'), 'loop');
   assert.equal(segmentKind('C-term'), 'terminus');
@@ -668,7 +675,7 @@ test('V3: the evidence summary reads in plain language and the research-use note
   assert.match(RESEARCH_NOTE_SHORT, /ACMG criteria are not applied/);
   // the CFR + motif + contacts sentence
   const S2 = summarySentences((await search('ADRB2 R131Q', loader)).results[0], { releases: {} });
-  assert.equal(S2[S2.length - 1], 'In the GPCompaRe models, Arg131 is a core functional residue (CFR, class-wide rank 1) and part of the DRY motif and the ionic lock; it takes part in 3 contacts above the receptor\u2019s threshold; the largest, with Asp130 (3.49x49), weakens on activation (ΔRRCS -5.67, stronger in the inactive model); overall its contacts weaken on activation (net ΔRRCS -16.7).');
+  assert.equal(S2[S2.length - 1], 'In the GPCompaRe models, Arg131 is a core functional residue (CFR, class-wide rank 1) and part of the DRY motif and the ionic lock; it takes part in 3 contacts above the receptor\u2019s threshold; the largest, with Asp130 (3.49x49), is stronger in the inactive model (ΔRRCS -5.67); overall its contacts are stronger in the inactive model (net ΔRRCS -16.7).');
   // the evidence text carries the same sentences, the contacts and the note
   const text = evidenceText(r, { query: 'MC4R V103I', releases: {} });
   for (const need of ['Evidence summary:', `  ${S[0]}`, 'In the GPCompaRe database:', 'Contact list: this residue takes part in no contact above the threshold', `Note: ${RESEARCH_NOTE}`, 'AlphaMissense, every substitution at Val103:']) assert.ok(text.includes(need), need);
@@ -876,7 +883,7 @@ test('W1: the summary tiles read the data: structure, AlphaMissense gauge, popul
   // the structure tile of a CFR with contacts says the direction in words
   const t2 = /<ul class="sr-tiles">([^]*?)<\/ul>/.exec(renderAnswer(await search('ADRB2 R131Q', loader), 'ADRB2 R131Q', OPTS2).html)[1];
   assert.match(t2, /<span class="sr-big">CFR, rank 1<\/span> <span class="sr-badge sr-badge--cfr">DRY motif<\/span>/);
-  assert.match(t2, /<span class="sr-tile-line"><span class="mono">Asp130<\/span> <span class="sr-net sr-net--inactive">-5\.67<\/span>, weakens on activation<\/span><span class="sr-tile-line">3 contacts above threshold<\/span>/);
+  assert.match(t2, /<span class="sr-tile-line"><span class="mono">Asp130<\/span> <span class="sr-net sr-net--inactive">-5\.67<\/span>, stronger in the inactive model<\/span><span class="sr-tile-line">3 contacts above threshold<\/span>/);
   assert.ok(!/net ΔRRCS/.test(t2), 'the net line is not on the tile');
 });
 
@@ -888,8 +895,11 @@ test('W2: the pathogenicity palette is one set of classes used by the strip, the
     assert.ok(out.includes(`sr-zone--${c}`), `gauge zone ${c}`);
   }
   assert.match(out, /<ul class="sr-path-legend"[^>]*>(?:<li><span class="sr-path-swatch sr-path-swatch--\w+" aria-hidden="true"><\/span>[^<]+(?:<span class="sr-sub">[^<]+<\/span>)?<\/li>){3}<\/ul>/);
-  assert.match(out, /likely benign <span class="sr-sub">below 0\.34<\/span>/);
-  assert.match(out, /likely pathogenic <span class="sr-sub">above 0\.564<\/span>/);
+  assert.match(out, /likely benign <span class="sr-sub">score &lt; 0\.34<\/span>/);
+  assert.match(out, /ambiguous <span class="sr-sub">0\.34 ≤ score ≤ 0\.564<\/span>/);
+  assert.match(out, /likely pathogenic <span class="sr-sub">score &gt; 0\.564<\/span>/);
+  assert.match(out, /<p class="sr-sub sr-path-note">Classes follow the source predictions before display rounding\.<\/p>/);
+  assert.ok(!/below 0\.34|above 0\.564|≥ ?0\.564|0\.563/.test(out), 'only the published intervals');
   // a conflicting ClinVar record is an ambiguous chip, never a red or blue one
   assert.match(out, /<span class="sr-path-chip sr-path-chip--ambiguous">Conflicting/);
   assert.ok(!/sr-net--(active|inactive)">(?:likely|Conflicting|Benign|Pathogenic)/.test(out));
@@ -933,15 +943,16 @@ test('W4: the contacts read in activation terms: dumbbells with words, partner b
   assert.equal((dbs.match(/<li class="sr-db-row">/g) || []).length, r.contacts.length);
   assert.match(dbs, /<span class="mono">Phe300<\/span> <span class="sr-sub">6\.48x48<\/span> <span class="sr-badge sr-badge--cfr" title="Core functional residue, class-wide rank 2">CFR 2<\/span>/);
   assert.match(dbs, /sr-db-line sr-db-line--inactive/);
-  assert.match(dbs, /<span class="sr-net sr-net--inactive">-4\.99<\/span> <span class="sr-db-word">weakens on activation<\/span>/);
+  assert.match(dbs, /<span class="sr-net sr-net--inactive">-4\.99<\/span> <span class="sr-db-word">stronger in the inactive model<\/span>/);
   assert.match(out, /<p class="sr-db-legend">/);
-  assert.match(out, /overall its contacts weaken on activation \(net ΔRRCS -13\.0\)/);
+  assert.match(out, /<span class="sr-net sr-net--inactive">-13\.0<\/span> <span class="sr-sub">overall its contacts are stronger in the inactive model<\/span>/);
   assert.match(out, /rank 41 of 397 residues in F2RL1 by largest \|ΔRRCS\|/);
   assert.match(out, /<dd>2 <span class="sr-sub">\(\|ΔRRCS\| ≥ 2\.60\)<\/span>/);
   assert.match(out, /<button type="button" class="btn btn-ghost btn-sm" data-3d="0" aria-expanded="false" aria-controls="sr-0-3d-pane">Show in 3D<\/button>/);
   assert.ok(!/pair-viewer|\.pdb/.test(out), 'nothing of the 3D viewer is in the markup');
   // the table says it in words too, with the model phrasing kept
-  assert.match(out, /<strong>weakens on activation<\/strong><span class="sr-sub">: present in both models, stronger in the inactive model<\/span>/);
+  assert.match(out, /<strong>stronger in the inactive model<\/strong><span class="sr-sub">: present in both models<\/span>/);
+  assert.match(out, /<p class="sr-db-legend">[^]*?red<\/span>: stronger in the active model; <span class="sr-net sr-net--inactive">blue<\/span>: stronger in the inactive model\.<\/p>/);
 });
 
 test('W5: the xMY motif is named where the receptor carries Met 3.36 and Tyr 3.37, with the paper\'s definition; 30 of 283 receptors carry it', { skip }, async () => {
@@ -1019,7 +1030,7 @@ test('card: a residue connected to a CFR says so in the tile, the block and the 
   assert.equal(cfrTileLine(r), 'Connected to CFR Gln229 (5.68, rank 46)');
   const h = renderAnswer(a, 'ADRB2 Ile135', OPTS).html;
   assert.match(h, /data-cfr-tile>Connected to CFR Gln229 \(5\.68, rank 46\)</);
-  assert.match(h, /data-cfr-rel="connected">[\s\S]*?Gln229[\s\S]*?sr-net--inactive">-3\.76<[\s\S]*?breaks on activation/);
+  assert.match(h, /data-cfr-rel="connected">[\s\S]*?Gln229[\s\S]*?sr-net--inactive">-3\.76<[\s\S]*?present only in the inactive model/);
   assert.match(h, /class="sr-map-cfr is-partner" data-cfr-partner="229"/);
   // Phe290 (7.38x38) is itself one of the 50 now (rank 29 by CFR score), and still connected to Phe208
   const p = (await search('ADRB2 Phe290', loader)).results[0];
@@ -1070,4 +1081,104 @@ test('"ADRB2 CFR variants": counts, groups, filters and CSV agree with the rows'
     assert.ok(!out.html.includes('—'), 'no em dashes');
     assert.match(out.html, /I read this as<\/span> <strong>the variants of \S+ at, connected to or near its CFR positions/);
   }
+});
+
+// ------------------------------------------------------------- contact presence and AlphaMissense intervals
+
+const presenceGolden = (() => {
+  const lines = readFileSync(new URL('./contact_presence_golden.tsv', import.meta.url), 'utf8').split('\n').filter((l) => l && !l.startsWith('#'));
+  const head = lines[0].split('\t');
+  return lines.slice(1).map((l) => Object.fromEntries(l.split('\t').map((v, i) => [head[i], v])));
+})();
+
+test('contact presence: a 0.00 endpoint is a contact when the index flags it; "present only in" needs a true zero', () => {
+  assert.equal(fmtRrcs(0, true), '<0.01');
+  assert.equal(fmtRrcs(0, false), '0.00');
+  assert.equal(fmtRrcs(0.01, true), '0.01');
+  assert.equal(fmtRrcs(8.49, true), '8.49');
+  // the index flag wins over the rounded value
+  assert.deepEqual(contactPresence({ active: 0, inactive: 8.49, activePresent: true, inactivePresent: true }), { active: true, inactive: true });
+  // an older index without the flag falls back to the values
+  assert.deepEqual(contactPresence({ active: 0, inactive: 8.49 }), { active: false, inactive: true });
+  // the detail decoder reads the presence element, and keeps the fallback for a 5-element pair
+  const det = decodeDetail({ gid: 'x', am: [], pairs: [[364, 483, -849, 0, 849, 3], [1, 2, -300, 0, 300, 2], [3, 4, 300, 300, 0]] });
+  assert.deepEqual(det.pairs.map((p) => [p.activePresent, p.inactivePresent]), [[true, true], [false, true], [true, false]]);
+  assert.equal(activationWord(det.pairs[0]), 'stronger in the inactive model');
+  assert.equal(activationWord(det.pairs[1]), 'present only in the inactive model');
+  assert.equal(activationWord(det.pairs[2]), 'present only in the active model');
+});
+
+test('RXFP2 364: contact 364-483 (active RRCS 0.0026) reads as stronger in the inactive model, active shown as <0.01', { skip }, async () => {
+  const q = 'RXFP2 364';
+  const a = await search(q, loader);
+  const r = a.results[0];
+  assert.equal(r.gid, 'rxfp2_human');
+  const c = r.contacts.find((x) => x.partnerPos === 483);
+  assert.ok(c, 'the contact with 483 is listed');
+  assert.deepEqual([c.a, c.b, c.delta, c.active, c.inactive, c.activePresent, c.inactivePresent], [364, 483, -8.49, 0, 8.49, true, true]);
+  assert.equal(activationWord(c), 'stronger in the inactive model');
+  assert.equal(contactMeaning(c), 'stronger in the inactive model: present in both models');
+  const out = renderAnswer(a, q, OPTS2).html;
+  const tbl = unlinked(/<table class="sr-table sr-table--contacts">([^]*?)<\/table>/.exec(out)[1]);
+  const row = tbl.split('<tr>').find((x) => x.includes('Gln483'));
+  assert.ok(row, 'a table row for Gln483');
+  assert.match(row, /data-label="Active RRCS">&lt;0\.01</);
+  assert.match(row, /data-label="Inactive RRCS">8\.49</);
+  assert.match(row, /<strong>stronger in the inactive model<\/strong><span class="sr-sub">: present in both models/);
+  assert.ok(!/present only|no contact in the active model|breaks|on activation/.test(row), row);
+  assert.match(out, /active RRCS &lt;0\.01/);
+  assert.match(out, /&lt;0\.01 is a contact with a score above 0 that rounds to 0\.00/);
+  const text = evidenceText(r, { query: q, releases: {} });
+  assert.match(text, /Gln483[^\n]*: dRRCS -8\.49; active <0\.01; inactive 8\.49; stronger in the inactive model: present in both models; report pair 364-483/);
+});
+
+test('every golden small positive endpoint is a contact in both models in the index and on the card', { skip }, async () => {
+  assert.equal(presenceGolden.length, 32);
+  const seen = new Set();
+  for (const g of presenceGolden) {
+    const det = decodeDetail(await loader(`detail/${g.gid}.json`));
+    const p = det.pairs.find((x) => x.a === Number(g.res1) && x.b === Number(g.res2));
+    assert.ok(p, `${g.gid} ${g.res1}-${g.res2}`);
+    assert.equal(p[g.small_endpoint], 0, 'the stored value rounds to 0.00');
+    assert.ok(p.activePresent && p.inactivePresent, `${g.gid} ${g.res1}-${g.res2} present in both models`);
+    assert.equal(activationWord(p), Number(g.delta_rrcs) > 0 ? 'stronger in the active model' : 'stronger in the inactive model');
+    assert.equal(fmtRrcs(p[g.small_endpoint], p[`${g.small_endpoint}Present`]), '<0.01');
+    seen.add(g.gid);
+  }
+  // and a true zero still reads as "present only in": a pair of the same receptors with a zero endpoint
+  let trueZero = 0;
+  for (const gid of seen) {
+    for (const p of decodeDetail(await loader(`detail/${gid}.json`)).pairs) {
+      if (p.activePresent && p.inactivePresent) continue;
+      trueZero++;
+      assert.equal(activationWord(p), p.activePresent ? 'present only in the active model' : 'present only in the inactive model');
+      assert.equal(fmtRrcs(p.activePresent ? p.inactive : p.active, false), '0.00');
+    }
+  }
+  assert.ok(trueZero > 0);
+});
+
+test('AlphaMissense intervals: > 0.564 likely pathogenic, 0.34 to 0.564 ambiguous, < 0.34 likely benign; classes before rounding', { skip }, async () => {
+  assert.equal(AM_CUTS_TEXT, 'Likely pathogenic: score > 0.564. Ambiguous: 0.34 ≤ score ≤ 0.564. Likely benign: score < 0.34. Classes follow the source predictions before display rounding.');
+  assert.deepEqual({ ...AM_INTERVAL }, { pathogenic: 'score > 0.564', ambiguous: '0.34 ≤ score ≤ 0.564', benign: 'score < 0.34' });
+  assert.equal(amClassOfScore(0.564), 'ambiguous'); assert.equal(amClassOfScore(0.5641), 'pathogenic'); assert.equal(amClassOfScore(0.34), 'ambiguous');
+  // the gauge follows the source class: a 0.564 display with a source class of likely pathogenic stays pathogenic
+  assert.match(amGauge(0.564, { cls: 'pathogenic' }).toString(), /sr-gauge-mark--pathogenic/);
+  assert.match(amGauge(0.564).toString(), /sr-gauge-mark--ambiguous/);
+  assert.match(pathLegend().toString(), /Classes follow the source predictions before display rounding\./);
+  // a residue mean of 0.5646 (stored 0.56) is likely pathogenic on the card, the tile and the map
+  const a = await search('HTR1A 232', loader);
+  const r = a.results[0];
+  assert.equal(r.gid, '5ht1a_human');
+  assert.equal(r.residue.amMean, 0.56);
+  assert.equal(r.residue.amMeanClass, 'pathogenic');
+  assert.equal(r.track.amClass[231], 'pathogenic');
+  const out = renderAnswer(a, 'HTR1A 232', OPTS2).html;
+  assert.match(unlinked(out), /residue mean<\/dt><dd>0\.56 <span class="sr-path-chip sr-path-chip--pathogenic">likely pathogenic<\/span>/);
+  assert.match(out, /sr-tile--predictions[^]*?sr-gauge-mark--pathogenic/);
+  assert.match(out, /Likely pathogenic: score &gt; 0\.564\. Ambiguous: 0\.34 ≤ score ≤ 0\.564\. Likely benign: score &lt; 0\.34\. Classes follow the source predictions before display rounding\./);
+  assert.ok(!/below 0\.34|above 0\.564|0\.563/.test(out));
+  // and 0.3371 (stored 0.34) is likely benign
+  const b = (await search('HTR1A 416', loader)).results[0];
+  assert.deepEqual([b.residue.amMean, b.residue.amMeanClass], [0.34, 'benign']);
 });

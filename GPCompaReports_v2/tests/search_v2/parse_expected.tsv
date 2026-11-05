@@ -401,3 +401,4 @@ G399	ADRB2 near CFR	receptor R=ADRB2
 G400	variants connected to CFRs in DRD2	receptor R=DRD2	
 G401	MC1R CFR	receptor R=MC1R	
 G402	CFR variants	unrecognised	
+G403	RXFP2 364	residue R=RXFP2 p=?364	

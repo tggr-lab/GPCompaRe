@@ -286,6 +286,7 @@ export function residueFacts(r) {
     cfrRank: num(x.cfrRank ?? s.cfrRank),
     conservation: num(x.conservation ?? s.conservation),
     amMean: num(x.amMean),
+    amMeanClass: x.amMeanClass ?? null,
     family: s.family ?? null,
     generic: x.generic || s.generic || null,
     segment: x.segment || s.segment || null,
@@ -296,8 +297,8 @@ export function residueFacts(r) {
 /** Direction of a net ΔRRCS: red = stronger in the active model, blue = stronger in the inactive model. */
 export function direction(net) {
   if (net === null || net === undefined) return null;
-  if (net > 0) return { cls: 'active', word: 'stronger in active', short: 'active' };
-  if (net < 0) return { cls: 'inactive', word: 'stronger in inactive', short: 'inactive' };
+  if (net > 0) return { cls: 'active', word: 'stronger in the active model', short: 'active' };
+  if (net < 0) return { cls: 'inactive', word: 'stronger in the inactive model', short: 'inactive' };
   return { cls: 'none', word: 'no net change', short: 'none' };
 }
 export const signed = (x, nd = 2) => (x > 0 ? '+' : '') + x.toFixed(nd);
@@ -690,9 +691,9 @@ function predictionsSection(r, sub, o) {
   else amThis = html`<span class="sr-na">not a missense change</span>`;
   const body = html`<dl class="sr-facts">
     ${r.alt || sub.mismatch ? cell(html`${term(o, 'am', 'AlphaMissense')}, this change`, amThis) : ''}
-    ${cell(html`${term(o, 'am', 'AlphaMissense')}, residue mean`, f.amMean === null ? html`<span class="sr-na">not available</span>` : f.amMean.toFixed(2))}
+    ${cell(html`${term(o, 'am', 'AlphaMissense')}, residue mean`, f.amMean === null ? html`<span class="sr-na">not available</span>` : html`${f.amMean.toFixed(2)}${f.amMeanClass ? html` ${pathChip(f.amMeanClass)}` : ''}`)}
   </dl>
-  <div class="sr-gauge-row"><span class="sr-gauge-label">${sub.mismatch ? 'Residue mean' : (am ? 'This change' : 'Residue mean')}</span>${amGauge(sub.mismatch ? f.amMean : (am ? am.am : f.amMean))}</div>
+  <div class="sr-gauge-row"><span class="sr-gauge-label">${sub.mismatch ? 'Residue mean' : (am ? 'This change' : 'Residue mean')}</span>${sub.mismatch || !am ? amGauge(f.amMean, { cls: f.amMeanClass }) : amGauge(am.am, { cls: am.amClass })}</div>
   ${amStrip(r, sub)}${pathLegend()}${amSource(o)}`;
   return section('predictions', 'Predictions', 'AlphaMissense', body, { idx: o.idx });
 }
@@ -711,29 +712,54 @@ function conservationSection(r, o) {
 
 // --------------------------------------------------------------------------------- structure
 
-/** The change from the inactive to the active model in two words: forms, breaks, strengthens, weakens. */
+/**
+ * Whether each model has the contact at all: RRCS > 0 before rounding. The index carries this as a flag
+ * (detail/ pairs), because a positive score below 0.005 is stored as 0.00 (RXFP2 364-483: active RRCS 0.0026);
+ * absence is never read from a rounded value when the flag is there.
+ */
+export function contactPresence(c) {
+  return {
+    active: typeof c.activePresent === 'boolean' ? c.activePresent : c.active > 0,
+    inactive: typeof c.inactivePresent === 'boolean' ? c.inactivePresent : c.inactive > 0,
+  };
+}
+
+/** An RRCS endpoint for display: two decimals; a present contact whose score rounds to 0.00 shows as "<0.01". */
+export function fmtRrcs(v, present = v > 0) {
+  if (v === null || v === undefined) return 'n/a';
+  const t = v.toFixed(2);
+  return present && Number(t) === 0 ? '<0.01' : t;
+}
+
+/**
+ * What the two models show for one contact, in a few words: "present only in the active model" when the inactive
+ * model has no contact at all (and the reverse), else "stronger in the active model" or "stronger in the inactive
+ * model" by the sign of ΔRRCS.
+ */
 export function activationWord(c) {
-  if (c.inactive === 0 && c.active > 0) return 'forms on activation';
-  if (c.active === 0 && c.inactive > 0) return 'breaks on activation';
-  if (c.delta > 0) return 'strengthens on activation';
-  if (c.delta < 0) return 'weakens on activation';
-  return 'unchanged on activation';
+  const p = contactPresence(c);
+  if (p.active && !p.inactive) return 'present only in the active model';
+  if (p.inactive && !p.active) return 'present only in the inactive model';
+  if (c.delta > 0) return 'stronger in the active model';
+  if (c.delta < 0) return 'stronger in the inactive model';
+  return 'the same in both models';
 }
 
 /** Plain words for one contact: what the two models show, never what the variant does. */
 export function contactMeaning(c) {
-  if (c.inactive === 0 && c.active > 0) return 'forms on activation: no contact in the inactive model, present in the active model';
-  if (c.active === 0 && c.inactive > 0) return 'breaks on activation: present in the inactive model, no contact in the active model';
-  if (c.delta > 0) return 'strengthens on activation: present in both models, stronger in the active model';
-  if (c.delta < 0) return 'weakens on activation: present in both models, stronger in the inactive model';
-  return 'unchanged: present in both models at the same strength';
+  const p = contactPresence(c);
+  if (p.active && !p.inactive) return 'present only in the active model: no contact in the inactive model';
+  if (p.inactive && !p.active) return 'present only in the inactive model: no contact in the active model';
+  if (c.delta > 0) return 'stronger in the active model: present in both models';
+  if (c.delta < 0) return 'stronger in the inactive model: present in both models';
+  return 'the same in both models: present in both at the same strength';
 }
 
-/** The net ΔRRCS of a residue in activation terms: "its contacts weaken on activation (net ΔRRCS -13.0)". */
+/** The net ΔRRCS of a residue in words: "overall its contacts are stronger in the inactive model (net ΔRRCS -13.0)". */
 export function netSentence(net, { value = true } = {}) {
   if (net === null || net === undefined) return 'no contact in either model';
-  const w = net > 0 ? 'strengthen' : net < 0 ? 'weaken' : 'do not change';
-  return `overall its contacts ${w} on activation${value ? ` (net ΔRRCS ${signed(net, 1)})` : ''}`;
+  const w = net > 0 ? 'are stronger in the active model' : net < 0 ? 'are stronger in the inactive model' : 'are balanced between the two models';
+  return `overall its contacts ${w}${value ? ` (net ΔRRCS ${signed(net, 1)})` : ''}`;
 }
 
 /** A partner's own badges: CFR rank and the motifs it carries. */
@@ -758,8 +784,8 @@ function contactsTable(r, o) {
     return html`<tr>
       <td data-label="Partner">${intLink(L.residueUrl(o, r.gid, c.partnerPos), partnerName(c), { cls: 'mono', title: 'Report at this residue' })}${c.partnerGeneric || c.partnerSegment ? html` <span class="sr-sub">${[c.partnerGeneric, c.partnerSegment].filter(Boolean).join(', ')}</span>` : ''}${kind ? html` <span class="sr-badge sr-badge--muted" title="${kind === 'terminus' ? 'A residue in a terminus' : 'A residue in a loop'}: loops and termini are less reliably modelled">${kind}</span>` : ''}${partnerBadges(c)}</td>
       <td class="num" data-label="ΔRRCS"><span class="sr-net sr-net--${d.cls}">${signed(c.delta)}</span><span class="sr-sr-only"> (${d.word})</span></td>
-      <td class="num" data-label="Active RRCS">${c.active.toFixed(2)}</td>
-      <td class="num" data-label="Inactive RRCS">${c.inactive.toFixed(2)}</td>
+      <td class="num" data-label="Active RRCS">${fmtRrcs(c.active, contactPresence(c).active)}</td>
+      <td class="num" data-label="Inactive RRCS">${fmtRrcs(c.inactive, contactPresence(c).inactive)}</td>
       <td data-label="What the models show"><strong>${activationWord(c)}</strong><span class="sr-sub">: ${contactMeaning(c).split(': ')[1] ?? ''}</span></td>
       <td data-label="Report">${intLink(L.reportUrl(o, r.gid, `pair=${c.a}-${c.b}`), `pair ${c.a}-${c.b}`, { title: 'Report at this contact pair' })}</td></tr>`;
   });
@@ -768,7 +794,7 @@ function contactsTable(r, o) {
     <caption class="sr-sr-only">Contacts of this residue above the threshold</caption>
     <thead><tr><th scope="col">Partner</th><th scope="col" class="num">${term(o, 'delta', 'ΔRRCS')}</th><th scope="col" class="num">Active RRCS</th><th scope="col" class="num">Inactive RRCS</th><th scope="col">What the models show</th><th scope="col">Report</th></tr></thead>
     <tbody>${rows}</tbody></table></div>
-    ${finePrint(html`<p><span class="sr-net sr-net--active">Red, positive</span>: stronger in the active model. <span class="sr-net sr-net--inactive">Blue, negative</span>: stronger in the inactive model. RRCS is the residue-residue contact score of each AlphaFold-Multistate model.</p>`, { cls: 'sr-contacts-legend' })}`;
+    ${finePrint(html`<p><span class="sr-net sr-net--active">Red, positive</span>: stronger in the active model. <span class="sr-net sr-net--inactive">Blue, negative</span>: stronger in the inactive model. RRCS is the residue-residue contact score of each AlphaFold-Multistate model; &lt;0.01 is a contact with a score above 0 that rounds to 0.00. “Present only in” one model means the other model has no contact at all.</p>`, { cls: 'sr-contacts-legend' })}`;
 }
 
 /** "Show in 3D": a button and an empty pane; search-page.js mounts the Studio pair viewer into it on demand. */
@@ -912,7 +938,7 @@ function structureSection(r, o) {
     ${cell(html`Core functional residue (${term(o, 'cfr', 'CFR')}), class-wide`, cfr)}
     ${motifsCell(r)}
     ${cell(term(o, 'maxdelta', 'Largest contact change'), html`${largest}${r.rank?.rank ? html`<br><span class="sr-sub">rank ${r.rank.rank} of ${r.rank.of} residues in ${r.receptor?.symbol ?? r.gid} by largest |ΔRRCS|</span>` : ''}`)}
-    ${f.net !== null ? cell(html`${term(o, 'signed', 'Net ΔRRCS')} over this residue’s contacts`, html`${netHtml(f.net)}<span class="sr-sub">: ${netSentence(f.net, { value: false })}</span>`) : ''}
+    ${f.net !== null ? cell(html`${term(o, 'signed', 'Net ΔRRCS')} over this residue’s contacts`, html`${netHtml(f.net, { word: false })} <span class="sr-sub">${netSentence(f.net, { value: false })}</span>`) : ''}
     ${cell(html`Contacts above this receptor’s ${term(o, 'threshold', 'threshold')}`, html`${f.nsig ?? 0}${f.threshold !== null ? html` <span class="sr-sub">(|ΔRRCS| ≥ ${f.threshold.toFixed(2)})</span>` : ''}`)}
   </dl>
   <h5 class="sr-subhead">Important contacts</h5>
@@ -927,7 +953,6 @@ function structureSection(r, o) {
 
 /** 'Ionic lock' reads 'ionic lock' inside a sentence; acronym names (DRY, NPxxY) keep their case. */
 const motifPhrase = (name) => (/^[A-Z][a-z]/.test(name) ? name[0].toLowerCase() + name.slice(1) : name);
-const dirText = (d) => (d > 0 ? 'stronger in the active model' : d < 0 ? 'stronger in the inactive model' : 'unchanged');
 
 /**
  * The plain-language evidence summary at the top of a card, as sentences (no markup): what the change is,
@@ -977,7 +1002,7 @@ export function summarySentences(r, o = {}) {
     else if (!r.contacts.length) contacts = 'it takes part in no contact above the receptor’s threshold';
     else {
       const t = r.contacts[0];
-      contacts = `it takes part in ${r.contacts.length} contact${r.contacts.length === 1 ? '' : 's'} above the receptor’s threshold; the largest, with ${partnerName(t)}${t.partnerGeneric ? ` (${t.partnerGeneric})` : ''}, ${activationWord(t)} (ΔRRCS ${signed(t.delta)}, ${dirText(t.delta)})${f.net !== null ? `; ${netSentence(f.net)}` : ''}`;
+      contacts = `it takes part in ${r.contacts.length} contact${r.contacts.length === 1 ? '' : 's'} above the receptor’s threshold; the largest, with ${partnerName(t)}${t.partnerGeneric ? ` (${t.partnerGeneric})` : ''}, is ${activationWord(t)} (ΔRRCS ${signed(t.delta)})${f.net !== null ? `; ${netSentence(f.net)}` : ''}`;
     }
     S.push(`In the GPCompaRe models, ${res} is ${parts.length ? `${parts.join(' and ')}; ` : 'not a CFR; '}${contacts}.`);
     const hood = x.cfr ? null : cfrHoodSentence(r);
@@ -993,9 +1018,17 @@ export const RESEARCH_NOTE_SHORT = 'Research use only: not a clinical classifica
 
 // ----------------------------------------------------------------- pathogenicity palette, gauges
 
-/** AlphaMissense class cutoffs (Cheng et al. 2023, Science): likely benign below 0.34, likely pathogenic above 0.564. */
+/**
+ * AlphaMissense class cutoffs (Cheng et al. 2023, Science; the AlphaMissense README): likely pathogenic > 0.564,
+ * ambiguous 0.34 to 0.564 (both inclusive), likely benign < 0.34. The index carries each prediction's source class
+ * (and the class of each unrounded residue mean); amClassOfScore is only the fallback for a value without one.
+ */
 export const AM_CUTS = Object.freeze({ benign: 0.34, pathogenic: 0.564 });
 export const amClassOfScore = (v) => (v < AM_CUTS.benign ? 'benign' : v > AM_CUTS.pathogenic ? 'pathogenic' : 'ambiguous');
+/** The interval of each class, as the report's Understanding section states it. */
+export const AM_INTERVAL = Object.freeze({ pathogenic: 'score > 0.564', ambiguous: '0.34 ≤ score ≤ 0.564', benign: 'score < 0.34' });
+/** One sentence for every place that states the cutoffs (the report's wording). */
+export const AM_CUTS_TEXT = 'Likely pathogenic: score > 0.564. Ambiguous: 0.34 ≤ score ≤ 0.564. Likely benign: score < 0.34. Classes follow the source predictions before display rounding.';
 /**
  * The pathogenicity palette, one CSS token pair per class (static/css/search-ui.css --path-<class> for text and
  * marks, --path-<class>-fill for cells and bars). Teal, amber and purple: distinguishable for the common colour
@@ -1007,9 +1040,12 @@ const pct = (x) => `${(Math.max(0, Math.min(1, x)) * 100).toFixed(1)}%`;
 /** A pathogenicity class as a labelled chip. `none` is the neutral chip. */
 export const pathChip = (cls, label) => html`<span class="sr-path-chip sr-path-chip--${cls ?? 'none'}">${label ?? amClassLabel(cls)}</span>`;
 
-/** A 0..1 gauge with the three AlphaMissense class zones, the two cutoffs and a marker at `value` (null = none). */
-export function amGauge(value, { label = 'AlphaMissense' } = {}) {
-  const cls = value === null || value === undefined ? null : amClassOfScore(value);
+/**
+ * A 0..1 gauge with the three AlphaMissense class zones, the two cutoffs and a marker at `value` (null = none).
+ * `cls` is the class from the source (before rounding); the score's own class is only the fallback.
+ */
+export function amGauge(value, { label = 'AlphaMissense', cls: given = null } = {}) {
+  const cls = value === null || value === undefined ? null : (given ?? amClassOfScore(value));
   const text = cls ? `${label} ${fmtAm(value)}, ${amClassLabel(cls)}` : `${label}: no score`;
   return html`<div class="sr-gauge sr-gauge--am" role="img" aria-label="${text}">
     <div class="sr-gauge-zones"><span class="sr-zone sr-zone--benign" style="width:${pct(AM_CUTS.benign)}"></span><span class="sr-zone sr-zone--ambiguous" style="width:${pct(AM_CUTS.pathogenic - AM_CUTS.benign)}"></span><span class="sr-zone sr-zone--pathogenic" style="width:${pct(1 - AM_CUTS.pathogenic)}"></span></div>
@@ -1057,7 +1093,7 @@ export function cvClassKey(classification) {
 
 /** One legend for every place the pathogenicity palette is used. */
 export function pathLegend({ cuts = true } = {}) {
-  return html`<ul class="sr-path-legend" aria-label="Pathogenicity classes">${PATH_CLASSES.map((c) => html`<li><span class="sr-path-swatch sr-path-swatch--${c}" aria-hidden="true"></span>${amClassLabel(c)}${cuts ? html` <span class="sr-sub">${c === 'benign' ? `below ${AM_CUTS.benign}` : c === 'pathogenic' ? `above ${AM_CUTS.pathogenic}` : `${AM_CUTS.benign} to ${AM_CUTS.pathogenic}`}</span>` : ''}</li>`)}</ul>`;
+  return html`<ul class="sr-path-legend" aria-label="Pathogenicity classes">${PATH_CLASSES.map((c) => html`<li><span class="sr-path-swatch sr-path-swatch--${c}" aria-hidden="true"></span>${amClassLabel(c)}${cuts ? html` <span class="sr-sub">${AM_INTERVAL[c]}</span>` : ''}</li>`)}</ul>${cuts ? html`<p class="sr-sub sr-path-note">Classes follow the source predictions before display rounding.</p>` : ''}`;
 }
 
 // ------------------------------------------------------------------------------------- tiles
@@ -1092,11 +1128,11 @@ function tiles(r, o, sub) {
   // AlphaMissense
   const am = amForChange(r, sub);
   const missense = r.kind === 'missense' && /^[A-Z]$/.test(r.alt ?? '');
-  let amBody; let amVal = null;
+  let amBody; let amVal = null; let amCls = null;
   if (sub.mismatch) amBody = html`<span class="sr-na">typed ${sub.what} not checkable</span>`;
-  else if (am) { amBody = html`<span class="sr-big sr-path sr-path--${am.amClass}">${fmtAm(am.am)}</span> ${pathChip(am.amClass)}`; amVal = am.am; }
+  else if (am) { amBody = html`<span class="sr-big sr-path sr-path--${am.amClass}">${fmtAm(am.am)}</span> ${pathChip(am.amClass)}`; amVal = am.am; amCls = am.amClass; }
   else if (missense) amBody = html`<span class="sr-na">no score for this change</span>`;
-  else if (f.amMean !== null) { amBody = html`<span class="sr-big">${f.amMean.toFixed(2)}</span> <span class="sr-sub">residue mean</span>`; amVal = f.amMean; }
+  else if (f.amMean !== null) { amBody = html`<span class="sr-big">${f.amMean.toFixed(2)}</span> <span class="sr-sub">residue mean</span>`; amVal = f.amMean; amCls = f.amMeanClass; }
   else amBody = na;
   // population
   const alleles = r.alleles ?? [];
@@ -1118,7 +1154,7 @@ function tiles(r, o, sub) {
   const cvFoot = c0 ? html`${c0.conditions?.length ? `${c0.conditions.slice(0, 2).join('; ')}${c0.conditions.length > 2 ? '; more' : ''}` : 'no condition given'}${cv.length > 1 ? `; ${cv.length} records` : ''}` : '';
   return html`<ul class="sr-tiles">
     ${tile('structure', 'Structure', structHead, structFoot)}
-    ${tile('predictions', 'AlphaMissense', html`${amBody}${amGauge(amVal)}`, html`<span class="sr-sub">prediction, not an observation</span>`)}
+    ${tile('predictions', 'AlphaMissense', html`${amBody}${amGauge(amVal, { cls: amCls })}`, html`<span class="sr-sub">prediction, not an observation</span>`)}
     ${tile('population', 'Population', html`${popBody}${afGauge(best?.af ?? null)}`, popFoot)}
     ${tile('clinical', 'ClinVar', cvBody, cvFoot)}
     ${tile('conservation', 'Conservation', html`<span class="sr-big">${f.conservation === null ? html`<span class="sr-na">n/a</span>` : f.conservation.toFixed(2)}</span>${plainGauge(f.conservation, 'Conservation')}`, html`<span class="sr-sub">0 variable to 1 conserved</span>`)}
@@ -1145,7 +1181,8 @@ function idLine(r, o, sub) {
 
 /**
  * The residue's contacts as inactive-to-active dumbbells: one dot at the inactive RRCS, one at the active RRCS,
- * the line between them blue when the contact weakens on activation and red when it strengthens; the words
+ * the line between them blue when the contact is stronger in the inactive model and red when it is stronger in the
+ * active model; the words
  * beside each. Largest |ΔRRCS| first.
  */
 function contactDumbbells(r) {
@@ -1156,9 +1193,9 @@ function contactDumbbells(r) {
     const d = direction(c.delta);
     const xi = pct(c.inactive / max); const xa = pct(c.active / max);
     const lo = Math.min(c.inactive, c.active) / max; const hi = Math.max(c.inactive, c.active) / max;
-    return html`<li class="sr-db-row"><span class="sr-db-label"><span class="mono">${partnerName(c)}</span>${c.partnerGeneric ? html` <span class="sr-sub">${c.partnerGeneric}</span>` : ''}${partnerBadges(c)}</span><span class="sr-db-track" title="inactive ${c.inactive.toFixed(2)}, active ${c.active.toFixed(2)}"><span class="sr-db-line sr-db-line--${d.cls}" style="left:${pct(lo)};width:${pct(hi - lo)}"></span><span class="sr-db-dot sr-db-dot--inactive" style="left:${xi}"><span class="sr-sr-only">inactive RRCS ${c.inactive.toFixed(2)}</span></span><span class="sr-db-dot sr-db-dot--active" style="left:${xa}"><span class="sr-sr-only">active RRCS ${c.active.toFixed(2)}</span></span></span><span class="sr-db-val"><span class="sr-net sr-net--${d.cls}">${signed(c.delta)}</span> <span class="sr-db-word">${activationWord(c)}</span></span></li>`;
+    return html`<li class="sr-db-row"><span class="sr-db-label"><span class="mono">${partnerName(c)}</span>${c.partnerGeneric ? html` <span class="sr-sub">${c.partnerGeneric}</span>` : ''}${partnerBadges(c)}</span><span class="sr-db-track" title="inactive ${fmtRrcs(c.inactive, contactPresence(c).inactive)}, active ${fmtRrcs(c.active, contactPresence(c).active)}"><span class="sr-db-line sr-db-line--${d.cls}" style="left:${pct(lo)};width:${pct(hi - lo)}"></span><span class="sr-db-dot sr-db-dot--inactive" style="left:${xi}"><span class="sr-sr-only">inactive RRCS ${fmtRrcs(c.inactive, contactPresence(c).inactive)}</span></span><span class="sr-db-dot sr-db-dot--active" style="left:${xa}"><span class="sr-sr-only">active RRCS ${fmtRrcs(c.active, contactPresence(c).active)}</span></span></span><span class="sr-db-val"><span class="sr-net sr-net--${d.cls}">${signed(c.delta)}</span> <span class="sr-db-word">${activationWord(c)}</span></span></li>`;
   })}</ol>
-  <p class="sr-db-legend"><span class="sr-db-dot sr-db-dot--inactive sr-db-key" aria-hidden="true"></span> inactive model <span class="sr-db-dot sr-db-dot--active sr-db-key" aria-hidden="true"></span> active model, RRCS on one scale; <span class="sr-net sr-net--active">red</span> strengthens or forms on activation, <span class="sr-net sr-net--inactive">blue</span> weakens or breaks.</p>`;
+  <p class="sr-db-legend"><span class="sr-db-dot sr-db-dot--inactive sr-db-key" aria-hidden="true"></span> inactive model <span class="sr-db-dot sr-db-dot--active sr-db-key" aria-hidden="true"></span> active model, RRCS on one scale; <span class="sr-net sr-net--active">red</span>: stronger in the active model; <span class="sr-net sr-net--inactive">blue</span>: stronger in the inactive model.</p>`;
 }
 
 /** Allele frequency bars, one per gnomAD allele of the change, with the rarity bands and the homozygote count. */
@@ -1197,7 +1234,7 @@ export function receptorMap(r, o) {
   const runs = [];
   let run = null;
   t.am.forEach((v, i) => {
-    const k = v === null || v === undefined ? 'none' : amClassOfScore(v);
+    const k = v === null || v === undefined ? 'none' : (t.amClass?.[i] ?? amClassOfScore(v));
     if (run && run.k === k) run.b = i + 1;
     else { if (run) runs.push(run); run = { k, a: i + 1, b: i + 1 }; }
   });
@@ -1387,11 +1424,12 @@ export function evidenceText(r, ctx = {}) {
   else if (r.pos) L.push(`${cl}: no record matches this query.`);
   if (x) {
     L.push('Computational predictions (AlphaMissense is a prediction, not an observation):');
+    L.push(`  Classes: ${AM_CUTS_TEXT}`);
     const am = amForChange(r, sub);
     if (sub.mismatch) L.push(`  AlphaMissense, typed ${sub.what}: not shown (not the model residue)`);
     else if (am) L.push(`  AlphaMissense, this change: ${fmtAm(am.am)} (${amClassLabel(am.amClass)})`);
     else if (r.alt && r.kind === 'missense') L.push('  AlphaMissense, this change: not available');
-    L.push(`  AlphaMissense, residue mean: ${f.amMean === null ? 'not available' : f.amMean.toFixed(2)}`);
+    L.push(`  AlphaMissense, residue mean: ${f.amMean === null ? 'not available' : `${f.amMean.toFixed(2)}${f.amMeanClass ? ` (${amClassLabel(f.amMeanClass)})` : ''}`}`);
     if (r.amAll) L.push(`  AlphaMissense, every substitution at ${sub.modelRes}: ${Object.keys(r.amAll).sort().map((a) => `${three(a)} ${fmtAm(r.amAll[a].am)} (${amClassLabel(r.amAll[a].amClass)})`).join('; ')}`);
     L.push(`  Conservation: ${f.conservation === null ? 'not available' : `${f.conservation.toFixed(2)} on a 0 to 1 scale`}`);
     L.push('In the GPCompaRe database:');
@@ -1400,14 +1438,14 @@ export function evidenceText(r, ctx = {}) {
     if (r.cfrHood) L.push(`  CFR neighbourhood (a CFR is ${cfrOneOf(ctx.cfrTop)}): ${cfrHoodSentence(r) ?? 'at a CFR position, no other relation'}`);
     if (r.motifs) { const ms = r.motifs.filter((m) => m.key !== 'xmy' || m.carried !== false); L.push(`  Motif: ${ms.length ? ms.map((m) => `${m.name} (position ${m.position}${!m.required ? ', the variable x' : m.canonical ? `, canonical ${m.canonical.split('').map(three).join(' or ')}` : ''}${m.carried === false ? '; not carried in full by this receptor' : ''}${m.key === 'xmy' ? `; ${m.note}` : ''})`).join('; ') : 'not a motif position'}`); }
     L.push(`  Largest contact change: ${f.dmax === null ? 'no contacts' : `|dRRCS| ${f.dmax.toFixed(2)}${f.threshold !== null ? `, receptor threshold ${f.threshold.toFixed(2)}` : ''}${f.partner ? `, with ${f.partner}` : ''}`}`);
-    if (f.net !== null) L.push(`  Net dRRCS: ${signed(f.net, 1)} (${direction(f.net).word}; red = active, blue = inactive): ${netSentence(f.net)}`);
+    if (f.net !== null) L.push(`  Net dRRCS: ${signed(f.net, 1)}: ${netSentence(f.net, { value: false })}`);
     if (r.rank?.rank) L.push(`  Rank by largest |dRRCS|: ${r.rank.rank} of ${r.rank.of} residues in ${r.receptor?.symbol ?? r.gid}`);
     L.push(`  Contacts above this receptor's threshold: ${f.nsig ?? 0}`);
     if (r.contacts === undefined) L.push('  Contact list: not available in this index');
     else if (!r.contacts.length) L.push('  Contact list: this residue takes part in no contact above the threshold');
     else {
       L.push('  Contacts, largest |dRRCS| first (dRRCS; active RRCS; inactive RRCS; what the models show):');
-      for (const c of r.contacts) L.push(`    ${partnerName(c)}${c.partnerGeneric ? ` (${c.partnerGeneric}, ${c.partnerSegment})` : (c.partnerSegment ? ` (${c.partnerSegment})` : '')}${c.partnerCfr ? `, CFR rank ${c.partnerCfrRank}` : ''}${c.partnerMotifs?.length ? `, ${c.partnerMotifs.join(', ')}` : ''}: dRRCS ${signed(c.delta)}; active ${c.active.toFixed(2)}; inactive ${c.inactive.toFixed(2)}; ${contactMeaning(c)}; report pair ${c.a}-${c.b}`);
+      for (const c of r.contacts) L.push(`    ${partnerName(c)}${c.partnerGeneric ? ` (${c.partnerGeneric}, ${c.partnerSegment})` : (c.partnerSegment ? ` (${c.partnerSegment})` : '')}${c.partnerCfr ? `, CFR rank ${c.partnerCfrRank}` : ''}${c.partnerMotifs?.length ? `, ${c.partnerMotifs.join(', ')}` : ''}: dRRCS ${signed(c.delta)}; active ${fmtRrcs(c.active, contactPresence(c).active)}; inactive ${fmtRrcs(c.inactive, contactPresence(c).inactive)}; ${contactMeaning(c)}; report pair ${c.a}-${c.b}`);
     }
   }
   if ((r.notes ?? []).length) {
@@ -1616,7 +1654,7 @@ function cardFinePrint(r, o, mismatch, noResidue) {
     about.push(html`<li><strong>${term(o, 'cfr', 'CFR')}:</strong> a core functional residue position here is ${cfrOneOf(o.cfrTop)}. The rank is the position's place in that class-wide ranking.</li>`);
     if (f.dmax !== null) about.push(html`<li><strong>Largest contact change:</strong> the biggest |ΔRRCS| among this residue's contacts${f.threshold !== null ? html`; this receptor's threshold is ${f.threshold.toFixed(2)}` : ''}.</li>`);
     about.push(html`<li><strong>${term(o, 'pair', 'Contacts')}</strong> are residue pairs of the AlphaFold-Multistate models whose contact score changes by at least the receptor's threshold between the inactive and the active model. They describe the two models, not the effect of a variant.</li>`);
-    about.push(html`<li><strong>${term(o, 'conservation', 'Conservation')}</strong> is on a 0 to 1 scale. <strong>${term(o, 'am', 'AlphaMissense')}</strong> scores are predictions (0 to 1; likely benign below 0.34, likely pathogenic above 0.564); <strong>residue mean</strong> is the mean over all substitutions at the residue.</li>`);
+    about.push(html`<li><strong>${term(o, 'conservation', 'Conservation')}</strong> is on a 0 to 1 scale. <strong>${term(o, 'am', 'AlphaMissense')}</strong> scores are predictions on a 0 to 1 scale. ${AM_CUTS_TEXT} <strong>Residue mean</strong> is the mean over all substitutions at the residue, classed by the same cutoffs before rounding.</li>`);
   }
   if (!releases.length && !about.length) return '';
   return finePrint(html`${hasRows ? html`<p class="sr-research-note">${RESEARCH_NOTE_SHORT}</p>` : ''}${hasRows && releases.length ? html`<p class="sr-card-releases">${releases.join('; ')}.</p>` : ''}

@@ -910,7 +910,7 @@ def test_csv_download_is_the_filtered_sorted_table(open_page, tmp_path):
         assert col in head, (col, list(head))
     par2 = [r for r in rows if r['gene_symbol'] == 'F2RL1'][0]
     assert par2['residue'] == 'Met159' and par2['generic_number'] == '3.36x36' and par2['largest_partner'] == 'Phe300'
-    assert par2['net_direction'] == 'stronger in inactive' and float(par2['net_delta_rrcs']) < 0
+    assert par2['net_direction'] == 'stronger in the inactive model' and float(par2['net_delta_rrcs']) < 0
     nets = [float(r['net_delta_rrcs']) for r in rows if r['net_delta_rrcs']]
     assert nets == sorted(nets, reverse=True)       # the CSV follows the sort on screen
     assert '—' not in path.read_text(encoding='utf-8')
@@ -1035,7 +1035,8 @@ def test_card_gives_the_numbers_their_context(open_page):
     facts = '\n'.join(page.locator('.sr-facts').all_inner_texts())   # the predictions and the database facts
     assert re.search(r'\|ΔRRCS\| 4\.99, with Phe300', facts), facts
     assert 'receptor threshold' not in facts                    # the threshold is fine print, below
-    assert 'stronger in inactive' in facts                      # net delta, with a direction word
+    assert 'stronger in the inactive model' in facts            # net delta, with a direction word
+    assert 'on activation' not in facts and 'stronger in inactive ' not in facts
     assert '0.96' in facts and '0 to 1 scale' not in facts
     assert '0 variable' not in facts and '1 conserved' not in facts
     assert 'AlphaMissense, residue mean' in facts
@@ -1146,7 +1147,7 @@ def test_evidence_summary_for_par2(open_page):
         'rs115885685', 'allele count 1,553 of 1,461,886', 'AlphaMissense prediction 0.91',
         'ClinVar 2026-10-11',
         'Core functional residue (class-wide): yes, one of the 50 top-ranked class-wide CFR positions (by CFR score), rank 30',
-        'receptor threshold', 'Net dRRCS:', 'stronger in inactive', 'Conservation: 0.96 on a 0 to 1 scale',
+        'receptor threshold', 'Net dRRCS:', 'stronger in the inactive model', 'Conservation: 0.96 on a 0 to 1 scale',
         'Data releases:', 'gnomAD v4.1.2', 'Search link:', '/search/?q=PAR2%20M159I',
     ):
         assert needle in clip, (needle, clip)
@@ -1530,17 +1531,67 @@ def test_contacts_read_in_activation_terms_with_a_legend(open_page):
     rows = page.locator('.sr-dbs .sr-db-row')
     assert rows.count() == 2
     words = [rows.nth(i).locator('.sr-db-word').inner_text() for i in range(rows.count())]
-    assert words == ['weakens on activation', 'breaks on activation']
+    assert words == ['stronger in the inactive model', 'present only in the inactive model']
     assert 'CFR 2' in rows.first.inner_text()   # 6.48x48, rank 2 by CFR score (submitted ranking)
     legend = page.locator('.sr-db-legend').inner_text()
-    assert 'inactive model' in legend and 'active model' in legend and 'weakens' in legend
+    assert 'red: stronger in the active model; blue: stronger in the inactive model' in legend
+    assert 'activation' not in legend
     facts = '\n'.join(page.locator('.sr-facts').all_inner_texts())
-    assert 'overall its contacts weaken on activation' in facts
+    assert 'overall its contacts are stronger in the inactive model' in facts
     assert 'rank 41 of 397 residues' in facts
     assert '(|ΔRRCS| ≥ 2.60)' in facts
     assert 'xMY motif' in facts and '30 of 283' in facts
     over = page.evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth')
     assert over <= 1
+
+
+def test_a_small_positive_endpoint_is_a_contact_not_an_absence(open_page):
+    """RXFP2 364-483: active RRCS 0.0026 rounds to 0.00 but the active model has the contact. The card says
+    "stronger in the inactive model", shows the endpoint as <0.01 and never "present only in" or "no contact"."""
+    page = search_page(open_page, 'RXFP2 364', permissions=['clipboard-read', 'clipboard-write'])
+    assert 'RXFP2' in read_line(page)
+    row = page.locator('.sr-table--contacts tbody tr', has=page.locator('a[href$="#pair=364-483"]'))
+    assert row.count() == 1
+    cells = row.locator('td')
+    text = row.inner_text()
+    assert row.locator('td[data-label="Active RRCS"]').inner_text() == '<0.01'
+    assert row.locator('td[data-label="Inactive RRCS"]').inner_text() == '8.49'
+    assert row.locator('.sr-net').inner_text() == '-8.49'
+    what = row.locator('td[data-label="What the models show"]').inner_text()
+    assert what == 'stronger in the inactive model: present in both models', what
+    assert 'present only' not in text and 'no contact' not in text and 'activation' not in text, text
+    assert cells.count() == 6
+    db = page.locator('.sr-dbs .sr-db-row', has=page.locator('.mono', has_text='Gln483'))
+    assert db.locator('.sr-db-word').inner_text() == 'stronger in the inactive model'
+    assert 'active <0.01' in db.locator('.sr-db-track').get_attribute('title')
+    legend = page.locator('.sr-contacts-legend').inner_text()
+    assert '<0.01 is a contact with a score above 0 that rounds to 0.00' in legend
+    page.get_by_role('button', name='Copy evidence summary').click()
+    page.wait_for_function("() => document.querySelector('[data-copy-evidence]').textContent === 'Copied'")
+    clip = _clipboard(page)
+    assert 'active <0.01; inactive 8.49; stronger in the inactive model: present in both models; report pair 364-483' in clip
+    assert not page.errors, page.errors
+
+
+def test_alphamissense_intervals_are_the_published_ones(open_page):
+    page = search_page(open_page, 'HTR1A 232')
+    pred = page.locator('details[data-sec="predictions"]')
+    if pred.get_attribute('open') is None:
+        pred.locator('summary').click()
+    legend = pred.locator('.sr-path-legend').inner_text()
+    for need in ('score < 0.34', '0.34 ≤ score ≤ 0.564', 'score > 0.564'):
+        assert need in legend, legend
+    assert 'Classes follow the source predictions before display rounding.' in pred.inner_text()
+    # the residue mean 0.5646 shows as 0.56 and keeps its class
+    facts = pred.locator('.sr-facts').inner_text()
+    assert re.search(r'residue mean\s+0\.56 likely pathogenic', facts), facts
+    about = page.locator('.sr-about')
+    about.locator('summary').click()
+    assert ('Likely pathogenic: score > 0.564. Ambiguous: 0.34 ≤ score ≤ 0.564. Likely benign: score < 0.34. '
+            'Classes follow the source predictions before display rounding.') in about.inner_text()
+    body = page.locator('#search-results').inner_text()
+    assert 'below 0.34' not in body and 'above 0.564' not in body and '0.563' not in body
+    assert not page.errors, page.errors
 
 
 @pytest.mark.parametrize('viewport', [DESKTOP, PHONE_390])
@@ -1625,7 +1676,7 @@ def test_card_shows_the_cfr_neighbourhood(open_page, viewport, scheme):
     row = block.locator('[data-cfr-rel="connected"] tbody tr').first
     assert 'Gln229' in row.inner_text() and '5.68x68' in row.inner_text()
     assert row.locator('.sr-net--inactive').inner_text() == '-3.76'
-    assert 'breaks on activation' in row.inner_text()
+    assert 'present only in the inactive model' in row.inner_text() and 'activation' not in row.inner_text()
     # red/blue are the active/inactive tokens, not the pathogenicity palette
     colour = row.locator('.sr-net--inactive').evaluate('e => getComputedStyle(e).color')
     token = page.evaluate("() => { const d = document.createElement('span'); d.style.color = 'var(--semantic-inactive)'; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; }")

@@ -7,7 +7,8 @@ The P4 parser and resolver test suite runs this table and must pass 100%.
 
 | File | What it is |
 |---|---|
-| `golden_queries.tsv` | 396 queries and their expected answers |
+| `golden_queries.tsv` | 403 queries and their expected answers |
+| `contact_presence_golden.tsv` | The 32 threshold-passing contact endpoints with RRCS above 0 that round to 0.00 (batch data); the index flags them present and the card shows them as <0.01 |
 | `grch37_liftover.tsv` | GRCh38 to GRCh37 positions used by the GRCh37 rows (Ensembl REST, fetched 2026-11-04) |
 | `check_golden.py` | Validator: re-derives every row from the Studio packs and exits non-zero on any mismatch |
 

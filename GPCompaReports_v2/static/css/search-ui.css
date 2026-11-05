@@ -357,6 +357,7 @@ h5.sr-subhead { margin: var(--s-3) 0 var(--s-1); font-size: 0.84rem; font-weight
 .sr-path-swatch--ambiguous { background: var(--path-ambiguous-fill); border-color: var(--path-ambiguous); }
 .sr-path-swatch--pathogenic { background: var(--path-pathogenic-fill); border-color: var(--path-pathogenic); }
 .sr-path-legend, .sr-band-legend, .sr-map-keys { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4); margin: var(--s-2) 0 0; padding: 0; list-style: none; font-size: 0.82rem; }
+.sr-path-note { margin: var(--s-1) 0 0; font-size: 0.78rem; }
 /* the 19-substitution strip takes the palette; the queried change is outlined */
 .sr-am--benign { background: var(--path-benign-fill); border-color: var(--path-benign); }
 .sr-am--ambiguous { background: var(--path-ambiguous-fill); border-color: var(--path-ambiguous); }

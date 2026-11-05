@@ -401,3 +401,4 @@ G399	ADRB2 near CFR	cfr_list	receptor	adrb2_human						na	flag cfr-list, "near" 
 G400	variants connected to CFRs in DRD2	cfr_list	receptor	drd2_human						na	flag cfr-list, "connected to" form
 G401	MC1R CFR	cfr_list	receptor	mshr_human						na	flag cfr-list, shortest form
 G402	CFR variants	cfr_list	unrecognised							na	no receptor: a plain-language line asking for one, with two examples
+G403	RXFP2 364	contact_presence	target	rxfp2_human	364	E				na	residue only; contact 364-483 has active RRCS 0.0026 (shown <0.01, present in both models) src=public/pack/rxfp2_human.json:residues
