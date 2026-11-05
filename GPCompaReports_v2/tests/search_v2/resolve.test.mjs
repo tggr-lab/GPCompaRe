@@ -128,7 +128,7 @@ function checkRow(row, ans) {
 }
 
 describe('golden table end to end', { skip }, () => {
-  test('table size', () => assert.equal(golden.length, 396));
+  test('table size', () => assert.equal(golden.length, 402));
   for (const row of golden) {
     test(`${row.id} ${JSON.stringify(row.query)} -> ${row.expect}`, async () => {
       const ans = await search(unescape(row.query), loader);

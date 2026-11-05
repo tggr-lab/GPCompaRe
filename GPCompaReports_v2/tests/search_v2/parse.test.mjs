@@ -1,6 +1,6 @@
 // Search v2 parser tests (P4). Run: node --test GPCompaReports_v2/tests/search_v2/parse.test.mjs
 //
-// 1. The golden table (golden_queries.tsv, 396 rows) at parse level: every row's top interpretation must
+// 1. The golden table (golden_queries.tsv, 402 rows) at parse level: every row's top interpretation must
 //    equal the reviewed expectation in parse_expected.tsv (and the listed alternates must be present),
 //    and must agree with the golden columns that are knowable without data (receptor named, typed
 //    ref/pos/alt, ClinVar id, genomic allele and assembly label, ambiguity alternates).
@@ -89,7 +89,7 @@ const ALLELE_NOT_LISTED = new Map([
 
 describe('golden table at parse level', () => {
   test('both tables list the same rows', () => {
-    assert.equal(golden.length, 396);
+    assert.equal(golden.length, 402);
     assert.deepEqual(golden.map((r) => r.id), [...expected.keys()]);
     for (const g of golden) assert.equal(expected.get(g.id).query, g.query, g.id);
   });
@@ -491,5 +491,27 @@ describe('every ClinVar record of a receptor', () => {
     }
     assert.ok(!(top('ClinVar', ctx).flags ?? []).includes('clinvar-list'));
     assert.ok(!(top('qwertyzz ClinVar', ctx).flags ?? []).includes('clinvar-list'));
+  });
+});
+
+describe('the variants in a receptor\'s CFR neighbourhood', () => {
+  test('"ADRB2 CFR variants" and its natural forms read as the receptor with the cfr-list flag', () => {
+    const forms = [['ADRB2 CFR variants', 'ADRB2'], ['ADRB2 CFR', 'ADRB2'], ['CFR variants in MC4R', 'MC4R'], ['CFR variants of MC4R', 'MC4R'],
+      ['ADRB2 near CFR', 'ADRB2'], ['ADRB2 near CFRs', 'ADRB2'], ['variants near CFRs in DRD2', 'DRD2'], ['DRD2 variants connected to CFRs', 'DRD2'],
+      ['CFR ADRB2', 'ADRB2'], ['ADRB2 core functional residues', 'ADRB2'], ['MC1R CFR neighbourhood', 'MC1R'], ['mc4r cfr-connected variants', 'mc4r']];
+    for (const [q, rec] of forms) {
+      const t = top(q, ctx);
+      assert.equal(t.kind, 'receptor', q);
+      assert.ok(t.flags?.includes('cfr-list'), q);
+      assert.equal(t.receptorTerm, rec, q);
+    }
+  });
+  test('without a receptor it asks for one; other queries are untouched', () => {
+    for (const q of ['CFR', 'CFR variants', 'variants near CFRs']) {
+      const t = top(q, ctx);
+      assert.equal(t.kind, 'unrecognised', q);
+      assert.match(t.why, /Name a receptor/);
+    }
+    for (const q of ['ADRB2', 'ADRB2 ClinVar', 'ADRB2 R131Q', 'CFTR', 'qwertyzz CFR', 'DRY in ADRB2']) assert.ok(!(top(q, ctx).flags ?? []).includes('cfr-list'), q);
   });
 });

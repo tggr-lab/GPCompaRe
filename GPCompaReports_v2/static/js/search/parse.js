@@ -13,7 +13,8 @@
  *   confidence: number,            // 0..1, the list is sorted on it
  *   query: string,                 // the normalised query this reading came from
  *   why: string,                   // plain-language reason for this reading
- *   flags?: string[],              // e.g. 'possibly-receptor-name', 'rna-coordinate'
+ *   flags?: string[],              // e.g. 'possibly-receptor-name', 'rna-coordinate', 'clinvar-list' ("ADRB2 ClinVar"),
+ *                                  //   'cfr-list' ("ADRB2 CFR variants", "CFR variants in MC4R", "ADRB2 near CFR")
  *   receptorTerm?: string,         // the receptor as typed ('PAR2', 'β2AR', 'P55085', 'HGNC:3538')
  *   receptorId?: {type: 'uniprot'|'entry'|'ensg'|'hgnc'|'geneid', value, isoform?},
  *   receptorMatches?: [{gid, exact}],   // only when ctx.matchReceptor was given
@@ -309,6 +310,37 @@ function readClinvarList(text, matcher) {
   return receptorInterp(term, rid, match, 0.96, `Read as every ClinVar record of the receptor "${term}".`, ['clinvar-list']);
 }
 
+const CFR_WORD = /(?:^|[\s,;:])(?:cfrs?|core functional residues?)(?=$|[\s,;:-])/i;
+/** Words around the receptor in a CFR list request; only leading and trailing runs of them are dropped. */
+const CFR_FILLER = new Set(['cfr', 'cfrs', 'core', 'functional', 'residue', 'residues', 'variant', 'variants', 'near',
+  'around', 'close', 'next', 'connected', 'to', 'at', 'the', 'in', 'of', 'for', 'a', 'and', 'or', 'by', 'list', 'show',
+  'neighbourhood', 'neighborhood', 'neighbours', 'neighbors', 'positions', 'position', 'all', 'every', 'cfr-connected']);
+
+/**
+ * "ADRB2 CFR variants", "CFR variants in MC4R", "ADRB2 near CFR", "variants connected to CFRs in DRD2": the receptor,
+ * with the request for its variants at, connected to or near its CFR positions (flag cfr-list). Without a receptor
+ * ("CFR variants") an unrecognised reading that asks for one.
+ */
+function readCfrList(text, matcher) {
+  if (!CFR_WORD.test(text)) return null;
+  const words = text.replace(/[,;:]/g, ' ').split(/\s+/).filter(Boolean);
+  const filler = (w) => CFR_FILLER.has(w.toLowerCase());
+  let i = 0; let j = words.length;
+  while (i < j && filler(words[i])) i += 1;
+  while (j > i && filler(words[j - 1])) j -= 1;
+  const dropped = [...words.slice(0, i), ...words.slice(j)].join(' ');
+  if (!CFR_WORD.test(` ${dropped} `)) return null;
+  if (i === j) {
+    return { kind: 'unrecognised', confidence: 1, why: 'Name a receptor to list the variants at, connected to or near its CFR positions, for example "ADRB2 CFR variants" or "CFR variants in MC4R".' };
+  }
+  const term = words.slice(i, j).join(' ');
+  if (!isNameShaped(term)) return null;
+  const rid = parseReceptorId(term);
+  const match = matchOf(term, matcher);
+  if (matcher && match.status === 'none' && !rid) return null;
+  return receptorInterp(term, rid, match, 0.96, `Read as the variants at, connected to or near the CFR positions of the receptor "${term}".`, ['cfr-list']);
+}
+
 /** Every split of "receptor + notation" (head first, a "(GENE)" suffix, or notation first). */
 function splits(text, matcher) {
   const cands = [];
@@ -389,6 +421,10 @@ function parseText(query, ctx) {
     const match = matchOf(receptorText, matcher);
     return [finish(r, 0.97, { term: receptorText, rid: parseReceptorId(receptorText), match })];
   }
+
+  // 0b. the variants in a receptor's CFR neighbourhood: "ADRB2 CFR variants", "CFR variants in MC4R", "ADRB2 near CFR"
+  const cfrList = readCfrList(text, matcher);
+  if (cfrList) return [cfrList];
 
   // 1. a receptor identifier on its own (UniProt accession, entry name, ENSG, HGNC:, GeneID)
   const rid = parseReceptorId(text);

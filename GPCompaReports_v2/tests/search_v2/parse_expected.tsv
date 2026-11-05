@@ -395,3 +395,9 @@ G393	VCV002489980	clinvar vcv=VCV002489980 variationId=2489980
 G394	ADRB2 R131Q	protein R=ADRB2 p=R131Q	
 G395	ADRB2 p.Arg131Gln	protein R=ADRB2 p=R131Q	
 G396	MC4R V103I	protein R=MC4R p=V103I	
+G397	ADRB2 CFR variants	receptor R=ADRB2	
+G398	CFR variants in MC4R	receptor R=MC4R	
+G399	ADRB2 near CFR	receptor R=ADRB2	
+G400	variants connected to CFRs in DRD2	receptor R=DRD2	
+G401	MC1R CFR	receptor R=MC1R	
+G402	CFR variants	unrecognised	

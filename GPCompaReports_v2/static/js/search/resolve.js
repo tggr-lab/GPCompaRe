@@ -87,6 +87,14 @@
  *   track?: {length, segments: [[name, from, to]], cfr: number[], am: (number|null)[], dmax: (number|null)[],
  *           alleles: number[], clinvar: number[]},   // the receptor map (residues/ + variants/ shards): CFR positions,
  *                               // mean AlphaMissense and |ΔRRCS| max per residue (index 0 = residue 1), residues with records
+ *   cfrHood?: {pos, at, rank, group, connected: [...], near: [...], touch: [...]|null},   // full results with a residue
+ *                               // table: the residue's CFR neighbourhood (search/cfrhood.js: at a CFR position, connected
+ *                               // to one by an above-threshold contact, within 2 residues of one in the same segment, or
+ *                               // in a below-threshold modelled contact with one); absent for an index without detail/
+ *   cfrList?: {cfr, rows, skipped, counts, hasTouch, threshold},   // receptor results for "ADRB2 CFR variants": the
+ *                               // receptor's CFR positions and every gnomAD allele and ClinVar missense record at a residue
+ *                               // in its CFR neighbourhood (search/cfrhood.js cfrVariantRows); counts = {[group]:
+ *                               // {variants, residues}}; null when the index has no residue table for the receptor
  *   clinvarList?: true,         // receptor results: `clinvar` holds every indexed record of the receptor and
  *                               // the reader asked for that list ("ADRB2 ClinVar")
  *   summary?: {                 // every result with a residue (light or full): the compact residue summary
@@ -115,6 +123,7 @@
 import { parse, MOTIFS } from './parse.js';
 import { aliasKey } from './normalize.js';
 import { shardsFor, makeMatcher, three } from './shards.js';
+import { cfrNeighbourhood, cfrVariantRows, CFR_GROUPS } from './cfrhood.js';
 import { cToG, gToC, cText, mapPos, unmapPos, lift38to37, lift37to38, baseAt, codonAt, translate, complement, cdsLength, intronAnchor } from './txmap.js';
 
 const NONMISSENSE = new Set(['stop', 'synonymous', 'frameshift', 'indel', 'start', 'ext']);
@@ -291,6 +300,34 @@ async function receptorWithClinvar(ctx, gid, i) {
   return res;
 }
 
+/** The CFR neighbourhood of a receptor, computed once per decoded shard pair. */
+const hoods = new WeakMap();
+function hoodFor(res, det) {
+  if (!res) return null;
+  let m = hoods.get(res);
+  if (!m) { m = new Map(); hoods.set(res, m); }
+  const key = det ?? 'none';
+  if (!m.has(key)) m.set(key, cfrNeighbourhood(res, det));
+  return m.get(key);
+}
+
+/** One receptor with its variants in the CFR neighbourhood ("ADRB2 CFR variants"); flag `cfr-list`. */
+async function receptorWithCfrList(ctx, gid) {
+  const res = receptorResult(ctx.meta, gid);
+  const [r, vars, det] = await Promise.all([ctx.S.residues(gid), ctx.S.variants(gid), ctx.S.detail(gid)]);
+  res.releases = { gnomad: ctx.meta.releases?.gnomad?.label, clinvar: ctx.meta.releases?.clinvar?.label };
+  if (!r) { res.cfrList = null; return res; }
+  const hood = hoodFor(r, det);
+  const { rows, skipped } = cfrVariantRows(hood, vars, det ? (p) => det.amAt(p) : null);
+  const counts = {};
+  for (const g of CFR_GROUPS) {
+    const mine = rows.filter((x) => x.group === g);
+    counts[g] = { variants: mine.length, residues: new Set(mine.map((x) => x.pos)).size };
+  }
+  res.cfrList = { cfr: hood.cfr, rows, skipped, counts, hasContacts: hood.hasContacts, hasTouch: hood.hasTouch, threshold: ctx.meta.byGid.get(gid)?.threshold ?? null, hasVariants: !!vars };
+  return res;
+}
+
 async function resolveReceptorQuery(ctx, list) {
   const { meta } = ctx;
   const top = list[0];
@@ -308,6 +345,9 @@ async function resolveReceptorQuery(ctx, list) {
     alternates.push(isChange && c.kind === 'missense'
       ? { kind: 'change', gid: '*', pos: c.pos, ref: c.ref, alt: c.alt, count: hits.length, label: `p.${three(c.ref)}${c.pos}${three(c.alt)} in ${hits.length} receptor${hits.length === 1 ? '' : 's'}` }
       : { kind: 'residue', gid: '*', pos: c.pos, ref: c.ref, count: hits.length, label: `${three(c.ref)}${c.pos} in ${hits.length} receptor${hits.length === 1 ? '' : 's'}` });
+  }
+  if (top.flags?.includes('cfr-list') && r.gids.length === 1) {
+    return answer('receptor', [await receptorWithCfrList(ctx, r.gids[0])], { interpretation: top });
   }
   if (r.status === 'exact' && r.gids.length === 1) {
     const res = [await receptorWithClinvar(ctx, r.gids[0], top)];
@@ -550,6 +590,8 @@ async function makeResult(ctx, gid, pos, o = {}) {
           delta: p.delta, active: p.active, inactive: p.inactive };
       });
     }
+    // how the residue relates to the receptor's CFR positions (at, connected, near in sequence, in contact)
+    if (det && gene.res) r.cfrHood = hoodFor(gene.res, det).of(pos);
   }
   return r;
 }

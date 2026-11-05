@@ -269,6 +269,8 @@ const amClassOf = (v) => (v < 340 ? 'benign' : v > 564 ? 'pathogenic' : 'ambiguo
  *   amAt(pos) -> {[alt]: {am, amClass}} over every substitution at the residue, or null without predictions
  *   contactsOf(pos) -> [{a, b, delta, active, inactive}] the residue's threshold-passing contacts, largest |ΔRRCS| first
  *   pairs -> every threshold-passing pair of the receptor
+ *   cfrContacts -> [{a, b, delta}] the other modelled contacts (RRCS > 0 in either model, below the threshold) that
+ *                  have a residue at a CFR position; null for an index built without them (`cfrc`)
  */
 export function decodeDetail(raw, alphabet = 'ACDEFGHIKLMNPQRSTVWY') {
   const letters = alphabet.split('');
@@ -292,7 +294,8 @@ export function decodeDetail(raw, alphabet = 'ACDEFGHIKLMNPQRSTVWY') {
       byPos.get(q).push(p);
     }
   }
-  return { gid: raw.gid, amAt, pairs, contactsOf: (pos) => byPos.get(pos) ?? [] };
+  const cfrContacts = Array.isArray(raw.cfrc) ? raw.cfrc.map(([a, b, d]) => ({ a, b, delta: d / 100 })) : null;
+  return { gid: raw.gid, amAt, pairs, cfrContacts, contactsOf: (pos) => byPos.get(pos) ?? [] };
 }
 
 // ------------------------------------------------------------------------------------- rsid

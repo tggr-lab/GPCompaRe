@@ -45,7 +45,8 @@ Shards (all JSON, compact; the deploy gzips them; sizes are budgeted by tests):
                               missense record) -> receptor indices (NN = pos mod SUBST_SHARDS), for bare changes
   detail/<gid>.json           loaded only when a full residue card opens: the AlphaMissense prediction of every
                               substitution at every residue (x1000, AM_ALPHABET order) and the receptor's
-                              threshold-passing contact pairs with their dRRCS and RRCS values; see build_detail
+                              threshold-passing contact pairs with their dRRCS and RRCS values, and the
+                              below-threshold contacts of the CFR residues (`cfrc`); see build_detail
 
 Cheapest way to build only this index (about 30 s, no report pages):
     .venv-test/bin/python -m GPCompaReports_v2.website.page_generators.search_index_v2 \
@@ -367,7 +368,7 @@ def _am_class(x1000):
     return 'B' if x1000 < 340 else ('P' if x1000 > 564 else 'A')
 
 
-def build_detail(gid, pack, store, st=None):
+def build_detail(gid, pack, store, st=None, cfr_pos=()):
     """detail/<gid>.json: what a full residue card shows beyond residues/ and variants/, fetched only when one opens.
 
     am    per residue (index 0 = residue 1): the AlphaMissense prediction of every substitution, x1000 integers in
@@ -376,6 +377,10 @@ def build_detail(gid, pack, store, st=None):
           score (a score such as 0.5641 rounds onto the cutoff); elsewhere the class follows from the score
     pairs the receptor's threshold-passing contact pairs (store.significant_data, the pairs the report page lists):
           [res1, res2, dRRCS x100, active RRCS x100, inactive RRCS x100], largest |dRRCS| first
+    cfrc  every other modelled contact (RRCS > 0 in either model, store.delta_data) with a residue at a CFR position
+          (`cfr_pos`: the residues/ `cfr` positions, top CFR_TOP): [res1, res2, dRRCS x100], ordered by res1, res2.
+          With `pairs` it gives every modelled contact of a CFR residue, for "in contact with a CFR" (search card
+          and the receptor's CFR variant list); about 1 KB gzip per receptor
     """
     seq = pack['sequence']
     amp = pack.get('am') or {}
@@ -398,7 +403,19 @@ def build_detail(gid, pack, store, st=None):
                                        s['active_rrcs'].astype(float), s['inactive_rrcs'].astype(float)):
             pairs.append([int(a), int(b), _i(d, 100), _i(act, 100), _i(inact, 100)])
         pairs.sort(key=lambda p: (-abs(p[2]), p[0], p[1]))
-    return {'gid': gid, 'am': am, 'amx': amx, 'pairs': pairs}
+    cfrc = []
+    d = store.delta_data.get(gid) if store is not None and cfr_pos else None
+    if d is not None and len(d):
+        sig = {(p[0], p[1]) for p in pairs} | {(p[1], p[0]) for p in pairs}
+        cfr_pos = set(cfr_pos)
+        for a, b, dv, act, inact in zip(d['res1'].astype(int), d['res2'].astype(int), d['delta_rrcs'].astype(float),
+                                        d['active_rrcs'].astype(float), d['inactive_rrcs'].astype(float)):
+            a, b = int(a), int(b)
+            if a == b or (a, b) in sig or not (act > 0 or inact > 0) or not (a in cfr_pos or b in cfr_pos):
+                continue
+            cfrc.append([min(a, b), max(a, b), _i(dv, 100)])
+        cfrc.sort()
+    return {'gid': gid, 'am': am, 'amx': amx, 'pairs': pairs, 'cfrc': cfrc}
 
 
 def residue_summary(pack, st):
@@ -1282,8 +1299,9 @@ def generate_search_index_v2(store, output_dir, studio=None, sources=None, gids=
         p = packs[g]
         i = idx[g]
         st = _residue_struct(store, g) if store is not None else None
-        put('residues', f'residues/{g}.json', build_residues(g, p, store, cfr_rank, st))
-        put('detail', f'detail/{g}.json', build_detail(g, p, store, st))
+        rows = build_residues(g, p, store, cfr_rank, st)
+        put('residues', f'residues/{g}.json', rows)
+        put('detail', f'detail/{g}.json', build_detail(g, p, store, st, cfr_pos={int(k) for k in rows['cfr']}))
         summaries[g] = residue_summary(p, st)
         shifts = ((p['provenance'].get('cachesRekeyed') or {}).get('shifts') or {})
         up_off = int(next(iter(shifts))) if len(shifts) == 1 else 0
