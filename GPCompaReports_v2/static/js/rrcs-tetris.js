@@ -10,7 +10,7 @@
    (↑ ↑ ↓ ↓ ← → ← → B A) anywhere on the page.
    To be found by chance: resting the pointer on the histogram for a moment, or clicking
    (tapping) one of its bars, wiggles the block once and shows a one-line hint beside it,
-   "These bars look like they could fall. Play?", which starts the game. Nothing moves or
+   "Play RRCS Tetris", which starts the game. Nothing moves or
    appears until then; once a game has been played in this browser the hint stays away
    (the block remains). No wiggle under prefers-reduced-motion.
 
@@ -780,7 +780,7 @@
       btn.type = 'button';
       btn.className = 'rrcs-tetris-toggle';
       btn.innerHTML = ICON;
-      btn.title = 'These bars look like they could fall';
+      btn.title = 'Play RRCS Tetris';
       btn.setAttribute('aria-label', 'Play RRCS Tetris');
       btn.setAttribute('aria-pressed', 'false');
       btn.addEventListener('click', function() { active ? stop() : start(false); });
@@ -791,7 +791,7 @@
       hint.type = 'button';
       hint.className = 'rrcs-tetris-hint';
       hint.hidden = true;
-      hint.textContent = 'These bars look like they could fall. Play?';
+      hint.textContent = 'Play RRCS Tetris';
       hint.addEventListener('click', function() { if (!active) start(false); });
       head.appendChild(hint);
       ui.hint = hint;
