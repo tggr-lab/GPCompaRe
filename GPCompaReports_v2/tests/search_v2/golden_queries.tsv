@@ -395,7 +395,7 @@ G393	VCV002489980	clinvar_nonplp	target	gp171_human	255	T	S			na	clinvar_raw=248
 G394	ADRB2 R131Q	two_nucleotide	target	adrb2_human	131	R	Q			na	codon CGC needs two nucleotide substitutions for Gln: no gnomAD allele (the card says why); the AlphaMissense prediction for the substitution comes from the per-residue table: 0.972 (likely pathogenic); src=public/pack/adrb2_human.json:am
 G395	ADRB2 p.Arg131Gln	two_nucleotide	target	adrb2_human	131	R	Q			na	HGVS form of G394; the card shows 0.972 for Gln among the 19 substitutions at Arg131 (3.50x50, DRY, CFR rank 1) and the three threshold-passing contacts (Asp130, Tyr141, Thr68); src=public/pack/adrb2_human.json:am
 G396	MC4R V103I	card_evidence	target	mc4r_human	103	V	I	18-60372043-C-T		na	common allele rs2229616 (AF 0.018): card shows gnomAD counts, ClinVar Benign/Likely benign with submissions, AlphaMissense 0.084 (likely benign) from the per-residue table, no threshold-passing contact at Val103; src=public/pack/mc4r_human.json:variants
-G397	ADRB2 CFR variants	cfr_list	receptor	adrb2_human						na	flag cfr-list: the receptor with its gnomAD alleles and ClinVar missense records at, connected to or near its top-30 CFR positions
+G397	ADRB2 CFR variants	cfr_list	receptor	adrb2_human						na	flag cfr-list: the receptor with its gnomAD alleles and ClinVar missense records at, connected to or near its CFR positions (the 50 top-ranked class-wide CFR positions by CFR score)
 G398	CFR variants in MC4R	cfr_list	receptor	mc4r_human						na	flag cfr-list, receptor after the request
 G399	ADRB2 near CFR	cfr_list	receptor	adrb2_human						na	flag cfr-list, "near" form
 G400	variants connected to CFRs in DRD2	cfr_list	receptor	drd2_human						na	flag cfr-list, "connected to" form

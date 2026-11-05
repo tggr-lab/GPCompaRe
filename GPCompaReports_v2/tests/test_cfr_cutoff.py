@@ -144,7 +144,7 @@ def test_the_heading_states_the_analytical_cutoff():
 @needs_build
 def test_the_landing_link_states_the_same_cutoff():
     html = LANDING.read_text(encoding='utf-8')
-    assert 'ranked Top %d recurrent positions' % CFR_TOP_N in html, (
+    assert 'See the %d top-ranked class-wide CFR positions' % CFR_TOP_N in html, (
         'the landing page links to the ranked list with a different cutoff '
         'than the analysis uses (%d)' % CFR_TOP_N)
 

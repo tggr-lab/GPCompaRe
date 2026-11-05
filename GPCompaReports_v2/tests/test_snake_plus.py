@@ -349,6 +349,24 @@ def test_view_switch_keeps_the_layer_and_ring_adds_a_second_one(open_report):
     assert not page.errors
 
 
+def test_cfr_view_marks_the_one_class_wide_set(open_report):
+    """The Core Functional view colours the residues whose generic number is one of the 50 top-ranked class-wide
+    CFR positions by CFR score (owner, 2026-11-05: one set everywhere), and its legend says so."""
+    from GPCompaReports_v2.analysis.manuscript_stats import class_cfr_set
+    page = open_report(MAIN)
+    page.click('.snake-btn[data-view="cfr"]')
+    page.wait_for_timeout(100)
+    desc = page.evaluate("document.querySelector('.snake-legend-desc').textContent")
+    assert desc.startswith('The 50 top-ranked class-wide CFR positions (by CFR score): '), desc
+    view = page.evaluate("JSON.parse(document.getElementById('snake-plot-data').textContent).views.cfr")
+    ann = page.evaluate("JSON.parse(document.getElementById('rx-config').textContent).annotation")
+    marked = {int(p) for p in view['colors']}
+    assert marked and str(len(marked)) in desc
+    top = class_cfr_set()
+    assert all((ann.get(str(p)) or ['', ''])[1] in top for p in marked), 'a mark outside the set'
+    assert not page.errors
+
+
 def test_state_scrubber(open_report):
     page = open_report(MAIN)
     assert page.evaluate("document.getElementById('sp-scrub').hidden")

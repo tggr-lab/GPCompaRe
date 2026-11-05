@@ -20,6 +20,8 @@ from pathlib import Path
 import pytest
 
 from GPCompaReports_v2.website.page_generators import search_index_v2 as v2
+from GPCompaReports_v2.analysis.cfr_analysis import CFR_TOP_N
+from GPCompaReports_v2.analysis.manuscript_stats import class_cfr_ranks, class_cfr_set
 
 BASE = Path(__file__).resolve().parent.parent
 BUDGET_GZIP = 12 * 1024 * 1024  # raised from 6 MB on 2026-11-05 for detail/ (per-substitution AlphaMissense, about 4 MB gzip, fetched one receptor at a time)
@@ -266,9 +268,13 @@ def test_residue_layers_come_from_the_right_receptor(index_dir):
 def test_cfr_flags_follow_the_database_top_positions(index_dir):
     meta = _load(index_dir, 'meta.json')
     top = {gn for gn, rank in meta['cfrRank'].items() if rank <= meta['cfrTop']}
-    assert len(top) == 30
+    assert meta['cfrTop'] == CFR_TOP_N == 50 and len(top) == 50
+    # the ranks are the submitted ranking by CFR score (S4 = full_cfr_positions.tsv), and the set is the paper's
+    # Figure 3 set (S3), the Statistics page's ranked table
+    assert meta['cfrRank'] == class_cfr_ranks() and top == class_cfr_set()
     r = _load(index_dir, 'residues/par2_human.json')
-    assert r['cfr'].get('159') == meta['cfrRank']['3.36x36'] <= 30   # PAR2 Met159 = 3.36x36, a top CFR position
+    assert r['cfr'].get('159') == meta['cfrRank']['3.36x36'] == 30   # PAR2 Met159 = 3.36x36, a CFR position
+    assert r['cfr'].get('300') == meta['cfrRank']['6.48x48'] == 2    # PAR2 Phe300 = 6.48x48
     assert r['dmax'][158] is not None and r['nsig'].get('159', 0) >= 1
 
 

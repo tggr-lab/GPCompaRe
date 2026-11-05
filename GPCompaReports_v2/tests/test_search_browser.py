@@ -283,7 +283,7 @@ def test_card_shows_transcripts_alleles_and_alphamissense(open_page):
     page.locator('.sr-notations summary').click()  # the transcript table is folded away when nothing is mismatched
     text = results_text(page)
     for needle in ('NM_005242.6', 'ENST00000296677.5', 'c.477G>A', 'rs115885685', 'gnomAD v4.1.2',
-                   'AlphaMissense', 'GRCh38', 'GRCh37', 'CFR, rank 30'):
+                   'AlphaMissense', 'GRCh38', 'GRCh37', 'CFR, class-wide rank 30'):
         assert needle in text, needle
     assert 'ClinVar 2026-10-11' in text
 
@@ -1144,7 +1144,8 @@ def test_evidence_summary_for_par2(open_page):
         'NM_005242.6 / NP_005233.4: c.477G>A, p.Met159Ile (allele 5-76833084-G-A)',
         'ENST00000296677.5', 'GRCh38: 5-76833084-G-A', 'GRCh37: 5-76128909-G-A',
         'rs115885685', 'allele count 1,553 of 1,461,886', 'AlphaMissense prediction 0.91',
-        'ClinVar 2026-10-11', 'Core functional residue (class-wide): yes, rank 30',
+        'ClinVar 2026-10-11',
+        'Core functional residue (class-wide): yes, one of the 50 top-ranked class-wide CFR positions (by CFR score), rank 30',
         'receptor threshold', 'Net dRRCS:', 'stronger in inactive', 'Conservation: 0.96 on a 0 to 1 scale',
         'Data releases:', 'gnomAD v4.1.2', 'Search link:', '/search/?q=PAR2%20M159I',
     ):
@@ -1461,7 +1462,7 @@ def test_summary_tiles_lead_the_card_and_carry_the_numbers(open_page):
     top = page.locator('.sr-card .sr-tiles').bounding_box()['y']
     assert top < page.locator('details[data-sec="structure"]').bounding_box()['y']
     text = page.locator('.sr-card .sr-tiles').inner_text()
-    for needle in ('Not a CFR, rank 88', 'no contact above the threshold', '0.084', 'likely benign', '0.018', 'common', 'Benign/Likely benign', 'homozygotes', 'conservation'):
+    for needle in ('Not a CFR, rank 99', 'no contact above the threshold', '0.084', 'likely benign', '0.018', 'common', 'Benign/Likely benign', 'homozygotes', 'conservation'):
         assert needle in text or needle in text.lower(), needle   # tile headings are upper-cased by CSS
     # the gauge marker sits where the score says (8.4% of the AlphaMissense gauge)
     mark = page.locator('.sr-tile--predictions .sr-gauge--am .sr-gauge-mark').first
@@ -1530,7 +1531,7 @@ def test_contacts_read_in_activation_terms_with_a_legend(open_page):
     assert rows.count() == 2
     words = [rows.nth(i).locator('.sr-db-word').inner_text() for i in range(rows.count())]
     assert words == ['weakens on activation', 'breaks on activation']
-    assert 'CFR 3' in rows.first.inner_text()
+    assert 'CFR 2' in rows.first.inner_text()   # 6.48x48, rank 2 by CFR score (submitted ranking)
     legend = page.locator('.sr-db-legend').inner_text()
     assert 'inactive model' in legend and 'active model' in legend and 'weakens' in legend
     facts = '\n'.join(page.locator('.sr-facts').all_inner_texts())
@@ -1611,25 +1612,26 @@ def _no_overflow(page, scope):
 @pytest.mark.parametrize('scheme', ['light', 'dark'])
 @pytest.mark.parametrize('viewport', [DESKTOP, PHONE_390])
 def test_card_shows_the_cfr_neighbourhood(open_page, viewport, scheme):
-    page = search_page(open_page, 'ADRB2 Phe290', viewport=viewport, scheme=scheme, mobile=viewport is PHONE_390)
+    # Ile135's partner Gln229 (5.68x68) ranks 46: one of the 50 top-ranked class-wide CFR positions, the site's one CFR set
+    page = search_page(open_page, 'ADRB2 Ile135', viewport=viewport, scheme=scheme, mobile=viewport is PHONE_390)
     assert page.errors == [] and page.foreign == []
     # the Structure tile names the connected CFR in one line
-    assert page.locator('[data-cfr-tile]').first.inner_text() == 'Connected to CFR Phe208 (5.47, rank 24)'
+    assert page.locator('[data-cfr-tile]').first.inner_text() == 'Connected to CFR Gln229 (5.68, rank 46)'
     block = page.locator('.sr-cfrhood').first
     assert block.get_attribute('data-cfrhood') == 'connected'
     text = block.inner_text()
-    assert '30 top-ranked generic positions' in text and 'What is a CFR?' in text
+    assert '50 top-ranked class-wide CFR positions (by CFR score)' in text and 'What is a CFR?' in text
     assert block.locator('a[href$="glossary.html#cfr"]').count() >= 1
     row = block.locator('[data-cfr-rel="connected"] tbody tr').first
-    assert 'Phe208' in row.inner_text() and '5.47x47' in row.inner_text()
-    assert row.locator('.sr-net--inactive').inner_text() == '-5.34'
-    assert 'weakens on activation' in row.inner_text()
+    assert 'Gln229' in row.inner_text() and '5.68x68' in row.inner_text()
+    assert row.locator('.sr-net--inactive').inner_text() == '-3.76'
+    assert 'breaks on activation' in row.inner_text()
     # red/blue are the active/inactive tokens, not the pathogenicity palette
     colour = row.locator('.sr-net--inactive').evaluate('e => getComputedStyle(e).color')
     token = page.evaluate("() => { const d = document.createElement('span'); d.style.color = 'var(--semantic-inactive)'; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; }")
     assert colour == token
     # the receptor map marks the connected CFR
-    assert page.locator('.sr-map-cfr.is-partner[data-cfr-partner="208"]').count() == 1
+    assert page.locator('.sr-map-cfr.is-partner[data-cfr-partner="229"]').count() == 1
     _no_overflow(page, '.sr-card')
 
 

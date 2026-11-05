@@ -598,6 +598,12 @@ def test_residue_table_builds_only_when_opened_and_filters_sorts_and_exports(ope
     heads = page.locator('#rx-residue-table thead th').all_inner_texts()
     assert heads == ['Residue', 'Generic number', 'Segment', 'Net ΔRRCS', 'Largest |ΔRRCS|', 'Partner',
                      'Contacts above threshold', 'CFR position', 'AlphaMissense mean', 'Conservation']
+    # the CFR column names the site's one CFR set, its size read from #rx-config (CFR_TOP_N), ranked by CFR score
+    cfr_tip = page.locator('#rx-residue-table thead th').nth(7).get_attribute('data-tooltip')
+    top = page.evaluate("JSON.parse(document.getElementById('rx-config').textContent).cfrTop")
+    assert top == 50
+    assert 'one of the 50 top-ranked class-wide CFR positions (by CFR score)' in cfr_tip, cfr_tip
+    assert 'recurrent' not in cfr_tip and '30' not in cfr_tip
 
     # a row carries the page's own numbers
     first = page.locator('#rx-residue-table tbody tr').first.locator('td').all_inner_texts()

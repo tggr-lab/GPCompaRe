@@ -18,7 +18,7 @@ import {
   notationsText, subjectOf, csvField, clinvarGroups, finePrint, HELP, renderHelp, renderReleases,
   reportTableRelease, allelesTable, fmtAm, summarySentences, contactMeaning, amClassLabel, segmentKind, RESEARCH_NOTE, RESEARCH_NOTE_SHORT, DB_NAME,
   activationWord, netSentence, amClassOfScore, AM_CUTS, afBand, cvClassKey, receptorMap, PATH_CLASSES,
-  cfrListModel, cfrListRows, cfrListCsv, cfrListDefaults, renderCfrListBody, cfrTileLine, CFR_SET_TEXT, CFR_TOP_N,
+  cfrListModel, cfrListRows, cfrListCsv, cfrListDefaults, renderCfrListBody, cfrTileLine, cfrSetText, cfrOneOf,
 } from '../../static/js/search-ui/render.js';
 import { suggestionsFor } from '../../static/js/search-ui/suggest.js';
 import * as L from '../../static/js/search-ui/links.js';
@@ -857,7 +857,7 @@ test('W1: the summary tiles read the data: structure, AlphaMissense gauge, popul
   assert.ok(tiles, 'tiles drawn');
   assert.equal((tiles.match(/<li class="sr-tile /g) || []).length, 5);
   assert.ok(out.indexOf('sr-tiles') < out.indexOf('data-sec="structure"'), 'tiles lead the card');
-  assert.match(tiles, /sr-tile--structure[^]*?<span class="sr-big">Not a CFR, rank 88<\/span>/);
+  assert.match(tiles, /sr-tile--structure[^]*?<span class="sr-big">Not a CFR, rank 99<\/span>/);
   assert.match(tiles, /no contact above the threshold/);
   assert.match(tiles, /<span class="sr-big sr-path sr-path--benign">0\.084<\/span> <span class="sr-path-chip sr-path-chip--benign">likely benign<\/span>/);
   assert.match(tiles, /sr-gauge--am[^]*?<span class="sr-gauge-mark sr-gauge-mark--benign" style="left:8\.4%">/);
@@ -931,7 +931,7 @@ test('W4: the contacts read in activation terms: dumbbells with words, partner b
   const dbs = /<ol class="sr-dbs"[^>]*>([^]*?)<\/ol>/.exec(out)?.[1];
   assert.ok(dbs, 'dumbbells drawn');
   assert.equal((dbs.match(/<li class="sr-db-row">/g) || []).length, r.contacts.length);
-  assert.match(dbs, /<span class="mono">Phe300<\/span> <span class="sr-sub">6\.48x48<\/span> <span class="sr-badge sr-badge--cfr" title="Core functional residue, class-wide rank 3">CFR 3<\/span>/);
+  assert.match(dbs, /<span class="mono">Phe300<\/span> <span class="sr-sub">6\.48x48<\/span> <span class="sr-badge sr-badge--cfr" title="Core functional residue, class-wide rank 2">CFR 2<\/span>/);
   assert.match(dbs, /sr-db-line sr-db-line--inactive/);
   assert.match(dbs, /<span class="sr-net sr-net--inactive">-4\.99<\/span> <span class="sr-db-word">weakens on activation<\/span>/);
   assert.match(out, /<p class="sr-db-legend">/);
@@ -990,27 +990,41 @@ test('W6: the section nav lists every section of the card in order and every tar
 
 // ------------------------------------------------------------------------------ CFR neighbourhood
 
-test('the CFR set is the card flag\'s top 30, said in one line with a glossary link', { skip }, async () => {
+test('the CFR set is the index\'s top 50 (meta.json cfrTop), said in one line with a glossary link', { skip }, async () => {
   const meta = await shardsFor(loader).meta();
-  assert.equal(meta.cfrTop, CFR_TOP_N, 'the index and the UI use the same CFR set');
-  assert.match(CFR_SET_TEXT, /30 top-ranked generic positions/);
-  const a = await search('ADRB2 Phe290', loader);
-  const h = renderAnswer(a, 'ADRB2 Phe290', OPTS).html;
+  assert.equal(meta.cfrTop, 50, 'one class-wide CFR set: the 50 top-ranked positions by CFR score');
+  // the number is never typed in the UI: it comes from the index
+  assert.equal(cfrOneOf(meta.cfrTop), 'one of the 50 top-ranked class-wide CFR positions (by CFR score)');
+  assert.match(cfrSetText(meta.cfrTop), /^CFR positions are the 50 top-ranked class-wide CFR positions \(by CFR score\)/);
+  assert.doesNotMatch(cfrSetText(null), /\d/, 'without the index the line names no number');
+  const a = await search('ADRB2 Ile135', loader);
+  const h = renderAnswer(a, 'ADRB2 Ile135', { ...OPTS, cfrTop: meta.cfrTop }).html;
   assert.match(h, /<div class="sr-cfrhood" data-cfrhood="connected">/);
-  assert.ok(h.includes(CFR_SET_TEXT));
+  assert.ok(h.includes(cfrSetText(meta.cfrTop)));
   assert.match(h, /href="[^"]*glossary\.html#cfr-connected"/);
+  assert.doesNotMatch(h, /\b30 top-ranked|top 30/);
+  // the card badge and the evidence text name the same set
+  const b = await search('ADRB2 R131Q', loader);
+  const o = renderAnswer(b, 'ADRB2 R131Q', { ...OPTS, cfrTop: meta.cfrTop });
+  assert.match(o.html, /<span class="sr-badge sr-badge--cfr" title="Core functional residue: one of the 50 top-ranked class-wide CFR positions \(by CFR score\)">CFR, class-wide rank 1<\/span>/);
+  assert.match(evidenceText(o.results[0], o.ctx), /Core functional residue \(class-wide\): yes, one of the 50 top-ranked class-wide CFR positions \(by CFR score\), rank 1/);
 });
 
 test('card: a residue connected to a CFR says so in the tile, the block and the map', { skip }, async () => {
-  const a = await search('ADRB2 Phe290', loader);
+  // Ile135's partner Gln229 (5.68x68) ranks 46: a CFR in the top-50 set, not in the old top 30
+  const a = await search('ADRB2 Ile135', loader);
   const r = a.results[0];
   assert.equal(r.cfrHood.group, 'connected');
-  assert.deepEqual(r.cfrHood.connected.map((c) => [c.pos, c.generic, c.rank]), [[208, '5.47x47', 24]]);
-  assert.equal(cfrTileLine(r), 'Connected to CFR Phe208 (5.47, rank 24)');
-  const h = renderAnswer(a, 'ADRB2 Phe290', OPTS).html;
-  assert.match(h, /data-cfr-tile>Connected to CFR Phe208 \(5\.47, rank 24\)</);
-  assert.match(h, /data-cfr-rel="connected">[\s\S]*?Phe208[\s\S]*?sr-net--inactive">-5\.34<[\s\S]*?weakens on activation/);
-  assert.match(h, /class="sr-map-cfr is-partner" data-cfr-partner="208"/);
+  assert.deepEqual(r.cfrHood.connected.map((c) => [c.pos, c.generic, c.rank]), [[229, '5.68x68', 46]]);
+  assert.equal(cfrTileLine(r), 'Connected to CFR Gln229 (5.68, rank 46)');
+  const h = renderAnswer(a, 'ADRB2 Ile135', OPTS).html;
+  assert.match(h, /data-cfr-tile>Connected to CFR Gln229 \(5\.68, rank 46\)</);
+  assert.match(h, /data-cfr-rel="connected">[\s\S]*?Gln229[\s\S]*?sr-net--inactive">-3\.76<[\s\S]*?breaks on activation/);
+  assert.match(h, /class="sr-map-cfr is-partner" data-cfr-partner="229"/);
+  // Phe290 (7.38x38) is itself one of the 50 now (rank 29 by CFR score), and still connected to Phe208
+  const p = (await search('ADRB2 Phe290', loader)).results[0];
+  assert.equal(p.cfrHood.group, 'at');
+  assert.deepEqual(p.cfrHood.connected.map((c) => [c.pos, c.generic, c.rank]), [[208, '5.47x47', 21]]);
   // a CFR residue: no tile line, its own rank in the block
   const b = await search('ADRB2 R131Q', loader);
   assert.equal(cfrTileLine(b.results[0]), '');

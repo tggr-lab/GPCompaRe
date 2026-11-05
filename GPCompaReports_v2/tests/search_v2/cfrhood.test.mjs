@@ -1,7 +1,7 @@
 // CFR neighbourhood tests (search/cfrhood.js) on fixtures: no index needed. Run:
 //   node --test GPCompaReports_v2/tests/search_v2/cfrhood.test.mjs
 //
-// The rules: at = the residue's generic number is a top-30 CFR position; connected = an above-threshold contact
+// The rules: at = the residue's generic number is one of the top-50 class-wide CFR positions (meta.json cfrTop); connected = an above-threshold contact
 // whose partner is at a CFR position; near = within 2 residues of a CFR position along the chain, same segment;
 // touch = a below-threshold modelled contact with a CFR residue. One group per residue, in that order.
 
@@ -22,7 +22,7 @@ function fixture({ withTouch = true } = {}) {
     length: 20,
     residue: (p) => (p >= 1 && p <= 20 ? {
       aa: seq[p - 1], segment: seg(p), generic: p <= 8 ? `3.${45 + p}x${45 + p}` : p >= 11 ? `4.${39 + p}x${39 + p}` : '',
-      cfr: !!cfr[p], cfrRank: cfr[p] ?? (p === 6 ? 40 : null),
+      cfr: !!cfr[p], cfrRank: cfr[p] ?? (p === 6 ? 60 : null),
     } : null),
   };
   const det = {
@@ -41,9 +41,9 @@ describe('the four rules', () => {
   const { res, det } = fixture();
   const hood = cfrNeighbourhood(res, det);
 
-  test('the CFR positions are the residues flagged cfr (top 30), with their rank', () => {
+  test('the CFR positions are the residues flagged cfr (top 50), with their rank', () => {
     assert.deepEqual(hood.cfr.map((c) => [c.pos, c.rank]), [[5, 1], [11, 7]]);
-    assert.equal(hood.of(6).at, false, 'a ranked position below the top 30 is not at a CFR');
+    assert.equal(hood.of(6).at, false, 'a ranked position below the top 50 is not at a CFR');
   });
 
   test('at: the CFR residue itself, which also lists its CFR partner', () => {
