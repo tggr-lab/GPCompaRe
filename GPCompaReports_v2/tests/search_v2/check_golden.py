@@ -6,7 +6,7 @@ Re-derives every row's facts from the pack files and exits non-zero on any misma
 - the pack residue at pos equals ref (or, for a model/transcript conflict, the allele's alt);
 - every allele id exists in the row's pack(s) at that position with that ref/alt;
 - ClinVar ids named in the note (clinvar=...) are packed P/LP records at that residue; clinvar_raw=... ids are in the
-  raw ClinVar cache and are NOT packed;
+  raw ClinVar cache and are NOT packed, and a row listing alleles lists the record's own (SPDI) allele;
 - complete=... rows list exactly the full cross-receptor set (by sequence, generic number, or hgvsc);
 - GRCh37 rows match grch37_liftover.tsv; GRCh37 and off-target GRCh38 positions are checked against the GRCh38
   receptor windows (min..max of each pack's gnomAD positions);
@@ -204,6 +204,14 @@ def main():
             vacc = re.match(r'(?i)vcv0*(\d+)', q)
             if vacc and vacc.group(1) != uid:
                 err(rid, f'query VCV {vacc.group(1)} != {uid}')
+            # a record of a single-nucleotide variant names its gnomAD allele: a row listing alleles lists that one
+            if where and alleles:
+                spdi = next((v[2] for v in rawcv(where[0])[uid].get('variations') or [] if len(v) > 2 and v[2]), '')
+                sm = re.match(r'^NC_0*(\d+)\.\d+:(\d+):([ACGT]):([ACGT])$', spdi)
+                if sm:
+                    gid_ = '%s-%d-%s-%s' % ({'23': 'X', '24': 'Y'}.get(sm.group(1), sm.group(1)), int(sm.group(2)) + 1, sm.group(3), sm.group(4))
+                    if gid_ not in alleles:
+                        err(rid, f'ClinVar {uid} is allele {gid_}, row lists {alleles}')
 
         # completeness
         m = re.search(r'\bcomplete=([^\s;]+)', note)

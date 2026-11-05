@@ -386,3 +386,10 @@ G384	1.2.3	unrecognised
 G385	chr5:	unrecognised	
 G386	GPR999	receptor R=GPR999	
 G387	rs12ab	unrecognised	
+G388	VCV000014312	clinvar vcv=VCV000014312 variationId=14312	
+G389	rs1805007	rsid rsid=rs1805007	
+G390	MC1R Arg151Cys	protein R=MC1R p=R151C	
+G391	VCV000256813	clinvar vcv=VCV000256813 variationId=256813	
+G392	VCV002496122	clinvar vcv=VCV002496122 variationId=2496122	
+G393	VCV002489980	clinvar vcv=VCV002489980 variationId=2489980	
+G394	ADRB2 R131Q	protein R=ADRB2 p=R131Q	

@@ -296,6 +296,25 @@ def test_model_conflict_card_says_the_model_differs(open_page):
     assert page.locator('.sr-card-title').first.inner_text().count('Arg389') == 1
 
 
+def test_a_clinvar_record_that_is_not_pathogenic_shows_its_gnomad_allele(open_page):
+    # VCV000014312 (Conflicting) is rs1805007 = MC1R Arg151Cys: the same AF, allele count and AlphaMissense
+    texts = {}
+    for q in ('VCV000014312', 'rs1805007', 'MC1R Arg151Cys'):
+        texts[q] = results_text(search_page(open_page, q))
+    v = texts['VCV000014312']
+    for needle in ('16-89919709-C-T', '0.192', 'VCV000014312'):
+        assert needle in v, needle
+        assert needle in texts['rs1805007'] and needle in texts['MC1R Arg151Cys'], needle
+    for absent in ('not analysed here', 'This exact change is not listed', 'not available in this index'):
+        assert absent not in v, absent
+
+
+def test_a_two_base_change_says_why_alphamissense_is_missing(open_page):
+    text = results_text(search_page(open_page, 'ADRB2 R131Q'))
+    assert 'needs two nucleotide substitutions in its codon (CGC)' in text
+    assert '\u2014' not in text
+
+
 def test_shifted_numbering_is_explained(open_page):
     page = search_page(open_page, 'LPAR2 p.Leu351Phe')
     title = page.locator('.sr-card-title').first.inner_text()

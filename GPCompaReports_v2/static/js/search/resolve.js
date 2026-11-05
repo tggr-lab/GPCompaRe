@@ -68,6 +68,9 @@
  *   typed?: {ref, pos, alt, generic?},   // reference mismatch: the change as typed (same as answer.typed); the
  *                               // result's ref is then the model residue and its transcriptViews/clinvar are
  *                               // the model residue's, never the typed change moved onto the model residue
+ *   codon?: {codon, transcript, steps: {[aa]: 1|2|3}},   // a missense change with no gnomAD allele: the residue's
+ *                               // codon (gnomAD transcript, else MANE) and the fewest base changes reaching each
+ *                               // amino acid; steps[alt] > 1 means no single-nucleotide variant gives the change
  *   inReportTable?: boolean,    // some allele's protein change is a row of the report's variant table (index
  *                               // built with the membership flags; absent otherwise)
  *   clinvarList?: true,         // receptor results: `clinvar` holds every indexed record of the receptor and
@@ -493,10 +496,40 @@ async function makeResult(ctx, gid, pos, o = {}) {
     releases: { gnomad: ctx.meta.releases?.gnomad?.label, clinvar: ctx.meta.releases?.clinvar?.label },
   };
   if (o.alts) r.alts = o.alts;
+  // a missense change with no allele: how many bases of the residue's codon it changes (gnomAD alleles, and
+  // with them the AlphaMissense predictions shown here, are single-nucleotide variants)
+  if (pos && !alleles.length && r.kind === 'missense' && /^[A-Z]$/.test(r.alt ?? '')) {
+    const cb = codonBases(gene, pos, r.residue?.aa ?? r.ref);
+    if (cb) r.codon = cb;
+  }
   // the report's variant table lists this change (known only when the index carries the membership flags)
   if (alleles.length && alleles.every((a) => typeof a.inReportTable === 'boolean')) r.inReportTable = alleles.some((a) => a.inReportTable);
   if (pos) r.summary = await summaryAt(ctx, gid, pos, gene.res?.seq);
   return r;
+}
+
+const BASES = ['A', 'C', 'G', 'T'];
+
+/**
+ * The residue's codon on the gnomAD transcript (else MANE) and, per amino acid, the fewest base changes that
+ * reach it: {codon, transcript, steps: {[aa]: 1|2|3}}. Null when the codon cannot be read or does not
+ * encode the model residue.
+ */
+function codonBases(gene, pos, aa) {
+  const t = gnomadTx(gene.txs) ?? maneTx(gene.txs);
+  if (!t || !gene.bases) return null;
+  const txPos = unmapPos(t.map, pos);
+  if (!txPos) return null;
+  const { codon } = codonAt(t, txPos, gene.bases);
+  if (!codon || translate(codon) !== aa) return null;
+  const steps = {};
+  for (const a of BASES) for (const b of BASES) for (const c of BASES) {
+    const x = translate(a + b + c);
+    if (!x || x === '*' || x === aa) continue;
+    const n = (a !== codon[0]) + (b !== codon[1]) + (c !== codon[2]);
+    if (!steps[x] || n < steps[x]) steps[x] = n;
+  }
+  return { codon, transcript: txKey(t), steps };
 }
 
 // =================================================================== protein changes, residues
@@ -1548,23 +1581,38 @@ async function clinvarAnswer(ctx, hit, i) {
   const notes = [];
   if (i?.ids?.version && c.version && i.ids.version !== c.version) notes.push(note('version_mismatch', `You typed version ${i.ids.version}; the record is at version ${c.version} in ClinVar 2026-10-11.`));
   const cls = `${c.classification}${c.stars ? `, ${c.stars} star${c.stars === 1 ? '' : 's'}` : ''}`;
-  if (c.packed) {
-    const alleles = c.gnomadId ? (gene.vars.byId.get(c.gnomadId) ? [gene.vars.byId.get(c.gnomadId)] : []) : [];
-    if (c.ref !== gene.res.seq[c.pos - 1]) notes.push(note('model_conflict', `The model has ${three(gene.res.seq[c.pos - 1])} at ${c.pos}; the ClinVar transcript has ${three(c.ref)}.`));
-    if (!alleles.length) notes.push(note('clinvar_only', 'In ClinVar, not in gnomAD.'));
-    const res = await makeResult(ctx, gid, c.pos, { gene, ref: c.ref, alt: c.alt, kind: 'missense', alleles, clinvar: [c], notes, genomic: c.gnomadId ? { grch38: c.gnomadId, grch37: alleles[0]?.id37 ?? null } : undefined });
-    return answer('target', [res], { interpretation: i, message: `ClinVar ${c.accession}: ${c.title} (${cls}).` });
-  }
   if (c.pos) {
     // the record's own transcript residue, when it is not this model residue (another isoform or frame)
     const tm = /^((?:NM|XM)_\d+)\.(\d+)\([^)]*\):\S+\s+\(p\.\(?([A-Z][a-z]{2})(\d+)/.exec(c.title ?? '');
-    if (tm) {
+    if (tm && !c.packed) {
       const t = gene.txs?.tx.find((x) => x.id === tm[1] && x.v === Number(tm[2]) && x.asm === 'GRCh38');
       if (t && mapPos(t.map, Number(tm[4])) !== c.pos) {
         notes.push(note('other_frame', `${tm[3]}${tm[4]} of ${tm[1]}.${tm[2]} is not residue ${c.pos} of the model; the record's genomic base lies in the model's codon for ${three(gene.res.seq[c.pos - 1])}${c.pos}${c.kind === 'missense' ? `, where it reads ${proteinText(gene.res.seq[c.pos - 1], c.pos, c.alt)}` : ''}.`));
       }
     }
-    const msg = `ClinVar ${c.accession} is ${c.title} (${cls}). ${c.kind === 'missense' ? 'It is not among the pathogenic or likely pathogenic missense records the database uses; the residue is shown.' : `${kindText(c.kind)} changes are not analysed here; the residue is shown.`}`;
+  }
+  if (c.pos && (c.packed || (c.kind === 'missense' && c.alt))) {
+    // a missense record of any class reads as its allele: the same result the rsID, the genomic id and the
+    // protein change give (gnomAD allele, AlphaMissense, transcript views), with this record listed first
+    const a = c.gnomadId ? gene.vars.byId.get(c.gnomadId) ?? null : null;
+    // no GRCh38 id in the record: the protein change is all it names, so its gnomAD alleles are the change's
+    const alleles = a ? [a] : c.gnomadId ? [] : gene.vars.alleles.filter((x) => x.pos === c.pos && x.alt === c.alt && x.ref === c.ref);
+    const ref = alleles[0]?.ref ?? c.ref;
+    const alt = alleles[0]?.alt ?? c.alt;
+    if (alleles[0]?.conflict || (!alleles.length && ref !== gene.res.seq[c.pos - 1])) notes.push(note('model_conflict', `The model has ${three(gene.res.seq[c.pos - 1])} at ${c.pos}; the ${alleles.length ? 'reference genome' : 'ClinVar'} transcript has ${three(ref)}.`));
+    if (!alleles.length) notes.push(note('clinvar_only', 'In ClinVar, not in gnomAD.'));
+    let genomic;
+    if (!alleles.length && c.gnomadId) {
+      const [, gp, gr, ga] = c.gnomadId.split('-');
+      genomic = genomicIds(gene, Number(gp), gr, ga);
+    }
+    const res = await makeResult(ctx, gid, c.pos, { gene, ref, alt, kind: 'missense', alleles, notes, genomic });
+    res.clinvar = [c, ...res.clinvar.filter((x) => x.variationId !== c.variationId)];
+    return answer('target', [res], { interpretation: i, message: `ClinVar ${c.accession}: ${c.title} (${cls}).` });
+  }
+  if (c.pos) {
+    // a non-missense record (stop, synonymous, indel, splice...) on a model residue
+    const msg = `ClinVar ${c.accession} is ${c.title} (${cls}). ${kindText(c.kind)} changes are not analysed here; the residue is shown.`;
     const res = await makeResult(ctx, gid, c.pos, { gene, type: 'not_in_resource', ref: gene.res.seq[c.pos - 1], alt: c.alt, kind: c.kind, clinvar: [c], notes: [...notes, note('not_in_resource', msg)] });
     return answer('not_in_resource', [res], { interpretation: i, message: msg });
   }

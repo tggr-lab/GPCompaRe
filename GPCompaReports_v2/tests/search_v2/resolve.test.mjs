@@ -128,7 +128,7 @@ function checkRow(row, ans) {
 }
 
 describe('golden table end to end', { skip }, () => {
-  test('table size', () => assert.equal(golden.length, 387));
+  test('table size', () => assert.equal(golden.length, 394));
   for (const row of golden) {
     test(`${row.id} ${JSON.stringify(row.query)} -> ${row.expect}`, async () => {
       const ans = await search(unescape(row.query), loader);
@@ -256,11 +256,11 @@ describe('property: every notation of an allele reaches the same residue', { ski
 const POSITIVE_EXPECT = new Set(['target', 'targets', 'ambiguous']);
 
 describe('ClinVar records by accession', { skip }, () => {
-  test('all 488 packed P/LP records are targets at their residue; 400 other records keep their residue', async () => {
+  test('all 488 packed P/LP records are targets at their residue; every class of missense record reads as its allele; other records keep their residue', async () => {
     const S = shardsFor(loader);
     const meta = await S.meta();
     const failures = [];
-    let packed = 0; let others = 0;
+    let packed = 0; let others = 0; let missense = 0; let joined = 0;
     for (const rec of meta.receptors) {
       const v = await S.variants(rec.gid);
       for (const c of v?.clinvar ?? []) {
@@ -268,18 +268,59 @@ describe('ClinVar records by accession', { skip }, () => {
         if (!want) continue;
         const ans = await search(c.accession, loader);
         const r = ans.results[0];
+        const own = c.gnomadId ? v.byId.get(c.gnomadId) : null;
         if (c.packed) {
           packed += 1;
-          if (ans.expect !== 'target' || r?.gid !== rec.gid || r.pos !== c.pos || r.ref !== c.ref || r.alt !== c.alt) failures.push(`${c.accession} -> ${ans.expect} ${r?.gid}:${r?.pos} ${r?.ref}>${r?.alt} (want ${rec.gid}:${c.pos} ${c.ref}>${c.alt})`);
+          if (ans.expect !== 'target' || r?.gid !== rec.gid || r.pos !== c.pos || r.ref !== (own?.ref ?? c.ref) || r.alt !== c.alt) failures.push(`${c.accession} -> ${ans.expect} ${r?.gid}:${r?.pos} ${r?.ref}>${r?.alt} (want ${rec.gid}:${c.pos} ${c.ref}>${c.alt})`);
+        } else if (c.kind === 'missense') {
+          // any class (VUS, benign, conflicting...): the allele's own result, as its rsID or genomic id gives it
+          missense += 1;
+          if (ans.expect !== 'target' || r?.gid !== rec.gid || r.pos !== c.pos || r.alt !== (own?.alt ?? c.alt)) failures.push(`${c.accession} -> ${ans.expect} ${r?.gid}:${r?.pos} ${r?.ref}>${r?.alt} (want ${rec.gid}:${c.pos} >${c.alt}) ${ans.message ?? ''}`);
+          if (own) {
+            joined += 1;
+            if (!r?.alleles.some((a) => a.id === own.id)) failures.push(`${c.accession}: gnomAD allele ${own.id} dropped`);
+          }
         } else {
           others += 1;
           if (ans.expect !== 'not_in_resource' || r?.gid !== rec.gid || r.pos !== c.pos) failures.push(`${c.accession} -> ${ans.expect} ${r?.gid}:${r?.pos} (want ${rec.gid}:${c.pos})`);
         }
+        if (r && r.clinvar[0]?.variationId !== c.variationId) failures.push(`${c.accession}: the record is not listed first`);
       }
     }
+    assert.ok(missense > 200 && joined > 50, `missense records checked: ${missense}, with a gnomAD allele: ${joined}`);
     assert.equal(packed, 488);
-    assert.ok(others > 300, `other records checked: ${others}`);
+    assert.ok(others > 20, `other records checked: ${others}`);
     assert.deepEqual(failures.slice(0, 20), []);
+  });
+
+  test('a VCV query gives what the rsID and the protein change give for the same allele, plus the record', async () => {
+    // VCV000014312 (Conflicting) and VCV000256813 (Benign) once lost their gnomAD allele and AlphaMissense
+    const strip = (r) => ({ gid: r.gid, pos: r.pos, ref: r.ref, alt: r.alt, kind: r.kind, type: r.type,
+      alleles: r.alleles.map((a) => [a.id, a.ac, a.af, a.am, a.amClass]), genomic: r.genomic,
+      tx: r.transcriptViews.map((t) => [t.role, t.transcript, t.p]), clinvar: r.clinvar.map((c) => c.variationId).sort() });
+    for (const [vcv, rs, prot] of [['VCV000014312', 'rs1805007', 'MC1R Arg151Cys'], ['VCV000256813', 'rs1801028', 'DRD2 Ser311Cys']]) {
+      const [a, b, p] = [await search(vcv, loader), await search(rs, loader), await search(prot, loader)];
+      assert.equal(a.expect, 'target', `${vcv}: ${a.message}`);
+      assert.ok(a.results[0].alleles[0]?.am != null && a.results[0].alleles[0].af > 0.01, `${vcv}: gnomAD AF and AlphaMissense`);
+      assert.deepEqual(strip(a.results[0]), strip(b.results[0]), `${vcv} vs ${rs}`);
+      assert.deepEqual(strip(a.results[0]), strip(p.results[0]), `${vcv} vs ${prot}`);
+      assert.equal(a.results[0].clinvar[0].accession.slice(0, 12), vcv);
+    }
+  });
+});
+
+describe('changes no single-nucleotide variant gives', { skip }, () => {
+  test('ADRB2 R131Q (codon CGC) needs two substitutions; a one-substitution change does not get the reason', async () => {
+    const r = (await search('ADRB2 R131Q', loader)).results[0];
+    assert.equal(r.alleles.length, 0);
+    assert.equal(r.codon?.codon, 'CGC');
+    assert.equal(r.codon.steps.Q, 2);
+    assert.equal(r.codon.steps.H, 1);
+    const one = (await search('DRD2 S311A', loader)).results[0];
+    assert.equal(one.alleles.length, 0);
+    assert.equal(one.codon.steps.A, 1);
+    // an allele held: no codon field
+    assert.equal((await search('MC1R Arg151Cys', loader)).results[0].codon, undefined);
   });
 });
 

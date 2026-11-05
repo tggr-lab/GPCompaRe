@@ -443,6 +443,19 @@ function notationsDetails(r, mismatch = false) {
 /** "gnomAD v4.1.2" -> "gnomAD", "ClinVar 2026-10-11" -> "ClinVar": the release itself goes to the fine print. */
 const sourceName = (label) => String(label ?? '').split(' ')[0] || String(label ?? '');
 
+const NUM_WORDS = { 2: 'two', 3: 'three' };
+
+/**
+ * Why a missense change with no gnomAD allele has no AlphaMissense prediction here, when the reason is the
+ * codon: the index takes predictions from gnomAD alleles, each a single nucleotide substitution, so a change
+ * that needs two or three substitutions can never carry one. Null for a one-substitution change.
+ */
+export function amUnavailableReason(r) {
+  const n = r?.codon?.steps?.[r.alt];
+  if (!(n > 1)) return null;
+  return `This change needs ${NUM_WORDS[n]} nucleotide substitutions in its codon (${r.codon.codon}), and this index takes AlphaMissense predictions from gnomAD alleles, each of which changes a single nucleotide.`;
+}
+
 function gnomadRow(r, releases, mismatch) {
   const alleles = r.alleles ?? [];
   const resid = r.residueAlleles ?? [];
@@ -457,7 +470,7 @@ function gnomadRow(r, releases, mismatch) {
     body = html`<p>Not looked up: the residue you typed is not the model residue.</p>`;
   } else if (r.kind === 'missense' && r.alt) {
     body = html`<p>This exact change is not listed in ${label}.</p>
-      <p>AlphaMissense prediction for it: not available in this index.${r.residue?.amMean != null ? html` The <strong>mean</strong> AlphaMissense prediction over all possible substitutions at this residue is <strong>${fmt2(r.residue.amMean)}</strong>.` : ''}</p>`;
+      <p>AlphaMissense prediction for it: not available in this index.${amUnavailableReason(r) ? ` ${amUnavailableReason(r)}` : ''}${r.residue?.amMean != null ? html` The <strong>mean</strong> AlphaMissense prediction over all possible substitutions at this residue is <strong>${fmt2(r.residue.amMean)}</strong>.` : ''}</p>`;
   } else if (!resid.length) {
     body = html`<p>No ${label} missense allele at this residue.</p>`;
   } else body = '';
@@ -619,6 +632,7 @@ export function evidenceText(r, ctx = {}) {
     L.push(`${gl}: the typed ${sub.what} was not looked up, because ${sub.what === 'change' ? 'its residue is' : 'it is'} not the model residue.`);
   } else if (r.alt && r.kind === 'missense' && r.pos) {
     L.push(`${gl}: this exact change is not listed.`);
+    if (amUnavailableReason(r)) L.push(`AlphaMissense prediction: not available. ${amUnavailableReason(r)}`);
   }
   const nOther = (r.residueAlleles ?? []).filter((a) => !alleles.some((b) => b.id === a.id)).length;
   const at = sub.mismatch ? `the model residue ${sub.modelRes}` : 'this residue';

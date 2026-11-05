@@ -7,7 +7,7 @@ The P4 parser and resolver test suite runs this table and must pass 100%.
 
 | File | What it is |
 |---|---|
-| `golden_queries.tsv` | 387 queries and their expected answers |
+| `golden_queries.tsv` | 394 queries and their expected answers |
 | `grch37_liftover.tsv` | GRCh38 to GRCh37 positions used by the GRCh37 rows (Ensembl REST, fetched 2026-11-04) |
 | `check_golden.py` | Validator: re-derives every row from the Studio packs and exits non-zero on any mismatch |
 

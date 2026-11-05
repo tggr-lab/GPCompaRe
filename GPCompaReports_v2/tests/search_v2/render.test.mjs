@@ -557,3 +557,24 @@ test('the comparison legend and the motif note are fine print under the table', 
   const h2 = renderAnswer(await search(m, loader), m, OPTS2).html;
   assert.ok(!/<p class="sr-motif">[^]*?<\/p>/.exec(h2)?.[0].includes('. '), 'the motif line carries no sentence');
 });
+
+test('a non-P/LP ClinVar record shows its gnomAD allele and AlphaMissense, as its rsID does', { skip }, async () => {
+  for (const [q, af, am] of [['VCV000014312', '0.078', '0.192'], ['VCV000256813', '0.024', '0.082']]) {
+    const out = renderAnswer(await search(q, loader), q, OPTS).html;
+    assert.ok(!/not analysed here|This exact change is not listed|not available in this index/.test(out), `${q}: ${out.slice(0, 400)}`);
+    assert.ok(out.includes(am), `${q}: AlphaMissense ${am}`);
+    assert.ok(out.includes(af), `${q}: frequency ${af}`);
+    assert.ok(out.includes(q), `${q}: the record is listed`);
+  }
+});
+
+test('a change that needs two nucleotide substitutions says why AlphaMissense is not available', { skip }, async () => {
+  const a = await search('ADRB2 R131Q', loader);
+  const out = renderAnswer(a, 'ADRB2 R131Q', OPTS);
+  assert.match(out.html, /AlphaMissense prediction for it: not available in this index\. This change needs two nucleotide substitutions in its codon \(CGC\)/);
+  assert.ok(!out.html.includes('\u2014'));
+  assert.match(evidenceText(a.results[0], { query: 'ADRB2 R131Q', releases: {} }), /needs two nucleotide substitutions/);
+  const one = renderAnswer(await search('DRD2 S311A', loader), 'DRD2 S311A', OPTS).html;
+  assert.match(one, /not available in this index\./);
+  assert.ok(!/nucleotide substitutions/.test(one));
+});

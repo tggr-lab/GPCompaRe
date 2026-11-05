@@ -315,7 +315,7 @@ G313	RHO P23H	clinvar_record	target	opsd_human	23	P	H	3-129528801-C-A		na	clinva
 G314	rhodopsin P23H	clinvar_record	target	opsd_human	23	P	H	3-129528801-C-A		na	clinvar=13013 common name rhodopsin
 G315	TSHR p.Gln90Pro	clinvar_record	target	tshr_human	90	Q	P	14-81068280-A-C		na	clinvar=420145 LP 2* form=gene3; src=public/pack/tshr_human.json:clinvar
 G316	V2R L44F	clinvar_record	target	v2r_human	44	L	F			na	clinvar=2737425 P/LP 2* form=uni1; src=public/pack/v2r_human.json:clinvar
-G317	VCV002590215	clinvar_unpacked	not_in_resource	par2_human	30	N	G			na	clinvar_raw=2590215 VUS p.Ser30Gly at the PAR2 conflict residue (model Asn30); not packed; same index assumption as VCV000718860
+G317	VCV002590215	clinvar_unpacked	target	par2_human	30	S	G	5-76832695-A-G		na	clinvar_raw=2590215 VUS p.Ser30Gly at the PAR2 conflict residue (model Asn30); not packed, read as its gnomAD allele like its rsID (reference genome Ser, model_conflict note)
 G318	VCV000058096	clinvar_unpacked	not_in_resource							na	clinvar_raw=58096 multi-gene CNV (697 genes incl. F2RL1): not a residue-level record
 G319	NM_005912.2(MC4R):c.105C>A (p.Tyr35Ter)	clinvar_nonmissense	not_in_resource	mc4r_human	35	Y	*			na	clinvar_raw=14318 Pathogenic; residue; src=pack/sources/clinvar/mc4r_human.json.gz:records
 G320	NM_000539.3(RHO):c.1030C>T (p.Gln344Ter)	clinvar_nonmissense	not_in_resource	opsd_human	344	Q	*			na	clinvar_raw=13029 Pathogenic; residue; src=pack/sources/clinvar/opsd_human.json.gz:records
@@ -386,3 +386,10 @@ G384	1.2.3	malformed	unrecognised							na	plain-language "could not read this" 
 G385	chr5:	malformed	unrecognised							na	plain-language "could not read this" with examples; never an empty receptor table
 G386	GPR999	malformed	unrecognised							na	plain-language "could not read this" with examples; never an empty receptor table
 G387	rs12ab	malformed	unrecognised							na	plain-language "could not read this" with examples; never an empty receptor table
+G388	VCV000014312	clinvar_nonplp	target	mshr_human	151	R	C	16-89919709-C-T		na	clinvar_raw=14312 Conflicting, 1*: a non-P/LP record reads as its allele, the same result as rs1805007 and MC1R Arg151Cys (gnomAD AF and AlphaMissense) with the record listed; src=pack/sources/clinvar/mshr_human.json.gz:records
+G389	rs1805007	clinvar_nonplp	target	mshr_human	151	R	C	16-89919709-C-T		na	the rsID of VCV000014312; src=public/pack/mshr_human.json:variants
+G390	MC1R Arg151Cys	clinvar_nonplp	target	mshr_human	151	R	C	16-89919709-C-T		na	the protein change of VCV000014312; src=public/pack/mshr_human.json:variants
+G391	VCV000256813	clinvar_nonplp	target	drd2_human	311	S	C	11-113412762-G-C		na	clinvar_raw=256813 Benign, 2*: same allele as its rsID and DRD2 Ser311Cys; src=pack/sources/clinvar/drd2_human.json.gz:records
+G392	VCV002496122	clinvar_nonplp	target	lt4r2_human	245	L	F	14-24311397-C-T		na	clinvar_raw=2496122 Uncertain significance, 1*: the gnomAD allele is joined by the record's SPDI; src=pack/sources/clinvar/lt4r2_human.json.gz:records
+G393	VCV002489980	clinvar_nonplp	target	gp171_human	255	T	S			na	clinvar_raw=2489980 Likely benign: c.764C>G (3-151198623-G-C) is in ClinVar, not in gnomAD; the gnomAD allele of Thr255Ser is another base change (c.763A>T) and is not this record's; src=pack/sources/clinvar/gp171_human.json.gz:records
+G394	ADRB2 R131Q	two_nucleotide	target	adrb2_human	131	R	Q			na	codon CGC needs two nucleotide substitutions for Gln: no gnomAD allele, and the card says why there is no AlphaMissense prediction; src=public/pack/adrb2_human.json:sequence
