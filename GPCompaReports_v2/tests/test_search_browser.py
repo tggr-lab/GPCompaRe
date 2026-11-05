@@ -1045,7 +1045,7 @@ def test_card_gives_the_numbers_their_context(open_page):
     assert re.search(r"this receptor's threshold is \d\.\d\d", about.inner_text())
     assert '0 to 1 scale' in about.inner_text()
     assert 'Contacts above this receptor' in facts               # kept distinct from the CFR rank
-    assert 'AlphaMissense prediction' in page.locator('details[data-sec="population"] thead').first.inner_text()   # the alleles table
+    assert 'AlphaMissense' in page.locator('details[data-sec="population"] thead').first.inner_text()   # the alleles table
     net = page.locator('.sr-facts .sr-net').first
     cn = [int(x) for x in re.findall(r'\d+', net.evaluate('e => getComputedStyle(e).color'))[:3]]
     assert cn[2] > cn[0]                                          # blue: stronger in inactive
@@ -1537,3 +1537,32 @@ def test_contacts_read_in_activation_terms_with_a_legend(open_page):
     assert 'xMY motif' in facts and '30 of 283' in facts
     over = page.evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth')
     assert over <= 1
+
+
+@pytest.mark.parametrize('viewport', [DESKTOP, PHONE_390])
+@pytest.mark.parametrize('q', ['PAR2 p.Met159Ile', 'MC1R Arg151Cys', 'ADRB2 R131Q', 'MC1R ClinVar'])
+def test_no_table_in_a_card_is_clipped(open_page, q, viewport):
+    page = search_page(open_page, q, viewport=viewport, mobile=viewport is PHONE_390)
+    page.locator('.sr-card details:not([open]) > summary').evaluate_all('els => els.forEach(s => { s.parentElement.open = true; })')
+    card = page.locator('.sr-card').first.bounding_box()
+    right = card['x'] + card['width']
+    # every table scrolls inside its own wrap or fits; no wrap or cell reaches past the card edge
+    bad = page.evaluate("""() => {
+        const out = [];
+        for (const w of document.querySelectorAll('.sr-card .sr-table-wrap')) {
+          const r = w.getBoundingClientRect();
+          if (w.scrollWidth > w.clientWidth + 1 && getComputedStyle(w).overflowX !== 'auto' && getComputedStyle(w).overflowX !== 'scroll') out.push('wrap without scroll: ' + w.querySelector('caption')?.textContent);
+          if (r.right > %f + 1) out.push('wrap past the card edge: ' + w.querySelector('caption')?.textContent);
+        }
+        for (const t of document.querySelectorAll('.sr-card .sr-tiles, .sr-card .sr-facts, .sr-card .sr-dbs, .sr-card .sr-map, .sr-card .sr-afbars')) {
+          if (t.getBoundingClientRect().right > %f + 1) out.push('past the edge: ' + t.className);
+        }
+        return out;
+      }""" % (right, right))
+    assert bad == [], bad
+    # the allele table's last column is readable in full on desktop (not clipped by the card)
+    if viewport is DESKTOP and page.locator('details[data-sec="population"] .sr-table').count():
+        cell = page.locator('details[data-sec="population"] .sr-table tbody tr').first.locator('td').last
+        box = cell.bounding_box()
+        assert box['x'] + box['width'] <= right + 1
+    assert page.evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth') <= 1

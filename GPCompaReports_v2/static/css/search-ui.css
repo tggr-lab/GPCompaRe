@@ -507,3 +507,10 @@ h5.sr-subhead { margin: var(--s-3) 0 var(--s-1); font-size: 0.84rem; font-weight
   .sr-db-val { white-space: normal; }
   .sr-3d-pane { min-height: 280px; height: 50vh; }
 }
+
+/* tables inside a card never clip: they scroll in their own wrap, and chips may wrap inside cells */
+.sr-sec-body .sr-table-wrap { overflow-x: auto; max-width: 100%; }
+.sr-sec-body .sr-table { min-width: 0; font-size: 0.85rem; }
+.sr-sec-body .sr-table th, .sr-sec-body .sr-table td { padding: 5px 7px; }
+.sr-table td .sr-path-chip { white-space: normal; }
+.sr-tile-line { display: block; }

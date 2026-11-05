@@ -391,15 +391,15 @@ const sourceWord = (s) => (s === 'exome' ? 'exomes' : s === 'genome' ? 'genomes'
 export function allelesTable(alleles, { caption, rel = null, o = {} }) {
   return html`<div class="sr-table-wrap"><table class="sr-table">
     <caption class="sr-sr-only">${caption}</caption>
-    <thead><tr><th scope="col">gnomAD allele (GRCh38)</th><th scope="col">Change</th><th scope="col">rsID</th><th scope="col" class="num">Allele count</th><th scope="col" class="num">Frequency</th><th scope="col" class="num">Homozygotes</th><th scope="col">${term(o, 'am', 'AlphaMissense')} prediction</th></tr></thead>
+    <thead><tr><th scope="col">gnomAD allele (GRCh38)</th><th scope="col">Change</th><th scope="col">rsID</th><th scope="col" class="num">Allele count</th><th scope="col" class="num">Frequency</th><th scope="col" class="num">Homozygotes</th><th scope="col">${term(o, 'am', 'AlphaMissense')}</th></tr></thead>
     <tbody>${alleles.map((a) => html`<tr>
       <td data-label="gnomAD allele (GRCh38)">${g38Link(a.id, rel)}${a.id37 ? html`<br><span class="sr-sub">GRCh37 ${g37Link(a.id37)}</span>` : ''}</td>
       <td data-label="Change"><span class="mono">${a.hgvsc ?? ''}</span>${a.hgvsc ? html`<br>` : ''}<span class="sr-sub mono">${a.hgvsp ?? ''}</span>${a.conflict ? html` <span class="sr-badge sr-badge--warn" title="The model has the other residue here">model differs</span>` : ''}</td>
       <td data-label="rsID">${a.rsids?.length ? a.rsids.map((x, i) => html`${i ? ', ' : ''}${extLink(L.dbsnpUrl(x), x, SITE.dbsnp)}`) : 'none'}</td>
-      <td class="num" data-label="Allele count">${fmtInt(a.ac)}<span class="sr-sub"> of ${fmtInt(a.an)}${sourceWord(a.source) ? html`, ${sourceWord(a.source)}` : ''}</span></td>
+      <td class="num" data-label="Allele count">${fmtInt(a.ac)}<br><span class="sr-sub">of ${fmtInt(a.an)}${sourceWord(a.source) ? html`, ${sourceWord(a.source)}` : ''}</span></td>
       <td class="num" data-label="Frequency">${fmtAf(a.af)}</td>
       <td class="num" data-label="Homozygotes">${fmtInt(a.hom)}</td>
-      <td data-label="AlphaMissense prediction">${amCell(a)}</td></tr>`)}</tbody></table></div>`;
+      <td data-label="AlphaMissense">${amCell(a)}</td></tr>`)}</tbody></table></div>`;
 }
 
 // ------------------------------------------------------- "You typed X -> model residue Y"
@@ -974,7 +974,7 @@ function tiles(r, o, sub) {
   const structHead = x ? html`<span class="sr-big">${x.cfr ? `CFR, rank ${f.cfrRank}` : (f.cfrRank ? `Not a CFR, rank ${f.cfrRank}` : 'Not a CFR')}</span>${motifs.length ? html` ${motifs.map((m) => html`<span class="sr-badge sr-badge--cfr">${m.name}</span> `)}` : ''}` : na;
   const structFoot = !x ? '' : r.contacts === undefined ? 'contact list not available'
     : !r.contacts.length ? 'no contact above the threshold'
-      : html`${r.contacts.length} contact${r.contacts.length === 1 ? '' : 's'} above threshold; strongest with <span class="mono">${partnerName(top)}</span> <span class="sr-net sr-net--${direction(top.delta).cls}">${signed(top.delta)}</span> ${activationWord(top)}${f.net !== null ? html`; ${netSentence(f.net).replace('overall its contacts', 'overall they')}` : ''}`;
+      : html`<span class="sr-tile-line"><span class="mono">${partnerName(top)}</span> <span class="sr-net sr-net--${direction(top.delta).cls}">${signed(top.delta)}</span>, ${activationWord(top)}</span><span class="sr-tile-line">${r.contacts.length} contact${r.contacts.length === 1 ? '' : 's'} above threshold</span>`;
   // AlphaMissense
   const am = amForChange(r, sub);
   const missense = r.kind === 'missense' && /^[A-Z]$/.test(r.alt ?? '');

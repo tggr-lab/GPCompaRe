@@ -552,7 +552,7 @@ test('allele AlphaMissense scores print with 3 decimals, like the report tables'
   assert.equal(fmtAm(null), 'n/a');
   const al = (am) => ({ id: '1-2-A-C', hgvsc: 'c.1A>C', hgvsp: 'p.Met1Leu', rsids: [], ac: 1, an: 10, af: 0.1, hom: 0, am, amClass: 'pathogenic' });
   const t = allelesTable([al(0.999), al(0.4)], { caption: 'x' }).toString();
-  assert.match(t, /data-label="AlphaMissense prediction"><span class="sr-path sr-path--pathogenic">0\.999<\/span> <span class="sr-path-chip sr-path-chip--pathogenic">likely pathogenic/);
+  assert.match(t, /data-label="AlphaMissense"><span class="sr-path sr-path--pathogenic">0\.999<\/span> <span class="sr-path-chip sr-path-chip--pathogenic">likely pathogenic/);
   assert.match(t, />0\.400<\/span> <span class="sr-path-chip sr-path-chip--pathogenic">likely pathogenic/);
   assert.equal(amClassLabel('benign'), 'likely benign');
   assert.equal(amClassLabel('ambiguous'), 'ambiguous');
@@ -717,7 +717,7 @@ test('V6: search copy names the GPCompaRe database, never "this database"', { sk
 test('V7: ClinVar records show submissions and the last-evaluated date; gnomAD alleles name their source', { skip }, async () => {
   const out = renderAnswer(await search('MC4R V103I', loader), 'MC4R V103I', OPTS2).html;
   assert.match(out, /<span class="sr-path-chip sr-path-chip--benign">Benign\/Likely benign<\/span> <span class="sr-stars"[^]*?<span class="sr-sub">\d+ submissions, last evaluated \d{4}-\d{2}-\d{2}<\/span>/);
-  assert.match(out, /<td class="num" data-label="Allele count">[\d,]+<span class="sr-sub"> of [\d,]+, exomes<\/span><\/td>/);
+  assert.match(out, /<td class="num" data-label="Allele count">[\d,]+<br><span class="sr-sub">of [\d,]+, exomes<\/span><\/td>/);
 });
 
 // ------------------------------------------------------------- links: every identifier opens its record
@@ -875,7 +875,8 @@ test('W1: the summary tiles read the data: structure, AlphaMissense gauge, popul
   // the structure tile of a CFR with contacts says the direction in words
   const t2 = /<ul class="sr-tiles">([^]*?)<\/ul>/.exec(renderAnswer(await search('ADRB2 R131Q', loader), 'ADRB2 R131Q', OPTS2).html)[1];
   assert.match(t2, /<span class="sr-big">CFR, rank 1<\/span> <span class="sr-badge sr-badge--cfr">DRY motif<\/span>/);
-  assert.match(t2, /strongest with <span class="mono">Asp130<\/span> <span class="sr-net sr-net--inactive">-5\.67<\/span> weakens on activation; overall they weaken on activation \(net ΔRRCS -16\.7\)/);
+  assert.match(t2, /<span class="sr-tile-line"><span class="mono">Asp130<\/span> <span class="sr-net sr-net--inactive">-5\.67<\/span>, weakens on activation<\/span><span class="sr-tile-line">3 contacts above threshold<\/span>/);
+  assert.ok(!/net ΔRRCS/.test(t2), 'the net line is not on the tile');
 });
 
 test('W2: the pathogenicity palette is one set of classes used by the strip, the gauge, the allele table and ClinVar chips', { skip }, async () => {
