@@ -73,6 +73,14 @@
  *                               // amino acid; steps[alt] > 1 means no single-nucleotide variant gives the change
  *   inReportTable?: boolean,    // some allele's protein change is a row of the report's variant table (index
  *                               // built with the membership flags; absent otherwise)
+ *   amAll?: {[alt]: {am, amClass}}|null,   // full results: the AlphaMissense prediction of every substitution at the
+ *                               // residue (detail/ shard; null when the pack has none; absent for an index without detail/)
+ *   amThis?: {am, amClass},     // the prediction for this missense change (also for changes with no gnomAD allele)
+ *   contacts?: [{a, b, partnerPos, partnerAa, partnerGeneric, partnerSegment, delta, active, inactive}],
+ *                               // the residue's threshold-passing contacts, largest |ΔRRCS| first (the report's
+ *                               // pair list); [] when it has none; absent for an index without detail/
+ *   motifs?: [{key, name, position, canonical, note}],   // Class A motifs (parse MOTIFS) holding the residue's
+ *                               // BW number; [] when none; `canonical` = the letters the motif fixes there, or null
  *   clinvarList?: true,         // receptor results: `clinvar` holds every indexed record of the receptor and
  *                               // the reader asked for that list ("ADRB2 ClinVar")
  *   summary?: {                 // every result with a residue (light or full): the compact residue summary
@@ -98,7 +106,7 @@
  * @module search/resolve
  */
 
-import { parse } from './parse.js';
+import { parse, MOTIFS } from './parse.js';
 import { aliasKey } from './normalize.js';
 import { shardsFor, makeMatcher, three } from './shards.js';
 import { cToG, gToC, cText, mapPos, unmapPos, lift38to37, lift37to38, baseAt, codonAt, translate, complement, cdsLength, intronAnchor } from './txmap.js';
@@ -243,7 +251,7 @@ function unknownReceptor(meta, term, i) {
   const k = aliasKey(term);
   const ex = meta.excluded.find((e) => e.keys.includes(k));
   if (ex) {
-    return answer('not_in_resource', [], { interpretation: i, message: `${ex.symbol} is a Class A receptor that is not in this database (${ex.reason}); it holds 283 human Class A GPCRs.` });
+    return answer('not_in_resource', [], { interpretation: i, message: `${ex.symbol} is a Class A receptor that is not in the GPCompaRe database (${ex.reason}); it holds 283 human Class A GPCRs.` });
   }
   const t = String(term).trim();
   const fam = /^([A-Za-z]+)(\d+)$/.exec(t);
@@ -251,11 +259,11 @@ function unknownReceptor(meta, term, i) {
     const stem = fam[1].toUpperCase();
     const nums = meta.receptors.map((r) => new RegExp(`^${stem}(\\d+)$`).exec(String(r.symbol))).filter(Boolean).map((m) => Number(m[1]));
     if (nums.length >= 3 && Number(fam[2]) > Math.max(...nums)) {
-      return answer('unrecognised', [], { interpretation: i, message: `No receptor is called "${t}". ${stem} receptors in this database run up to ${stem}${Math.max(...nums)}.` });
+      return answer('unrecognised', [], { interpretation: i, message: `No receptor is called "${t}". ${stem} receptors in the GPCompaRe database run up to ${stem}${Math.max(...nums)}.` });
     }
   }
   if (/^[A-Z][A-Z0-9-]{1,14}$/.test(t) && /\d/.test(t)) {
-    return answer('not_in_resource', [], { interpretation: i, message: `"${t}" is not one of the 283 human Class A GPCRs in this database.` });
+    return answer('not_in_resource', [], { interpretation: i, message: `"${t}" is not one of the 283 human Class A GPCRs in the GPCompaRe database.` });
   }
   return answer('unrecognised', [], { interpretation: i, message: `Could not read "${t}" as a receptor, variant or position.` });
 }
@@ -504,8 +512,29 @@ async function makeResult(ctx, gid, pos, o = {}) {
   }
   // the report's variant table lists this change (known only when the index carries the membership flags)
   if (alleles.length && alleles.every((a) => typeof a.inReportTable === 'boolean')) r.inReportTable = alleles.some((a) => a.inReportTable);
-  if (pos) r.summary = await summaryAt(ctx, gid, pos, gene.res?.seq);
+  if (pos) {
+    r.summary = await summaryAt(ctx, gid, pos, gene.res?.seq);
+    r.motifs = motifsAt(residue?.bw);
+    // the card's evidence beyond residues/ and variants/: per-substitution AlphaMissense and the contact pairs
+    const det = await ctx.S.detail(gid);
+    if (det) {
+      r.amAll = det.amAt(pos);
+      if (r.amAll && r.kind === 'missense' && /^[A-Z]$/.test(r.alt ?? '') && r.amAll[r.alt]) r.amThis = r.amAll[r.alt];
+      r.contacts = det.contactsOf(pos).map((p) => {
+        const other = p.a === pos ? p.b : p.a;
+        const o2 = gene.res?.residue(other);
+        return { a: p.a, b: p.b, partnerPos: other, partnerAa: o2?.aa ?? null, partnerGeneric: o2?.generic || null, partnerSegment: o2?.segment || null, delta: p.delta, active: p.active, inactive: p.inactive };
+      });
+    }
+  }
   return r;
+}
+
+/** The Class A motifs (parse MOTIFS, the report snake layer's definitions) that hold a BW number. */
+function motifsAt(bw) {
+  if (!bw) return [];
+  return Object.entries(MOTIFS).filter(([, m]) => m.positions.includes(bw))
+    .map(([key, m]) => ({ key, name: m.name, position: bw, canonical: m.canonical?.[bw] ?? null, note: m.note }));
 }
 
 const BASES = ['A', 'C', 'G', 'T'];
@@ -669,7 +698,7 @@ async function resolveChangeInterp(ctx, i) {
     if (ch.accession) {
       const idx = (await ctx.S.txindex())?.[ch.accession.split('.')[0].toUpperCase()]?.[0];
       if (idx !== undefined) return resolveChange(ctx, ctx.meta.receptors[idx].gid, ch, i, `${ch.accession}${ch.version ? `.${ch.version}` : ''}`);
-      return answer('not_in_resource', [], { interpretation: i, message: `${ch.accession} is not a protein of the 283 receptors in this database.` });
+      return answer('not_in_resource', [], { interpretation: i, message: `${ch.accession} is not a protein of the 283 receptors in the GPCompaRe database.` });
     }
     return resolveBareChange(ctx, i);
   }
@@ -1045,7 +1074,7 @@ async function codingTarget(ctx, i) {
   if (cd.transcript) {
     const acc = cd.transcript.toUpperCase();
     const idxs = (await ctx.S.txindex())?.[acc] ?? [];
-    if (!idxs.length) return { answer: answer('not_in_resource', [], { interpretation: i, message: `${cd.transcript} is not a transcript of the 283 receptors in this database.` }) };
+    if (!idxs.length) return { answer: answer('not_in_resource', [], { interpretation: i, message: `${cd.transcript} is not a transcript of the 283 receptors in the GPCompaRe database.` }) };
     // an accession two genes share (LTB4R/LTB4R2): the gene holding this exact version, else the first
     let gene = null;
     for (const idx of idxs) {

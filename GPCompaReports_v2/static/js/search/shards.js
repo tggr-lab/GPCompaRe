@@ -250,6 +250,43 @@ export function decodeVariants(raw) {
   };
 }
 
+// --------------------------------------------------------------------------------- detail
+
+const AM_CLASS = { B: 'benign', A: 'ambiguous', P: 'pathogenic' };
+/** AlphaMissense class of a x1000 score (likely benign below 0.34, likely pathogenic above 0.564). */
+const amClassOf = (v) => (v < 340 ? 'benign' : v > 564 ? 'pathogenic' : 'ambiguous');
+
+/**
+ * Decoded detail shard (loaded only for a full residue card):
+ *   amAt(pos) -> {[alt]: {am, amClass}} over every substitution at the residue, or null without predictions
+ *   contactsOf(pos) -> [{a, b, delta, active, inactive}] the residue's threshold-passing contacts, largest |ΔRRCS| first
+ *   pairs -> every threshold-passing pair of the receptor
+ */
+export function decodeDetail(raw, alphabet = 'ACDEFGHIKLMNPQRSTVWY') {
+  const letters = alphabet.split('');
+  const amAt = (pos) => {
+    const row = raw.am?.[pos - 1];
+    if (!row) return null;
+    const x = raw.amx?.[String(pos)];
+    const out = {};
+    letters.forEach((a, i) => {
+      const v = row[i];
+      if (v === null || v === undefined) return;
+      out[a] = { am: v / 1000, amClass: x ? (AM_CLASS[x[i]] ?? amClassOf(v)) : amClassOf(v) };
+    });
+    return Object.keys(out).length ? out : null;
+  };
+  const pairs = (raw.pairs ?? []).map(([a, b, d, act, inact]) => ({ a, b, delta: d / 100, active: act / 100, inactive: inact / 100 }));
+  const byPos = new Map();
+  for (const p of pairs) {
+    for (const q of (p.a === p.b ? [p.a] : [p.a, p.b])) {
+      if (!byPos.has(q)) byPos.set(q, []);
+      byPos.get(q).push(p);
+    }
+  }
+  return { gid: raw.gid, amAt, pairs, contactsOf: (pos) => byPos.get(pos) ?? [] };
+}
+
 // ------------------------------------------------------------------------------------- rsid
 
 /** Decoded rsID shard: Map(rs number -> [receptor idx]). */
@@ -284,6 +321,13 @@ export function shardsFor(loader) {
     txindex: () => once('txindex', () => L('txindex.json')),
     residues: (gid) => once(`r:${gid}`, async () => { const m = await api.meta(); const r = await L(`residues/${gid}.json`); return r ? decodeResidues(r, m) : null; }),
     variants: (gid) => once(`v:${gid}`, async () => { const r = await L(`variants/${gid}.json`); return r ? decodeVariants(r) : null; }),
+    /** Per-substitution AlphaMissense and contact pairs of one receptor; null for an index without detail/. */
+    detail: (gid) => once(`d:${gid}`, async () => {
+      const m = await api.meta();
+      if (!m?.shards?.detail) return null;
+      const r = await L(`detail/${gid}.json`);
+      return r ? decodeDetail(r, m.raw.amAlphabet) : null;
+    }),
     transcripts: (gid) => once(`t:${gid}`, () => L(`transcripts/${gid}.json`)),
     bases: (gid) => once(`b:${gid}`, () => L(`cds/${gid}.json`)),
     generic: (seg) => once(`g:${seg}`, async () => decodeGeneric(await L(`generic/${seg}.json`))),
