@@ -435,6 +435,15 @@
         "v2r_human": ["2.81", "2.8"],
         "xcr1_human": ["3.24", "3.2"]
       }
+    },
+    {
+      "id": "variant-col-abs-2026-11-05",
+      "approved_on": "2026-11-05",
+      "approved_by": "Yamir (2026-11-05: chose '|ΔRRCS|' for the variant table column header)",
+      "why": "The variant table column holds the largest |ΔRRCS| at the position (unsigned); its header read ΔRRCS.",
+      "kind": "literal",
+      "after": "<th data-sort=\"delta\" data-tooltip=\"Max |ΔRRCS| at this position\">|ΔRRCS|</th>",
+      "before": "<th data-sort=\"delta\" data-tooltip=\"Max |ΔRRCS| at this position\">ΔRRCS</th>"
     }
   ],
   "truncated_receptors": {
