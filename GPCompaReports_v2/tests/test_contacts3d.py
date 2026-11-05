@@ -11,6 +11,8 @@ tests drive a built report in headless Chromium (software WebGL is enough):
   * a pair chosen elsewhere (gpc:select-pair, as a table fires it) is framed
     and labelled with the table's ΔRRCS;
   * a click in 3D fires gpc:select-pair or gpc:select-residue with source '3d';
+  * the cartoon is a calm grey while contacts draw; "Colour residues by net
+    ΔRRCS" brings the residue colours and their caption back;
   * gpc:3d-ready fires; no console errors; no horizontal scroll at phone width.
 
 They need a build with studio/embed and models/ (the release layout):
@@ -287,4 +289,38 @@ def test_phone_width_controls_fit_and_contacts_draw(open_report, dark):
         b = page.locator(sel).bounding_box()
         assert b and b['x'] >= 0 and b['x'] + b['width'] <= PHONE['width'] + 1, sel
     assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 1')
+    assert _errors(page) == []
+
+
+def test_the_cartoon_is_calm_grey_while_contacts_draw_and_the_toggle_restores_residue_colours(open_report):
+    gid = _gids()[0]
+    page = open_report(gid)
+    _open_3d(page)
+    box = page.locator('#rx-3d-residue-colour')
+    caption = page.locator('#sec-3d .rx-caption')
+    assert not box.is_checked()
+    expect(caption).to_be_hidden()
+    expect(page.locator('#rx-3d-legend')).to_be_visible()
+    page.wait_for_timeout(800)
+    grey = page.locator('#rx-3d-pane').screenshot()
+    box.check()
+    expect(caption).to_be_visible()
+    page.wait_for_timeout(800)
+    assert page.locator('#rx-3d-pane').screenshot() != grey, 'the residue colouring did not change the view'
+    box.uncheck()
+    expect(caption).to_be_hidden()
+    assert _errors(page) == []
+
+
+def test_with_contacts_off_the_residue_colours_come_back_until_the_reader_chooses(open_report):
+    gid = _gids()[0]
+    page = open_report(gid)
+    _open_3d(page)
+    page.select_option('#rx-3d-contacts-show', 'off')
+    expect(page.locator('#rx-3d-residue-colour')).to_be_checked()
+    page.select_option('#rx-3d-contacts-show', 'passing')
+    expect(page.locator('#rx-3d-residue-colour')).not_to_be_checked()
+    page.locator('#rx-3d-residue-colour').check()
+    page.select_option('#rx-3d-contacts-show', 'top')
+    expect(page.locator('#rx-3d-residue-colour')).to_be_checked()
     assert _errors(page) == []

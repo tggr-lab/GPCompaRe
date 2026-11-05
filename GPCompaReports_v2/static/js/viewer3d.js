@@ -50,6 +50,10 @@
   var contacts = null;
   var contactOpts = { show: 'passing', top: 25, sign: 'both' };
   var ui = null;
+  // the cartoon: a calm grey while contacts are drawn, so they stand out; the toggle brings the
+  // net dRRCS colouring back. Until the reader uses the toggle it follows the contacts setting.
+  var residueColour = false;
+  var colourTouched = false;
   var hovered = null;
 
   function absolute(url) { return new URL(url, document.baseURI).href; }
@@ -109,6 +113,8 @@
   var STYLE = [
     '.rx-3d-contacts{display:inline-flex;flex-wrap:wrap;align-items:center;gap:var(--s-2,8px)}',
     '.rx-3d-contacts label{display:inline-flex;align-items:center;gap:4px;font-size:.82rem;color:var(--fgColor-muted)}',
+    '.rx-3d-contacts .rx-3d-check{gap:6px;color:var(--fgColor-default)}',
+    '.rx-3d-contacts .rx-3d-check input{margin:0;accent-color:var(--brand-primary)}',
     '.rx-3d-contacts .v2-select{width:auto;min-width:0;max-width:100%;min-height:32px;padding-top:3px;padding-bottom:3px;font-size:.875rem}',
     '.rx-legend{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;font-size:.82rem;color:var(--fgColor-muted);margin:var(--s-2,8px) 0 0}',
     '.rx-legend .rx-key{display:inline-flex;align-items:center;gap:6px}',
@@ -168,6 +174,18 @@
     group.appendChild(select('rx-3d-contacts-sign', 'Stronger in', [
       ['both', 'Both states'], ['active', 'Active'], ['inactive', 'Inactive']
     ], contactOpts.sign, function (v) { contactOpts.sign = v; applyContactOpts(); }));
+    var check = el('label', 'rx-3d-check');
+    var box = el('input');
+    box.type = 'checkbox';
+    box.id = 'rx-3d-residue-colour';
+    box.checked = residueColour;
+    box.addEventListener('change', function () {
+      colourTouched = true;
+      setResidueColour(box.checked);
+    });
+    check.appendChild(box);
+    check.appendChild(document.createTextNode('Colour residues by net ΔRRCS'));
+    group.appendChild(check);
     if (tools) {
       var status = document.getElementById('rx-3d-status');
       tools.insertBefore(group, status || null);
@@ -184,7 +202,21 @@
     var caption = panel.querySelector('.rx-caption');
     if (caption && caption.parentNode) caption.parentNode.insertBefore(legend, caption.nextSibling);
     else panel.appendChild(legend);
-    ui = { count: count };
+    ui = { count: count, check: box };
+    paintCaption();
+  }
+
+  // the template's caption explains the residue colours: shown only while they are on
+  function paintCaption() {
+    var caption = panel.querySelector('.rx-caption');
+    if (caption) caption.hidden = !residueColour;
+    if (ui && ui.check) ui.check.checked = residueColour;
+  }
+
+  function setResidueColour(on) {
+    residueColour = !!on;
+    paintCaption();
+    if (handle && handle.setResidueColouring) handle.setResidueColouring(residueColour);
   }
 
   function updateCount() {
@@ -198,6 +230,7 @@
   }
 
   function applyContactOpts() {
+    if (!colourTouched) setResidueColour(contactOpts.show === 'off');
     if (!handle) return;
     handle.setContactOptions({ show: contactOpts.show, top: contactOpts.top, sign: contactOpts.sign });
     settleCount();
@@ -227,6 +260,7 @@
         activeUrl: absolute(cfg.models.active),
         inactiveUrl: absolute(cfg.models.inactive),
         residueValues: residueValues(),
+        residueColouring: residueColour,
         highlight: sel === null ? [] : [sel],
         segments: cfg.segments || undefined,
         contacts: readContacts(),
