@@ -267,7 +267,6 @@
 .sr-id dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .sr-id-list { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-3); }
 .sr-id-item { white-space: nowrap; }
-.sr-id-item .mono { white-space: normal; overflow-wrap: anywhere; }
 /* AlphaMissense: neutral greys for the classes (red and blue are kept for active and inactive) */
 .sr-am-class { font-weight: 500; }
 .sr-am-all { margin-top: var(--s-3); }
