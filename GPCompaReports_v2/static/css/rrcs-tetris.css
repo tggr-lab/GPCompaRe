@@ -1,22 +1,70 @@
-/* RRCS Tetris easter egg (PAR2 report page only). See static/js/rrcs-tetris.js. */
+/* RRCS Tetris easter egg on every report page. See static/js/rrcs-tetris.js. */
 
+/* The block next to the "ΔRRCS distribution" heading: muted, but there to be clicked. */
 .rrcs-tetris-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   margin-left: var(--s-2, 8px);
-  padding: 0 4px;
-  font-size: 0.9rem;
-  line-height: 1;
+  width: 28px;
+  height: 24px;
+  padding: 0;
+  color: var(--fgColor-muted);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  opacity: 0.7;
+  vertical-align: middle;
+  transition: opacity var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+}
+.rrcs-tetris-icon { display: block; overflow: visible; }
+.rrcs-tetris-icon rect { fill: currentColor; fill-opacity: 0.22; stroke: currentColor; stroke-width: 1.2; }
+.rrcs-tetris-toggle:hover,
+.rrcs-tetris-toggle:focus-visible,
+.rrcs-tetris-toggle[aria-pressed="true"] { opacity: 1; color: var(--brand-primary); border-color: var(--borderColor-muted); }
+.rrcs-tetris-toggle:focus-visible { outline: 2px solid var(--fgColor-accent); outline-offset: 1px; }
+.rrcs-tetris-toggle:hover .rrcs-tetris-icon rect { fill-opacity: 0.45; }
+
+/* once, when the reader lingers on the histogram or clicks a bar: the top cell drops in */
+.rrcs-tetris-toggle.is-wiggle .rrcs-tetris-icon { animation: rrcs-tetris-drop 900ms ease-out 1; }
+@keyframes rrcs-tetris-drop {
+  0%   { transform: translateY(0) rotate(0); }
+  20%  { transform: translateY(-4px) rotate(-8deg); }
+  45%  { transform: translateY(1px) rotate(4deg); }
+  65%  { transform: translateY(-1px) rotate(-2deg); }
+  100% { transform: translateY(0) rotate(0); }
+}
+.rrcs-tetris-toggle.is-wiggle { opacity: 1; color: var(--brand-primary); }
+
+.rrcs-tetris-hint {
+  margin-left: var(--s-1, 4px);
+  padding: 0 2px;
+  font: inherit;
+  font-family: var(--font-ui);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: 0;
   color: var(--fgColor-muted);
   background: none;
   border: 0;
   border-radius: var(--r-sm);
   cursor: pointer;
-  opacity: 0.25;
   vertical-align: middle;
-  transition: opacity var(--t-fast);
+  animation: rrcs-tetris-fade 400ms ease-out 1;
 }
-.rrcs-tetris-toggle:hover,
-.rrcs-tetris-toggle:focus-visible,
-.rrcs-tetris-toggle[aria-pressed="true"] { opacity: 1; color: var(--brand-primary); }
+.rrcs-tetris-hint[hidden] { display: none; }
+.rrcs-tetris-hint:hover { color: var(--brand-primary); text-decoration: underline; text-underline-offset: 2px; }
+.rrcs-tetris-hint:focus-visible { outline: 2px solid var(--fgColor-accent); outline-offset: 1px; }
+@keyframes rrcs-tetris-fade { from { opacity: 0; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .rrcs-tetris-toggle.is-wiggle .rrcs-tetris-icon,
+  .rrcs-tetris-hint { animation: none; }
+  .rrcs-tetris-toggle { transition: none; }
+}
+@media print { .rrcs-tetris-toggle, .rrcs-tetris-hint { display: none; } }
 
 .rrcs-tetris {
   display: flex;
