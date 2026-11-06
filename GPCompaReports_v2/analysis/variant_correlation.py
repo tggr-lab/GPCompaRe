@@ -1,4 +1,12 @@
-"""Variant correlation analysis: CFR vs pathogenicity and conservation."""
+"""Variant correlation analysis: CFR vs pathogenicity and conservation.
+
+The statistics page shows conservation against contact change per residue (conservation_by_residue,
+make_conservation_density): each receptor residue counted once, conservation from the site's pack layer
+(VarSite via ProtVar), |ΔRRCS| from the batch run. Conservation is an observation about the sequence
+family, not a prediction. The older per-variant scatter (conservation_vs_delta, make_conservation_scatter)
+repeats a residue once per batch variant row and reads the batch CSVs' first-allele conservation; it is
+kept for the existing chart until the page moves to the per-residue view.
+"""
 
 import numpy as np
 import pandas as pd
@@ -24,6 +32,10 @@ def run_variant_analysis(store, cfr_table):
     conservation_result = conservation_vs_delta(store)
     results['conservation'] = conservation_result
     results['fig_conservation_scatter'] = make_conservation_scatter(conservation_result)
+
+    per_residue = conservation_by_residue(store)
+    results['conservation_residues'] = per_residue
+    results['fig_conservation_density'] = make_conservation_density(per_residue)
 
     high_impact = find_high_impact_variants(store, cfr_positions)
     results['high_impact_variants'] = high_impact
@@ -244,6 +256,75 @@ def make_conservation_scatter(conservation_data):
 
     fig.update_layout(height=500)
     return fig
+
+
+def conservation_by_residue(store):
+    """One row per receptor residue in a contact pair: conservation (pack layer) and the largest |ΔRRCS| of
+    the pairs it is in (batch run). Columns gpcr_id, position, conservation, max_abs_delta. Residues without
+    a conservation score are left out (missing is not low). Empty without the pack layer."""
+    frames = []
+    for gid in store.gpcr_ids:
+        cons = store.report_conservation(gid)
+        delta_df = store.delta_data.get(gid, pd.DataFrame())
+        if not cons or delta_df.empty:
+            continue
+        a = delta_df['delta_rrcs'].abs()
+        both = pd.concat([pd.DataFrame({'position': delta_df['res1'].astype(int), 'v': a}),
+                          pd.DataFrame({'position': delta_df['res2'].astype(int), 'v': a})])
+        top = both.groupby('position', sort=True)['v'].max()
+        c = top.index.map(cons.get)
+        df = pd.DataFrame({'gpcr_id': gid, 'position': top.index.astype(int),
+                           'conservation': pd.to_numeric(pd.Series(c, index=top.index), errors='coerce').values,
+                           'max_abs_delta': top.values})
+        frames.append(df.dropna(subset=['conservation']))
+    if not frames:
+        return pd.DataFrame(columns=['gpcr_id', 'position', 'conservation', 'max_abs_delta'])
+    return pd.concat(frames, ignore_index=True)
+
+
+def make_conservation_density(per_residue):
+    """Density of receptor residues by conservation and largest |ΔRRCS| (each residue once), single-hue
+    counts, with the Spearman coefficient and n as a description, not a test of a prediction."""
+    if per_residue is None or per_residue.empty:
+        return go.Figure()
+    df = per_residue
+    # binned here (conservation in 0.04 steps, |ΔRRCS| in steps of 1), so the page carries the counts, not
+    # every residue; the color is log10 of the count, as most residues have a small change
+    top = float(np.ceil(df['max_abs_delta'].max()))
+    z, xe, ye = np.histogram2d(df['conservation'], df['max_abs_delta'], bins=[25, int(top)],
+                               range=[[0, 1], [0, top]])
+    zt = z.T
+    ticks = [v for v in (1, 10, 100, 1000, 10000) if v <= max(zt.max(), 1)]
+    fig = go.Figure(go.Heatmap(
+        x=(xe[:-1] + xe[1:]) / 2, y=(ye[:-1] + ye[1:]) / 2,
+        z=np.where(zt > 0, np.log10(np.where(zt > 0, zt, 1)), np.nan).tolist(),
+        customdata=np.dstack([zt, np.broadcast_to(xe[:-1], zt.shape), np.broadcast_to(xe[1:], zt.shape),
+                              np.broadcast_to(ye[:-1, None], zt.shape),
+                              np.broadcast_to(ye[1:, None], zt.shape)]).round(3).tolist(),
+        colorscale='Greys', zmin=0,
+        colorbar=dict(title='Residues', thickness=12, tickvals=[np.log10(v) for v in ticks],
+                      ticktext=[format(v, ',') for v in ticks]),
+        hovertemplate=('conservation %{customdata[1]} to %{customdata[2]}<br>largest |ΔRRCS| '
+                       '%{customdata[3]} to %{customdata[4]}<br>%{customdata[0]:,} receptor residues'
+                       '<extra></extra>')))
+    rho, _p = stats.spearmanr(df['conservation'], df['max_abs_delta'])
+    fig.update_layout(
+        title=('Conservation and largest contact change per residue (%s residues, %d receptors)'
+               % (format(len(df), ','), df['gpcr_id'].nunique())),
+        xaxis_title='Conservation (VarSite via ProtVar, observed)',
+        yaxis_title='Largest |ΔRRCS| of the residue\'s contacts',
+        annotations=[dict(x=0.02, y=0.98, xref='paper', yref='paper', xanchor='left', yanchor='top',
+                          showarrow=False, font=dict(size=11),
+                          text='Spearman ρ = %.2f over %s residues' % (rho, format(len(df), ',')))],
+        height=440,
+    )
+    return fig
+
+
+def write_conservation_residues_csv(per_residue, path):
+    """The per-residue table behind make_conservation_density, for the card's CSV button."""
+    per_residue.to_csv(path, index=False, float_format='%.6g')
+    return path
 
 
 def find_high_impact_variants(store, cfr_positions):
