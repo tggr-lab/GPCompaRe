@@ -48,8 +48,18 @@ AM_DIR = DATA_DIR.parent / 'supplement_2026-11-05b'
 AM_SUMMARY_JSON = AM_DIR / 'FigS4_S7_summary_modelnum_2026-11-05b.json'
 AM_GROUP_LABELS = ('Top 50 positions by CFR score', 'Other generic-numbered positions')
 
-#: Class colours, unchanged from the previous enrichment chart.
-AM_COLORS = {'Pathogenic': '#E8820C', 'Ambiguous': '#F0C27A', 'Benign': '#008080'}
+#: Pathogenicity palette, the "clinical tint" (owner's choice 2026-11-05): green likely benign, neutral gray
+#: ambiguous, crimson likely pathogenic. The text tokens of static/css/search-ui.css (--path-benign,
+#: --path-ambiguous, --path-pathogenic, light and dark); tests/test_stats_cfr_variants.py checks they agree.
+#: Figures are drawn with the light set; each trace carries meta {'path_class': ...} so the page can restyle
+#: to the dark set. `neutral` is for counts that carry no class (it is not a pathogenicity color).
+CLINICAL_TINT = {
+    'light': {'benign': '#2B6E2F', 'ambiguous': '#555C68', 'pathogenic': '#B4234B', 'neutral': '#8C959F'},
+    'dark': {'benign': '#81C784', 'ambiguous': '#B0B4BC', 'pathogenic': '#F48FB1', 'neutral': '#6E7781'},
+}
+#: AlphaMissense classes as the chart legend names them: a prediction, never a clinical classification.
+AM_TRACE_NAMES = {'Pathogenic': 'Predicted pathogenic', 'Ambiguous': 'Ambiguous', 'Benign': 'Predicted benign'}
+AM_COLORS = {cls: CLINICAL_TINT['light'][cls.lower()] for cls in AM_TRACE_NAMES}
 
 
 def _require(path):
@@ -63,7 +73,7 @@ def _require(path):
 
 
 def class_cfr_ranks():
-    """{generic number: CFR score rank} for every recurrent position of the submitted catalogue (S4, 368 positions).
+    """{generic number: CFR score rank} for every recurrent position of the submitted catalog (S4, 368 positions).
 
     The class-wide CFR ranking the site shows next to a residue ("class-wide rank N"). Ranks are the
     submitted cfr_score_rank, never recomputed from the site's own annotation layer.
@@ -135,6 +145,7 @@ def load_manuscript_stats():
         'n_pairs_universe': figure3.get('n_pairs_universe'),
         'fig_recurrence_dotplot': make_recurrence_dotplot(top50),
         'fig_enrichment_bar': make_enrichment_bar(am),
+        'fig_am_composition': fig_am_composition(am),
     }
 
 
@@ -162,26 +173,31 @@ def make_recurrence_dotplot(top50):
     return fig
 
 
+def _group_label(g, sep='<br>'):
+    return '%s%sn = %s scored, %s decisive' % (g['label'], sep, format(g['n'], ','), format(g['decisive'], ','))
+
+
 def make_enrichment_bar(am):
     """AlphaMissense class composition at the top 50 positions by CFR score and at other generic-numbered positions.
 
     Corrected supplement analysis (Fig. S4a, 276 receptors). Bars are shares of all scored substitutions;
-    ambiguous predictions are drawn but excluded from the odds ratio.
+    ambiguous predictions are drawn but excluded from the odds ratio. Clinical tint; legend says "predicted";
+    each axis label gives both denominators (all scored, decisive).
     """
     groups = am['groups']
     if not groups:
         return go.Figure()
-    labels = ['%s<br>n = %s' % (g['label'], format(g['n'], ',')) for g in groups]
+    labels = [_group_label(g) for g in groups]
     fig = go.Figure()
     for cls in ('Pathogenic', 'Ambiguous', 'Benign'):
         key = cls.lower()
         fig.add_trace(go.Bar(
-            name=cls, x=labels, y=[g[key] for g in groups],
-            marker_color=AM_COLORS[cls],
+            name=AM_TRACE_NAMES[cls], x=labels, y=[g[key] for g in groups],
+            marker_color=AM_COLORS[cls], meta={'path_class': key},
             text=['%.1f%%' % g[key] for g in groups],
             customdata=[g[key + '_n'] for g in groups],
-            hovertemplate='%{x}<br>' + cls + ': %{customdata:,} (%{y:.1f}%)<extra></extra>',
-            textposition='inside',
+            hovertemplate='%{x}<br>' + AM_TRACE_NAMES[cls] + ': %{customdata:,} (%{y:.1f}%)<extra></extra>',
+            textposition='inside', insidetextfont=dict(color='#ffffff'),
         ))
     fig.update_layout(
         barmode='stack',
@@ -192,3 +208,98 @@ def make_enrichment_bar(am):
         height=450,
     )
     return fig
+
+
+def fig_am_composition(am):
+    """The same corrected comparison as two horizontal composition bars (idea 6a): one bar per group, the
+    three predicted classes as shares of all scored substitutions, each group's label and both denominators
+    (all scored, decisive) written above its bar so the bars keep the full width on a phone, and the
+    decisive-call percentages, odds ratio and conservation-adjusted odds ratio (each rounded once) under the
+    title. Every value is load_am_comparison()'s; nothing is recomputed."""
+    groups = am['groups']
+    if not groups:
+        return go.Figure()
+    keys = ['top', 'other'][::-1]                       # the top group drawn on top
+    gs = groups[::-1]
+    fig = go.Figure()
+    for cls in ('Benign', 'Ambiguous', 'Pathogenic'):
+        key = cls.lower()
+        fig.add_trace(go.Bar(
+            name=AM_TRACE_NAMES[cls], orientation='h', y=keys, x=[g[key] for g in gs], width=0.5,
+            marker_color=AM_COLORS[cls], meta={'path_class': key},
+            text=['%.1f%%' % g[key] for g in gs], textposition='inside', insidetextanchor='middle',
+            insidetextfont=dict(color='#ffffff'),
+            customdata=[[g[key + '_n'], g['label']] for g in gs],
+            hovertemplate=('%{customdata[1]}<br>' + AM_TRACE_NAMES[cls]
+                           + ': %{customdata[0]:,} (%{x:.1f}% of scored)<extra></extra>'),
+        ))
+    o, m = am['odds_ratio'], am['conservation_adjusted']
+    fig.update_layout(
+        barmode='stack',
+        title=dict(text=(
+            'AlphaMissense predictions, paper analysis (%d receptors)<br><sub>Predicted pathogenic among decisive '
+            'calls: %.1f%% vs %.1f%%<br>Odds ratio %.2f (95%% CI %.2f to %.2f); conservation-adjusted %.2f '
+            '(95%% CI %.2f to %.2f)</sub>' % (am['receptors'], am['decisive_pct']['top'],
+                                              am['decisive_pct']['other'], o[0], o[1], o[2], m[0], m[1], m[2]))),
+        xaxis=dict(title='Share of scored substitutions (%)', range=[0, 100], fixedrange=True),
+        yaxis=dict(showticklabels=False, fixedrange=True),
+        annotations=[dict(xref='paper', x=0, xanchor='left', y=k, yanchor='bottom', yshift=17, showarrow=False,
+                          align='left', text='<b>%s</b>  n = %s scored, %s decisive' % (
+                              g['label'], format(g['n'], ','), format(g['decisive'], ',')))
+                     for k, g in zip(keys, gs)],
+        legend=dict(orientation='h', y=-0.35, x=0, xanchor='left', traceorder='normal'),
+        height=360, margin=dict(t=122, l=10, r=10, b=80),
+    )
+    return fig
+
+
+def am_comparison_payload(am=None):
+    """data/stats/am_comparison.json: the corrected supplement numbers unrounded, plus the display strings
+    the page prints (each rounded once from the unrounded value). Layer "paper"."""
+    from ..website import data_versions as dv
+    am = am or load_am_comparison()
+    o, m = am['odds_ratio'], am['conservation_adjusted']
+    top, rest = am['groups']
+    return {
+        'schema': 'gpcompare.stats.am_comparison/1',
+        'layer': 'paper',
+        'label': ('Paper analysis: corrected supplement 2026-11-05b (Fig. S4, Table S7), %d receptors, %s '
+                  'batch layer, alleles on model residue numbering.' % (am['receptors'],
+                                                                          dv.label('gnomad_batch'))),
+        'source_file': 'data/supplement_2026-11-05b/%s' % AM_SUMMARY_JSON.name,
+        'receptors': am['receptors'],
+        'cells': am['cells'],
+        'cells_order': ['top pathogenic', 'top benign', 'other pathogenic', 'other benign'],
+        'groups': am['groups'],
+        'decisive_pct': am['decisive_pct'],
+        'odds_ratio': o,
+        'conservation_adjusted': m,
+        'display': {
+            'top_pct': '%.1f%%' % am['decisive_pct']['top'],
+            'other_pct': '%.1f%%' % am['decisive_pct']['other'],
+            'odds_ratio': '%.2f (95%% CI %.2f to %.2f)' % tuple(o),
+            'conservation_adjusted': '%.2f (95%% CI %.2f to %.2f)' % tuple(m),
+            'top_denominators': '%s scored, %s decisive' % (format(top['n'], ','), format(top['decisive'], ',')),
+            'other_denominators': '%s scored, %s decisive' % (format(rest['n'], ','), format(rest['decisive'], ',')),
+        },
+        'colors': CLINICAL_TINT,
+        'class_names': AM_TRACE_NAMES,
+    }
+
+
+def write_am_comparison(output_dir, am=None):
+    """Write data/stats/am_comparison.json and am_comparison.csv (one row per group); return the payload."""
+    out = pathlib.Path(output_dir) / 'data' / 'stats'
+    out.mkdir(parents=True, exist_ok=True)
+    payload = am_comparison_payload(am)
+    (out / 'am_comparison.json').write_text(json.dumps(payload, separators=(',', ':'), allow_nan=False),
+                                           encoding='utf-8')
+    lines = ['# %s' % payload['label'],
+             'group,scored,decisive,pathogenic,ambiguous,benign,pathogenic_pct_of_decisive']
+    for g, pct in zip(payload['groups'], (payload['decisive_pct']['top'], payload['decisive_pct']['other'])):
+        lines.append('"%s",%d,%d,%d,%d,%d,%r' % (g['label'], g['n'], g['decisive'], g['pathogenic_n'],
+                                                g['ambiguous_n'], g['benign_n'], pct))
+    lines.append('# odds ratio %r (95%% CI %r to %r); conservation-adjusted %r (95%% CI %r to %r)'
+                 % tuple(payload['odds_ratio'] + payload['conservation_adjusted']))
+    (out / 'am_comparison.csv').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+    return payload

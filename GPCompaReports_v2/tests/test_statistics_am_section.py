@@ -15,7 +15,7 @@ import pytest
 
 from GPCompaReports_v2.analysis.cfr_analysis import CFR_TOP_N
 from GPCompaReports_v2.analysis.manuscript_stats import (
-    AM_SUMMARY_JSON, AM_GROUP_LABELS, load_am_comparison, load_manuscript_stats)
+    AM_SUMMARY_JSON, AM_GROUP_LABELS, AM_TRACE_NAMES, load_am_comparison, load_manuscript_stats)
 
 BASE = pathlib.Path(__file__).resolve().parent.parent
 _env = os.environ.get('FREEZE_BUILD_DIR')
@@ -77,9 +77,9 @@ def test_section_d_no_longer_reads_the_retired_figure3_values():
     m = load_manuscript_stats()
     assert 'figure3' not in m and m['am_comparison'] == load_am_comparison()
     fig = m['fig_enrichment_bar']
-    assert [t.name for t in fig.data] == ['Pathogenic', 'Ambiguous', 'Benign']
-    assert list(fig.data[0].x) == ['Top 50 positions by CFR score<br>n = 7,268',
-                                   'Other generic-numbered positions<br>n = 11,040']
+    assert [t.name for t in fig.data] == ['Predicted pathogenic', 'Ambiguous', 'Predicted benign']
+    assert list(fig.data[0].x) == ['Top 50 positions by CFR score<br>n = 7,268 scored, 6,155 decisive',
+                                   'Other generic-numbered positions<br>n = 11,040 scored, 9,369 decisive']
     assert list(fig.data[1].customdata) == [1113, 1671]
 
 
@@ -124,8 +124,8 @@ def test_the_chart_data_equal_the_summary():
     fig = json.loads(j.group(1))
     am = load_am_comparison()
     by = {t['name']: t for t in fig['data']}
-    for cls in ('Pathogenic', 'Ambiguous', 'Benign'):
-        assert by[cls]['y'] == pytest.approx([g[cls.lower()] for g in am['groups']], abs=1e-12)
-        assert by[cls]['customdata'] == [g[cls.lower() + '_n'] for g in am['groups']]
+    for cls, name in AM_TRACE_NAMES.items():
+        assert by[name]['y'] == pytest.approx([g[cls.lower()] for g in am['groups']], abs=1e-12)
+        assert by[name]['customdata'] == [g[cls.lower() + '_n'] for g in am['groups']]
     assert 'most recurrent' not in fig['layout']['title']['text']
     assert '(odds ratio 2.61)' in fig['layout']['title']['text']
