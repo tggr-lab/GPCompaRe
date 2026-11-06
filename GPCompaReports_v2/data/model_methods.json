@@ -1,0 +1,2858 @@
+{
+ "schema": 1,
+ "_doc": "Which method built each GPCRdb model the database uses (build 2024-05-15). GPCRdb labels every model AlphaFold2-Multistate (Heo and Feig, Proteins 2022, doi 10.1002/prot.26382) or plain AlphaFold2 (Jumper et al., Nature 2021, doi 10.1038/s41586-021-03819-2): it first ran standard AlphaFold2 with all templates, classified the best model as active or inactive, and built the missing state with AlphaFold-Multistate on state-filtered templates (Herrera et al., NAR 2025, doi 10.1093/nar/gkae1065). Read by website/model_methods.py. null = no method recorded (MCHR1 is missing from GPCRdb's current model list).",
+ "source": {
+  "site": "GPCRdb structure models (receptor)",
+  "list_url": "https://gpcrdb.org/structure/structure_models/receptor/",
+  "read": "2026-10-20",
+  "copied_from": "cfr_main_quest/wp1/model_provenance.json (per_receptor)",
+  "renamed_in_gpcrdb": {
+   "ogr1_human": "gpr68_human",
+   "psyr_human": "gpr65_human"
+  }
+ },
+ "build": "2024-05-15",
+ "display": {
+  "AlphaFold2-Multistate": "AlphaFold-Multistate",
+  "AlphaFold2": "AlphaFold2"
+ },
+ "counts": {
+  "receptors": 283,
+  "active": {
+   "AlphaFold2": 26,
+   "AlphaFold2-Multistate": 256,
+   "unknown": 1
+  },
+  "inactive": {
+   "AlphaFold2": 165,
+   "AlphaFold2-Multistate": 117,
+   "unknown": 1
+  }
+ },
+ "receptors": {
+  "5ht1a_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4102"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3185"
+   }
+  },
+  "5ht1b_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3115"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3208"
+   }
+  },
+  "5ht1d_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3969"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4201"
+   }
+  },
+  "5ht1e_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3242"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2383"
+   }
+  },
+  "5ht1f_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4050"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2781"
+   }
+  },
+  "5ht2a_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3103"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2727"
+   }
+  },
+  "5ht2b_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2812"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3834"
+   }
+  },
+  "5ht2c_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3591"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2652"
+   }
+  },
+  "5ht4r_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3530"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3546"
+   }
+  },
+  "5ht5a_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2351"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3495"
+   }
+  },
+  "5ht6r_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3373"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3946"
+   }
+  },
+  "5ht7r_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3536"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3249"
+   }
+  },
+  "aa1r_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3409"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2671"
+   }
+  },
+  "aa2ar_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2556"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "4191"
+   }
+  },
+  "aa2br_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3061"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2590"
+   }
+  },
+  "aa3r_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2448"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3033"
+   }
+  },
+  "ackr1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3150"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3079"
+   }
+  },
+  "ackr2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4098"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3253"
+   }
+  },
+  "ackr3_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3585"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3620"
+   }
+  },
+  "ackr4_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3919"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3987"
+   }
+  },
+  "acm1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2526"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "4035"
+   }
+  },
+  "acm2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3491"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2332"
+   }
+  },
+  "acm3_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2212"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2657"
+   }
+  },
+  "acm4_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3697"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2872"
+   }
+  },
+  "acm5_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3117"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "4079"
+   }
+  },
+  "acthr_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2807"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2775"
+   }
+  },
+  "ada1a_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2819"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "4158"
+   }
+  },
+  "ada1b_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3778"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "4081"
+   }
+  },
+  "ada1d_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4021"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2678"
+   }
+  },
+  "ada2a_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3763"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "4059"
+   }
+  },
+  "ada2b_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4165"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2522"
+   }
+  },
+  "ada2c_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3990"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "4073"
+   }
+  },
+  "adrb1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3010"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2625"
+   }
+  },
+  "adrb2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2757"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3502"
+   }
+  },
+  "adrb3_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4183"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3808"
+   }
+  },
+  "agtr1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3291"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2611"
+   }
+  },
+  "agtr2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2875"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3902"
+   }
+  },
+  "apj_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3924"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3158"
+   }
+  },
+  "bkrb1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2390"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3760"
+   }
+  },
+  "bkrb2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3298"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3736"
+   }
+  },
+  "brs3_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3818"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2961"
+   }
+  },
+  "c3ar_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3410"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3861"
+   }
+  },
+  "c5ar1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3432"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2325"
+   }
+  },
+  "c5ar2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3421"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2983"
+   }
+  },
+  "cckar_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2805"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3128"
+   }
+  },
+  "ccr10_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3687"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3183"
+   }
+  },
+  "ccr1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2977"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3406"
+   }
+  },
+  "ccr2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2957"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3328"
+   }
+  },
+  "ccr3_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2500"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2410"
+   }
+  },
+  "ccr4_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3730"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "4146"
+   }
+  },
+  "ccr5_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2461"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2549"
+   }
+  },
+  "ccr6_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3515"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3231"
+   }
+  },
+  "ccr7_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2442"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3979"
+   }
+  },
+  "ccr8_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3791"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3814"
+   }
+  },
+  "ccr9_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3411"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "4108"
+   }
+  },
+  "ccrl2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3796"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2602"
+   }
+  },
+  "cltr1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2200"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2303"
+   }
+  },
+  "cltr2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3836"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2756"
+   }
+  },
+  "cml1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3953"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2531"
+   }
+  },
+  "cml2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3854"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3701"
+   }
+  },
+  "cnr1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4094"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3689"
+   }
+  },
+  "cnr2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2586"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2614"
+   }
+  },
+  "cx3c1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2320"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3101"
+   }
+  },
+  "cxcr1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3272"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3786"
+   }
+  },
+  "cxcr2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2474"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "4026"
+   }
+  },
+  "cxcr3_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2528"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3341"
+   }
+  },
+  "cxcr4_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3632"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3635"
+   }
+  },
+  "cxcr5_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3768"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3270"
+   }
+  },
+  "cxcr6_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3285"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3518"
+   }
+  },
+  "drd1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4172"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2577"
+   }
+  },
+  "drd2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3331"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3542"
+   }
+  },
+  "drd3_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2831"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2485"
+   }
+  },
+  "drd4_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2202"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2587"
+   }
+  },
+  "drd5_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2999"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2416"
+   }
+  },
+  "ednra_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2621"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2254"
+   }
+  },
+  "ednrb_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3753"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "4217"
+   }
+  },
+  "ffar1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2263"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2948"
+   }
+  },
+  "ffar2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3428"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3804"
+   }
+  },
+  "ffar3_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "2473"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2199"
+   }
+  },
+  "ffar4_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2214"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3562"
+   }
+  },
+  "fpr1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3754"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2169"
+   }
+  },
+  "fpr2_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "4164"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3520"
+   }
+  },
+  "fpr3_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2934"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3192"
+   }
+  },
+  "fshr_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2348"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2342"
+   }
+  },
+  "g37l1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2248"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3695"
+   }
+  },
+  "galr1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3935"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3109"
+   }
+  },
+  "galr2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3154"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3070"
+   }
+  },
+  "galr3_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3219"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3381"
+   }
+  },
+  "gasr_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3829"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2414"
+   }
+  },
+  "ghsr_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4088"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2705"
+   }
+  },
+  "gnrhr_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3973"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2635"
+   }
+  },
+  "gp101_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3228"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4058"
+   }
+  },
+  "gp119_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3066"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2455"
+   }
+  },
+  "gp132_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "2561"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2793"
+   }
+  },
+  "gp135_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2224"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2914"
+   }
+  },
+  "gp139_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3847"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3880"
+   }
+  },
+  "gp141_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4247"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3788"
+   }
+  },
+  "gp142_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3367"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2432"
+   }
+  },
+  "gp146_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3825"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3105"
+   }
+  },
+  "gp148_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4064"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2810"
+   }
+  },
+  "gp149_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3007"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2462"
+   }
+  },
+  "gp150_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2847"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3634"
+   }
+  },
+  "gp151_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2969"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2892"
+   }
+  },
+  "gp152_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3445"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2359"
+   }
+  },
+  "gp153_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3843"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "4126"
+   }
+  },
+  "gp160_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "3680"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3631"
+   }
+  },
+  "gp161_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3091"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2527"
+   }
+  },
+  "gp162_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4024"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "4015"
+   }
+  },
+  "gp171_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "2260"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3665"
+   }
+  },
+  "gp173_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2217"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2170"
+   }
+  },
+  "gp174_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2529"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3602"
+   }
+  },
+  "gp176_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3396"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2609"
+   }
+  },
+  "gp182_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2434"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3119"
+   }
+  },
+  "gp183_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4129"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2600"
+   }
+  },
+  "gpbar_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2986"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2437"
+   }
+  },
+  "gper1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2596"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3612"
+   }
+  },
+  "gpr12_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4114"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4176"
+   }
+  },
+  "gpr15_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3490"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3914"
+   }
+  },
+  "gpr17_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2928"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3355"
+   }
+  },
+  "gpr18_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2988"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2349"
+   }
+  },
+  "gpr19_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2870"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3683"
+   }
+  },
+  "gpr20_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "3204"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2449"
+   }
+  },
+  "gpr21_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2467"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3596"
+   }
+  },
+  "gpr22_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3301"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3915"
+   }
+  },
+  "gpr25_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3772"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3015"
+   }
+  },
+  "gpr27_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3996"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3032"
+   }
+  },
+  "gpr31_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "2874"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2603"
+   }
+  },
+  "gpr32_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2468"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2842"
+   }
+  },
+  "gpr33_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3426"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3247"
+   }
+  },
+  "gpr34_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4161"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2309"
+   }
+  },
+  "gpr35_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3749"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3457"
+   }
+  },
+  "gpr37_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3359"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3305"
+   }
+  },
+  "gpr39_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "2233"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2993"
+   }
+  },
+  "gpr3_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4163"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4122"
+   }
+  },
+  "gpr42_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "2773"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3084"
+   }
+  },
+  "gpr45_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3782"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2845"
+   }
+  },
+  "gpr4_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "3608"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3964"
+   }
+  },
+  "gpr52_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2626"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3264"
+   }
+  },
+  "gpr55_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "3106"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3188"
+   }
+  },
+  "gpr61_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2856"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2450"
+   }
+  },
+  "gpr62_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "3630"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2660"
+   }
+  },
+  "gpr63_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3447"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3681"
+   }
+  },
+  "gpr6_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3094"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3116"
+   }
+  },
+  "gpr75_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "4185"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3057"
+   }
+  },
+  "gpr78_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "2495"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2940"
+   }
+  },
+  "gpr82_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3385"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3724"
+   }
+  },
+  "gpr83_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2572"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3065"
+   }
+  },
+  "gpr84_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4221"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "4249"
+   }
+  },
+  "gpr85_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2232"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2553"
+   }
+  },
+  "gpr87_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3986"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3864"
+   }
+  },
+  "gpr88_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2584"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3956"
+   }
+  },
+  "grpr_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2534"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2942"
+   }
+  },
+  "hcar1_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "3263"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2915"
+   }
+  },
+  "hcar2_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "3822"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4228"
+   }
+  },
+  "hcar3_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "2718"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2849"
+   }
+  },
+  "hrh1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2943"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3477"
+   }
+  },
+  "hrh2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2865"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3092"
+   }
+  },
+  "hrh3_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3561"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2886"
+   }
+  },
+  "hrh4_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3018"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2737"
+   }
+  },
+  "kissr_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3259"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2858"
+   }
+  },
+  "lgr4_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3026"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2754"
+   }
+  },
+  "lgr6_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2368"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "4016"
+   }
+  },
+  "lpar1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3937"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2682"
+   }
+  },
+  "lpar2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2177"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2466"
+   }
+  },
+  "lpar3_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3981"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2724"
+   }
+  },
+  "lpar4_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "4034"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2508"
+   }
+  },
+  "lpar5_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "2221"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3823"
+   }
+  },
+  "lpar6_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "2932"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2951"
+   }
+  },
+  "lshr_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3397"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2329"
+   }
+  },
+  "lt4r1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2363"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3013"
+   }
+  },
+  "lt4r2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3139"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2613"
+   }
+  },
+  "mas1l_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3123"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3863"
+   }
+  },
+  "mas_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2823"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2240"
+   }
+  },
+  "mc3r_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3781"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3607"
+   }
+  },
+  "mc4r_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2695"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2403"
+   }
+  },
+  "mc5r_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3086"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2998"
+   }
+  },
+  "mchr1_human": {
+   "active": null,
+   "inactive": null
+  },
+  "mchr2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3463"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3917"
+   }
+  },
+  "mrgrd_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3136"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3743"
+   }
+  },
+  "mrgre_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4067"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3358"
+   }
+  },
+  "mrgrf_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3045"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2798"
+   }
+  },
+  "mrgrg_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2850"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3510"
+   }
+  },
+  "mrgx1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2853"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3383"
+   }
+  },
+  "mrgx2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2264"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3705"
+   }
+  },
+  "mrgx3_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2750"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3217"
+   }
+  },
+  "mrgx4_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3878"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3287"
+   }
+  },
+  "mshr_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "4150"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2365"
+   }
+  },
+  "mtlr_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4116"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3877"
+   }
+  },
+  "mtr1a_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3311"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3875"
+   }
+  },
+  "mtr1b_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2559"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "4097"
+   }
+  },
+  "mtr1l_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3483"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3019"
+   }
+  },
+  "nk1r_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3473"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3256"
+   }
+  },
+  "nk2r_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3467"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3501"
+   }
+  },
+  "nk3r_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3294"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3055"
+   }
+  },
+  "nmbr_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3160"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2929"
+   }
+  },
+  "nmur1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2862"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2554"
+   }
+  },
+  "nmur2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3727"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3529"
+   }
+  },
+  "npbw1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2245"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3690"
+   }
+  },
+  "npbw2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4030"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "4230"
+   }
+  },
+  "npff1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2163"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2551"
+   }
+  },
+  "npff2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2514"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2651"
+   }
+  },
+  "npsr1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3578"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3167"
+   }
+  },
+  "npy1r_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3395"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3601"
+   }
+  },
+  "npy2r_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2185"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3605"
+   }
+  },
+  "npy4r_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2955"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2877"
+   }
+  },
+  "npy5r_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2545"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2748"
+   }
+  },
+  "npy6r_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2981"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2854"
+   }
+  },
+  "ntr1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2840"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2779"
+   }
+  },
+  "ntr2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3005"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3691"
+   }
+  },
+  "ogr1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4203"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4259"
+   }
+  },
+  "opn3_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4068"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2380"
+   }
+  },
+  "opn4_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2547"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2655"
+   }
+  },
+  "opn5_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2285"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3667"
+   }
+  },
+  "oprd_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3508"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2426"
+   }
+  },
+  "oprk_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3142"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2324"
+   }
+  },
+  "oprm_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3892"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3831"
+   }
+  },
+  "oprx_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2738"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3415"
+   }
+  },
+  "opsb_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3265"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3339"
+   }
+  },
+  "opsd_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2291"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "4135"
+   }
+  },
+  "opsg_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2763"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4118"
+   }
+  },
+  "opsr_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2736"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3114"
+   }
+  },
+  "ox1r_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3335"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2355"
+   }
+  },
+  "ox2r_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4031"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2722"
+   }
+  },
+  "oxer1_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "2296"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4069"
+   }
+  },
+  "oxgr1_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "3230"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3526"
+   }
+  },
+  "oxyr_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3889"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3997"
+   }
+  },
+  "p2ry1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2356"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4167"
+   }
+  },
+  "p2ry2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4056"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3347"
+   }
+  },
+  "p2ry4_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2721"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2615"
+   }
+  },
+  "p2ry6_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4109"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2286"
+   }
+  },
+  "p2ry8_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2425"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2341"
+   }
+  },
+  "p2y10_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3666"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2708"
+   }
+  },
+  "p2y11_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3805"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4092"
+   }
+  },
+  "p2y12_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3227"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3849"
+   }
+  },
+  "p2y13_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4039"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2835"
+   }
+  },
+  "p2y14_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2950"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2457"
+   }
+  },
+  "par1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2366"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2745"
+   }
+  },
+  "par2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3223"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3748"
+   }
+  },
+  "par3_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3172"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3887"
+   }
+  },
+  "par4_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3702"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3859"
+   }
+  },
+  "pd2r2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2952"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3522"
+   }
+  },
+  "pd2r_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2376"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3453"
+   }
+  },
+  "pe2r1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2937"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2985"
+   }
+  },
+  "pe2r2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3838"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2783"
+   }
+  },
+  "pe2r3_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "2629"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2674"
+   }
+  },
+  "pe2r4_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2784"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2581"
+   }
+  },
+  "pf2r_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "2811"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2274"
+   }
+  },
+  "pi2r_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3682"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3999"
+   }
+  },
+  "pkr1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3922"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2491"
+   }
+  },
+  "pkr2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4028"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3398"
+   }
+  },
+  "prlhr_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4007"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3279"
+   }
+  },
+  "psyr_human": {
+   "active": {
+    "method": "AlphaFold2",
+    "model_id": "3696"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2871"
+   }
+  },
+  "ptafr_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3021"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2752"
+   }
+  },
+  "qrfpr_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4239"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3213"
+   }
+  },
+  "rl3r1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3874"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3865"
+   }
+  },
+  "rl3r2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2194"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3391"
+   }
+  },
+  "rxfp2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2774"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3544"
+   }
+  },
+  "s1pr1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4225"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3190"
+   }
+  },
+  "s1pr2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2173"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "4100"
+   }
+  },
+  "s1pr3_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2973"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2743"
+   }
+  },
+  "s1pr4_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3621"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2580"
+   }
+  },
+  "s1pr5_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4179"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2552"
+   }
+  },
+  "ssr1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2971"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2234"
+   }
+  },
+  "ssr2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2607"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2860"
+   }
+  },
+  "ssr3_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3375"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3075"
+   }
+  },
+  "ssr4_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4006"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "4206"
+   }
+  },
+  "ssr5_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3200"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "4061"
+   }
+  },
+  "sucr1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2209"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4229"
+   }
+  },
+  "ta2r_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2290"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3949"
+   }
+  },
+  "taar1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3757"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3909"
+   }
+  },
+  "taar2_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3349"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3619"
+   }
+  },
+  "taar3_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3595"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2294"
+   }
+  },
+  "taar5_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4053"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3353"
+   }
+  },
+  "taar6_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2734"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2539"
+   }
+  },
+  "taar8_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2931"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2519"
+   }
+  },
+  "taar9_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3095"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3236"
+   }
+  },
+  "trfr_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3952"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2328"
+   }
+  },
+  "tshr_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "4180"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2409"
+   }
+  },
+  "ur2r_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3717"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3572"
+   }
+  },
+  "v1ar_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2643"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "3378"
+   }
+  },
+  "v1br_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "3498"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2311"
+   }
+  },
+  "v2r_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2628"
+   },
+   "inactive": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2178"
+   }
+  },
+  "xcr1_human": {
+   "active": {
+    "method": "AlphaFold2-Multistate",
+    "model_id": "2176"
+   },
+   "inactive": {
+    "method": "AlphaFold2",
+    "model_id": "2723"
+   }
+  }
+ }
+}

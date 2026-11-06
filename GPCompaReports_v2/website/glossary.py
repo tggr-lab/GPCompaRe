@@ -15,6 +15,7 @@ are tried longest-pattern first so "ΔRRCS" wins over "RRCS". No em dashes.
 import json
 
 from . import data_versions as dv
+from . import model_methods as _mm
 from . import motifs as _motifs
 from ..analysis.cfr_analysis import CFR_TOP_N
 
@@ -81,9 +82,18 @@ GLOSSARY = [
          match=[_L + r'(?:[Aa]ctive|[Ii]nactive) models?' + _R, _L + r'Active vs inactive' + _R]),
     dict(id='multistate', group='The models', term='AlphaFold-Multistate',
          definition='A way of running AlphaFold that predicts a GPCR in a chosen activation state by giving it only '
-                    'template structures of that state (Heo and Feig, 2022).',
+                    'template structures of that state (Heo and Feig, 2022). GPCRdb built most of the models here '
+                    'this way; each report names the method of its two models.',
          href='https://doi.org/10.1002/prot.26382',
          match=[_L + r'AlphaFold[- ][Mm]ultistate' + _R]),
+    dict(id='alphafold2', group='The models', term='AlphaFold2',
+         definition='Standard AlphaFold2, run with template structures of any state (Jumper et al., 2021). '
+                    'GPCRdb classed each such model as active or inactive; plain AlphaFold2 built %d of the '
+                    'inactive models and %d of the active models here, and AlphaFold-Multistate built the rest. '
+                    'Each report names the method of its two models.'
+                    % (_mm.counts()['inactive'][_mm.AF2], _mm.counts()['active'][_mm.AF2]),
+         href='https://doi.org/10.1038/s41586-021-03819-2',
+         match=[_L + r'AlphaFold2' + _R]),
 
     # ---- the receptor ----
     dict(id='gpcr', group='The receptor', term='GPCR', full='G protein-coupled receptor',

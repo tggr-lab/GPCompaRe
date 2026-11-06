@@ -24,6 +24,7 @@ from .page_generators.contact_page import generate_contact_page
 from .page_generators.downloads_page import generate_downloads_page
 from .page_generators.info_pages import generate_glossary_page, generate_privacy_page
 from . import data_versions
+from . import model_methods
 from . import motifs
 from .page_generators import report_extras
 from .seo import SITE_URL, write_robots, write_sitemap, write_gene_redirects
@@ -119,6 +120,8 @@ class SiteGenerator:
         # and JS from <site>/data_versions.json
         data_versions.install(env)
         data_versions.write_site_copy(self.output_dir)
+        # data/model_methods.json: which method (AlphaFold-Multistate or AlphaFold2) built each model
+        model_methods.install(env)
         # motifs.json: the motif registry plus every receptor that carries each motif, for search
         motifs.write_site_copy(self.output_dir, self.store.gpcr_ids, self._motif_residues,
                                self.store.gpcr_info)

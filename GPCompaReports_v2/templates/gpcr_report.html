@@ -216,10 +216,15 @@
         <p class="rx-caption">Color: net ΔRRCS per residue. <span class="is-active">Red:</span> stronger in the active model. <span class="is-inactive">Blue:</span> stronger in the inactive model.</p>
       </div>
       <aside class="fine-print rx-attr">
-        {%- set _models_label = data_versions.sources.gpcrdb_models.label %}
-        Models: <a href="https://gpcrdb.org" target="_blank" rel="noopener">GPCRdb</a> {{ _models_label[7:] if _models_label.startswith('GPCRdb ') else _models_label }},
+        {#- the method of each model is GPCRdb's own label (data/model_methods.json); a receptor without one gets the build's general label #}
+        {%- set _models = data_versions.sources.gpcrdb_models %}
+        {%- set _mm_line = model_methods.line(gpcr_id) %}
+        {%- set _mm = model_methods.for_receptor(gpcr_id) %}
+        Models: <a href="https://gpcrdb.org" target="_blank" rel="noopener">GPCRdb</a> {{ _models.build }} build,
         <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.
-        Heo L, Feig M. <a href="https://doi.org/10.1002/prot.26382" target="_blank" rel="noopener">Multi-state modeling of G-protein coupled receptors at experimental accuracy</a>. Proteins 90:1873-1885 (2022).
+        <span class="rx-model-methods" data-model-methods="{{ 'known' if _mm_line else 'unknown' }}">{% if _mm_line %}{{ _mm_line }}.{% else %}{{ _models.methods }}; the method of this receptor's models is not recorded.{% endif %}</span>
+        {% if not _mm_line or model_methods.AFMS in _mm.values() %}Heo L, Feig M. <a href="https://doi.org/10.1002/prot.26382" target="_blank" rel="noopener">Multi-state modeling of G-protein coupled receptors at experimental accuracy</a>. Proteins 90:1873-1885 (2022).{% endif %}
+        {% if not _mm_line or model_methods.AF2 in _mm.values() %}Jumper J et al. <a href="https://doi.org/10.1038/s41586-021-03819-2" target="_blank" rel="noopener">Highly accurate protein structure prediction with AlphaFold</a>. Nature 596:583-589 (2021).{% endif %}
         Viewer: <a href="https://molstar.org" target="_blank" rel="noopener">Mol*</a> (MIT license).
         <a href="{{ static_prefix }}static/notices/models-and-viewer.txt">Notices</a>
       </aside>
@@ -583,7 +588,12 @@
           inactive structures predicted by
           <a href="https://github.com/huhlim/alphafold-multistate" target="_blank" rel="noopener">AlphaFold multistate</a>
           (<a href="https://onlinelibrary.wiley.com/doi/10.1002/prot.26382" target="_blank" rel="noopener">Heo L, Feig M. Proteins 2022;90(11):1873-1885, doi 10.1002/prot.26382</a>)
-          gives a per-pair ΔRRCS.
+          {#- approved edit 2026-11-06 (freeze rule methods-model-methods-2026-11-06): not every model is AlphaFold-Multistate #}
+          {%- set _mc = model_methods.counts() %}
+          or, for some states, plain
+          <a href="https://doi.org/10.1038/s41586-021-03819-2" target="_blank" rel="noopener">AlphaFold2</a>
+          (Jumper J et al. Nature 2021;596:583-589, doi 10.1038/s41586-021-03819-2)
+          gives a per-pair ΔRRCS. The models are GPCRdb's {{ data_versions.sources.gpcrdb_models.build }} build; across the {{ _mc.receptors }} receptors, plain AlphaFold2 built {{ _mc.inactive[model_methods.AF2] }} inactive and {{ _mc.active[model_methods.AF2] }} active models.
         </p>
         <p>
           <strong>Receptor-specific ΔRRCS threshold.</strong> |ΔRRCS| ≥ {{ "%.2f"|format(sig_threshold) }}, computed as max(mean(|Δ|) + σ, 0.2). The threshold is never lower than 0.2. Contact pairs with |ΔRRCS| below 0.2 do not pass this rule.
@@ -668,6 +678,7 @@
     <aside class="fine-print fine-print--page report-refs">
       <span class="fine-print-title">Sources:</span>
       <a href="https://github.com/huhlim/alphafold-multistate" target="_blank" rel="noopener">AlphaFold multistate</a> ·
+      <a href="https://doi.org/10.1038/s41586-021-03819-2" target="_blank" rel="noopener">AlphaFold2</a> (some states) ·
       <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6954041/" target="_blank" rel="noopener">RRCS</a> ·
       <a href="https://gnomad.broadinstitute.org/" target="_blank" rel="noopener">{{ variant_release.label }}</a> ·
       <a href="https://zenodo.org/records/10813168" target="_blank" rel="noopener">AlphaMissense</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>) ·

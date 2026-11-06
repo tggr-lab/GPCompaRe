@@ -1,8 +1,9 @@
 {
   "schema": 1,
-  "_doc": "Single source of truth for the data releases this database release shows. Read by website/data_versions.py: exposed to every template as `data_versions` and copied to <site>/data_versions.json. Search (search_index_v2.py meta.releases) and the report variant labels read from here. Edit this file, not the labels. `layers` says which source each part of the site uses; the batch entries are the frozen inputs of the RRCS run and the paper's database numbers.",
+  "_doc": "Single source of truth for the data releases this database release shows. database.release is the release every page and the landing JSON-LD state (version); database.build_date is the JSON-LD dateModified. Read by website/data_versions.py: exposed to every template as `data_versions` and copied to <site>/data_versions.json. Search (search_index_v2.py meta.releases) and the report variant labels read from here. Edit this file, not the labels. `layers` says which source each part of the site uses; the batch entries are the frozen inputs of the RRCS run and the paper's database numbers.",
   "database": {
     "label": "GPCompaRe database release 2026-11-05",
+    "release": "2026-11-05",
     "build_date": "2026-11-05",
     "receptors": 283
   },
@@ -14,9 +15,13 @@
       "note": "RRCS, dRRCS, CFR ranking and every structural number. Frozen; the paper uses the same run."
     },
     "gpcrdb_models": {
-      "label": "GPCRdb AlphaFold-Multistate models (2024-05-15 build)",
+      "label": "GPCRdb models (2024-05-15 build): AlphaFold-Multistate, with plain AlphaFold2 for some states",
+      "long_label": "GPCRdb models (2024-05-15 build): AlphaFold-Multistate, with plain AlphaFold2 for 165 inactive and 26 active models",
+      "methods": "AlphaFold-Multistate, with plain AlphaFold2 for some states",
       "build": "2024-05-15",
-      "licence": "CC BY 4.0"
+      "licence": "CC BY 4.0",
+      "methods_file": "data/model_methods.json",
+      "note": "GPCRdb ran standard AlphaFold2 with all templates, classed the best model as active or inactive, and built the other state with AlphaFold-Multistate on state-filtered templates (Herrera et al., NAR 2025). The method of each model is GPCRdb's own label (model list read 2026-10-20), kept in data/model_methods.json; MCHR1 has none recorded."
     },
     "gpcrdb_numbering": {
       "label": "GPCRdb generic numbering",

@@ -49,7 +49,7 @@
         <tr><th scope="row">Receptor families</th><td>{{ n_families }}</td>
             <td class="dataset-note"></td></tr>
         <tr><th scope="row">Structural models</th><td>{{ n_models }}</td>
-            <td class="dataset-note">two AlphaFold-Multistate models per receptor</td></tr>
+            <td class="dataset-note">two GPCRdb models per receptor: {{ data_versions.sources.gpcrdb_models.methods }}</td></tr>
         <tr><th scope="row">Contact-pair records</th><td>{{ "{:,}".format(n_contact_records) }}</td>
             <td class="dataset-note">residue pairs detected in either state</td></tr>
         <tr><th scope="row">Threshold-passing changes</th><td>{{ "{:,}".format(n_threshold_changes) }}</td>
@@ -230,9 +230,14 @@
     <details id="methods-sources">
       <summary>Methods, data sources and references</summary>
       <p>
+        {%- set _mc = model_methods.counts() %}
         Structures are paired active-state and inactive-state models from
+        <a href="https://gpcrdb.org/" target="_blank" rel="noopener">GPCRdb</a> ({{ data_versions.sources.gpcrdb_models.build }} build; Herrera et al., Nucleic Acids Res 2025):
         <a href="https://github.com/huhlim/alphafold-multistate" target="_blank" rel="noopener">AlphaFold-Multistate</a>
-        (Heo and Feig, Proteins 2022).
+        (Heo and Feig, Proteins 2022), with plain
+        <a href="https://doi.org/10.1038/s41586-021-03819-2" target="_blank" rel="noopener">AlphaFold2</a>
+        (Jumper et al., Nature 2021) for {{ _mc.inactive[model_methods.AF2] }} inactive and {{ _mc.active[model_methods.AF2] }} active models.
+        Each report names the method of its two models.
         Contacts are scored with
         <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6954041/" target="_blank" rel="noopener">RRCS</a>.
         Generic numbering and segment boundaries come from
@@ -250,6 +255,7 @@
       <ul class="refs-list">
         <li>Zhou Q et al. Common activation mechanism of class A GPCRs. eLife 2019;8:e50279. <a href="https://doi.org/10.7554/eLife.50279" target="_blank" rel="noopener">doi 10.7554/eLife.50279</a></li>
         <li>Heo L, Feig M. Multi-state modeling of G-protein coupled receptors at experimental accuracy. Proteins 2022;90(11):1873-1885. <a href="https://doi.org/10.1002/prot.26382" target="_blank" rel="noopener">doi 10.1002/prot.26382</a></li>
+        <li>Jumper J et al. Highly accurate protein structure prediction with AlphaFold. Nature 2021;596:583-589. <a href="https://doi.org/10.1038/s41586-021-03819-2" target="_blank" rel="noopener">doi 10.1038/s41586-021-03819-2</a></li>
         <li>Herrera LPT et al. GPCRdb in 2025. Nucleic Acids Res 2025;53(D1):D425-D435. <a href="https://doi.org/10.1093/nar/gkae1065" target="_blank" rel="noopener">doi 10.1093/nar/gkae1065</a></li>
         <li>Chen S et al. A genomic mutational constraint map using variation in 76,156 human genomes. Nature 2024;625:92-100. <a href="https://doi.org/10.1038/s41586-023-06045-0" target="_blank" rel="noopener">doi 10.1038/s41586-023-06045-0</a></li>
         <li>Cheng J et al. Accurate proteome-wide missense variant effect prediction with AlphaMissense. Science 2023;381:eadg7492. <a href="https://doi.org/10.1126/science.adg7492" target="_blank" rel="noopener">doi 10.1126/science.adg7492</a></li>
@@ -266,10 +272,9 @@
       </p>
     </details>
     <details id="release-info">
-      <summary>Release and citation</summary>
+      <summary>Release</summary>
       <dl class="release-list">
-        <dt>Release</dt><dd>GPCompaRe database release 2026.08</dd>
-        <dt>DOI</dt><dd>DOI pending release</dd>
+        <dt>Release</dt><dd data-release>{{ data_versions.database.label }}</dd>
         <dt>Downloads</dt><dd><a href="{{ static_prefix }}downloads.html">Database release</a></dd>
         <dt>Contact</dt><dd><a href="{{ static_prefix }}contact.html">Contact the lab</a></dd>
       </dl>

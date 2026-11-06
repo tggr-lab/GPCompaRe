@@ -70,9 +70,13 @@ def _dataset_jsonld(total_gpcrs, n_families, n_contact_records, n_threshold_chan
     """schema.org Dataset description of the database, for search engines.
 
     States only what the landing page states. No licence, DOI or download is
-    claimed: none exists yet (the Downloads page says "Coming soon").
+    claimed: none exists yet (the Downloads page says "Coming soon"). The version
+    and dateModified are the registry's (data_versions.json database.release and
+    database.build_date), the same release the footer and the landing fold show.
     """
     from ..seo import SITE_URL
+    from .. import data_versions
+    db = data_versions.load()['database']
     data = {
         '@context': 'https://schema.org',
         '@type': 'Dataset',
@@ -80,16 +84,18 @@ def _dataset_jsonld(total_gpcrs, n_families, n_contact_records, n_threshold_chan
         'alternateName': 'GPCompaRe',
         'description': (
             'Residue-residue contact scores (RRCS) compared between paired active and inactive '
-            'AlphaFold-Multistate models for %d human Class A GPCRs in %d receptor families: '
+            'GPCRdb models (%s) for %d human Class A GPCRs in %d receptor families: '
             '%s contact-pair records from %d models, %s changes above each receptor\'s own threshold, with GPCRdb '
             'generic numbering, conservation, AlphaMissense predictions and gnomAD missense variation.'
-            % (total_gpcrs, n_families, format(n_contact_records, ','), n_models, format(n_threshold_changes, ','))),
+            % (data_versions.source('gpcrdb_models')['methods'], total_gpcrs, n_families, format(n_contact_records, ','),
+               n_models, format(n_threshold_changes, ','))),
         'url': SITE_URL,
-        'version': '2026.08',
+        'version': db['release'],
+        'dateModified': db['build_date'],
         'isAccessibleForFree': True,
         'keywords': ['GPCR', 'Class A GPCR', 'residue-residue contact score', 'RRCS',
-                     'receptor activation', 'AlphaFold-Multistate', 'GPCRdb', 'AlphaMissense', 'gnomAD'],
-        'measurementTechnique': 'Residue-residue contact score (RRCS) on AlphaFold-Multistate models',
+                     'receptor activation', 'AlphaFold-Multistate', 'AlphaFold2', 'GPCRdb', 'AlphaMissense', 'gnomAD'],
+        'measurementTechnique': 'Residue-residue contact score (RRCS) on GPCRdb AlphaFold-Multistate and AlphaFold2 models',
         'variableMeasured': ['RRCS', 'ΔRRCS (active minus inactive)'],
         'creator': {
             '@type': 'Organization',

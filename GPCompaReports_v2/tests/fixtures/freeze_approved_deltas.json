@@ -9,6 +9,18 @@
   "ordering": "delta_df.nlargest(1000, 'abs_delta'): the 1,000 contact pairs with the largest |ΔRRCS|, descending. Ties broken by pandas' nlargest, which keeps first occurrence in row order.",
   "reversal": [
     {
+      "id": "methods-model-methods-2026-11-06",
+      "approved_on": "2026-11-06",
+      "approved_by": "Yamir, 2026-11-06: say some models are plain AlphaFold2 and make the label accurate",
+      "section": "sec-methods",
+      "what": "The RRCS analysis paragraph of Methods: after the AlphaFold multistate citation, 'or, for some states, plain AlphaFold2 (Jumper et al. 2021)' and one sentence with the build and the counts (plain AlphaFold2 built 165 inactive and 26 active models of the 283 receptors). The same text on every report.",
+      "why": "The paragraph said every model was predicted by AlphaFold multistate. GPCRdb's 2024-05-15 build (Herrera et al., NAR 2025) labels 165 inactive and 26 active models of the 283 receptors plain AlphaFold2 (data/model_methods.json, GPCRdb model list read 2026-10-20; MCHR1 has no label). The manuscript states the same counts.",
+      "kind": "literal",
+      "count": 1,
+      "after": "Heo L, Feig M. Proteins 2022;90(11):1873-1885, doi 10.1002/prot.26382</a>)\n          or, for some states, plain\n          <a href=\"https://doi.org/10.1038/s41586-021-03819-2\" target=\"_blank\" rel=\"noopener\">AlphaFold2</a>\n          (Jumper J et al. Nature 2021;596:583-589, doi 10.1038/s41586-021-03819-2)\n          gives a per-pair ΔRRCS. The models are GPCRdb's 2024-05-15 build; across the 283 receptors, plain AlphaFold2 built 165 inactive and 26 active models.",
+      "before": "Heo L, Feig M. Proteins 2022;90(11):1873-1885, doi 10.1002/prot.26382</a>)\n          gives a per-pair ΔRRCS."
+    },
+    {
       "id": "snake-svg-tags-2026-11-05",
       "approved_on": "2026-11-05",
       "approved_by": "Yamir (2026-11-05: \"sounds good all of it ... then implement\"; reviews by Astra and Fable; FINAL_IMPLEMENTATION_PLAN.md section A)",

@@ -794,7 +794,7 @@ function contactsTable(r, o) {
     <caption class="sr-sr-only">Contacts of this residue above the threshold</caption>
     <thead><tr><th scope="col">Partner</th><th scope="col" class="num">${term(o, 'delta', 'ΔRRCS')}</th><th scope="col" class="num">Active RRCS</th><th scope="col" class="num">Inactive RRCS</th><th scope="col">What the models show</th><th scope="col">Report</th></tr></thead>
     <tbody>${rows}</tbody></table></div>
-    ${finePrint(html`<p><span class="sr-net sr-net--active">Red, positive</span>: stronger in the active model. <span class="sr-net sr-net--inactive">Blue, negative</span>: stronger in the inactive model. RRCS is the residue-residue contact score of each AlphaFold-Multistate model; &lt;0.01 is a contact with a score above 0 that rounds to 0.00. “Present only in” one model means the other model has no contact at all.</p>`, { cls: 'sr-contacts-legend' })}`;
+    ${finePrint(html`<p><span class="sr-net sr-net--active">Red, positive</span>: stronger in the active model. <span class="sr-net sr-net--inactive">Blue, negative</span>: stronger in the inactive model. RRCS is the residue-residue contact score of each GPCRdb model (AlphaFold-Multistate, with plain AlphaFold2 for some states; the receptor report names the method of each); &lt;0.01 is a contact with a score above 0 that rounds to 0.00. “Present only in” one model means the other model has no contact at all.</p>`, { cls: 'sr-contacts-legend' })}`;
 }
 
 /** "Show in 3D": a button and an empty pane; search-page.js mounts the Studio pair viewer into it on demand. */
@@ -1653,7 +1653,7 @@ function cardFinePrint(r, o, mismatch, noResidue) {
   if (f) {
     about.push(html`<li><strong>${term(o, 'cfr', 'CFR')}:</strong> a core functional residue position here is ${cfrOneOf(o.cfrTop)}. The rank is the position's place in that class-wide ranking.</li>`);
     if (f.dmax !== null) about.push(html`<li><strong>Largest contact change:</strong> the biggest |ΔRRCS| among this residue's contacts${f.threshold !== null ? html`; this receptor's threshold is ${f.threshold.toFixed(2)}` : ''}.</li>`);
-    about.push(html`<li><strong>${term(o, 'pair', 'Contacts')}</strong> are residue pairs of the AlphaFold-Multistate models whose contact score changes by at least the receptor's threshold between the inactive and the active model. They describe the two models, not the effect of a variant.</li>`);
+    about.push(html`<li><strong>${term(o, 'pair', 'Contacts')}</strong> are residue pairs of the two GPCRdb models (AlphaFold-Multistate, with plain AlphaFold2 for some states) whose contact score changes by at least the receptor's threshold between the inactive and the active model. They describe the two models, not the effect of a variant.</li>`);
     about.push(html`<li><strong>${term(o, 'conservation', 'Conservation')}</strong> is on a 0 to 1 scale. <strong>${term(o, 'am', 'AlphaMissense')}</strong> scores are predictions on a 0 to 1 scale. ${AM_CUTS_TEXT} <strong>Residue mean</strong> is the mean over all substitutions at the residue, classed by the same cutoffs before rounding.</li>`);
   }
   if (!releases.length && !about.length) return '';

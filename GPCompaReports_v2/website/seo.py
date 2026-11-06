@@ -41,7 +41,7 @@ def report_description(info, sig_threshold, n_pairs, protein_name=''):
         bits.append(family + ' family')
     if bits:
         head += ' (%s)' % ', '.join(bits)
-    return ('%s: residue contacts that change between the active and inactive AlphaFold-Multistate '
+    return ('%s: residue contacts that change between the active and inactive GPCRdb '
             'models of this human Class A GPCR, with a snake plot, 3D view and variants. '
             '%s contact pairs; receptor threshold |ΔRRCS| ≥ %.2f.'
             % (head, format(n_pairs, ','), sig_threshold))
