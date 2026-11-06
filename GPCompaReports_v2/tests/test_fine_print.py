@@ -159,7 +159,8 @@ def test_landing_prose_sits_in_fine_print_and_keeps_the_limitation_statement():
 @needs_build
 def test_statistics_text_is_untouched_by_the_presentation_changes():
     html = (BUILD_DIR / 'statistics.html').read_text(encoding='utf-8')
-    for needle in ('The box plots compare groups with a Kruskal-Wallis test.', 'What are Core Functional Residues (CFRs)?',
+    # 2026-11-06: the box plots became the explorer's Families tab; the Kruskal-Wallis sentence moved with them
+    for needle in ('The Families tab compares groups with a Kruskal-Wallis test', 'What are Core Functional Residues (CFRs)?',
                    'Where these cross-receptor numbers come from.', 'This association supports the CFR score as a feature for prioritizing variants.'):
         assert needle in html, needle
 
@@ -446,4 +447,4 @@ def test_statistics_methodology_reads_as_fine_print_without_losing_text(open_pag
     sizes = page.locator('.stats-page .callout').first.locator('p').evaluate_all('els => els.map(e => parseFloat(getComputedStyle(e).fontSize))')
     assert sizes[0] > sizes[1], sizes                          # the definition leads, the method notes recede
     assert page.locator('.stats-refs').evaluate('e => e.classList.contains("fine-print")')
-    assert 'Kruskal-Wallis' in page.locator('#sec-a').evaluate('e => e.closest("section").innerText')
+    assert 'Kruskal-Wallis' in page.locator('#sec-e').evaluate('e => e.closest("section").innerText')

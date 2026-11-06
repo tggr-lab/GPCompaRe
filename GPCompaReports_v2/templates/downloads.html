@@ -10,6 +10,23 @@
 
     <div class="downloads-grid">
 
+      <article class="downloads-block" aria-labelledby="downloads-statistics-heading">
+        <div class="downloads-block-head">
+          <h2 id="downloads-statistics-heading">Statistics tables and figures</h2>
+          <span class="badge badge-teal downloads-status">Available</span>
+        </div>
+        <p>
+          Every chart on the Statistics page downloads as PNG, SVG or CSV from its own card, and
+          the tables behind all of them come as one archive: the helix-pair atlas, the CFR atlas
+          (50 positions by {{ total_gpcrs }} receptors), the receptor explorer, the variants at CFR
+          positions, and the paper's tables S3, S5 and the AlphaMissense summary as submitted.
+        </p>
+        <p>
+          <a class="btn btn-primary" href="{{ static_prefix }}data/stats/gpcompare_statistics_tables.zip" download>Download all statistics tables (zip)</a>
+          <a class="btn btn-ghost" href="{{ static_prefix }}statistics.html">Open the Statistics page</a>
+        </p>
+      </article>
+
       <article class="downloads-block" aria-labelledby="downloads-database-heading">
         <div class="downloads-block-head">
           <h2 id="downloads-database-heading">Database download</h2>
