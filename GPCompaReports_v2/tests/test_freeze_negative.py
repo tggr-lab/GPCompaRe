@@ -1,4 +1,4 @@
-"""Negative checks for the approved-edit rules of 2026-11-05 (tests/test_freeze.py).
+"""Negative checks for the approved-edit rules of 2026-11-05 and 2026-11-06 (tests/test_freeze.py).
 
 A passing hash after the reversals does not prove the rules are narrow. Each test here takes a
 built report that passes the freeze, makes one change the approval does not cover, and asserts the
@@ -89,4 +89,34 @@ def test_a_stray_copy_of_an_approved_string_fails(html):
 
 def test_an_unrelated_word_in_the_snake_callout_fails(html):
     mutated = _once(html, 'Each circle is one residue', 'Each circle is a residue')
+    assert not _passes(mutated)
+
+
+# methods-model-methods-2026-11-06: the Methods sentence on plain AlphaFold2 models
+MODEL_SENTENCE = ("The models are GPCRdb's 2024-05-15 build; across the 283 receptors, plain AlphaFold2 built "
+                  "165 inactive and 26 active models.")
+
+
+def test_a_changed_model_count_fails(html):
+    mutated = _once(html, 'plain AlphaFold2 built 165 inactive', 'plain AlphaFold2 built 166 inactive')
+    assert not _passes(mutated)
+
+
+def test_the_old_all_multistate_methods_text_fails(html):
+    # the approved insertion taken out again: the text equals the old baseline, but the rule's count is 1
+    i = html.index('doi 10.1002/prot.26382</a>)\n          or, for some states, plain')
+    j = html.index(MODEL_SENTENCE, i) + len(MODEL_SENTENCE)
+    k = html.index('gives a per-pair ΔRRCS.', i)
+    mutated = html[:i] + 'doi 10.1002/prot.26382</a>)\n          ' + 'gives a per-pair ΔRRCS.' + html[j:]
+    assert k < j
+    assert not _passes(mutated)
+
+
+def test_a_partial_model_methods_edit_fails(html):
+    mutated = _once(html, '          or, for some states, plain\n', '          or plain\n')
+    assert not _passes(mutated)
+
+
+def test_a_stray_copy_of_the_model_sentence_fails(html):
+    mutated = _once(html, 'Here, ΔRRCS compares contact scores', MODEL_SENTENCE + ' Here, ΔRRCS compares contact scores')
     assert not _passes(mutated)
