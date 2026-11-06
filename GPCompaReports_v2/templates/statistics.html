@@ -1,4 +1,19 @@
 {% extends "base.html" %}
+{% from "_partials/chart-card.html" import chart_card %}
+{% from "_partials/fine_print.html" import fine_print, data_versions_table %}
+
+{#
+  The Statistics page, ordered by reader question:
+    orientation tiles, section index, coverage table
+    A  where activation rewires the helix bundle (helix-pair atlas, site layer)
+    C  the CFR positions across receptors (atlas, paper bubble plot, tables S3 and S5)
+    D  variants and predicted pathogenicity (paper comparison first, site panel second)
+    E  receptors and families (explorer)
+    methods, sources, downloads
+  Section ids sec-c and sec-d are linked from the landing page and pinned by tests; they stay.
+  Chart payloads: small paper charts inline (window.STATS_CHART_DATA), everything else in
+  data/stats/*.json fetched when the card scrolls near (static/js/stats-page.js).
+#}
 
 {% block head %}
 {% include "_partials/plotly-lazy.html" %}
@@ -16,55 +31,94 @@
 <section class="stats-page">
   <div class="section-inner">
     <header class="section-head">
-      <h1>Cross-GPCR Database Statistics</h1>
+      <h1>Database statistics</h1>
       <p class="section-sub">
-        Database-level summaries across {{ total_gpcrs }} Class A GPCRs: receptor rankings,
-        TM-domain patterns, recurrent generic-numbered positions, and variant annotations.
+        What changes between the active and the inactive model across all {{ total_gpcrs }} human Class A
+        GPCRs: where the helix bundle rewires, the {{ cfr_top_n }} Core Functional Residue positions,
+        variants at those positions, and every receptor placed in the class. Each chart says whether it
+        shows the paper's analysis (values as reported) or the site layer (recomputed from the same data
+        at build time), downloads as PNG, SVG or CSV, and can be read as a table.
       </p>
     </header>
 
-    {# ---- A. Cross-GPCR Comparison ---- #}
+    {# ---- orientation ---- #}
+    <ul class="stats-tiles" aria-label="Headline numbers">
+      {% for t in tiles %}
+      <li><a class="stats-tile" href="{{ t.href }}">
+        <div class="stats-tile-num">{{ t.value }}</div>
+        <div class="stats-tile-label">{{ t.label }}</div>
+        <div class="stats-tile-sub">{{ t.sub }} <span class="layer-badge layer-badge--{{ t.layer }}">{{ 'paper' if t.layer == 'paper' else 'site' }}</span></div>
+      </a></li>
+      {% endfor %}
+    </ul>
+
+    <ul class="stats-toc" aria-label="Sections">
+      {% for s in toc %}<li><a href="{{ s.href }}">{{ s.q }}</a></li>{% endfor %}
+    </ul>
+
+    <div class="v2-table-wrap stats-coverage">
+      <div class="v2-table-toolbar"><strong>What each kind of result covers</strong></div>
+      <div class="v2-table-scroll">
+        <table class="v2-table">
+          <thead><tr><th>View</th><th class="num">Receptors</th><th>Source</th><th>Not included</th></tr></thead>
+          <tbody>
+          {% for c in coverage %}
+            <tr><td>{{ c.view }}</td><td class="num">{{ c.n }}</td><td>{{ c.source }}</td><td>{{ c.excluded or '' }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% call fine_print(summary="Receptors outside the database and the two sources", cls="stats-coverage-note") %}
+      <p>class_A_all.csv lists 287 human Class A receptors; GPR26, LGR5, OPSX and RXFP1 lack a complete active and inactive model pair and are not in the database, so every count here is over {{ total_gpcrs }}.</p>
+      <p>Paper analysis: Supplementary Tables S3, S4, S5 and S7 and the corrected AlphaMissense summary, shown as reported and never recomputed. Site layer: the same RRCS batch run and the Studio packs (GPCRdb numbering, {{ data_versions.sources.gnomad.label }}), summarized at build time. The paper's AlphaMissense alleles are {{ data_versions.sources.gnomad_batch.label }} (batch layer).</p>
+    {% endcall %}
+
+    {# ---- A. Where activation rewires the helix bundle ---- #}
     <section class="analysis-section reveal" aria-labelledby="sec-a">
       <header class="section-head">
-        <h2 id="sec-a" data-tooltip="Rankings and distributions of conformational change magnitude across all receptors">A. Cross-GPCR Comparison</h2>
-        <p class="section-sub" data-glossary-scope>The box plots compare groups with a Kruskal-Wallis test.</p>
+        <p class="section-kicker">Structure</p>
+        <h2 id="sec-a">Where does activation rewire the helix bundle?</h2>
+        <p class="section-sub">
+          Every receptor's above-threshold contact pairs, placed on the helix pair they connect. Red
+          means stronger in the active model, blue stronger in the inactive model. Click a cell for the
+          receptors behind it.
+        </p>
       </header>
-      {% for chart_id in ['chart-ranking', 'chart-histogram', 'chart-box-ligand', 'chart-box-family'] %}
-        {% if chart_id in charts %}
-        <div class="v2-chart v2-chart-wide"
-             id="{{ chart_id }}"
-             data-chart-layout-light='{{ layout_light_json }}'
-             data-chart-layout-dark='{{ layout_dark_json }}'></div>
-        {% endif %}
-      {% endfor %}
-    </section>
-
-    {# ---- B. TM Domain Patterns ---- #}
-    <section class="analysis-section reveal" aria-labelledby="sec-b">
-      <header class="section-head">
-        <h2 id="sec-b" data-tooltip="How conformational changes distribute across TM1-7">B. Transmembrane Domain Patterns</h2>
-      </header>
-      {% for chart_id in ['chart-tm-bar', 'chart-tm-heatmap', 'chart-cv-scatter'] %}
-        {% if chart_id in charts %}
-        <div class="v2-chart v2-chart-wide"
-             id="{{ chart_id }}"
-             data-chart-layout-light='{{ layout_light_json }}'
-             data-chart-layout-dark='{{ layout_dark_json }}'></div>
-        {% endif %}
-      {% endfor %}
+      {% call chart_card(cards['chart-helix-pairs'], static_prefix, layout_light_json, layout_dark_json) %}
+        <span class="chips" role="group" aria-label="Metric" data-chips="metric">
+          <span class="chips-name">Show</span>
+          <button type="button" class="chip" data-value="mean_net" aria-pressed="true">Direction (mean net ΔRRCS)</button>
+          <button type="button" class="chip" data-value="coverage" aria-pressed="false">Coverage (share of receptors)</button>
+          <button type="button" class="chip" data-value="mean_net_present" aria-pressed="false">Mean net among receptors with a pair</button>
+        </span>
+        <span class="chips" role="group" aria-label="Receptors" data-chips="group"><span class="chips-name">Receptors</span></span>
+        <span class="chips" role="group" aria-label="Segments" data-chips="segments">
+          <button type="button" class="chip" data-value="helices" aria-pressed="true">Helices and H8</button>
+          <button type="button" class="chip" data-value="all" aria-pressed="false">All segments</button>
+        </span>
+      {% endcall %}
+      <details class="fine-print stats-folded">
+        <summary>More site-layer charts: the ΔRRCS distribution and the per-helix means</summary>
+        {{ chart_card(cards['chart-histogram'], static_prefix, layout_light_json, layout_dark_json) }}
+        {{ chart_card(cards['chart-tm-bar'], static_prefix, layout_light_json, layout_dark_json) }}
+      </details>
     </section>
 
     {# ---- C. Core Functional Residues ---- #}
     <section class="analysis-section reveal" aria-labelledby="sec-c">
       <header class="section-head">
-        <h2 id="sec-c" data-tooltip="Conserved positions that consistently show activation-related changes across many GPCRs">C. Core Functional Residues (CFRs)</h2>
+        <p class="section-kicker">Core Functional Residues</p>
+        <h2 id="sec-c">Which positions change in most receptors?</h2>
         <p class="section-sub">
-          Positions that repeatedly show above-threshold ΔRRCS changes across many GPCRs, suggesting recurrent activation-associated contact remodeling.
+          Core Functional Residues (CFRs) are one class-wide set: the {{ cfr_top_n }} generic-numbered positions
+          with the highest CFR score, a composite of how many receptors show an above-threshold change at the
+          position and the mean |ΔRRCS| there. {{ cfr_total_positions }} positions recur in three or more
+          receptors; the {{ cfr_top_n }} reported here are the top of that ranking, and the report snake plots,
+          the residue tables and search mark the same {{ cfr_top_n }}.
         </p>
       </header>
-
-      <div class="callout">
-        <div class="callout-head">What are Core Functional Residues (CFRs)?</div>
+      {% call fine_print(summary="What are Core Functional Residues (CFRs)? How they are computed, and where the cross-receptor numbers come from") %}
         <p>
           Residues that carry a GPCRdb generic number are mapped onto that shared position across
           the {{ total_gpcrs }} receptors. A position is flagged as a CFR if it appears in the
@@ -75,65 +129,84 @@
         <p>
           Positions are ranked by a composite score of (1) how many receptors show an
           above-threshold change at that position (recurrence) and (2) the average magnitude of
-          change (mean |ΔRRCS|).
-          High-ranking positions mark generic-numbered sites that recur across receptors and may
-          reflect conserved components of Class A GPCR activation-associated contact networks.
+          change (mean |ΔRRCS|). High-ranking positions mark generic-numbered sites that recur across
+          receptors and may reflect conserved components of Class A GPCR activation-associated contact networks.
         </p>
         <p>
-          The ranked list below is cut at the top {{ cfr_top_n }} positions. That cutoff is a
-          reporting threshold, not a definition:
-          {{ cfr_total_positions }} positions meet the CFR criterion of recurring in at least
-          three receptors. A position ranked below {{ cfr_top_n }} is still a recurrent CFR
-          position, it just falls outside the subset reported here. The report snake plots, the
-          residue tables and search mark these same {{ cfr_top_n }} positions as CFR.
+          The ranked list is cut at the top {{ cfr_top_n }} positions. That cutoff is a reporting threshold,
+          not a definition: {{ cfr_total_positions }} positions meet the CFR criterion of recurring in at
+          least three receptors. A position ranked below {{ cfr_top_n }} is still a recurrent CFR position,
+          it just falls outside the subset reported here.
         </p>
-        <p class="section-sub" style="margin-top: var(--s-3);">
-          <strong>Where these cross-receptor numbers come from.</strong> Cross-receptor
-          recurrence analyses are limited to residues assigned GPCRdb generic numbers. Residues
-          without one, largely in loops and terminal regions, cannot be aligned to a shared
-          position across receptors and take no part in these statistics. Recurrence statistics
-          on this page are computed on the full GPCRdb residue maps for all 283 receptors. The per-receptor annotation used to build individual
-          report pages numbers only residues that took part in a high-magnitude contact, so it
-          yields lower recurrence counts. Individual receptor reports are unchanged and keep their
+        <p>
+          <strong>Where these cross-receptor numbers come from.</strong>
+          Cross-receptor recurrence analyses are limited to residues assigned GPCRdb generic numbers. Residues
+          without one, largely in loops and terminal regions, cannot be aligned to a shared position across
+          receptors and take no part in these statistics. The paper's recurrence counts (tables below) are
+          computed on the full GPCRdb residue maps for all {{ total_gpcrs }} receptors. The site-layer atlas
+          uses each receptor's own GPCRdb numbering from the Studio packs; with it 49 of the {{ cfr_top_n }}
+          positions match the submitted receptor counts exactly, and 8.48x48 counts one receptor more (GPR4,
+          whose batch annotation belonged to GPR42). Individual receptor reports are unchanged and keep their
           own report-generation data.
         </p>
-      </div>
+      {% endcall %}
 
-      {% if 'chart-cfr-dotplot' in charts %}
-      <div class="seg-order-row">
-        <span class="seg-order-slot" data-seg-order-slot></span>
-        <aside class="fine-print seg-order-fine">Legend order. Helices first: TM1 to TM7 and H8, then the loops, then the termini. Sequence: along the chain. The models are most reliable in the helices. The choice is remembered in this browser.</aside>
-      </div>
-      <div class="v2-chart v2-chart-wide"
-           id="chart-cfr-dotplot"
-           data-chart-layout-light='{{ layout_light_json }}'
-           data-chart-layout-dark='{{ layout_dark_json }}'></div>
-      {% endif %}
+      {% call chart_card(cards['chart-cfr-atlas'], static_prefix, layout_light_json, layout_dark_json) %}
+        <span class="chips" role="group" aria-label="Group rows by" data-chips="group">
+          <span class="chips-name">Rows</span>
+          <button type="button" class="chip" data-value="ligand" aria-pressed="true">By ligand type</button>
+          <button type="button" class="chip" data-value="family" aria-pressed="false">By family</button>
+        </span>
+        <span class="chips" role="group" aria-label="Cell" data-chips="mode">
+          <span class="chips-name">Cells</span>
+          <button type="button" class="chip" data-value="state" aria-pressed="true">Above threshold / mapped / not numbered</button>
+          <button type="button" class="chip" data-value="direction" aria-pressed="false">Direction (net ΔRRCS)</button>
+        </span>
+        <span class="chips" role="group" aria-label="Column order" data-chips="order">
+          <span class="chips-name">Columns</span>
+          <span class="seg-order-slot" data-seg-order-slot></span>
+          <button type="button" class="chip" data-value="rank" aria-pressed="false">CFR rank</button>
+        </span>
+        <span class="chips" role="group" aria-label="View" data-chips="view">
+          <button type="button" class="chip" data-value="matrix" aria-pressed="true">Matrix</button>
+          <button type="button" class="chip" data-value="summary" aria-pressed="false">Group summary</button>
+        </span>
+        <span class="find-box"><label class="chips-name" for="cfr-atlas-find">Find receptor</label><input id="cfr-atlas-find" type="search" autocomplete="off" placeholder="gene or name" data-find="cfr_atlas"></span>
+      {% endcall %}
+
+      {% call chart_card(cards['chart-cfr-dotplot'], static_prefix, layout_light_json, layout_dark_json) %}
+        <span class="chips"><span class="chips-name">Legend</span><span class="seg-order-slot" data-seg-order-slot></span></span>
+      {% endcall %}
 
       {% if cfr_table %}
       <div class="v2-table-wrap">
         <div class="v2-table-toolbar">
-          <strong>Top {{ cfr_top_n }} Core Functional Residue Positions</strong>
+          <strong>Top {{ cfr_top_n }} Core Functional Residue positions</strong>
+          <span class="layer-badge layer-badge--paper">Paper analysis</span>
+          <span class="v2-table-tools">
+            <a class="cc-btn" href="{{ static_prefix }}{{ stats_dir }}/cfr_top50.csv" download>CSV</a>
+          </span>
+          <span class="v2-table-note">Supplementary Table S3, values as reported. Click a column to sort; a generic number opens search.</span>
         </div>
         <div class="v2-table-scroll">
-          <table class="v2-table">
+          <table class="v2-table" id="cfr-table" data-sortable>
             <thead>
               <tr>
-                <th data-tooltip="Rank by composite CFR score">Rank</th>
-                <th data-tooltip="Ballesteros-Weinstein generic numbering for this position">Generic number</th>
-                <th>Segment</th>
-                <th data-tooltip="Number of the 283 receptors with an above-threshold ΔRRCS change at this position">Receptors</th>
-                <th data-tooltip="Percentage of the 283 receptors">% of receptors</th>
-                <th data-tooltip="Mean |ΔRRCS| across receptors with an above-threshold change at this position">Mean |Δ|</th>
-                <th data-tooltip="Composite score: the mean of normalized recurrence and normalized mean |ΔRRCS|">CFR score</th>
+                <th data-sort="num" data-tooltip="Rank by composite CFR score">Rank</th>
+                <th data-sort="text" data-tooltip="GPCRdb generic numbering for this position">Generic number</th>
+                <th data-sort="text">Segment</th>
+                <th data-sort="num" data-tooltip="Number of the {{ total_gpcrs }} receptors with an above-threshold ΔRRCS change at this position">Receptors</th>
+                <th data-sort="num" data-tooltip="Percentage of the {{ total_gpcrs }} receptors">% of receptors</th>
+                <th data-sort="num" data-tooltip="Mean |ΔRRCS| across receptors with an above-threshold change at this position">Mean |Δ|</th>
+                <th data-sort="num" data-tooltip="Composite score: the mean of normalized recurrence and normalized mean |ΔRRCS|">CFR score</th>
               </tr>
             </thead>
             <tbody>
             {% for row in cfr_table %}
               <tr>
                 <td class="num">{{ row.cfr_score_rank }}</td>
-                <td><strong>{{ row.generic_number }}</strong></td>
-                <td><span class="badge badge-teal">{{ row.segment }}</span></td>
+                <td><strong><a class="gn-link" href="{{ static_prefix }}search/index.html?q={{ row.generic_number }}">{{ row.generic_number }}</a></strong></td>
+                <td data-gpc-seg="{{ row.segment }}"><span class="badge badge-teal">{{ row.segment }}</span></td>
                 <td class="num">{{ row.n_receptors }}</td>
                 <td class="num">{{ "%.1f"|format(row.pct_receptors) }}%</td>
                 <td class="num">{{ "%.2f"|format(row.mean_abs_delta) }}</td>
@@ -147,25 +220,29 @@
       {% endif %}
 
       {% if cfr_network %}
-      <div class="v2-table-wrap" style="margin-top: var(--s-5);">
+      <div class="v2-table-wrap">
         <div class="v2-table-toolbar">
           <strong>CFR contact pairs</strong>
+          <span class="layer-badge layer-badge--paper">Paper analysis</span>
+          <span class="v2-table-tools">
+            <a class="cc-btn" href="{{ static_prefix }}{{ stats_dir }}/cfr_pairs_top20.csv" download>CSV</a>
+          </span>
           <span class="v2-table-note">
             Contact pairs in which both residues are among the {{ cfr_top_n }} highest-ranked
             recurrent CFR positions. Showing the {{ cfr_network_shown }} highest-ranked pairs,
-            ranked across {{ "{:,}".format(cfr_network_total) }} unique contact pairs.
+            ranked across {{ "{:,}".format(cfr_network_total) }} unique contact pairs (Supplementary Table S5).
           </span>
         </div>
         <div class="v2-table-scroll">
-          <table class="v2-table">
+          <table class="v2-table" id="cfr-pairs-table" data-sortable>
             <thead>
-              <tr><th>Position 1</th><th>Position 2</th><th>Receptors</th><th>% of receptors</th></tr>
+              <tr><th data-sort="text">Position 1</th><th data-sort="text">Position 2</th><th data-sort="num">Receptors</th><th data-sort="num">% of receptors</th></tr>
             </thead>
             <tbody>
             {% for row in cfr_network %}
               <tr>
-                <td><strong>{{ row.cfr_1 }}</strong></td>
-                <td><strong>{{ row.cfr_2 }}</strong></td>
+                <td><strong><a class="gn-link" href="{{ static_prefix }}search/index.html?q={{ row.cfr_1 }}">{{ row.cfr_1 }}</a></strong></td>
+                <td><strong><a class="gn-link" href="{{ static_prefix }}search/index.html?q={{ row.cfr_2 }}">{{ row.cfr_2 }}</a></strong></td>
                 <td class="num">{{ row.n_receptors }}</td>
                 <td class="num">{{ "%.1f"|format(row.pct_receptors) }}%</td>
               </tr>
@@ -175,26 +252,28 @@
         </div>
       </div>
       {% endif %}
+
+      <details class="fine-print stats-folded">
+        <summary>More site-layer charts: conserved and variable positions</summary>
+        {{ chart_card(cards['chart-cv-scatter'], static_prefix, layout_light_json, layout_dark_json) }}
+      </details>
     </section>
 
-    {# ---- D. Variant Correlation ---- #}
+    {# ---- D. Variants ---- #}
     {# AlphaMissense numbers: the corrected supplement analysis (Fig. S4, S5, Table S7), from
        data/supplement_2026-11-05b/ via manuscript_stats.load_am_comparison. Unrounded in the data;
-       rounded once here. tests/test_statistics_am_section.py pins them. #}
+       rounded once here. tests/test_statistics_am_section.py pins them and reads this section up to
+       the conservation chart, so the paper comparison comes first and the site panel after it. #}
     <section class="analysis-section reveal" aria-labelledby="sec-d">
       <header class="section-head">
-        <h2 id="sec-d" data-tooltip="How genetic variants correlate with conformational change and pathogenicity, comparing the {{ cfr_top_n }} top-ranked class-wide CFR positions (by CFR score) with other generic-numbered positions">D. Variant Correlation</h2>
+        <p class="section-kicker">Variants</p>
+        <h2 id="sec-d" data-tooltip="How genetic variants relate to predicted pathogenicity, comparing the {{ cfr_top_n }} top-ranked class-wide CFR positions (by CFR score) with other generic-numbered positions">Are variants at CFR positions predicted pathogenic?</h2>
         <p class="section-sub">
           This AlphaMissense comparison uses {{ am.receptors if am else 276 }} receptors, excluding GPR3, GPR4 and XCR1 because of mismatched annotations in the original inputs. The corrected analysis places alleles on model residue numbering.
         </p>
       </header>
 
-      {% if 'chart-pathogenicity' in charts %}
-      <div class="v2-chart v2-chart-wide"
-           id="chart-pathogenicity"
-           data-chart-layout-light='{{ layout_light_json }}'
-           data-chart-layout-dark='{{ layout_dark_json }}'></div>
-      {% endif %}
+      {{ chart_card(cards['chart-pathogenicity'], static_prefix, layout_light_json, layout_dark_json) }}
 
       {% if am %}
       <div class="callout callout-accent" id="am-comparison">
@@ -209,121 +288,114 @@
           After stratification by conservation the odds ratio is
           <strong>{{ "%.2f"|format(am.conservation_adjusted[0]) }}</strong>
           (95% CI {{ "%.2f"|format(am.conservation_adjusted[1]) }} to {{ "%.2f"|format(am.conservation_adjusted[2]) }}).
-        </p>
-        <p>
-          Ambiguous predictions are shown in the chart but excluded from the odds ratio and the percentages.
-          {% for g in am.groups %}{{ g.label }}: {{ "{:,}".format(g.n) }} scored substitutions, {{ "{:,}".format(g.decisive) }} decisive ({{ "{:,}".format(g.pathogenic_n) }} pathogenic, {{ "{:,}".format(g.benign_n) }} benign) and {{ "{:,}".format(g.ambiguous_n) }} ambiguous.{% if not loop.last %} {% endif %}{% endfor %}
-          The comparison group is every other generic-numbered position, which includes recurrent
-          positions ranked below the cutoff.
-        </p>
-        <p class="section-sub">
           This association supports the CFR score as a feature for prioritizing variants. It does not
           establish pathogenicity.
         </p>
-        <aside class="fine-print">Source: Supplementary Figure S4 and Table S7 (unique substitutions; Woolf 95% CI; Mantel-Haenszel odds ratio over conservation quintiles of eligible decisive calls, Robins-Breslow-Greenland 95% CI). Alleles are the {{ data_versions.sources.gnomad_batch.label }} records behind the paper (batch layer).</aside>
+        {% call fine_print(summary="Counts, denominators and method") %}
+          <p>
+            Ambiguous predictions are shown in the chart but excluded from the odds ratio and the percentages.
+            {% for g in am.groups %}{{ g.label }}: {{ "{:,}".format(g.n) }} scored substitutions, {{ "{:,}".format(g.decisive) }} decisive ({{ "{:,}".format(g.pathogenic_n) }} pathogenic, {{ "{:,}".format(g.benign_n) }} benign) and {{ "{:,}".format(g.ambiguous_n) }} ambiguous.{% if not loop.last %} {% endif %}{% endfor %}
+            The comparison group is every other generic-numbered position, which includes recurrent
+            positions ranked below the cutoff.
+          </p>
+          <p>Source: Supplementary Figure S4 and Table S7 (unique substitutions; Woolf 95% CI; Mantel-Haenszel odds ratio over conservation quintiles of eligible decisive calls, Robins-Breslow-Greenland 95% CI). Alleles are the {{ data_versions.sources.gnomad_batch.label }} records behind the paper (batch layer).</p>
+        {% endcall %}
       </div>
       {% endif %}
 
-      {% if 'chart-conservation' in charts %}
-      <div class="v2-chart v2-chart-wide"
-           id="chart-conservation"
-           data-chart-layout-light='{{ layout_light_json }}'
-           data-chart-layout-dark='{{ layout_dark_json }}'></div>
-      <aside class="fine-print">
-        The conservation chart uses the site's own variant layer, which covers 279 receptors. NPY6R and TAAR3 lack protein-coding missense
-        annotations because they are annotated as pseudogene loci. GP182 and P2RY8 are excluded
-        from the current variant dataset because their identifiers were not successfully
-        resolved during data collection.
-      </aside>
-      {% endif %}
+      {% call chart_card(cards['chart-cfr-variants'], static_prefix, layout_light_json, layout_dark_json) %}
+        <span class="chips" role="group" aria-label="Position order" data-chips="order">
+          <span class="chips-name">Order</span>
+          <span class="seg-order-slot" data-seg-order-slot></span>
+          <button type="button" class="chip" data-value="pathogenic" aria-pressed="false">By % predicted pathogenic</button>
+        </span>
+        <span class="chips" role="group" aria-label="Positions" data-chips="set">
+          <button type="button" class="chip" data-value="cfr" aria-pressed="true">CFR rank 1 to {{ cfr_top_n }}</button>
+          <button type="button" class="chip" data-value="other" aria-pressed="false">Compare: ranked {{ cfr_top_n + 1 }} to {{ cfr_total_positions }}</button>
+        </span>
+        <span class="chips" role="group" aria-label="Panel" data-chips="panel">
+          <button type="button" class="chip" data-value="composition" aria-pressed="true">AlphaMissense class</button>
+          <button type="button" class="chip" data-value="counts" aria-pressed="false">Alleles and ClinVar</button>
+        </span>
+      {% endcall %}
 
+      <details class="fine-print stats-folded">
+        <summary>More site-layer charts: conservation against contact change (a null result)</summary>
+        {{ chart_card(cards['chart-conservation'], static_prefix, layout_light_json, layout_dark_json) }}
+        <p>
+          The conservation chart uses the site's own variant layer, which covers {{ variant_layer_receptors }} receptors. NPY6R and TAAR3 lack protein-coding missense
+          annotations because they are annotated as pseudogene loci. GP182 and P2RY8 are excluded
+          from the current variant dataset because their identifiers were not successfully
+          resolved during data collection.
+        </p>
+      </details>
     </section>
 
-    {# References condensed to a single line; full sources live on the landing page + footer. #}
-    <p class="stats-refs fine-print fine-print--page">
-      Data &amp; methods:
-      <a href="https://github.com/huhlim/alphafold-multistate" target="_blank" rel="noopener">AlphaFold multistate</a> ·
-      <a href="https://doi.org/10.1038/s41586-021-03819-2" target="_blank" rel="noopener">AlphaFold2</a> (some states) ·
-      <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6954041/" target="_blank" rel="noopener">RRCS</a> ·
-      <a href="https://gnomad.broadinstitute.org/" target="_blank" rel="noopener">{{ data_versions.sources.gnomad_batch.label }}</a> (batch layer, as in the paper) ·
-      <a href="https://zenodo.org/records/10813168" target="_blank" rel="noopener">AlphaMissense</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>) ·
-      <a href="https://gpcrdb.org/" target="_blank" rel="noopener">GPCRdb</a> ·
-      <a href="https://www.uniprot.org/" target="_blank" rel="noopener">UniProt</a> ·
-      <a href="https://www.ebi.ac.uk/ProtVar/" target="_blank" rel="noopener">ProtVar</a> (VarSite conservation)
-    </p>
+    {# ---- E. Receptors and families ---- #}
+    <section class="analysis-section reveal" aria-labelledby="sec-e">
+      <header class="section-head">
+        <p class="section-kicker">Receptors and families</p>
+        <h2 id="sec-e">Where does my receptor sit, and which are like it?</h2>
+        <p class="section-sub">
+          All {{ total_gpcrs }} receptors on one chart, a sortable table with class rank, and the families
+          side by side. Type a gene name to highlight one receptor and see the ones with the most similar
+          CFR pattern.
+        </p>
+      </header>
+      {% call chart_card(cards['chart-receptors'], static_prefix, layout_light_json, layout_dark_json) %}
+        <span class="stats-tabs" role="tablist" aria-label="View" data-chips="tab">
+          <button type="button" class="stats-tab" role="tab" data-value="scatter" aria-selected="true">Scatter</button>
+          <button type="button" class="stats-tab" role="tab" data-value="table" aria-selected="false">Table</button>
+          <button type="button" class="stats-tab" role="tab" data-value="families" aria-selected="false">Families</button>
+        </span>
+        <span class="chips" role="group" aria-label="Metric on the x axis" data-chips="x"><span class="chips-name">x</span></span>
+        <span class="chips" role="group" aria-label="Metric on the y axis" data-chips="y"><span class="chips-name">y</span></span>
+        <span class="chips" role="group" aria-label="Color" data-chips="color">
+          <span class="chips-name">Color</span>
+          <button type="button" class="chip" data-value="ligand" aria-pressed="true">Ligand type</button>
+          <button type="button" class="chip" data-value="family" aria-pressed="false">Family</button>
+        </span>
+        <span class="find-box"><label class="chips-name" for="receptors-find">Find receptor</label><input id="receptors-find" type="search" autocomplete="off" placeholder="gene or name" data-find="receptors"></span>
+      {% endcall %}
+    </section>
+
+    {# ---- methods, sources, downloads ---- #}
+    <section class="analysis-section reveal" aria-labelledby="sec-methods">
+      <header class="section-head">
+        <p class="section-kicker">Methods and data</p>
+        <h2 id="sec-methods">Methods, sources and downloads</h2>
+      </header>
+      <p>
+        <a class="btn btn-primary btn-sm" href="{{ static_prefix }}{{ zip_href }}" download>Download all statistics tables ({{ n_tables }} CSV files, zip)</a>
+        <a class="btn btn-ghost btn-sm" href="{{ static_prefix }}downloads.html">Downloads page</a>
+      </p>
+      {% call fine_print(summary="Data releases behind this page", open=True, cls="stats-provenance") %}
+        {{ data_versions_table(data_versions) }}
+      {% endcall %}
+      <p class="stats-refs fine-print fine-print--page">
+        Data &amp; methods:
+        <a href="https://github.com/huhlim/alphafold-multistate" target="_blank" rel="noopener">AlphaFold multistate</a> ·
+        <a href="https://doi.org/10.1038/s41586-021-03819-2" target="_blank" rel="noopener">AlphaFold2</a> (some states) ·
+        <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6954041/" target="_blank" rel="noopener">RRCS</a> ·
+        <a href="https://gnomad.broadinstitute.org/" target="_blank" rel="noopener">{{ data_versions.sources.gnomad_batch.label }}</a> (batch layer, as in the paper; the site layer's release is in the table above) ·
+        <a href="https://zenodo.org/records/10813168" target="_blank" rel="noopener">AlphaMissense</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>) ·
+        <a href="https://www.ncbi.nlm.nih.gov/clinvar/" target="_blank" rel="noopener">{{ data_versions.sources.clinvar.label }}</a> ·
+        <a href="https://gpcrdb.org/" target="_blank" rel="noopener">GPCRdb</a> ·
+        <a href="https://www.uniprot.org/" target="_blank" rel="noopener">UniProt</a> ·
+        <a href="https://www.ebi.ac.uk/ProtVar/" target="_blank" rel="noopener">ProtVar</a> (VarSite conservation)
+      </p>
+    </section>
   </div>
-
-  <style>
-    .stats-page { padding: var(--s-6) 0 var(--s-8); }
-    .analysis-section { margin-bottom: var(--s-7); }
-
-    /* Tighter section heads for a data-dense page. Keep gradient underline. */
-    .stats-page .section-head { margin-bottom: var(--s-4); }
-    .stats-page .analysis-section > .section-head h2 {
-      font-size: clamp(1.25rem, 1.9vw, 1.55rem);
-      padding-bottom: var(--s-2);
-    }
-    .stats-page .analysis-section > .section-head h2::after { width: 32px; height: 2px; }
-
-    /* Let Plotly own its full width. Shadow instead of boxed border so the
-       chart reads as a figure, not a framed widget. */
-    .stats-page .v2-chart {
-      border: 0;
-      padding: 0;
-      min-height: auto;
-      background: var(--bgColor-default);
-      border-radius: var(--r-md);
-      box-shadow: 0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
-      overflow: hidden;
-      margin-bottom: var(--s-4);
-    }
-    [data-color-mode="dark"] .stats-page .v2-chart {
-      box-shadow: 0 1px 3px rgba(0,0,0,0.35);
-    }
-
-    /* Proper table headers with brand band. */
-    .stats-page .v2-table-toolbar {
-      background: color-mix(in srgb, var(--brand-primary) 6%, var(--bgColor-default));
-      border-bottom: 1px solid var(--borderColor-muted);
-      padding: var(--s-3) var(--s-4);
-    }
-    .stats-page .v2-table-toolbar strong {
-      font-family: var(--font-serif);
-      font-size: 1.05rem;
-      font-weight: 600;
-      color: var(--fgColor-default);
-      letter-spacing: -0.01em;
-    }
-
-    .stats-page .callout { margin: var(--s-4) 0; }
-
-    /* Methodological text reads as fine print (presentation only; the wording is unchanged):
-       the section notes under each heading, and every callout paragraph after the first. */
-    .stats-page .analysis-section > .section-head > .section-sub {
-      font-size: 0.8125rem; line-height: 1.55; max-width: 72ch;
-    }
-    .stats-page .callout > p ~ p,
-    .stats-page .callout > p.section-sub {
-      font-size: 0.8125rem; line-height: 1.55; color: var(--fgColor-muted); max-width: 72ch;
-    }
-    .stats-page .callout > p.section-sub { margin-top: var(--s-3); }
-
-    /* Data and methods strip: the shared fine-print look, sized to the page. */
-    .stats-page .stats-refs { margin-top: var(--s-7); line-height: 1.8; }
-    .stats-page .stats-refs a { white-space: nowrap; }
-  </style>
 </section>
 {% endblock %}
 
 {% block scripts %}
 <script>
-window.CHART_DATA = window.CHART_DATA || {};
-{% for chart_id, chart_json in charts.items() %}
-window.CHART_DATA['{{ chart_id }}'] = {{ chart_json | safe }};
+window.STATS_CHART_DATA = window.STATS_CHART_DATA || {};
+{% for cid, card in cards.items() if card.inline %}
+window.STATS_CHART_DATA['{{ cid }}'] = {{ card.payload_json | safe }};
 {% endfor %}
-document.addEventListener('DOMContentLoaded', function() {
-  if (window.Site && Site.initCharts) Site.initCharts();
-});
 </script>
 <script src="{{ static_prefix }}static/js/segment-order.js" defer></script>
+<script src="{{ static_prefix }}static/js/stats-page.js" defer></script>
 {% endblock %}

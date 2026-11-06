@@ -1,0 +1,61 @@
+{#
+  Chart card: one frame for every chart on the Statistics page (CSS: static/css/stats.css,
+  behavior: static/js/stats-page.js).
+
+    {% from "_partials/chart-card.html" import chart_card %}
+    {% call chart_card(cards['chart-x'], static_prefix, layout_light_json, layout_dark_json) %}
+      ...optional controls (chips, find box) shown between the head and the plot...
+    {% endcall %}
+
+  The card dict comes from website/page_generators/statistics_page.py (Card): id, title, lead,
+  layer ('site' | 'paper'), source, receptors, caption, method (HTML), csv, src (lazy payload or
+  atlas JSON), inline + payload_json, height, height_phone, search, kind ('plotly' | 'atlas'),
+  atlas (view key), available, note.
+
+  Head: serif title, a layer badge (paper analysis or site layer), one lead sentence, and the
+  toolbar: PNG 2x and SVG (Plotly.downloadImage, light background, title restored for the file),
+  CSV (the table behind the chart, written at build time), Table (the same CSV as a plain table in
+  place of the chart), Copy caption (title, view, scope, source edition, receptor count), Method
+  (opens the fine-print disclosure), Open in search where a generic number or receptor is in play.
+  Foot: the caption line with scope and source, then the method disclosure.
+  The Plotly div keeps the v2-chart class and the theme attributes site.js reads for the theme
+  bridge; its height comes from the card's CSS variables (smaller on phones).
+#}
+{% macro chart_card(card, static_prefix='', layout_light='', layout_dark='') -%}
+<figure class="chart-card{% if not card.available %} chart-card--missing{% endif %} chart-card--{{ card.kind }}"
+        id="card-{{ card.id }}" data-card="{{ card.id }}" data-layer="{{ card.layer }}"
+        data-title="{{ card.title }}" data-source="{{ card.source }}" data-receptors="{{ card.receptors }}"
+        {% if card.csv %}data-csv="{{ static_prefix }}{{ card.csv }}"{% endif %}
+        style="--chart-h: {{ card.height }}px; --chart-h-phone: {{ card.height_phone }}px">
+  <figcaption class="chart-card-head">
+    <div class="chart-card-titles">
+      <h3 class="chart-card-title" id="{{ card.id }}-title">{{ card.title }}
+        <span class="layer-badge layer-badge--{{ card.layer }}" title="{{ card.source }}">{{ 'Paper analysis' if card.layer == 'paper' else 'Site layer' }}</span>
+      </h3>
+      <p class="chart-card-lead">{{ card.lead }}</p>
+    </div>
+    <div class="chart-card-tools" role="group" aria-label="Export and view options for {{ card.title }}">
+      <button type="button" class="cc-btn" data-export="png" title="Download the chart as a PNG at twice the screen resolution, light background">PNG 2x</button>
+      <button type="button" class="cc-btn" data-export="svg" title="Download the chart as an SVG, light background">SVG</button>
+      {% if card.csv %}<a class="cc-btn" href="{{ static_prefix }}{{ card.csv }}" download title="The table behind this chart">CSV</a>{% endif %}
+      <button type="button" class="cc-btn" data-table-toggle aria-pressed="false" title="Show the chart's data as a table">Table</button>
+      <button type="button" class="cc-btn" data-copy-caption title="Copy a caption with the view, scope and source">Copy caption</button>
+      {% if card.method %}<button type="button" class="cc-btn" data-method-toggle aria-expanded="false" aria-controls="{{ card.id }}-method">Method</button>{% endif %}
+      {% if card.search %}<a class="cc-btn" href="{{ static_prefix }}{{ card.search }}">Open in search</a>{% endif %}
+    </div>
+  </figcaption>
+  {% if caller %}<div class="chart-card-controls">{{ caller() }}</div>{% endif %}
+  <div class="chart-card-body">
+    <div class="v2-chart chart-card-plot" id="{{ card.id }}" aria-labelledby="{{ card.id }}-title"
+         {% if card.src %}data-chart-src="{{ static_prefix }}{{ card.src }}"{% endif %}
+         data-chart-kind="{{ card.kind }}"{% if card.atlas %} data-chart-view="{{ card.atlas }}"{% endif %}
+         {% if card.inline %}data-chart-inline="1"{% endif %}
+         data-chart-layout-light='{{ layout_light }}'
+         data-chart-layout-dark='{{ layout_dark }}'>{% if not card.available %}<p class="chart-card-note">{{ card.note }}</p>{% endif %}</div>
+    <div class="chart-card-table" hidden></div>
+    <aside class="chart-card-side" hidden aria-live="polite"></aside>
+  </div>
+  <p class="chart-card-caption fine-print"><span class="chart-card-view" data-view-text></span>Scope: {{ card.scope }}. Source: {{ card.source }}. {{ card.caption }}</p>
+  {% if card.method %}<details class="fine-print chart-card-method" id="{{ card.id }}-method"><summary>How this is computed</summary>{{ card.method | safe }}</details>{% endif %}
+</figure>
+{%- endmacro %}
