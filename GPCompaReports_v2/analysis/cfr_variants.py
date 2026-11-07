@@ -11,8 +11,7 @@ the site's own variant layer, the source the report tables and search use:
 
 It is NOT the paper's AlphaMissense comparison (gnomAD v4.1.0 batch layer, 276 receptors, corrected
 supplement 2026-11-05b), which manuscript_stats.load_am_comparison() reads and which never changes. The
-two count different allele sets and are labeled apart: every file here says "layer": "site". Release
-labels come from data_versions.json.
+two count different allele sets and are labeled by their release (data_versions.json).
 
 Counting rules
     allele          one gnomAD variant (a pack `variants` row, one genomic change); allele_count sums AC.
@@ -42,9 +41,9 @@ Build hook (in the statistics page generator; search v2 is written before it):
 Files in output_dir/data/stats/ (schema gpcompare.stats.cfr_variants/1), about 60 kB + 50 x 8 kB:
 
 cfr_variants.json
-    schema, layer "site", label (one line for the card head), not_paper (one sentence)
+    schema, label (one line for the card head)
     sources        {gnomad, clinvar, alphamissense, conservation, gpcrdb_numbering: {label, ...},
-                    pack_release: Studio pack release id, paper_layer: {label, receptors, note}}
+                    pack_release: Studio pack release id}
     am_thresholds  {benign_below: 0.34, pathogenic_above: 0.564}
     coverage       {receptors, receptors_with_pack, receptors_with_alleles, receptors_with_clinvar,
                     clinvar_all_classes: bool (False without search2: then only clinvar.plp_db is filled)}
@@ -195,19 +194,11 @@ def _sources(pack_release):
         'conservation': pick('conservation', 'fetched'),
         'gpcrdb_numbering': pick('gpcrdb_numbering', 'fetched'),
         'pack_release': pack_release,
-        'paper_layer': {
-            'label': src['gnomad_batch']['label'],
-            'receptors': 276,
-            'note': ("The paper's AlphaMissense comparison (corrected supplement 2026-11-05b) uses the %s "
-                     "batch layer of 276 receptors and is shown separately with its own numbers."
-                     % src['gnomad_batch']['label']),
-        },
     }
 
 
 def _label(sources):
-    return ("Site data: %s missense alleles, %s, AlphaMissense per substitution, %s, %s fetched %s. "
-            "Not the paper's analysis." % (
+    return ("%s missense alleles, %s, AlphaMissense per substitution, %s, %s fetched %s." % (
                 sources['gnomad']['label'], sources['clinvar']['label'], sources['conservation']['label'],
                 sources['gpcrdb_numbering']['label'], sources['gpcrdb_numbering'].get('fetched', '')))
 
@@ -418,9 +409,7 @@ def build_cfr_variants(gids, pack_folder=None, search2_dir=None, ranks=None):
         groups.append(item)
     summary = {
         'schema': SCHEMA,
-        'layer': 'site',
         'label': _label(sources),
-        'not_paper': sources['paper_layer']['note'],
         'sources': sources,
         'am_thresholds': {'benign_below': AM_BENIGN_BELOW, 'pathogenic_above': AM_PATHOGENIC_ABOVE},
         'coverage': {'receptors': len(receptors), 'receptors_with_pack': cov['with_pack'],
@@ -432,7 +421,7 @@ def build_cfr_variants(gids, pack_folder=None, search2_dir=None, ranks=None):
         'groups': groups,
         'totals_check': dict(totals),
     }
-    details = {g: {'schema': SCHEMA, 'layer': 'site', 'generic': g, 'cfr_rank': ranks[g],
+    details = {g: {'schema': SCHEMA, 'generic': g, 'cfr_rank': ranks[g],
                    'fields': DETAIL_FIELDS, 'rows': detail_rows[g]} for g in top_order}
     return summary, details
 

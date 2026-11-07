@@ -18,10 +18,10 @@ Theme overrides are applied client-side via Plotly.relayout() from the data-char
 attributes on each chart div (templates/_partials/chart-card.html + static/js/site.js,
 static/js/stats-page.js).
 
-Two sources share the page and every card says which it shows: the paper's tables (S3, S4,
-S5, S7, the AlphaMissense comparison; values as reported, never recomputed) and the site layer
-(the RRCS batch run and the Studio packs, recomputed at build). Labels come from
-data_versions.json.
+The ranked CFR tables and the AlphaMissense class comparison are read from tracked tables
+(data/manuscript_2026-08-24, data/supplement_2026-11-05b) and never recomputed; the other cards are
+computed from the RRCS batch run and the Studio packs at build. Release labels come from
+data_versions.json. No card names a source layer on the page.
 """
 
 import base64
@@ -224,11 +224,24 @@ def _card(id, title, lead, layer, source, receptors, caption, method='', height=
                 atlas=atlas, available=True, note='')
 
 
-def _layer_text(layer, dv):
-    src = dv.get('sources', {})
-    if layer == 'paper':
-        return 'Paper analysis'
-    return 'Site layer'
+def _am_method(am):
+    """The AlphaMissense card's method note: scope, then the counts behind each bar."""
+    n = am.get('receptors', 276)
+    out = ['<p>Unique substitutions at generic-numbered positions of %s receptors (GPR3, GPR4 and XCR1 not '
+           'included), alleles placed on model residue numbering. The comparison group is every other '
+           'generic-numbered position, which includes recurrent positions ranked below the cutoff.</p>' % n]
+    groups = am.get('groups') or []
+    if groups:
+        out.append('<p>%s</p>' % ' '.join(
+            '%s: %s scored substitutions, %s decisive (%s predicted pathogenic, %s predicted benign) and %s '
+            'ambiguous.' % (g['label'], format(g['n'], ','), format(g['decisive'], ','),
+                            format(g['pathogenic_n'], ','), format(g['benign_n'], ','),
+                            format(g['ambiguous_n'], ',')) for g in groups))
+    pct = am.get('decisive_pct')
+    if pct:
+        out.append('<p>Among decisive calls (pathogenic or benign), %.1f%% at the top positions and %.1f%% at '
+                   'other generic-numbered positions are predicted pathogenic.</p>' % (pct['top'], pct['other']))
+    return ''.join(out)
 
 
 # ---------------------------------------------------------------------------- site numbers
@@ -332,10 +345,9 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
     pairs = paper.get('pairs')
     cfr_network_data = ([] if pairs is None else pairs.head(NETWORK_ROWS_SHOWN).to_dict('records'))
 
-    # The corrected AlphaMissense comparison of the supplement (Fig. S4, Fig. S5, Table S7;
-    # 276 receptors, alleles on model residue numbering), read from data/supplement_2026-11-05b/
-    # by manuscript_stats.load_am_comparison. The retired August figure3_enrichment.json values
-    # are not shown. The site does not display its own chi-square.
+    # The AlphaMissense class counts (276 receptors, alleles on model residue numbering), read from
+    # data/supplement_2026-11-05b/ by manuscript_stats.load_am_comparison. The page shows the class
+    # shares and counts only: no odds ratio, interval or test.
     am = paper.get('am_comparison') or {}
 
     # There is deliberately no per-variant table of the paper's analysis here: the submission
@@ -386,7 +398,7 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
                 csv_rows = rows_from_figure(payload)
         if csv_rows is not None and csv_rows[0]:
             lines = ['%s. %s' % (card['title'], card['lead'])] + list(preamble or []) + [
-                'Source: %s (%s). Receptors: %s.' % (card['source'], _layer_text(card['layer'], dv), card['receptors']),
+                'Source: %s. Receptors: %s.' % (card['source'], card['receptors']),
                 dv.get('database', {}).get('label', ''),
             ]
             _write_csv(stats_dir / (cid + '.csv'), csv_rows[0], csv_rows[1], [l for l in lines if l])
@@ -418,8 +430,7 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
               'no above-threshold contact, or position not numbered in this receptor.' % CFR_TOP_N,
               'site', site_src, total,
               'Default cell states: above-threshold contact (dark), mapped with none (white), not numbered '
-              '(gray). The direction toggle colors the first state by net ΔRRCS at the residue, a '
-              'site-layer derivation. The paper\'s recurrence counts (table below) stay as reported.',
+              '(gray). The direction toggle colors the first state by net ΔRRCS at the residue.',
               method='<p>A position is numbered in a receptor when the GPCRdb residue map of the Studio pack '
                      'assigns it that generic number. It carries an above-threshold contact when at least '
                      'one contact pair touching that residue has |ΔRRCS| at or above the receptor\'s '
@@ -429,9 +440,8 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
     add(_card('chart-cfr-dotplot', 'Recurrence and magnitude of the top %d positions' % CFR_TOP_N,
               'Each point is a position: how many receptors show an above-threshold change there, and '
               'the mean |ΔRRCS| among them. Size: CFR score. Labels on the top %d by rank.' % DOTPLOT_LABELS,
-              'paper', 'Supplementary Table S3', total,
-              'Figure of the paper, values as reported. Recurrence is counted on the full GPCRdb residue '
-              'maps of all %d receptors.' % total,
+              'site', '%s; GPCRdb residue maps' % rrcs_label, total,
+              'Recurrence is counted on the full GPCRdb residue maps of all %d receptors.' % total,
               method='<p>CFR score: the mean of normalized recurrence (receptors with an above-threshold change '
                      'at the position) and normalized mean |ΔRRCS|. The ranked list is cut at the top %d '
                      'positions for reporting; %s positions meet the recurrence criterion of three or more '
@@ -443,27 +453,23 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
     add(_card('chart-pathogenicity', 'AlphaMissense predicted class at CFR positions',
               'Share of scored missense substitutions predicted pathogenic, ambiguous or benign at the '
               'top %d positions by CFR score and at other generic-numbered positions.' % CFR_TOP_N,
-              'paper', 'Supplementary Fig. S4 and Table S7; alleles from %s' % batch_gnomad,
+              'site', '%s; alleles from %s' % (src.get('alphamissense', {}).get('label', 'AlphaMissense'),
+                                               batch_gnomad),
               am.get('receptors', 276),
-              'Bars are shares of all scored substitutions (denominator under each bar). The odds ratio '
-              'and the percentages in the text use decisive calls only. Prediction, not clinical evidence.',
-              method='<p>Unique substitutions at generic-numbered positions of %s receptors (GPR3, GPR4 and '
-                     'XCR1 excluded because of mismatched annotations in the original inputs), alleles placed '
-                     'on model residue numbering. Woolf 95%% CI for the odds ratio; Mantel-Haenszel odds '
-                     'ratio over conservation quintiles of eligible decisive calls, Robins-Breslow-Greenland '
-                     '95%% CI.</p>' % am.get('receptors', 276),
+              'Bars are shares of all scored substitutions (denominator under each bar). Prediction, not '
+              'clinical evidence.',
+              method=_am_method(am),
               height=400, height_phone=380),
         fig=paper.get('fig_enrichment_bar'), inline=True)
 
-    add(_card('chart-cfr-variants', 'Variants at each CFR position (site layer)',
+    add(_card('chart-cfr-variants', 'Variants at each CFR position',
               'For each of the %d positions: unique missense substitutions seen in %s pooled across '
               'receptors, by AlphaMissense predicted class, with allele counts and ClinVar pathogenic or '
               'likely pathogenic records marked.' % (CFR_TOP_N, site_gnomad),
               'site', '%s; %s; %s' % (site_gnomad, src.get('alphamissense', {}).get('label', 'AlphaMissense'),
                                       src.get('clinvar', {}).get('label', 'ClinVar')),
               VARIANT_LAYER_RECEPTORS,
-              'Site summary from the Studio packs, not the paper\'s analysis: the paper\'s odds ratio above '
-              'is the reference. Unique receptor, position, reference and alternate substitutions; allele '
+              'Unique receptor, position, reference and alternate substitutions; allele '
               'counts are shown separately. Prediction, not clinical evidence. Conservation on hover is an '
               'observation.',
               method='<p>Substitutions are pooled over the receptors in which the position is numbered. '
@@ -490,7 +496,7 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
                      % (CFR_TOP_N, CFR_TOP_N),
               height=520, height_phone=440, kind='atlas', atlas='receptors'))
 
-    # folded site-layer charts (kept with their CSVs, out of the main flow)
+    # folded charts (kept with their CSVs, out of the main flow)
     add(_card('chart-histogram', 'ΔRRCS distribution across all contact pairs',
               'All %s contact pairs of the %d receptors, binned.' % (format(numbers['pairs'], ','), total),
               'site', rrcs_label, total,
@@ -505,7 +511,7 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
     add(_card('chart-cv-scatter', 'Conserved and variable positions',
               'Per generic position: mean |ΔRRCS| against its coefficient of variation across receptors.',
               'site', site_src, total,
-              'Quadrant labels were removed: a coefficient of variation describes spread, not function.',
+              'A coefficient of variation describes spread, not function.',
               height=440, height_phone=380),
         fig=_strip_quadrant_labels(_fig_dict(tm.get('fig_conserved_variable'))))
     # The conservation card keeps the per-variant scatter of the site's variant layer (279 receptors,
@@ -514,7 +520,7 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
     # until that note is reworded; switching the card is a one-line change here.
     add(_card('chart-conservation', 'Conservation and contact change',
               'Residue conservation (VarSite via ProtVar) against |ΔRRCS| at variant residues, one point per '
-              'variant row of the site variant layer.',
+              'variant row of the variant data.',
               'site', '%s; %s' % (site_gnomad, src.get('conservation', {}).get('label', 'conservation')),
               VARIANT_LAYER_RECEPTORS,
               'Shown for completeness, a null result: conservation is an observation about the sequence '
@@ -528,11 +534,11 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
     if cfr_table_data:
         cols = list(cfr_table_data[0].keys())
         _write_csv(stats_dir / 'cfr_top50.csv', cols, [[_cell(r[c]) for c in cols] for r in cfr_table_data],
-                   ['Top %d Core Functional Residue positions by CFR score (Supplementary Table S3), as reported.' % CFR_TOP_N])
+                   ['Top %d Core Functional Residue positions by CFR score.' % CFR_TOP_N])
     if cfr_network_data:
         cols = list(cfr_network_data[0].keys())
         _write_csv(stats_dir / 'cfr_pairs_top20.csv', cols, [[_cell(r[c]) for c in cols] for r in cfr_network_data],
-                   ['CFR contact pairs (Supplementary Table S5), the %d highest-ranked, as reported.' % len(cfr_network_data)])
+                   ['CFR contact pairs, the %d highest-ranked.' % len(cfr_network_data)])
 
     # atlas files: present or not (the page says so per card)
     for key, fname in ATLAS_FILES.items():
@@ -560,10 +566,10 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
     coverage = [
         {'view': 'Structural summaries (helix pairs, CFR atlas, receptor explorer)', 'n': total,
          'source': '%s, %s' % (rrcs_label, numbering_label), 'excluded': ''},
-        {'view': 'Paper AlphaMissense comparison', 'n': am.get('receptors', 276),
-         'source': 'Supplementary Fig. S4 and Table S7, alleles from %s' % batch_gnomad,
-         'excluded': 'GPR3, GPR4 and XCR1 (mismatched annotations in the original inputs)'},
-        {'view': 'Site variant views (per-position variants, conservation)', 'n': VARIANT_LAYER_RECEPTORS,
+        {'view': 'AlphaMissense class comparison', 'n': am.get('receptors', 276),
+         'source': '%s, alleles from %s' % (src.get('alphamissense', {}).get('label', 'AlphaMissense'), batch_gnomad),
+         'excluded': 'GPR3, GPR4 and XCR1'},
+        {'view': 'Variant views (per-position variants, conservation)', 'n': VARIANT_LAYER_RECEPTORS,
          'source': '%s, %s' % (site_gnomad, src.get('clinvar', {}).get('label', 'ClinVar')),
          'excluded': 'NPY6R and TAAR3: pseudogene loci without protein-coding missense annotations. '
                      'GP182 and P2RY8: their identifiers were not successfully resolved during data collection.'},
@@ -572,22 +578,17 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
     tiles = [
         {'value': format(numbers['receptors'], ','), 'label': 'human Class A receptors',
          'sub': '%d families, %d ligand types' % (numbers['families'], numbers['ligand_types']),
-         'layer': 'site', 'href': '#sec-e'},
+         'href': '#sec-e'},
         {'value': format(numbers['pairs'], ','), 'label': 'residue contact pairs compared',
-         'sub': 'active against inactive model, per receptor', 'layer': 'site', 'href': '#sec-a'},
+         'sub': 'active against inactive model, per receptor', 'href': '#sec-a'},
         {'value': format(numbers['above'], ','), 'label': 'pairs above the receptor threshold',
          'sub': ('median threshold |ΔRRCS| %.2f' % numbers['median_threshold']) if numbers['median_threshold'] else 'per-receptor thresholds',
-         'layer': 'site', 'href': '#sec-a'},
+         'href': '#sec-a'},
         {'value': format(paper.get('n_recurrent_positions', 0), ','), 'label': 'recurrent positions',
-         'sub': 'in 3 or more receptors (Supplementary Table S4)', 'layer': 'paper', 'href': '#sec-c'},
+         'sub': 'in 3 or more receptors', 'href': '#sec-c'},
         {'value': str(CFR_TOP_N), 'label': 'Core Functional Residues reported',
-         'sub': 'top by CFR score (Supplementary Table S3)', 'layer': 'paper', 'href': '#sec-c'},
+         'sub': 'top by CFR score', 'href': '#sec-c'},
     ]
-    if am:
-        o = am['odds_ratio']
-        tiles.append({'value': '%.2f' % o[0], 'label': 'odds ratio, predicted pathogenic at CFRs',
-                      'sub': '95%% CI %.2f to %.2f (Supplementary Table S7)' % (o[1], o[2]),
-                      'layer': 'paper', 'href': '#sec-d'})
 
     toc = [
         {'href': '#sec-a', 'q': 'Where does activation rewire the helix bundle?'},

@@ -30,9 +30,8 @@ SUPPLEMENT_COPY = pathlib.Path(
     '/home/yamir/Documents/gpcr_synth/NEW_manuscript/GPCompaRe_Finishing_2026-10-31/deliverables/'
     '02_supplement/source_tables/FigS4_S7_summary_modelnum_2026-11-05b.json')
 
-INTRO = ('This AlphaMissense comparison uses 276 receptors, excluding GPR3, GPR4 and XCR1 because of '
-         'mismatched annotations in the original inputs. The corrected analysis places alleles on model '
-         'residue numbering.')
+INTRO = ('AlphaMissense predicted class of the missense substitutions seen in gnomAD, at the 50 CFR positions '
+         'and at other generic-numbered positions. Predictions, not clinical evidence.')
 RETIRED = ('2.58', '1.52', '7,445', '11,150', '6,312', '9,461', '67.0%', '44.1%', '2.42 to 2.76',
            '1.41 to 1.65', 'most recurrent', '279 receptors')
 
@@ -85,26 +84,27 @@ def test_section_d_no_longer_reads_the_retired_figure3_values():
 
 # ---------------------------------------------------------------------------- the built page
 @needs_build
-def test_section_d_shows_exactly_the_corrected_summary():
+def test_section_d_shows_the_class_counts_and_no_test_statistic():
+    """Section D shows the class shares and counts of the summary, rounded once, and no odds ratio, interval
+    or paper wording (owner, 2026-11-07: the page is a database, not a restatement of the paper)."""
     am = load_am_comparison()
     d = _text(_section_d(STATS.read_text(encoding='utf-8')))
     assert INTRO in d
-    o, m = am['odds_ratio'], am['conservation_adjusted']
-    expected = (
-        'Among decisive AlphaMissense predictions, %.1f%% of substitutions at the top %d positions by CFR score '
-        'were classified as pathogenic, compared with %.1f%% at other generic-numbered positions: odds ratio '
-        '%.2f (95%% CI %.2f to %.2f). After stratification by conservation the odds ratio is %.2f (95%% CI %.2f '
-        'to %.2f).' % (am['decisive_pct']['top'], CFR_TOP_N, am['decisive_pct']['other'], o[0], o[1], o[2],
-                       m[0], m[1], m[2]))
-    assert expected in d, d
-    assert ('66.9% of substitutions' in d and '43.6% at other' in d and 'odds ratio 2.61 (95% CI 2.44 to 2.79)' in d
-            and 'odds ratio is 1.54 (95% CI 1.42 to 1.67)' in d)
+    assert ('Among decisive calls (pathogenic or benign), %.1f%% at the top positions and %.1f%% at other '
+            'generic-numbered positions are predicted pathogenic.'
+            % (am['decisive_pct']['top'], am['decisive_pct']['other'])) in d
+    assert '66.9% at the top positions' in d and '43.6% at other' in d
     for g in am['groups']:
-        line = ('%s: %s scored substitutions, %s decisive (%s pathogenic, %s benign) and %s ambiguous.'
-                % (g['label'], format(g['n'], ','), format(g['decisive'], ','), format(g['pathogenic_n'], ','),
-                   format(g['benign_n'], ','), format(g['ambiguous_n'], ',')))
+        line = ('%s: %s scored substitutions, %s decisive (%s predicted pathogenic, %s predicted benign) and %s '
+                'ambiguous.' % (g['label'], format(g['n'], ','), format(g['decisive'], ','),
+                                format(g['pathogenic_n'], ','), format(g['benign_n'], ','),
+                                format(g['ambiguous_n'], ',')))
         assert line in d, line
-    assert 'AlphaMissense pathogenicity at the top %d positions by CFR score' % CFR_TOP_N in d
+    low = d.lower()
+    for bad in ('odds ratio', '95% ci', 'mantel', 'paper', 'supplementary', 'manuscript', 'corrected',
+                'mismatched', 'site layer'):
+        assert bad not in low, bad
+    assert 'id="am-comparison"' not in STATS.read_text(encoding='utf-8')
 
 
 @needs_build
@@ -128,4 +128,4 @@ def test_the_chart_data_equal_the_summary():
         assert by[name]['y'] == pytest.approx([g[cls.lower()] for g in am['groups']], abs=1e-12)
         assert by[name]['customdata'] == [g[cls.lower() + '_n'] for g in am['groups']]
     assert 'most recurrent' not in fig['layout']['title']['text']
-    assert '(odds ratio 2.61)' in fig['layout']['title']['text']
+    assert 'odds ratio' not in fig['layout']['title']['text']

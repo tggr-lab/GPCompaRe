@@ -203,5 +203,6 @@ def test_copied_caption_names_view_scope_and_source(open_page):
     page.wait_for_timeout(200)
     text = page.evaluate('window.__copied')
     assert text and 'AlphaMissense predicted class at CFR positions' in text
-    assert 'paper analysis' in text and 'Scope: 276 receptors' in text and 'Supplementary Fig. S4' in text
+    assert 'Scope: 276 receptors' in text and 'gnomAD v4.1.0' in text
+    assert 'paper' not in text.lower() and 'layer' not in text.lower() and 'Supplementary' not in text
     assert 'statistics.html#card-chart-pathogenicity' in text

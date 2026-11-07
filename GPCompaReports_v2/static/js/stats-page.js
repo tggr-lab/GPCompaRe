@@ -1,9 +1,9 @@
 /* stats-page.js: the Statistics page (templates/statistics.html, _partials/chart-card.html).
 
    Every chart lives in a chart card. The card's payload comes either inline
-   (window.STATS_CHART_DATA[id], the small manuscript charts) or from a same-origin JSON file
+   (window.STATS_CHART_DATA[id], the small charts) or from a same-origin JSON file
    fetched when the card scrolls near (data-chart-src). Four cards are "atlas" views drawn here
-   from the site-layer payloads of analysis/class_atlas.py, tm_domain_analysis.py and
+   from the payloads of analysis/class_atlas.py, tm_domain_analysis.py and
    cfr_variants.py (schemas in those modules):
 
      helix_pairs    data/stats/helix_pairs.json (+ helix_pair_cells.json on the first cell click)
@@ -295,7 +295,7 @@
       { 'legend.groupclick': 'toggleitem' }, idx);
   }
 
-  // legend order for a chart whose traces are segments (the paper bubble plot): the shared switch
+  // legend order for a chart whose traces are segments (the CFR bubble plot): the shared switch
   function legendRank(tr, data) {
     var S = window.GPCSegOrder;
     if (!S || !tr.name) return;
@@ -379,8 +379,7 @@
     var cap = f.querySelector('.chart-card-caption');
     var body = cap ? cap.textContent.replace(/\s+/g, ' ').trim() : '';
     if (view) body = body.replace(view, '').trim();
-    var layer = f.getAttribute('data-layer') === 'paper' ? 'paper analysis, values as submitted' : 'site layer, computed from the site data';
-    return [f.getAttribute('data-title') + ' (' + layer + ').', view, body,
+    return [f.getAttribute('data-title') + '.', view, body,
             'GPCompaRe database, ' + location.origin + location.pathname + '#' + f.id].filter(Boolean).join(' ');
   }
   function copyCaption(card, button) {
@@ -559,7 +558,7 @@
           : { title: { text: 'Share of receptors' }, thickness: 10, len: 0.7, tickformat: '.0%' }
       };
       var layout = {
-        title: { text: (direction ? 'Net ΔRRCS by helix pair' : 'Share of receptors with an above-threshold pair by helix pair') + ', ' + m.group.label + ' (n = ' + m.group.n + '), site layer' },
+        title: { text: (direction ? 'Net ΔRRCS by helix pair' : 'Share of receptors with an above-threshold pair by helix pair') + ', ' + m.group.label + ' (n = ' + m.group.n + ')' },
         margin: { l: phone ? 40 : 54, r: 8, t: 30, b: 8 },
         xaxis: { side: 'top', showgrid: false, constrain: 'domain', tickfont: { size: phone ? 10 : 12 }, categoryorder: 'array', categoryarray: segsOrdered() },
         yaxis: { autorange: 'reversed', showgrid: false, scaleanchor: 'x', tickfont: { size: phone ? 10 : 12 }, categoryorder: 'array', categoryarray: segsOrdered() }
@@ -576,7 +575,7 @@
         var r = m.cells[i][j]; if (!r) continue;
         rows.push([m.segs[i], m.segs[j], r[C.n_present], r[C.coverage], r[C.mean_net], r[C.agree], r[C.n_up], r[C.n_down], r[C.mean_net_present], r[C.mean_gain_present], r[C.mean_loss_present], r[C.n_pairs]]);
       }
-      return { header: ['segment a', 'segment b', 'receptors with a pair', 'coverage', 'mean net ΔRRCS per receptor', 'agree', 'stronger active', 'stronger inactive', 'mean net (with a pair)', 'mean gain', 'mean loss', 'above-threshold pairs'], rows: rows, note: m.group.label + ', site layer.' };
+      return { header: ['segment a', 'segment b', 'receptors with a pair', 'coverage', 'mean net ΔRRCS per receptor', 'agree', 'stronger active', 'stronger inactive', 'mean net (with a pair)', 'mean gain', 'mean loss', 'above-threshold pairs'], rows: rows, note: m.group.label + '.' };
     };
     card.onChip = function (key, value) {
       state[key] = value;
@@ -717,7 +716,7 @@
       });
       if (lastSeg !== null && (state.order || segMode()) !== 'rank') ann.push({ x: (segStart + cols.length - 1) / 2, y: 1, yref: 'paper', yanchor: 'bottom', yshift: 64, text: lastSeg, showarrow: false, font: { size: 10, color: THEME[t].muted } });
       var layout = {
-        title: { text: 'The ' + P.length + ' CFR positions across ' + rows.length + ' receptors, rows by ' + (state.group === 'family' ? 'family' : 'ligand type') + ', cells ' + (state.mode === 'direction' ? 'by net ΔRRCS' : 'by state') + ', site layer' },
+        title: { text: 'The ' + P.length + ' CFR positions across ' + rows.length + ' receptors, rows by ' + (state.group === 'family' ? 'family' : 'ligand type') + ', cells ' + (state.mode === 'direction' ? 'by net ΔRRCS' : 'by state') },
         margin: { l: phone ? 70 : 150, r: 8, t: phone ? 56 : 84, b: 8 },
         xaxis: { side: 'top', tickangle: -90, tickfont: { size: phone ? 7 : 9 }, showgrid: false, type: 'category' },
         yaxis: { autorange: 'reversed', tickvals: ticks, ticktext: ticktext, tickfont: { size: phone ? 9 : 11 }, showgrid: false, zeroline: false },
@@ -739,7 +738,7 @@
       var data = [{ type: 'heatmap', z: z, x: x, y: y, text: text, texttemplate: phone ? '' : '%{text}', textfont: { size: 8 }, hovertext: hover, hoverinfo: 'text',
         zmin: 0, zmax: 1, colorscale: RAMP[t], xgap: 1, ygap: 1, showscale: !phone, colorbar: { title: { text: 'Share with a change' }, tickformat: '.0%', thickness: 10, len: 0.6 } }];
       var layout = {
-        title: { text: 'Share of receptors with an above-threshold contact at each CFR position, by ' + (state.group === 'family' ? 'family (4 or more receptors)' : 'ligand type') + ', site layer' },
+        title: { text: 'Share of receptors with an above-threshold contact at each CFR position, by ' + (state.group === 'family' ? 'family (4 or more receptors)' : 'ligand type') },
         margin: { l: phone ? 90 : 190, r: 8, t: 60, b: 8 },
         xaxis: { side: 'top', tickangle: -90, tickfont: { size: phone ? 7 : 9 }, showgrid: false, type: 'category' },
         yaxis: { autorange: 'reversed', tickfont: { size: phone ? 9 : 11 }, showgrid: false }
@@ -751,8 +750,8 @@
 
     card.tableRows = function () {
       var cols = colOrder();
-      return { header: ['generic number', 'segment', 'CFR score rank', 'receptors with an above-threshold contact (site layer)', 'receptors (Supplementary Table S3)', 'receptors numbered', 'net gain', 'net loss'],
-        rows: cols.map(function (k) { var c = json.columns[k]; return [P[k].gn, P[k].segment, P[k].rank, c.n_hit, P[k].s3_n_receptors, c.n_numbered, c.n_up, c.n_down]; }),
+      return { header: ['generic number', 'segment', 'CFR score rank', 'receptors with an above-threshold contact (atlas numbering)', 'receptors (ranked table)', 'receptors numbered', 'net gain', 'net loss'],
+        rows: cols.map(function (k) { var c = json.columns[k]; return [P[k].gn, P[k].segment, P[k].rank, c.n_hit, P[k].table_n_receptors, c.n_numbered, c.n_up, c.n_down]; }),
         note: 'Per position. The full 50 x 283 matrix is in the CSV.' };
     };
     card.onChip = function (key, value) {
@@ -895,7 +894,7 @@
           textfont: { color: THEME[t].hilite, size: 12 }, marker: { size: 18, color: 'rgba(0,0,0,0)', line: { width: 2, color: THEME[t].hilite } }, hoverinfo: 'skip' });
       }
       var layout = {
-        title: { text: label[state.x] + ' and ' + label[state.y].toLowerCase() + ', ' + rows.length + ' receptors, site layer' },
+        title: { text: label[state.x] + ' and ' + label[state.y].toLowerCase() + ', ' + rows.length + ' receptors' },
         xaxis: axisSpec(state.x, t), yaxis: axisSpec(state.y, t),
         legend: { orientation: 'h', y: -0.22, x: 0, font: { size: phone ? 10 : 12 } },
         margin: { l: 56, r: 12, t: 12, b: phone ? 110 : 90 }
@@ -1005,7 +1004,7 @@
     card.tableRows = function () {
       return { header: TCOLS.map(function (c) { return c.label; }).concat(json.metrics.map(function (m) { return 'rank ' + m.label; })),
         rows: rows.map(function (r) { return TCOLS.map(function (c) { return c.key === 'rank' ? r['rank_' + state.x] : r[c.key]; }).concat(json.metrics.map(function (m) { return r['rank_' + m.key]; })); }),
-        note: 'All receptors, site layer.' };
+        note: 'All receptors.' };
     };
     card.onChip = function (key, value) {
       state[key] = value;
@@ -1069,7 +1068,7 @@
     });
   };
 
-  // ---------------------------------------------- variants at CFR positions (site layer)
+  // ---------------------------------------------- variants at CFR positions
   VIEWS.cfr_variants = function (card, json) {
     var state = { order: null, set: 'cfr', panel: 'composition' };
     var P = json.positions;
@@ -1100,10 +1099,10 @@
             marker: { color: tint[cls] }, text: G.map(function (g) { var s = scored(g.am_substitutions); return s ? (100 * g.am_substitutions[cls] / s).toFixed(1) + '%' : ''; }), textposition: 'inside', insidetextfont: { color: t === 'dark' ? '#0f1417' : '#ffffff' },
             hovertemplate: '%{x}<br>' + NAMES[cls] + ': %{customdata[0]:,} of %{customdata[1]:,} scored substitutions (%{y:.1f}%)<br>%{customdata[2]} positions, %{customdata[3]} receptors with alleles<extra></extra>' });
         });
-        layout = { barmode: 'stack', title: { text: 'AlphaMissense prediction for observed gnomAD substitutions, CFR positions against the rest of the catalog, site layer' },
+        layout = { barmode: 'stack', title: { text: 'AlphaMissense prediction for observed gnomAD substitutions, CFR positions against the rest of the catalog' },
           yaxis: { title: { text: 'Share of scored substitutions (%)' }, range: [0, 100] }, xaxis: { type: 'category', tickfont: { size: phone ? 9 : 11 }, automargin: true },
           legend: { orientation: 'h', y: 1.02, yanchor: 'bottom', x: 0, traceorder: 'normal' }, margin: { l: 56, r: 12, t: 36, b: 60 } };
-        setViewText(card, 'pooled comparison of position sets (unique substitutions), site layer');
+        setViewText(card, 'pooled comparison of position sets (unique substitutions)');
         card.suffix = 'groups';
         return plot(card, data, layout, opts);
       }
@@ -1116,7 +1115,7 @@
             marker: { color: tint[cls], opacity: pos.map(function (p) { return scored(p.am_substitutions) < 20 ? 0.45 : 1; }) },
             hovertemplate: '%{x} (%{customdata[3]}, CFR rank %{customdata[5]})<br>' + NAMES[cls] + ': %{customdata[0]:,} of %{customdata[1]:,} scored substitutions (%{y:.1f}%)<br>%{customdata[2]} receptors with alleles; conservation median %{customdata[4]} (observed)<extra></extra>' });
         });
-        layout = { barmode: 'stack', title: { text: 'AlphaMissense prediction for observed gnomAD substitutions at the ' + pos.length + ' CFR positions, site layer' },
+        layout = { barmode: 'stack', title: { text: 'AlphaMissense prediction for observed gnomAD substitutions at the ' + pos.length + ' CFR positions' },
           yaxis: { title: { text: 'Share of scored substitutions (%)' }, range: [0, 100] },
           xaxis: { type: 'category', tickangle: -60, tickfont: { size: phone ? 7 : 9 }, categoryorder: 'array', categoryarray: x },
           legend: { orientation: 'h', y: 1.02, yanchor: 'bottom', x: 0, traceorder: 'normal' }, margin: { l: 56, r: 12, t: 36, b: 70 } };
@@ -1127,7 +1126,7 @@
           hovertemplate: '%{x}: %{y:,} substitutions (%{customdata[0]:,} alleles, allele count %{customdata[1]:,})<br>median allele frequency %{customdata[2]}<br>%{customdata[4]} receptors numbered here; conservation median %{customdata[3]} (observed)<extra></extra>' });
         data.push({ type: 'scatter', name: 'ClinVar P/LP missense (database set)', x: x, y: pos.map(function (p) { return p.clinvar.plp_db || null; }), yaxis: 'y2', mode: 'markers',
           marker: { symbol: 'diamond', size: 9, color: tint.pathogenic }, hovertemplate: '%{x}: %{y} ClinVar pathogenic or likely pathogenic missense records<extra></extra>' });
-        layout = { title: { text: 'Observed gnomAD substitutions and ClinVar P/LP records per CFR position, site layer' },
+        layout = { title: { text: 'Observed gnomAD substitutions and ClinVar P/LP records per CFR position' },
           yaxis: { title: { text: 'Substitutions (gnomAD)' }, rangemode: 'tozero' },
           yaxis2: { title: { text: 'ClinVar P/LP records' }, overlaying: 'y', side: 'right', rangemode: 'tozero', showgrid: false, tickfont: { color: THEME[t].muted } },
           xaxis: { type: 'category', tickangle: -60, tickfont: { size: phone ? 7 : 9 }, categoryorder: 'array', categoryarray: x },
@@ -1141,7 +1140,7 @@
       var pos = ordered();
       return { header: ['generic number', 'segment', 'CFR rank', 'receptors numbered', 'receptors with alleles', 'substitutions', 'alleles', 'allele count', 'predicted benign', 'ambiguous', 'predicted pathogenic', 'unscored', '% pathogenic of decisive', 'ClinVar P/LP (database set)', 'conservation median'],
         rows: pos.map(function (p) { var a = p.am_substitutions; return [p.generic, p.segment, p.cfr_rank, p.receptors_numbered, p.receptors_with_alleles, p.substitutions, p.alleles, p.allele_count, a.benign, a.ambiguous, a.pathogenic, a.unscored, p.pathogenic_pct_decisive === null ? '' : p.pathogenic_pct_decisive.toFixed(1), p.clinvar.plp_db, p.conservation.median === null ? '' : p.conservation.median.toFixed(2)]; }),
-        note: (json.label || 'Site layer.') };
+        note: (json.label || '') };
     };
     card.onChip = function (key, value) {
       if (key === 'order') state.order = value; else state[key] = value;
@@ -1212,7 +1211,7 @@
     }, 200);
   });
 
-  // sortable static tables (the manuscript tables)
+  // sortable static tables (the ranked CFR tables)
   function initSortable(table) {
     var ths = table.tHead ? table.tHead.rows[0].cells : [];
     Array.prototype.forEach.call(ths, function (th, idx) {
@@ -1252,7 +1251,7 @@
       if (card.inline) loadCard(card); else watch(card);
     });
     document.querySelectorAll('table[data-sortable]').forEach(initSortable);
-    // the paper tables keep their submitted markup; the generic-number cells (data-gn-cols) become search links
+    // the ranked tables keep their built markup; the generic-number cells (data-gn-cols) become search links
     document.querySelectorAll('table[data-gn-cols]').forEach(function (table) {
       var cols = table.getAttribute('data-gn-cols').split(/\s+/).map(Number);
       Array.prototype.forEach.call(table.tBodies[0] ? table.tBodies[0].rows : [], function (tr) {

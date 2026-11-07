@@ -202,8 +202,7 @@ def make_enrichment_bar(am):
     fig.update_layout(
         barmode='stack',
         title=('AlphaMissense class at the top %d positions by CFR score and at '
-               'other generic-numbered positions (odds ratio %.2f)'
-               % (CFR_TOP_N, am['odds_ratio'][0])),
+               'other generic-numbered positions' % CFR_TOP_N),
         yaxis_title='Share of scored missense substitutions (%)',
         height=450,
     )
@@ -233,14 +232,12 @@ def fig_am_composition(am):
             hovertemplate=('%{customdata[1]}<br>' + AM_TRACE_NAMES[cls]
                            + ': %{customdata[0]:,} (%{x:.1f}% of scored)<extra></extra>'),
         ))
-    o, m = am['odds_ratio'], am['conservation_adjusted']
     fig.update_layout(
         barmode='stack',
         title=dict(text=(
-            'AlphaMissense predictions, paper analysis (%d receptors)<br><sub>Predicted pathogenic among decisive '
-            'calls: %.1f%% vs %.1f%%<br>Odds ratio %.2f (95%% CI %.2f to %.2f); conservation-adjusted %.2f '
-            '(95%% CI %.2f to %.2f)</sub>' % (am['receptors'], am['decisive_pct']['top'],
-                                              am['decisive_pct']['other'], o[0], o[1], o[2], m[0], m[1], m[2]))),
+            'AlphaMissense predictions (%d receptors)<br><sub>Predicted pathogenic among decisive '
+            'calls: %.1f%% vs %.1f%%</sub>' % (am['receptors'], am['decisive_pct']['top'],
+                                              am['decisive_pct']['other']))),
         xaxis=dict(title='Share of scored substitutions (%)', range=[0, 100], fixedrange=True),
         yaxis=dict(showticklabels=False, fixedrange=True),
         annotations=[dict(xref='paper', x=0, xanchor='left', y=k, yanchor='bottom', yshift=17, showarrow=False,
@@ -254,31 +251,24 @@ def fig_am_composition(am):
 
 
 def am_comparison_payload(am=None):
-    """data/stats/am_comparison.json: the corrected supplement numbers unrounded, plus the display strings
-    the page prints (each rounded once from the unrounded value). Layer "paper"."""
+    """data/stats/am_comparison.json: the class counts per group unrounded, plus the display strings
+    the page prints (each rounded once from the unrounded value)."""
     from ..website import data_versions as dv
     am = am or load_am_comparison()
-    o, m = am['odds_ratio'], am['conservation_adjusted']
     top, rest = am['groups']
     return {
         'schema': 'gpcompare.stats.am_comparison/1',
-        'layer': 'paper',
-        'label': ('Paper analysis: corrected supplement 2026-11-05b (Fig. S4, Table S7), %d receptors, %s '
-                  'batch layer, alleles on model residue numbering.' % (am['receptors'],
-                                                                          dv.label('gnomad_batch'))),
-        'source_file': 'data/supplement_2026-11-05b/%s' % AM_SUMMARY_JSON.name,
+        'label': ('AlphaMissense predicted class of unique missense substitutions at generic-numbered positions, '
+                  '%d receptors, %s alleles on model residue numbering.' % (am['receptors'],
+                                                                         dv.label('gnomad_batch'))),
         'receptors': am['receptors'],
         'cells': am['cells'],
         'cells_order': ['top pathogenic', 'top benign', 'other pathogenic', 'other benign'],
         'groups': am['groups'],
         'decisive_pct': am['decisive_pct'],
-        'odds_ratio': o,
-        'conservation_adjusted': m,
         'display': {
             'top_pct': '%.1f%%' % am['decisive_pct']['top'],
             'other_pct': '%.1f%%' % am['decisive_pct']['other'],
-            'odds_ratio': '%.2f (95%% CI %.2f to %.2f)' % tuple(o),
-            'conservation_adjusted': '%.2f (95%% CI %.2f to %.2f)' % tuple(m),
             'top_denominators': '%s scored, %s decisive' % (format(top['n'], ','), format(top['decisive'], ',')),
             'other_denominators': '%s scored, %s decisive' % (format(rest['n'], ','), format(rest['decisive'], ',')),
         },
@@ -299,7 +289,5 @@ def write_am_comparison(output_dir, am=None):
     for g, pct in zip(payload['groups'], (payload['decisive_pct']['top'], payload['decisive_pct']['other'])):
         lines.append('"%s",%d,%d,%d,%d,%d,%r' % (g['label'], g['n'], g['decisive'], g['pathogenic_n'],
                                                 g['ambiguous_n'], g['benign_n'], pct))
-    lines.append('# odds ratio %r (95%% CI %r to %r); conservation-adjusted %r (95%% CI %r to %r)'
-                 % tuple(payload['odds_ratio'] + payload['conservation_adjusted']))
     (out / 'am_comparison.csv').write_text('\n'.join(lines) + '\n', encoding='utf-8')
     return payload

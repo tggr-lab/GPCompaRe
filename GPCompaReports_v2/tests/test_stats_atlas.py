@@ -70,8 +70,8 @@ def test_counts_reproduce_the_manuscript(atlas):
     k = [p['gn'] for p in atlas['positions']].index('8.48x48')
     hits = [r['gid'] for r in atlas['receptors'] if r['state'][k] == '2']
     assert 'gpr4_human' in hits and len(hits) == 113
-    # s3_n_receptors is the submitted value, unchanged
-    assert all(p['s3_n_receptors'] == s3[p['gn']] for p in atlas['positions'])
+    # table_n_receptors is the ranked table's value, unchanged
+    assert all(p['table_n_receptors'] == s3[p['gn']] for p in atlas['positions'])
 
 
 def test_column_and_group_totals(atlas):
@@ -195,23 +195,19 @@ def test_explorer_figures(rec):
 def test_overview_tiles(overview):
     t = {x['key']: x for x in overview['tiles']}
     assert [x['key'] for x in overview['tiles']] == ['receptors', 'contact_pairs', 'above_threshold',
-                                                    'median_threshold', 'recurrent_positions', 'cfr_set',
-                                                    'am_odds_ratio']
-    assert t['receptors']['value'] == 283 and t['receptors']['source'] == 'site'
+                                                    'median_threshold', 'recurrent_positions', 'cfr_set']
+    assert t['receptors']['value'] == 283 and t['receptors']['source'] == 'database'
     assert t['contact_pairs']['display'] == '213,456'
     assert t['above_threshold']['display'] == '23,025'
     assert t['median_threshold']['display'] == '2.40'
-    assert t['recurrent_positions']['value'] == 368 and t['recurrent_positions']['source'] == 'manuscript'
+    assert t['recurrent_positions']['value'] == 368 and t['recurrent_positions']['source'] == 'ranking'
     assert t['cfr_set']['value'] == 50
-    # the paper value, passed through unchanged
-    assert t['am_odds_ratio']['value'] == list(load_am_comparison()['odds_ratio'])
-    assert t['am_odds_ratio']['display'] == '2.61 (95% CI 2.44 to 2.79)'
 
 
 def test_coverage(overview):
     cov = {c['view']: c for c in overview['coverage']}
-    assert any(c['receptors'] == 276 and c['source'] == 'manuscript' for c in cov.values())
-    assert all(c['receptors'] == 283 for c in cov.values() if c['source'] == 'site')
+    assert any(c['receptors'] == 276 and c['source'] == 'alphamissense' for c in cov.values())
+    assert all(c['receptors'] == 283 for c in cov.values() if c['source'] == 'database')
     assert len(overview['exclusions']['not_modeled']) == 4
 
 
@@ -223,4 +219,6 @@ def test_payload_text(data):
         assert '\u2014' not in text, name
         assert not british_hits(text), (name, british_hits(text)[:5])
         assert payload['meta']['label'] == ca.LAYER_LABEL
+        low = text.lower()
+        assert not any(w in low for w in ('paper', 'manuscript', 'supplementary', 'submitted', 'site layer')), name
         assert payload['meta']['n_receptors'] == N_RECEPTORS

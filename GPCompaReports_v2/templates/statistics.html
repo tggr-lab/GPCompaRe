@@ -5,13 +5,13 @@
 {#
   The Statistics page, ordered by reader question:
     orientation tiles, section index, coverage table
-    A  where activation rewires the helix bundle (helix-pair atlas, site layer)
-    C  the CFR positions across receptors (atlas, paper bubble plot, tables S3 and S5)
-    D  variants and predicted pathogenicity (paper comparison first, site panel second)
+    A  where activation rewires the helix bundle (helix-pair atlas)
+    C  the CFR positions across receptors (atlas, bubble plot, ranked tables)
+    D  variants and predicted pathogenicity (class comparison first, per-position panel second)
     E  receptors and families (explorer)
     methods, sources, downloads
   Section ids sec-c and sec-d are linked from the landing page and pinned by tests; they stay.
-  Chart payloads: small paper charts inline (window.STATS_CHART_DATA), everything else in
+  Chart payloads: small charts inline (window.STATS_CHART_DATA), everything else in
   data/stats/*.json fetched when the card scrolls near (static/js/stats-page.js).
 #}
 
@@ -35,9 +35,8 @@
       <p class="section-sub">
         What changes between the active and the inactive model across all {{ total_gpcrs }} human Class A
         GPCRs: where the helix bundle rewires, the {{ cfr_top_n }} Core Functional Residue positions,
-        variants at those positions, and every receptor placed in the class. Each chart says whether it
-        shows the paper's analysis (values as reported) or the site layer (recomputed from the same data
-        at build time), downloads as PNG, SVG or CSV, and can be read as a table.
+        variants at those positions, and every receptor placed in the class. Every chart downloads as
+        PNG, SVG or CSV and can be read as a table.
       </p>
     </header>
 
@@ -47,7 +46,7 @@
       <li><a class="stats-tile" href="{{ t.href }}">
         <div class="stats-tile-num">{{ t.value }}</div>
         <div class="stats-tile-label">{{ t.label }}</div>
-        <div class="stats-tile-sub">{{ t.sub }} <span class="layer-badge layer-badge--{{ t.layer }}">{{ 'paper' if t.layer == 'paper' else 'site' }}</span></div>
+        <div class="stats-tile-sub">{{ t.sub }}</div>
       </a></li>
       {% endfor %}
     </ul>
@@ -69,9 +68,8 @@
         </table>
       </div>
     </div>
-    {% call fine_print(summary="Receptors outside the database and the two sources", cls="stats-coverage-note") %}
+    {% call fine_print(summary="Receptors outside the database", cls="stats-coverage-note") %}
       <p>class_A_all.csv lists 287 human Class A receptors; GPR26, LGR5, OPSX and RXFP1 lack a complete active and inactive model pair and are not in the database, so every count here is over {{ total_gpcrs }}.</p>
-      <p>Paper analysis: Supplementary Tables S3, S4, S5 and S7 and the corrected AlphaMissense summary, shown as reported and never recomputed. Site layer: the same RRCS batch run and the Studio packs (GPCRdb numbering, {{ data_versions.sources.gnomad.label }}), summarized at build time. The paper's AlphaMissense alleles are {{ data_versions.sources.gnomad_batch.label }} (batch layer).</p>
     {% endcall %}
 
     {# ---- A. Where activation rewires the helix bundle ---- #}
@@ -99,7 +97,7 @@
         </span>
       {% endcall %}
       <details class="fine-print stats-folded">
-        <summary>More site-layer charts: the ΔRRCS distribution and the per-helix means</summary>
+        <summary>More charts: the ΔRRCS distribution and the per-helix means</summary>
         {{ chart_card(cards['chart-histogram'], static_prefix, layout_light_json, layout_dark_json) }}
         {{ chart_card(cards['chart-tm-bar'], static_prefix, layout_light_json, layout_dark_json) }}
       </details>
@@ -142,12 +140,10 @@
           <strong>Where these cross-receptor numbers come from.</strong>
           Cross-receptor recurrence analyses are limited to residues assigned GPCRdb generic numbers. Residues
           without one, largely in loops and terminal regions, cannot be aligned to a shared position across
-          receptors and take no part in these statistics. The paper's recurrence counts (tables below) are
-          computed on the full GPCRdb residue maps for all {{ total_gpcrs }} receptors. The site-layer atlas
-          uses each receptor's own GPCRdb numbering from the Studio packs; with it 49 of the {{ cfr_top_n }}
-          positions match the submitted receptor counts exactly, and 8.48x48 counts one receptor more (GPR4,
-          whose batch annotation belonged to GPR42). Individual receptor reports are unchanged and keep their
-          own report-generation data.
+          receptors and take no part in these statistics. The recurrence counts in the tables below are
+          computed on the full GPCRdb residue maps for all {{ total_gpcrs }} receptors. The atlas uses each
+          receptor's own GPCRdb numbering; with it 49 of the {{ cfr_top_n }} positions have the same receptor
+          count as the table, and 8.48x48 counts one receptor more.
         </p>
       {% endcall %}
 
@@ -184,11 +180,10 @@
       <div class="v2-table-wrap">
         <div class="v2-table-toolbar">
           <strong>Top {{ cfr_top_n }} Core Functional Residue Positions</strong>
-          <span class="layer-badge layer-badge--paper">Paper analysis</span>
           <span class="v2-table-tools">
             <a class="cc-btn" href="{{ static_prefix }}{{ stats_dir }}/cfr_top50.csv" download>CSV</a>
           </span>
-          <span class="v2-table-note">Supplementary Table S3, values as reported. Click a column to sort; a generic number opens search.</span>
+          <span class="v2-table-note">Click a column to sort; a generic number opens search.</span>
         </div>
         <div class="v2-table-scroll">
           <table class="v2-table" id="cfr-table" data-sortable data-gn-cols="1">
@@ -225,14 +220,13 @@
       <div class="v2-table-wrap">
         <div class="v2-table-toolbar">
           <strong>CFR contact pairs</strong>
-          <span class="layer-badge layer-badge--paper">Paper analysis</span>
           <span class="v2-table-tools">
             <a class="cc-btn" href="{{ static_prefix }}{{ stats_dir }}/cfr_pairs_top20.csv" download>CSV</a>
           </span>
           <span class="v2-table-note">
             Contact pairs in which both residues are among the {{ cfr_top_n }} highest-ranked
             recurrent CFR positions. Showing the {{ cfr_network_shown }} highest-ranked pairs,
-            ranked across {{ "{:,}".format(cfr_network_total) }} unique contact pairs (Supplementary Table S5).
+            ranked across {{ "{:,}".format(cfr_network_total) }} unique contact pairs.
           </span>
         </div>
         <div class="v2-table-scroll">
@@ -256,54 +250,25 @@
       {% endif %}
 
       <details class="fine-print stats-folded">
-        <summary>More site-layer charts: conserved and variable positions</summary>
+        <summary>More charts: conserved and variable positions</summary>
         {{ chart_card(cards['chart-cv-scatter'], static_prefix, layout_light_json, layout_dark_json) }}
       </details>
     </section>
 
     {# ---- D. Variants ---- #}
-    {# AlphaMissense numbers: the corrected supplement analysis (Fig. S4, S5, Table S7), from
-       data/supplement_2026-11-05b/ via manuscript_stats.load_am_comparison. Unrounded in the data;
-       rounded once here. tests/test_statistics_am_section.py pins them and reads this section up to
-       the conservation chart, so the paper comparison comes first and the site panel after it. #}
+    {# AlphaMissense class counts from data/supplement_2026-11-05b/ via manuscript_stats.load_am_comparison
+       (the card's method note, statistics_page._am_method). No odds ratio, interval or test on the page. #}
     <section class="analysis-section reveal" aria-labelledby="sec-d">
       <header class="section-head">
         <p class="section-kicker">Variants</p>
         <h2 id="sec-d" data-tooltip="How genetic variants relate to predicted pathogenicity, comparing the {{ cfr_top_n }} top-ranked class-wide CFR positions (by CFR score) with other generic-numbered positions">Are variants at CFR positions predicted pathogenic?</h2>
         <p class="section-sub">
-          This AlphaMissense comparison uses {{ am.receptors if am else 276 }} receptors, excluding GPR3, GPR4 and XCR1 because of mismatched annotations in the original inputs. The corrected analysis places alleles on model residue numbering.
+          AlphaMissense predicted class of the missense substitutions seen in gnomAD, at the {{ cfr_top_n }}
+          CFR positions and at other generic-numbered positions. Predictions, not clinical evidence.
         </p>
       </header>
 
       {{ chart_card(cards['chart-pathogenicity'], static_prefix, layout_light_json, layout_dark_json) }}
-
-      {% if am %}
-      <div class="callout callout-accent" id="am-comparison">
-        <div class="callout-head">AlphaMissense pathogenicity at the top {{ cfr_top_n }} positions by CFR score</div>
-        <p>
-          Among decisive AlphaMissense predictions, <strong>{{ "%.1f"|format(am.decisive_pct.top) }}%</strong>
-          of substitutions at the top {{ cfr_top_n }} positions by CFR score were classified as pathogenic,
-          compared with <strong>{{ "%.1f"|format(am.decisive_pct.other) }}%</strong> at other
-          generic-numbered positions: odds ratio
-          <strong>{{ "%.2f"|format(am.odds_ratio[0]) }}</strong>
-          (95% CI {{ "%.2f"|format(am.odds_ratio[1]) }} to {{ "%.2f"|format(am.odds_ratio[2]) }}).
-          After stratification by conservation the odds ratio is
-          <strong>{{ "%.2f"|format(am.conservation_adjusted[0]) }}</strong>
-          (95% CI {{ "%.2f"|format(am.conservation_adjusted[1]) }} to {{ "%.2f"|format(am.conservation_adjusted[2]) }}).
-          This association supports the CFR score as a feature for prioritizing variants. It does not
-          establish pathogenicity.
-        </p>
-        {% call fine_print(summary="Counts, denominators and method") %}
-          <p>
-            Ambiguous predictions are shown in the chart but excluded from the odds ratio and the percentages.
-            {% for g in am.groups %}{{ g.label }}: {{ "{:,}".format(g.n) }} scored substitutions, {{ "{:,}".format(g.decisive) }} decisive ({{ "{:,}".format(g.pathogenic_n) }} pathogenic, {{ "{:,}".format(g.benign_n) }} benign) and {{ "{:,}".format(g.ambiguous_n) }} ambiguous.{% if not loop.last %} {% endif %}{% endfor %}
-            The comparison group is every other generic-numbered position, which includes recurrent
-            positions ranked below the cutoff.
-          </p>
-          <p>Source: Supplementary Figure S4 and Table S7 (unique substitutions; Woolf 95% CI; Mantel-Haenszel odds ratio over conservation quintiles of eligible decisive calls, Robins-Breslow-Greenland 95% CI). Alleles are the {{ data_versions.sources.gnomad_batch.label }} records behind the paper (batch layer).</p>
-        {% endcall %}
-      </div>
-      {% endif %}
 
       {% call chart_card(cards['chart-cfr-variants'], static_prefix, layout_light_json, layout_dark_json) %}
         <span class="chips" role="group" aria-label="Position order" data-chips="order">
@@ -321,10 +286,10 @@
       {% endcall %}
 
       <details class="fine-print stats-folded">
-        <summary>More site-layer charts: conservation against contact change (a null result)</summary>
+        <summary>More charts: conservation against contact change (a null result)</summary>
         {{ chart_card(cards['chart-conservation'], static_prefix, layout_light_json, layout_dark_json) }}
         <p>
-          The conservation chart uses the site's own variant layer, which covers {{ variant_layer_receptors }} receptors. NPY6R and TAAR3 lack protein-coding missense
+          The conservation chart uses the variant data, which covers {{ variant_layer_receptors }} receptors. NPY6R and TAAR3 lack protein-coding missense
           annotations because they are annotated as pseudogene loci. GP182 and P2RY8 are excluded
           from the current variant dataset because their identifiers were not successfully
           resolved during data collection.
@@ -378,7 +343,7 @@
         <a href="https://github.com/huhlim/alphafold-multistate" target="_blank" rel="noopener">AlphaFold multistate</a> ·
         <a href="https://doi.org/10.1038/s41586-021-03819-2" target="_blank" rel="noopener">AlphaFold2</a> (some states) ·
         <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6954041/" target="_blank" rel="noopener">RRCS</a> ·
-        <a href="https://gnomad.broadinstitute.org/" target="_blank" rel="noopener">{{ data_versions.sources.gnomad_batch.label }}</a> (batch layer, as in the paper; the site layer's release is in the table above) ·
+        <a href="https://gnomad.broadinstitute.org/" target="_blank" rel="noopener">gnomAD</a> ({{ data_versions.sources.gnomad_batch.label }} for the AlphaMissense class comparison, {{ data_versions.sources.gnomad.label }} for the per-position variants) ·
         <a href="https://zenodo.org/records/10813168" target="_blank" rel="noopener">AlphaMissense</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>) ·
         <a href="https://www.ncbi.nlm.nih.gov/clinvar/" target="_blank" rel="noopener">{{ data_versions.sources.clinvar.label }}</a> ·
         <a href="https://gpcrdb.org/" target="_blank" rel="noopener">GPCRdb</a> ·

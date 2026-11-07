@@ -32,16 +32,14 @@ stronger in the inactive model (blue).
 Every payload has a "meta" block:
     schema        "gpcompare-stats/<name>@1"
     layer         "site"
-    label         "Computed from the site data (site layer)"
+    label         "GPCompaRe database statistics"
     n_receptors   283
     sources       {rrcs, numbering, cfr_set, metadata}: one plain sentence each
     sign, threshold_rule, segment_order where they apply
 
 overview.json
-    tiles     [{key, value, display, label, source: "site"|"manuscript", source_label}], in page order:
-              receptors, contact_pairs, above_threshold, median_threshold, recurrent_positions, cfr_set,
-              am_odds_ratio (value = [estimate, CI low, CI high], read unchanged from the supplement
-              summary through manuscript_stats.load_am_comparison)
+    tiles     [{key, value, display, label, source: "database"|"ranking", source_label}], in page order:
+              receptors, contact_pairs, above_threshold, median_threshold, recurrent_positions, cfr_set
     coverage  [{view, receptors, source, note}]
     exclusions  {not_modeled: [4 names], not_modeled_note}
 
@@ -65,8 +63,8 @@ helix_pair_cells.json
                       receptor indexes helix_pairs.json receptors
 
 cfr_atlas.json
-    positions     [{gn, segment, rank, s3_n_receptors}] in helices-first order (helix, then number);
-                  rank = CFR score rank; s3_n_receptors = the submitted value (manuscript, unchanged)
+    positions     [{gn, segment, rank, table_n_receptors}] in helices-first order (helix, then number);
+                  rank = CFR score rank; table_n_receptors = the ranked table's receptor count (unchanged)
     rank_order    position indexes in CFR score rank order
     receptors     [{gid, symbol, ligand, family, state, net}] in row order (ligand type by size, family,
                   symbol). state: 50-character string, "2" = the residue at that position has an
@@ -120,7 +118,7 @@ from .tm_domain_analysis import (
 )
 
 SCHEMA = 'gpcompare-stats/%s@1'
-LAYER_LABEL = 'Computed from the site data (site layer)'
+LAYER_LABEL = 'GPCompaRe database statistics'
 STATS_SUBDIR = Path('data') / 'stats'
 
 THRESHOLD_FLOOR = 0.2
@@ -237,17 +235,14 @@ def _meta(name, inputs, **extra):
     fetched = sorted({i.gpcrdb_fetched for i in inputs if i.gpcrdb_fetched})
     meta = {
         'schema': SCHEMA % name,
-        'layer': 'site',
         'label': LAYER_LABEL,
         'n_receptors': len(inputs),
         'sources': {
-            'rrcs': 'GPCompaRe RRCS batch 2026-02-02 (batch_analysis_20260202_151051), the run the paper uses.',
-            'numbering': ('Residue segments and generic numbers from the Studio packs: the full GPCRdb '
-                          'numbering (GPCRdb API fetched %s). The manuscript recurrence counts used the '
-                          'full numbering too; with it, 274 receptors carry an above-threshold contact at '
-                          '3.50x50, the manuscript count.' % ', '.join(fetched or ['unknown'])),
-            'cfr_set': ('The class-wide CFR set: the 50 top-ranked positions by CFR score '
-                        '(Supplementary Table S4 ranks).'),
+            'rrcs': 'GPCompaRe RRCS batch 2026-02-02 (batch_analysis_20260202_151051).',
+            'numbering': ('Residue segments and generic numbers: the full GPCRdb numbering (GPCRdb API '
+                          'fetched %s). With it, 274 receptors carry an above-threshold contact at '
+                          '3.50x50.' % ', '.join(fetched or ['unknown'])),
+            'cfr_set': 'The class-wide CFR set: the 50 top-ranked positions by CFR score.',
             'metadata': 'Ligand type and family from class_A_all.csv, as on the browse page.',
         },
         'threshold_rule': ('Per receptor, contact pairs with |ΔRRCS| at or above mean + SD of |ΔRRCS| '
@@ -290,14 +285,14 @@ def _gn_sort_key(gn, segment, seg_index):
 
 
 def cfr_positions():
-    """[{gn, segment, rank, s3_n_receptors}] of the class-wide CFR set, helices first."""
+    """[{gn, segment, rank, table_n_receptors}] of the class-wide CFR set, helices first."""
     ranks = class_cfr_ranks()
     cfr = class_cfr_set(ranks)
     s3 = pd.read_csv(TOP50_CSV)
     seg = dict(zip(s3['generic_number'].astype(str), s3['segment']))
     s3n = dict(zip(s3['generic_number'].astype(str), s3['n_receptors'].astype(int)))
     seg_index = {s: k for k, s in enumerate(_segment_order())}
-    rows = [{'gn': g, 'segment': seg.get(g, ''), 'rank': ranks[g], 's3_n_receptors': s3n.get(g)} for g in cfr]
+    rows = [{'gn': g, 'segment': seg.get(g, ''), 'rank': ranks[g], 'table_n_receptors': s3n.get(g)} for g in cfr]
     return sorted(rows, key=lambda r: _gn_sort_key(r['gn'], r['segment'], seg_index))
 
 
@@ -357,8 +352,8 @@ def build_cfr_atlas(inputs):
                               '0': 'no residue numbered at this position in this receptor'},
                       net=('Signed sum of the above-threshold ΔRRCS of the contacts touching the residue; '
                            'a sum can hide opposing changes.'),
-                      s3_note=('s3_n_receptors is the submitted Supplementary Table S3 value, shown as '
-                               'published; columns[].n_hit is the site recomputation.')),
+                      table_note=('table_n_receptors is the receptor count of the ranked CFR table (full GPCRdb '
+                                  'residue maps); columns[].n_hit is the count with each receptor\'s own numbering.')),
         'positions': positions,
         'rank_order': rank_order,
         'receptors': rows,
@@ -470,39 +465,33 @@ def build_overview(inputs, manuscript=None, am=None):
     med = float(np.median([i.threshold for i in inputs]))
     n_recurrent = manuscript.get('n_recurrent_positions') or len(class_cfr_ranks())
     n_cfr = len(class_cfr_set())
-    o = am['odds_ratio']
     site = LAYER_LABEL
-    ms = 'Manuscript (as submitted)'
+    ranking = 'GPCompaRe CFR ranking (full GPCRdb residue maps)'
     tiles = [
         {'key': 'receptors', 'value': len(inputs), 'display': '{:,}'.format(len(inputs)),
-         'label': 'human Class A receptors with an active and an inactive model', 'source': 'site',
+         'label': 'human Class A receptors with an active and an inactive model', 'source': 'database',
          'source_label': site},
         {'key': 'contact_pairs', 'value': n_pairs, 'display': '{:,}'.format(n_pairs),
-         'label': 'residue contact pairs compared', 'source': 'site', 'source_label': site},
+         'label': 'residue contact pairs compared', 'source': 'database', 'source_label': site},
         {'key': 'above_threshold', 'value': n_above, 'display': '{:,}'.format(n_above),
-         'label': 'pairs at or above their receptor threshold', 'source': 'site', 'source_label': site},
+         'label': 'pairs at or above their receptor threshold', 'source': 'database', 'source_label': site},
         {'key': 'median_threshold', 'value': round(med, 4), 'display': '%.2f' % med,
-         'label': 'median receptor threshold on |ΔRRCS|', 'source': 'site', 'source_label': site},
+         'label': 'median receptor threshold on |ΔRRCS|', 'source': 'database', 'source_label': site},
         {'key': 'recurrent_positions', 'value': int(n_recurrent), 'display': '{:,}'.format(int(n_recurrent)),
-         'label': 'recurrent positions (above-threshold in at least 3 receptors)', 'source': 'manuscript',
-         'source_label': ms + ', Supplementary Table S4'},
+         'label': 'recurrent positions (above-threshold in at least 3 receptors)', 'source': 'ranking',
+         'source_label': ranking},
         {'key': 'cfr_set', 'value': n_cfr, 'display': str(n_cfr),
-         'label': 'CFR positions: the top-ranked positions by CFR score', 'source': 'manuscript',
-         'source_label': ms + ', Supplementary Table S3'},
-        {'key': 'am_odds_ratio', 'value': list(o), 'display': '%.2f (95%% CI %.2f to %.2f)' % tuple(o),
-         'label': 'odds of a predicted pathogenic AlphaMissense call at the CFR positions',
-         'source': 'manuscript', 'source_label': ms + ', supplement AlphaMissense summary (%d receptors)'
-                                                     % am['receptors']},
+         'label': 'CFR positions: the top-ranked positions by CFR score', 'source': 'ranking',
+         'source_label': ranking},
     ]
     n_numbered_any = sum(1 for i in inputs if any(i.gn2pos.get(g) for g in class_cfr_set()))
     coverage = [
         {'view': 'Structural summaries (helix-pair atlas, receptor explorer)', 'receptors': len(inputs),
-         'source': 'site', 'note': 'Every receptor with an active and an inactive model.'},
-        {'view': 'CFR atlas', 'receptors': len(inputs), 'source': 'site',
+         'source': 'database', 'note': 'Every receptor with an active and an inactive model.'},
+        {'view': 'CFR atlas', 'receptors': len(inputs), 'source': 'database',
          'note': '%d receptors have at least one CFR position numbered.' % n_numbered_any},
-        {'view': 'AlphaMissense comparison (paper)', 'receptors': int(am['receptors']), 'source': 'manuscript',
-         'note': 'The corrected supplement analysis; GPR3, GPR4 and XCR1 are left out (their batch '
-                 'annotation belonged to GPR31, GPR42 and CXCR1).'},
+        {'view': 'AlphaMissense class comparison', 'receptors': int(am['receptors']), 'source': 'alphamissense',
+         'note': 'GPR3, GPR4 and XCR1 are not included.'},
     ]
     return {
         'meta': _meta('overview', inputs),
@@ -683,7 +672,7 @@ def write_stats_data(atlas, output_dir):
         put(fname, text)
     for name, fig in atlas['figures'].items():
         put('figures/%s.json' % name, fig.to_json())
-    manifest = {'schema': SCHEMA % 'manifest', 'layer': 'site', 'label': LAYER_LABEL,
+    manifest = {'schema': SCHEMA % 'manifest', 'label': LAYER_LABEL,
                 'files': [{'path': p, 'bytes': b} for p, b in sorted(files.items())]}
     put('manifest.json', _dump(manifest))
     return files

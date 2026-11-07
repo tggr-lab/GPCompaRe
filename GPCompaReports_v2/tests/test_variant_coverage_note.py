@@ -61,7 +61,7 @@ def _text():
 def test_the_variant_coverage_note_is_present_verbatim():
     text = _text()
     for sentence in (
-        "The conservation chart uses the site's own variant layer, which covers 279 receptors.",
+        "The conservation chart uses the variant data, which covers 279 receptors.",
         'NPY6R and TAAR3 lack protein-coding missense annotations because they '
         'are annotated as pseudogene loci.',
         'GP182 and P2RY8 are excluded from the current variant dataset because '
@@ -115,7 +115,7 @@ def test_gp182_and_p2ry8_are_not_described_as_lacking_gnomad_variants():
 @needs_build
 def test_the_receptor_count_and_dataset_are_unchanged():
     text = _text()
-    assert "variant layer, which covers 279 receptors" in text
+    assert "variant data, which covers 279 receptors" in text
     assert '281' not in text, (
         'the page reports 281 receptors, so the variant dataset was changed. '
         'This release keeps the submitted 279-receptor dataset.')

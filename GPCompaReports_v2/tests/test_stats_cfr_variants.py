@@ -32,22 +32,20 @@ SEARCH2 = Path(_s2).expanduser() if _s2 else Path.home() / 'scratch/2026-11-05_r
 CODE = {'P': 'pathogenic', 'A': 'ambiguous', 'B': 'benign'}
 
 
-# ---------------------------------------------------------------------------- the paper comparison (6a)
-def test_paper_numbers_are_the_corrected_summary_exactly():
+# ---------------------------------------------------------------------------- the AlphaMissense class comparison (6a)
+def test_class_counts_are_the_summary_exactly_without_a_test_statistic():
     am = load_am_comparison()
     p = am_comparison_payload(am)
-    assert p['layer'] == 'paper' and p['receptors'] == 276
+    assert p['receptors'] == 276 and 'layer' not in p
     assert p['cells'] == [4117, 2038, 4085, 5284]
-    assert p['odds_ratio'] == am['odds_ratio'] and p['conservation_adjusted'] == am['conservation_adjusted']
+    assert 'odds_ratio' not in p and 'conservation_adjusted' not in p
     assert p['decisive_pct'] == am['decisive_pct'] and p['groups'] == am['groups']
-    assert [round(v, 3) for v in p['odds_ratio']] == [2.613, 2.444, 2.794]
     assert p['display'] == {
         'top_pct': '66.9%', 'other_pct': '43.6%',
-        'odds_ratio': '2.61 (95% CI 2.44 to 2.79)',
-        'conservation_adjusted': '1.54 (95% CI 1.42 to 1.67)',
         'top_denominators': '7,268 scored, 6,155 decisive',
         'other_denominators': '11,040 scored, 9,369 decisive'}
     assert 'gnomAD v4.1.0' in p['label'] and 'v4.1.2' not in p['label']
+    assert not any(w in p['label'].lower() for w in ('paper', 'supplement', 'corrected', 'layer'))
 
 
 def test_write_am_comparison_round_trips(tmp_path):
@@ -56,6 +54,7 @@ def test_write_am_comparison_round_trips(tmp_path):
     csv = (tmp_path / 'data/stats/am_comparison.csv').read_text()
     assert '"Top 50 positions by CFR score",7268,6155,4117,1113,2038,' in csv
     assert '"Other generic-numbered positions",11040,9369,4085,1671,5284,' in csv
+    assert 'odds' not in csv.lower() and 'paper' not in csv.lower()
 
 
 @pytest.mark.parametrize('make', [make_enrichment_bar, fig_am_composition])
@@ -75,9 +74,9 @@ def test_paper_charts_carry_the_summary_values_in_the_clinical_tint(make):
         assert t.meta == {'path_class': cls.lower()}
     if make is fig_am_composition:
         title = fig.layout.title.text
-        for s in ('66.9% vs 43.6%', 'Odds ratio 2.61 (95% CI 2.44 to 2.79)',
-                  'conservation-adjusted 1.54 (95% CI 1.42 to 1.67)', '276 receptors'):
+        for s in ('66.9% vs 43.6%', '276 receptors'):
             assert s in title
+        assert 'paper' not in title and 'Odds' not in title
         notes = ' '.join(a.text for a in fig.layout.annotations)
         assert '7,268 scored, 6,155 decisive' in notes and '11,040 scored, 9,369 decisive' in notes
 
@@ -204,7 +203,7 @@ def test_receptor_files_add_up_to_the_summary(built):
         assert rows[0][f.index('search_q')] == '%s %s' % (gene, pos['generic'])
     assert all(r[3] == 'reports/%s.html' % r[0] for r in s['receptors']['rows'])
     lines = (out / 'cfr_variants.csv').read_text().splitlines()
-    assert lines[0].startswith('# Site data') and len(lines) == 2 + 50 + 4
+    assert lines[0].startswith('# gnomAD') and 'paper' not in lines[0] and len(lines) == 2 + 50 + 4
 
 
 def test_clinvar_counts_equal_search_v2(built, packs):
@@ -229,14 +228,13 @@ def test_clinvar_counts_equal_search_v2(built, packs):
         assert c['missense_groups']['plp'] >= c['plp_db']
 
 
-def test_site_labels_come_from_the_registry_and_never_claim_the_paper(built):
+def test_labels_come_from_the_registry_and_name_no_paper(built):
     s = built['summary']
     src = data_versions.load()['sources']
-    assert s['layer'] == 'site'
+    assert 'layer' not in s and 'paper_layer' not in s['sources'] and 'not_paper' not in s
     for key in ('gnomad', 'clinvar', 'conservation', 'gpcrdb_numbering'):
         assert src[key]['label'] in s['label']
-    assert "Not the paper's analysis." in s['label'] and src['gnomad_batch']['label'] not in s['label']
-    assert s['sources']['paper_layer']['label'] == src['gnomad_batch']['label']
+    assert 'paper' not in s['label'] and src['gnomad_batch']['label'] not in s['label']
     text = json.dumps(s, ensure_ascii=False)
     assert '\u2014' not in text and 'Non-CFR' not in text and 'non-CFR' not in text
 

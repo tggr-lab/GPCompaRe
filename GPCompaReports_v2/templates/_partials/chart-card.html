@@ -8,14 +8,14 @@
     {% endcall %}
 
   The card dict comes from website/page_generators/statistics_page.py (Card): id, title, lead,
-  layer ('site' | 'paper'), source, receptors, caption, method (HTML), csv, src (lazy payload or
+  source, receptors, caption, method (HTML), csv, src (lazy payload or
   atlas JSON), inline + payload_json, height, height_phone, search, kind ('plotly' | 'atlas'),
   atlas (view key), available, note.
 
-  Head: serif title, a layer badge (paper analysis or site layer), one lead sentence, and the
+  Head: serif title, one lead sentence, and the
   toolbar: PNG 2x and SVG (Plotly.downloadImage, light background, title restored for the file),
   CSV (the table behind the chart, written at build time), Table (the same CSV as a plain table in
-  place of the chart), Copy caption (title, view, scope, source edition, receptor count), Method
+  place of the chart), Copy caption (title, view, scope, source release, receptor count), Method
   (opens the fine-print disclosure), Open in search where a generic number or receptor is in play.
   Foot: the caption line with scope and source, then the method disclosure.
   The Plotly div keeps the v2-chart class and the theme attributes site.js reads for the theme
@@ -23,15 +23,13 @@
 #}
 {% macro chart_card(card, static_prefix='', layout_light='', layout_dark='') -%}
 <figure class="chart-card{% if not card.available %} chart-card--missing{% endif %} chart-card--{{ card.kind }}"
-        id="card-{{ card.id }}" data-card="{{ card.id }}" data-layer="{{ card.layer }}"
+        id="card-{{ card.id }}" data-card="{{ card.id }}"
         data-title="{{ card.title }}" data-source="{{ card.source }}" data-receptors="{{ card.receptors }}"
         {% if card.csv %}data-csv="{{ static_prefix }}{{ card.csv }}"{% endif %}
         style="--chart-h: {{ card.height }}px; --chart-h-phone: {{ card.height_phone }}px">
   <figcaption class="chart-card-head">
     <div class="chart-card-titles">
-      <h3 class="chart-card-title" id="{{ card.id }}-title">{{ card.title }}
-        <span class="layer-badge layer-badge--{{ card.layer }}" title="{{ card.source }}">{{ 'Paper analysis' if card.layer == 'paper' else 'Site layer' }}</span>
-      </h3>
+      <h3 class="chart-card-title" id="{{ card.id }}-title">{{ card.title }}</h3>
       <p class="chart-card-lead">{{ card.lead }}</p>
     </div>
     <div class="chart-card-tools" role="group" aria-label="Export and view options for {{ card.title }}">

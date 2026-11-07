@@ -61,7 +61,7 @@ def test_all_receptors_and_groups(hp):
     assert len(hp['receptors']) == N_RECEPTORS
     assert hp['groups'][0]['key'] == 'all' and hp['groups'][0]['n'] == N_RECEPTORS
     assert sum(g['n'] for g in hp['groups'][1:]) == N_RECEPTORS
-    assert hp['meta']['layer'] == 'site'
+    assert 'layer' not in hp['meta']
 
 
 def test_every_above_threshold_pair_is_counted_once(hp):

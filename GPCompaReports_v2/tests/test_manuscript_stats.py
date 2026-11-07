@@ -153,10 +153,8 @@ def test_the_enrichment_values_match_the_corrected_supplement():
     required = [
         '%.1f%%' % am['decisive_pct']['top'],
         '%.1f%%' % am['decisive_pct']['other'],
-        '%.2f' % am['odds_ratio'][0],
-        '%.2f' % am['odds_ratio'][1],
-        '%.2f' % am['odds_ratio'][2],
-        '%.2f' % am['conservation_adjusted'][0],
+        format(am['groups'][0]['n'], ','),
+        format(am['groups'][1]['n'], ','),
     ]
     for value in required:
         assert value in html, (
@@ -194,9 +192,7 @@ def test_the_page_says_where_the_cross_receptor_numbers_come_from():
     assert 'full GPCRdb residue maps' in html, (
         'the statistics page does not explain that cross-receptor recurrence '
         'uses the full GPCRdb residue maps')
-    assert re.search(r'[Ii]ndividual receptor reports are unchanged', html), (
-        'the statistics page does not record that report pages keep their own '
-        'report-generation data')
+    assert 'Individual receptor reports are unchanged' not in html   # process history, not page content
 
 
 @needs_build
@@ -215,11 +211,10 @@ def test_no_hybrid_per_variant_table_is_presented():
         assert marker not in html, (
             'the statistics page presents a per-variant table (%r) that no '
             'submitted table backs' % marker)
-    # The aggregate result must still be there, so this cannot pass by the
-    # whole enrichment section having been dropped.
-    assert 'odds ratio' in html.lower(), (
-        'the enrichment result itself has gone missing'
-    )
+    # The aggregate class comparison must still be there, so this cannot pass by the
+    # whole variant section having been dropped; it shows counts, not a test statistic.
+    assert 'chart-pathogenicity' in html and 'decisive' in html
+    assert 'odds ratio' not in html.lower()
 
 
 @needs_build
