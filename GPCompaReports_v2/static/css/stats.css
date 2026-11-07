@@ -196,7 +196,7 @@ a.stats-tile:hover { border-color: var(--brand-primary); text-decoration: none; 
 .explorer-table tr.is-found td { background: color-mix(in srgb, var(--brand-primary) 14%, transparent); }
 .explorer-table .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
 
-/* the CFR table: sortable headers, the site-layer direction column */
+/* the CFR table: sortable headers, the direction column */
 .stats-page .v2-table-toolbar { background: color-mix(in srgb, var(--brand-primary) 6%, var(--bgColor-default)); border-bottom: 1px solid var(--borderColor-muted); padding: var(--s-3) var(--s-4); }
 .stats-page .v2-table-toolbar strong { font-family: var(--font-serif); font-size: 1.05rem; font-weight: 600; color: var(--fgColor-default); letter-spacing: -0.01em; }
 .stats-page .v2-table-wrap { margin-bottom: var(--s-5); }
