@@ -383,6 +383,7 @@
     var full = el._fullLayout;
     if (!full || !full.annotations || !full.annotations.length) return;
     var box = el.getBoundingClientRect();
+    if (!box.width) return;
     var update = {};
     full.annotations.forEach(function(a, i) {
       var node = el.querySelector('.annotation[data-index="' + i + '"] .annotation-text');
