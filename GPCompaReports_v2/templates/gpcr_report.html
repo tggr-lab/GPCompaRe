@@ -437,7 +437,6 @@
     {# fine print for the variant table: releases from the registry, never spelled here #}
     <aside class="fine-print rx-variants-fine" id="variants-fine-print">
       <p>{{ variant_release.long_label }}: missense alleles on one transcript per gene, placed on the model's residues. One AlphaMissense score per substitution ({{ data_versions.sources.alphamissense.label }}); conservation from {{ data_versions.sources.conservation.label }}.{% if variant_numbering is defined and variant_numbering %} Protein and DNA changes follow gnomAD's transcript {{ variant_numbering.transcript }}{% if variant_numbering.offset is number %}, whose residue numbers run {{ variant_numbering.offset|abs }} {{ 'higher' if variant_numbering.offset < 0 else 'lower' }} than the Position column (Position = transcript number {{ '%+d'|format(variant_numbering.offset) }}){% else %}, whose residue numbers differ from the Position column{% endif %}.{% endif %}</p>
-      {% if data_versions.sources.gnomad_batch and variant_release.label != data_versions.sources.gnomad_batch.label %}<p>The paper's database variant counts come from the earlier query ({{ data_versions.sources.gnomad_batch.label }}); this table uses {{ variant_release.label }}, the release the search also shows.</p>{% elif data_versions.sources.gnomad %}<p>This table uses the earlier query the paper's counts come from; the search shows {{ data_versions.sources.gnomad.label }}.</p>{% endif %}
     </aside>
     {% elif variants_note is defined and variants_note %}
     {# no variant table: one fine-print line in its place says why (outside every report section) #}
@@ -1113,7 +1112,7 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 
   // The arcs are drawn by snake-plus.js from the page's above-threshold pairs; the old top-50
-  // overlay and its contact_links payload were removed (P4, approved 2026-11-05). Every control
+  // overlay and its contact_links payload are not used. Every control
   // still calls this hook, so it stays.
   function redrawSnakeLinks() {
     var summary = document.getElementById('snake-filter-summary');
