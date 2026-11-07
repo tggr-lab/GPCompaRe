@@ -1,0 +1,493 @@
+
+<!DOCTYPE html>
+<html lang="en" data-color-mode="light" data-light-theme="light" data-dark-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Search · GPCompaRe</title>
+
+
+<meta name="description" content="Find a receptor, residue or variant in any notation: protein or coding changes on any transcript, GRCh37 or GRCh38 positions, rsIDs, ClinVar records and generic residue numbers.">
+
+<link rel="canonical" href="https://tggr-lab.github.io/GPCompaRe/search/">
+<meta property="og:url" content="https://tggr-lab.github.io/GPCompaRe/search/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="GPCompaRe database">
+<meta property="og:title" content="Search · GPCompaRe">
+<meta property="og:description" content="Find a receptor, residue or variant in any notation: protein or coding changes on any transcript, GRCh37 or GRCh38 positions, rsIDs, ClinVar records and generic residue numbers.">
+<meta property="og:image" content="https://tggr-lab.github.io/GPCompaRe/static/img/lablogo.png">
+<meta name="twitter:card" content="summary">
+
+<script>
+(function() {
+  var root = document.documentElement;
+  var stored = null;
+  try { stored = localStorage.getItem('gpcrsynth-theme'); } catch (e) {}
+  var mode;
+  if (stored === 'light' || stored === 'dark') {
+    mode = stored;
+  } else {
+    mode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  root.setAttribute('data-color-mode', mode);
+  root.setAttribute('data-light-theme', 'light');
+  root.setAttribute('data-dark-theme', 'dark');
+  if (!stored) root.setAttribute('data-theme-auto', '');
+})();
+</script>
+
+<link rel="icon" type="image/png" sizes="32x32" href="../static/img/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="../static/img/favicon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="../static/img/apple-touch-icon.png">
+<link rel="stylesheet" href="../static/css/fonts.css">
+<link rel="stylesheet" href="../static/css/primer/primitives.css">
+<link rel="stylesheet" href="../static/css/primer/primitives-dark.css">
+<link rel="stylesheet" href="../static/css/site.css">
+<link rel="stylesheet" href="../static/css/fine-print.css">
+<link rel="stylesheet" href="../static/css/search-ui.css">
+
+
+
+<meta name="referrer" content="strict-origin">
+
+
+<!-- Analytics: GoatCounter, cookie-free, GDPR-safe. -->
+<script data-goatcounter="https://gpcompreports.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="../index.html" class="wordmark" aria-label="GPCompaRe database home">
+      <img src="../static/img/lablogo.png" alt="TGGR Laboratory" class="wordmark-logo">
+      <span class="wordmark-text">GPCompaRe</span>
+    </a>
+    <nav class="topnav" aria-label="Primary">
+      <a href="../index.html">Home</a>
+      <a href="../browse/index.html">Browse</a>
+      <a href="../statistics.html">Statistics</a>
+      <a href="../studio/">Studio</a>
+      <a href="../glossary.html">Glossary</a>
+      <a href="../downloads.html">Downloads</a>
+      <a href="../contact.html">Contact</a>
+    </nav>
+    <form class="topbar-search" action="../search/" method="get" role="search" data-search-index="../search2/" data-suggest-host>
+      <input type="search" name="q" maxlength="300" class="topbar-search-input" placeholder="Search receptors, variants, positions" aria-label="Search receptors, variants, residues and genome positions" spellcheck="false" autocapitalize="off" autocomplete="off">
+      <button type="submit" class="topbar-search-btn" aria-label="Search" title="Search receptors, variants, residues and genome positions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    </form>
+    <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle color theme" title="Toggle light / dark">
+      <svg class="icon icon-sun"  viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="2"  x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2"  y1="12" x2="5"  y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.5"  y1="4.5"  x2="6.5"  y2="6.5"/><line x1="17.5" y1="17.5" x2="19.5" y2="19.5"/><line x1="4.5"  y1="19.5" x2="6.5"  y2="17.5"/><line x1="17.5" y1="6.5"  x2="19.5" y2="4.5"/></g></svg>
+      <svg class="icon icon-moon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20 15A8 8 0 0 1 9 4a1 1 0 0 0-1.3-1.1A10 10 0 1 0 21.1 16.3 1 1 0 0 0 20 15z"/></svg>
+    </button>
+    <button type="button" class="topbar-mobile-toggle" id="mobile-nav-toggle" aria-label="Open menu" aria-controls="mobile-drawer" aria-expanded="false">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+  </div>
+</header>
+
+
+<div class="mobile-drawer" id="mobile-drawer" role="dialog" aria-modal="true" aria-label="Navigation menu" aria-hidden="true" inert>
+  <div class="mobile-drawer-backdrop" data-drawer-close></div>
+  <aside class="mobile-drawer-panel">
+    <div class="mobile-drawer-head">
+      <span class="mobile-drawer-title">Menu</span>
+      <button type="button" class="mobile-drawer-close" data-drawer-close aria-label="Close menu">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <form class="drawer-search" action="../search/" method="get" role="search" data-search-index="../search2/" data-suggest-host>
+      <input type="search" name="q" maxlength="300" class="v2-input" placeholder="Receptor, variant or position" aria-label="Search receptors, variants, residues and genome positions" spellcheck="false" autocapitalize="off" autocomplete="off">
+      <button type="submit" class="topbar-search-btn" aria-label="Search"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    </form>
+    <nav class="mobile-drawer-nav" aria-label="Primary">
+      <a href="../index.html">Home</a>
+      <a href="../browse/index.html">Browse</a>
+      <a href="../statistics.html">Statistics</a>
+      <a href="../studio/">Studio</a>
+      <a href="../glossary.html">Glossary</a>
+      <a href="../downloads.html">Downloads</a>
+      <a href="../contact.html">Contact</a>
+    </nav>
+  </aside>
+</div>
+
+
+<div class="breadcrumbs">
+  <a href="../index.html">Home</a>
+  <span class="breadcrumbs-sep">/</span>
+  <span class="breadcrumbs-current">Search</span>
+</div>
+
+
+<main id="main">
+
+<section class="search-section">
+  <div class="section-inner-wide">
+    <div id="search-app" data-index="../search2/" data-reports="../reports/" data-studio="../studio/" data-models="../models/" data-glossary="../glossary.html">
+      <header class="section-head">
+        <h1>Search</h1>
+        <p class="section-sub">A receptor, a residue or a variant, in any notation.</p>
+      </header>
+
+      <form class="sr-form" id="search-form" action="index.html" method="get" role="search" data-suggest-host>
+        <label for="search-input" class="sr-sr-only">Search receptors, variants, residues and genome positions</label>
+        <input type="search" id="search-input" name="q" maxlength="300" class="v2-input" placeholder="e.g. DRD2 S311C, NM_002386.4:c.451C>T, rs1805007, 6.48x48" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="search-hint">
+        <button type="submit" class="btn btn-primary">Search</button>
+      </form>
+      <div class="sr-recent" id="search-recent" hidden></div>
+
+      <div class="sr-status" id="search-status" role="status" aria-live="polite"></div>
+      <div id="search-results" aria-live="polite">
+        <noscript>
+          <div class="sr-message sr-message--info">Search needs JavaScript. Without it, open a receptor report from the list below, or use the <a href="../browse/index.html">Browse page</a>.</div>
+          <h2 class="sr-h2">All 283 receptor reports</h2>
+          <ul class="sr-plain-list">
+            <li><a href="../reports/ackr1_human.html">ACKR1</a></li>
+            <li><a href="../reports/ackr2_human.html">ACKR2</a></li>
+            <li><a href="../reports/ackr3_human.html">ACKR3</a></li>
+            <li><a href="../reports/ackr4_human.html">ACKR4</a></li>
+            <li><a href="../reports/aa1r_human.html">AA1R (ADORA1)</a></li>
+            <li><a href="../reports/aa2ar_human.html">AA2AR (ADORA2A)</a></li>
+            <li><a href="../reports/aa2br_human.html">AA2BR (ADORA2B)</a></li>
+            <li><a href="../reports/aa3r_human.html">AA3R (ADORA3)</a></li>
+            <li><a href="../reports/ada1a_human.html">ADA1A (ADRA1A)</a></li>
+            <li><a href="../reports/ada1b_human.html">ADA1B (ADRA1B)</a></li>
+            <li><a href="../reports/ada1d_human.html">ADA1D (ADRA1D)</a></li>
+            <li><a href="../reports/ada2a_human.html">ADA2A (ADRA2A)</a></li>
+            <li><a href="../reports/ada2b_human.html">ADA2B (ADRA2B)</a></li>
+            <li><a href="../reports/ada2c_human.html">ADA2C (ADRA2C)</a></li>
+            <li><a href="../reports/adrb1_human.html">ADRB1</a></li>
+            <li><a href="../reports/adrb2_human.html">ADRB2</a></li>
+            <li><a href="../reports/adrb3_human.html">ADRB3</a></li>
+            <li><a href="../reports/agtr1_human.html">AGTR1</a></li>
+            <li><a href="../reports/agtr2_human.html">AGTR2</a></li>
+            <li><a href="../reports/apj_human.html">APJ (APLNR)</a></li>
+            <li><a href="../reports/v1ar_human.html">V1AR (AVPR1A)</a></li>
+            <li><a href="../reports/v1br_human.html">V1BR (AVPR1B)</a></li>
+            <li><a href="../reports/v2r_human.html">V2R (AVPR2)</a></li>
+            <li><a href="../reports/bkrb1_human.html">BKRB1 (BDKRB1)</a></li>
+            <li><a href="../reports/bkrb2_human.html">BKRB2 (BDKRB2)</a></li>
+            <li><a href="../reports/brs3_human.html">BRS3</a></li>
+            <li><a href="../reports/c3ar_human.html">C3AR (C3AR1)</a></li>
+            <li><a href="../reports/c5ar1_human.html">C5AR1</a></li>
+            <li><a href="../reports/c5ar2_human.html">C5AR2</a></li>
+            <li><a href="../reports/cckar_human.html">CCKAR</a></li>
+            <li><a href="../reports/gasr_human.html">GASR (CCKBR)</a></li>
+            <li><a href="../reports/ccr1_human.html">CCR1</a></li>
+            <li><a href="../reports/ccr10_human.html">CCR10</a></li>
+            <li><a href="../reports/ccr2_human.html">CCR2</a></li>
+            <li><a href="../reports/ccr3_human.html">CCR3</a></li>
+            <li><a href="../reports/ccr4_human.html">CCR4</a></li>
+            <li><a href="../reports/ccr5_human.html">CCR5</a></li>
+            <li><a href="../reports/ccr6_human.html">CCR6</a></li>
+            <li><a href="../reports/ccr7_human.html">CCR7</a></li>
+            <li><a href="../reports/ccr8_human.html">CCR8</a></li>
+            <li><a href="../reports/ccr9_human.html">CCR9</a></li>
+            <li><a href="../reports/ccrl2_human.html">CCRL2</a></li>
+            <li><a href="../reports/acm1_human.html">ACM1 (CHRM1)</a></li>
+            <li><a href="../reports/acm2_human.html">ACM2 (CHRM2)</a></li>
+            <li><a href="../reports/acm3_human.html">ACM3 (CHRM3)</a></li>
+            <li><a href="../reports/acm4_human.html">ACM4 (CHRM4)</a></li>
+            <li><a href="../reports/acm5_human.html">ACM5 (CHRM5)</a></li>
+            <li><a href="../reports/cml1_human.html">CML1 (CMKLR1)</a></li>
+            <li><a href="../reports/cml2_human.html">CML2 (CMKLR2)</a></li>
+            <li><a href="../reports/cnr1_human.html">CNR1</a></li>
+            <li><a href="../reports/cnr2_human.html">CNR2</a></li>
+            <li><a href="../reports/cx3c1_human.html">CX3C1 (CX3CR1)</a></li>
+            <li><a href="../reports/cxcr1_human.html">CXCR1</a></li>
+            <li><a href="../reports/cxcr2_human.html">CXCR2</a></li>
+            <li><a href="../reports/cxcr3_human.html">CXCR3</a></li>
+            <li><a href="../reports/cxcr4_human.html">CXCR4</a></li>
+            <li><a href="../reports/cxcr5_human.html">CXCR5</a></li>
+            <li><a href="../reports/cxcr6_human.html">CXCR6</a></li>
+            <li><a href="../reports/cltr1_human.html">CLTR1 (CYSLTR1)</a></li>
+            <li><a href="../reports/cltr2_human.html">CLTR2 (CYSLTR2)</a></li>
+            <li><a href="../reports/drd1_human.html">DRD1</a></li>
+            <li><a href="../reports/drd2_human.html">DRD2</a></li>
+            <li><a href="../reports/drd3_human.html">DRD3</a></li>
+            <li><a href="../reports/drd4_human.html">DRD4</a></li>
+            <li><a href="../reports/drd5_human.html">DRD5</a></li>
+            <li><a href="../reports/ednra_human.html">EDNRA</a></li>
+            <li><a href="../reports/ednrb_human.html">EDNRB</a></li>
+            <li><a href="../reports/par1_human.html">PAR1 (F2R)</a></li>
+            <li><a href="../reports/par2_human.html">PAR2 (F2RL1)</a></li>
+            <li><a href="../reports/par3_human.html">PAR3 (F2RL2)</a></li>
+            <li><a href="../reports/par4_human.html">PAR4 (F2RL3)</a></li>
+            <li><a href="../reports/ffar1_human.html">FFAR1</a></li>
+            <li><a href="../reports/ffar2_human.html">FFAR2</a></li>
+            <li><a href="../reports/ffar3_human.html">FFAR3</a></li>
+            <li><a href="../reports/ffar4_human.html">FFAR4</a></li>
+            <li><a href="../reports/fpr1_human.html">FPR1</a></li>
+            <li><a href="../reports/fpr2_human.html">FPR2</a></li>
+            <li><a href="../reports/fpr3_human.html">FPR3</a></li>
+            <li><a href="../reports/fshr_human.html">FSHR</a></li>
+            <li><a href="../reports/galr1_human.html">GALR1</a></li>
+            <li><a href="../reports/galr2_human.html">GALR2</a></li>
+            <li><a href="../reports/galr3_human.html">GALR3</a></li>
+            <li><a href="../reports/ghsr_human.html">GHSR</a></li>
+            <li><a href="../reports/gnrhr_human.html">GNRHR</a></li>
+            <li><a href="../reports/gpbar_human.html">GPBAR (GPBAR1)</a></li>
+            <li><a href="../reports/gper1_human.html">GPER1</a></li>
+            <li><a href="../reports/gp101_human.html">GP101 (GPR101)</a></li>
+            <li><a href="../reports/gp119_human.html">GP119 (GPR119)</a></li>
+            <li><a href="../reports/gpr12_human.html">GPR12</a></li>
+            <li><a href="../reports/gp132_human.html">GP132 (GPR132)</a></li>
+            <li><a href="../reports/gp135_human.html">GP135 (GPR135)</a></li>
+            <li><a href="../reports/gp139_human.html">GP139 (GPR139)</a></li>
+            <li><a href="../reports/gp141_human.html">GP141 (GPR141)</a></li>
+            <li><a href="../reports/gp142_human.html">GP142 (GPR142)</a></li>
+            <li><a href="../reports/gp146_human.html">GP146 (GPR146)</a></li>
+            <li><a href="../reports/gp148_human.html">GP148 (GPR148)</a></li>
+            <li><a href="../reports/gp149_human.html">GP149 (GPR149)</a></li>
+            <li><a href="../reports/gpr15_human.html">GPR15</a></li>
+            <li><a href="../reports/gp150_human.html">GP150 (GPR150)</a></li>
+            <li><a href="../reports/gp151_human.html">GP151 (GPR151)</a></li>
+            <li><a href="../reports/gp152_human.html">GP152 (GPR152)</a></li>
+            <li><a href="../reports/gp153_human.html">GP153 (GPR153)</a></li>
+            <li><a href="../reports/gp160_human.html">GP160 (GPR160)</a></li>
+            <li><a href="../reports/gp161_human.html">GP161 (GPR161)</a></li>
+            <li><a href="../reports/gp162_human.html">GP162 (GPR162)</a></li>
+            <li><a href="../reports/gpr17_human.html">GPR17</a></li>
+            <li><a href="../reports/gp171_human.html">GP171 (GPR171)</a></li>
+            <li><a href="../reports/gp173_human.html">GP173 (GPR173)</a></li>
+            <li><a href="../reports/gp174_human.html">GP174 (GPR174)</a></li>
+            <li><a href="../reports/gp176_human.html">GP176 (GPR176)</a></li>
+            <li><a href="../reports/gpr18_human.html">GPR18</a></li>
+            <li><a href="../reports/gp182_human.html">GP182 (GPR182)</a></li>
+            <li><a href="../reports/gp183_human.html">GP183 (GPR183)</a></li>
+            <li><a href="../reports/gpr19_human.html">GPR19</a></li>
+            <li><a href="../reports/gpr20_human.html">GPR20</a></li>
+            <li><a href="../reports/gpr21_human.html">GPR21</a></li>
+            <li><a href="../reports/gpr22_human.html">GPR22</a></li>
+            <li><a href="../reports/gpr25_human.html">GPR25</a></li>
+            <li><a href="../reports/gpr27_human.html">GPR27</a></li>
+            <li><a href="../reports/gpr3_human.html">GPR3</a></li>
+            <li><a href="../reports/gpr31_human.html">GPR31</a></li>
+            <li><a href="../reports/gpr32_human.html">GPR32</a></li>
+            <li><a href="../reports/gpr33_human.html">GPR33</a></li>
+            <li><a href="../reports/gpr34_human.html">GPR34</a></li>
+            <li><a href="../reports/gpr35_human.html">GPR35</a></li>
+            <li><a href="../reports/gpr37_human.html">GPR37</a></li>
+            <li><a href="../reports/g37l1_human.html">G37L1 (GPR37L1)</a></li>
+            <li><a href="../reports/gpr39_human.html">GPR39</a></li>
+            <li><a href="../reports/gpr4_human.html">GPR4</a></li>
+            <li><a href="../reports/gpr42_human.html">GPR42</a></li>
+            <li><a href="../reports/gpr45_human.html">GPR45</a></li>
+            <li><a href="../reports/mtr1l_human.html">MTR1L (GPR50)</a></li>
+            <li><a href="../reports/gpr52_human.html">GPR52</a></li>
+            <li><a href="../reports/gpr55_human.html">GPR55</a></li>
+            <li><a href="../reports/gpr6_human.html">GPR6</a></li>
+            <li><a href="../reports/gpr61_human.html">GPR61</a></li>
+            <li><a href="../reports/gpr62_human.html">GPR62</a></li>
+            <li><a href="../reports/gpr63_human.html">GPR63</a></li>
+            <li><a href="../reports/psyr_human.html">PSYR (GPR65)</a></li>
+            <li><a href="../reports/ogr1_human.html">OGR1 (GPR68)</a></li>
+            <li><a href="../reports/gpr75_human.html">GPR75</a></li>
+            <li><a href="../reports/gpr78_human.html">GPR78</a></li>
+            <li><a href="../reports/gpr82_human.html">GPR82</a></li>
+            <li><a href="../reports/gpr83_human.html">GPR83</a></li>
+            <li><a href="../reports/gpr84_human.html">GPR84</a></li>
+            <li><a href="../reports/gpr85_human.html">GPR85</a></li>
+            <li><a href="../reports/gpr87_human.html">GPR87</a></li>
+            <li><a href="../reports/gpr88_human.html">GPR88</a></li>
+            <li><a href="../reports/grpr_human.html">GRPR</a></li>
+            <li><a href="../reports/hcar1_human.html">HCAR1</a></li>
+            <li><a href="../reports/hcar2_human.html">HCAR2</a></li>
+            <li><a href="../reports/hcar3_human.html">HCAR3</a></li>
+            <li><a href="../reports/ox1r_human.html">OX1R (HCRTR1)</a></li>
+            <li><a href="../reports/ox2r_human.html">OX2R (HCRTR2)</a></li>
+            <li><a href="../reports/hrh1_human.html">HRH1</a></li>
+            <li><a href="../reports/hrh2_human.html">HRH2</a></li>
+            <li><a href="../reports/hrh3_human.html">HRH3</a></li>
+            <li><a href="../reports/hrh4_human.html">HRH4</a></li>
+            <li><a href="../reports/5ht1a_human.html">5HT1A (HTR1A)</a></li>
+            <li><a href="../reports/5ht1b_human.html">5HT1B (HTR1B)</a></li>
+            <li><a href="../reports/5ht1d_human.html">5HT1D (HTR1D)</a></li>
+            <li><a href="../reports/5ht1e_human.html">5HT1E (HTR1E)</a></li>
+            <li><a href="../reports/5ht1f_human.html">5HT1F (HTR1F)</a></li>
+            <li><a href="../reports/5ht2a_human.html">5HT2A (HTR2A)</a></li>
+            <li><a href="../reports/5ht2b_human.html">5HT2B (HTR2B)</a></li>
+            <li><a href="../reports/5ht2c_human.html">5HT2C (HTR2C)</a></li>
+            <li><a href="../reports/5ht4r_human.html">5HT4R (HTR4)</a></li>
+            <li><a href="../reports/5ht5a_human.html">5HT5A (HTR5A)</a></li>
+            <li><a href="../reports/5ht6r_human.html">5HT6R (HTR6)</a></li>
+            <li><a href="../reports/5ht7r_human.html">5HT7R (HTR7)</a></li>
+            <li><a href="../reports/kissr_human.html">KISSR (KISS1R)</a></li>
+            <li><a href="../reports/lgr4_human.html">LGR4</a></li>
+            <li><a href="../reports/lgr6_human.html">LGR6</a></li>
+            <li><a href="../reports/lshr_human.html">LSHR (LHCGR)</a></li>
+            <li><a href="../reports/lpar1_human.html">LPAR1</a></li>
+            <li><a href="../reports/lpar2_human.html">LPAR2</a></li>
+            <li><a href="../reports/lpar3_human.html">LPAR3</a></li>
+            <li><a href="../reports/lpar4_human.html">LPAR4</a></li>
+            <li><a href="../reports/lpar5_human.html">LPAR5</a></li>
+            <li><a href="../reports/lpar6_human.html">LPAR6</a></li>
+            <li><a href="../reports/lt4r1_human.html">LT4R1 (LTB4R)</a></li>
+            <li><a href="../reports/lt4r2_human.html">LT4R2 (LTB4R2)</a></li>
+            <li><a href="../reports/mas_human.html">MAS (MAS1)</a></li>
+            <li><a href="../reports/mas1l_human.html">MAS1L</a></li>
+            <li><a href="../reports/mshr_human.html">MSHR (MC1R)</a></li>
+            <li><a href="../reports/acthr_human.html">ACTHR (MC2R)</a></li>
+            <li><a href="../reports/mc3r_human.html">MC3R</a></li>
+            <li><a href="../reports/mc4r_human.html">MC4R</a></li>
+            <li><a href="../reports/mc5r_human.html">MC5R</a></li>
+            <li><a href="../reports/mchr1_human.html">MCHR1</a></li>
+            <li><a href="../reports/mchr2_human.html">MCHR2</a></li>
+            <li><a href="../reports/mtlr_human.html">MTLR (MLNR)</a></li>
+            <li><a href="../reports/mrgrd_human.html">MRGRD (MRGPRD)</a></li>
+            <li><a href="../reports/mrgre_human.html">MRGRE (MRGPRE)</a></li>
+            <li><a href="../reports/mrgrf_human.html">MRGRF (MRGPRF)</a></li>
+            <li><a href="../reports/mrgrg_human.html">MRGRG (MRGPRG)</a></li>
+            <li><a href="../reports/mrgx1_human.html">MRGX1 (MRGPRX1)</a></li>
+            <li><a href="../reports/mrgx2_human.html">MRGX2 (MRGPRX2)</a></li>
+            <li><a href="../reports/mrgx3_human.html">MRGX3 (MRGPRX3)</a></li>
+            <li><a href="../reports/mrgx4_human.html">MRGX4 (MRGPRX4)</a></li>
+            <li><a href="../reports/mtr1a_human.html">MTR1A (MTNR1A)</a></li>
+            <li><a href="../reports/mtr1b_human.html">MTR1B (MTNR1B)</a></li>
+            <li><a href="../reports/nmbr_human.html">NMBR</a></li>
+            <li><a href="../reports/nmur1_human.html">NMUR1</a></li>
+            <li><a href="../reports/nmur2_human.html">NMUR2</a></li>
+            <li><a href="../reports/npbw1_human.html">NPBW1 (NPBWR1)</a></li>
+            <li><a href="../reports/npbw2_human.html">NPBW2 (NPBWR2)</a></li>
+            <li><a href="../reports/npff1_human.html">NPFF1 (NPFFR1)</a></li>
+            <li><a href="../reports/npff2_human.html">NPFF2 (NPFFR2)</a></li>
+            <li><a href="../reports/npsr1_human.html">NPSR1</a></li>
+            <li><a href="../reports/npy1r_human.html">NPY1R</a></li>
+            <li><a href="../reports/npy2r_human.html">NPY2R</a></li>
+            <li><a href="../reports/npy4r_human.html">NPY4R</a></li>
+            <li><a href="../reports/npy5r_human.html">NPY5R</a></li>
+            <li><a href="../reports/npy6r_human.html">NPY6R</a></li>
+            <li><a href="../reports/ntr1_human.html">NTR1 (NTSR1)</a></li>
+            <li><a href="../reports/ntr2_human.html">NTR2 (NTSR2)</a></li>
+            <li><a href="../reports/opsr_human.html">OPSR (OPN1LW)</a></li>
+            <li><a href="../reports/opsg_human.html">OPSG (OPN1MW)</a></li>
+            <li><a href="../reports/opsb_human.html">OPSB (OPN1SW)</a></li>
+            <li><a href="../reports/opn3_human.html">OPN3</a></li>
+            <li><a href="../reports/opn4_human.html">OPN4</a></li>
+            <li><a href="../reports/opn5_human.html">OPN5</a></li>
+            <li><a href="../reports/oprd_human.html">OPRD (OPRD1)</a></li>
+            <li><a href="../reports/oprk_human.html">OPRK (OPRK1)</a></li>
+            <li><a href="../reports/oprx_human.html">OPRX (OPRL1)</a></li>
+            <li><a href="../reports/oprm_human.html">OPRM (OPRM1)</a></li>
+            <li><a href="../reports/oxer1_human.html">OXER1</a></li>
+            <li><a href="../reports/oxgr1_human.html">OXGR1</a></li>
+            <li><a href="../reports/oxyr_human.html">OXYR (OXTR)</a></li>
+            <li><a href="../reports/p2ry1_human.html">P2RY1</a></li>
+            <li><a href="../reports/p2y10_human.html">P2Y10 (P2RY10)</a></li>
+            <li><a href="../reports/p2y11_human.html">P2Y11 (P2RY11)</a></li>
+            <li><a href="../reports/p2y12_human.html">P2Y12 (P2RY12)</a></li>
+            <li><a href="../reports/p2y13_human.html">P2Y13 (P2RY13)</a></li>
+            <li><a href="../reports/p2y14_human.html">P2Y14 (P2RY14)</a></li>
+            <li><a href="../reports/p2ry2_human.html">P2RY2</a></li>
+            <li><a href="../reports/p2ry4_human.html">P2RY4</a></li>
+            <li><a href="../reports/p2ry6_human.html">P2RY6</a></li>
+            <li><a href="../reports/p2ry8_human.html">P2RY8</a></li>
+            <li><a href="../reports/prlhr_human.html">PRLHR</a></li>
+            <li><a href="../reports/pkr1_human.html">PKR1 (PROKR1)</a></li>
+            <li><a href="../reports/pkr2_human.html">PKR2 (PROKR2)</a></li>
+            <li><a href="../reports/ptafr_human.html">PTAFR</a></li>
+            <li><a href="../reports/pd2r_human.html">PD2R (PTGDR)</a></li>
+            <li><a href="../reports/pd2r2_human.html">PD2R2 (PTGDR2)</a></li>
+            <li><a href="../reports/pe2r1_human.html">PE2R1 (PTGER1)</a></li>
+            <li><a href="../reports/pe2r2_human.html">PE2R2 (PTGER2)</a></li>
+            <li><a href="../reports/pe2r3_human.html">PE2R3 (PTGER3)</a></li>
+            <li><a href="../reports/pe2r4_human.html">PE2R4 (PTGER4)</a></li>
+            <li><a href="../reports/pf2r_human.html">PF2R (PTGFR)</a></li>
+            <li><a href="../reports/pi2r_human.html">PI2R (PTGIR)</a></li>
+            <li><a href="../reports/qrfpr_human.html">QRFPR</a></li>
+            <li><a href="../reports/opsd_human.html">OPSD (RHO)</a></li>
+            <li><a href="../reports/rxfp2_human.html">RXFP2</a></li>
+            <li><a href="../reports/rl3r1_human.html">RL3R1 (RXFP3)</a></li>
+            <li><a href="../reports/rl3r2_human.html">RL3R2 (RXFP4)</a></li>
+            <li><a href="../reports/s1pr1_human.html">S1PR1</a></li>
+            <li><a href="../reports/s1pr2_human.html">S1PR2</a></li>
+            <li><a href="../reports/s1pr3_human.html">S1PR3</a></li>
+            <li><a href="../reports/s1pr4_human.html">S1PR4</a></li>
+            <li><a href="../reports/s1pr5_human.html">S1PR5</a></li>
+            <li><a href="../reports/ssr1_human.html">SSR1 (SSTR1)</a></li>
+            <li><a href="../reports/ssr2_human.html">SSR2 (SSTR2)</a></li>
+            <li><a href="../reports/ssr3_human.html">SSR3 (SSTR3)</a></li>
+            <li><a href="../reports/ssr4_human.html">SSR4 (SSTR4)</a></li>
+            <li><a href="../reports/ssr5_human.html">SSR5 (SSTR5)</a></li>
+            <li><a href="../reports/sucr1_human.html">SUCR1 (SUCNR1)</a></li>
+            <li><a href="../reports/taar1_human.html">TAAR1</a></li>
+            <li><a href="../reports/taar2_human.html">TAAR2</a></li>
+            <li><a href="../reports/taar3_human.html">TAAR3 (TAAR3P)</a></li>
+            <li><a href="../reports/taar5_human.html">TAAR5</a></li>
+            <li><a href="../reports/taar6_human.html">TAAR6</a></li>
+            <li><a href="../reports/taar8_human.html">TAAR8</a></li>
+            <li><a href="../reports/taar9_human.html">TAAR9</a></li>
+            <li><a href="../reports/nk1r_human.html">NK1R (TACR1)</a></li>
+            <li><a href="../reports/nk2r_human.html">NK2R (TACR2)</a></li>
+            <li><a href="../reports/nk3r_human.html">NK3R (TACR3)</a></li>
+            <li><a href="../reports/ta2r_human.html">TA2R (TBXA2R)</a></li>
+            <li><a href="../reports/trfr_human.html">TRFR (TRHR)</a></li>
+            <li><a href="../reports/tshr_human.html">TSHR</a></li>
+            <li><a href="../reports/ur2r_human.html">UR2R (UTS2R)</a></li>
+            <li><a href="../reports/xcr1_human.html">XCR1</a></li>
+            
+          </ul>
+        </noscript>
+      </div>
+
+      
+      <aside class="fine-print fine-print--page" id="search-fineprint" aria-label="About this search">
+        <div id="search-releases" class="sr-releases-wrap"></div>
+        <details id="search-howto">
+          <summary>How search works</summary>
+          <p>Type a receptor name or identifier, a residue, or a variant. Variants can be a protein change, a coding change on any transcript, a position on GRCh37 or GRCh38, an rsID, a ClinVar record or a generic residue number.</p>
+          <p id="search-hint"><span class="sr-fine-only">Use the arrow keys to move through suggestions and Enter to choose one.</span><span class="sr-touch-only">Tap a suggestion to choose it, or press Search.</span></p>
+          <p>Searches run in your browser and are not sent anywhere. See <a href="../privacy.html">Privacy</a>.</p>
+        </details>
+      </aside>
+    </div>
+  </div>
+</section>
+
+</main>
+
+
+
+<footer class="site-footer">
+  <div class="section-inner footer-inner">
+    <div class="footer-brand">
+      <img src="../static/img/lablogo.png" alt="TGGR Laboratory" class="footer-logo">
+      <div class="footer-brand-text">
+        <strong>GPCompaRe database</strong>
+        <span>283 Class A GPCRs. Active vs inactive contact analysis.</span>
+      </div>
+    </div>
+    <div class="footer-lab">
+      <strong>TGGR Laboratory</strong>
+      <span>Translational Genetics and Genomics Research Lab<br>Genetics Institute, Tel Aviv Sourasky Medical Center</span>
+      <a href="https://www.tasmc.org.il/rd/en/next-unit/research-laboratories/genetics/the-translational-genetics-and-genomics-research-laboratory-prof-hagit-baris-feldman/" target="_blank" rel="noopener">tasmc.org.il · lab page</a>
+      <a href="https://github.com/tggr-lab" target="_blank" rel="noopener">github.com/tggr-lab</a>
+    </div>
+    <nav class="footer-links" aria-label="Site information">
+      <a href="../glossary.html">Glossary</a>
+      <a href="../privacy.html">Privacy</a>
+      <a href="../contact.html">Contact</a>
+    </nav>
+  </div>
+  
+  <div class="section-inner footer-versions"><aside class="fine-print fine-print--versions" data-data-versions>
+<span class="fine-print-title">Data versions:</span> <span class="fp-item">GPCompaRe database release 2026-11-05</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">GPCompaRe RRCS batch 2026-02-02</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">GPCRdb models (2024-05-15 build): AlphaFold-Multistate, with plain AlphaFold2 for some states</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">gnomAD v4.1.2</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">ClinVar 2026-10-11</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">AlphaMissense (Cheng et al. 2023)</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">UniProt 2026_04</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">Ensembl 116</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">HGNC 2026-10-30</span> <span class="fp-sep" aria-hidden="true">·</span> <a href="../index.html#data-versions">Full list</a>
+</aside></div>
+  
+</footer>
+
+<script src="../static/js/site.js" defer></script>
+<script src="../static/js/search-box.js" defer></script>
+<script src="../static/js/glossary-data.js" defer></script>
+<script src="../static/js/glossary.js" defer></script>
+
+<script type="module" src="../static/js/search-ui/search-page.js"></script>
+
+
+</body>
+</html>

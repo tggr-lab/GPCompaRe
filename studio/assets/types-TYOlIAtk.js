@@ -1,0 +1,1 @@
+var e=`ACDEFGHIKLMNPQRSTVWY`,t=e=>e?.cfrTop??e?.cfrTop30??[];function n(e){return new Map(e.residues.map(([e,t,n,r])=>[e,{aminoAcid:t,segment:n,displayNumber:r}]))}export{t as n,n as r,e as t};

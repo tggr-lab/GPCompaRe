@@ -37,10 +37,15 @@
 })();
 </script>
 
+<link rel="icon" type="image/png" sizes="32x32" href="static/img/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="static/img/favicon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="static/img/apple-touch-icon.png">
 <link rel="stylesheet" href="static/css/fonts.css">
 <link rel="stylesheet" href="static/css/primer/primitives.css">
 <link rel="stylesheet" href="static/css/primer/primitives-dark.css">
 <link rel="stylesheet" href="static/css/site.css">
+<link rel="stylesheet" href="static/css/fine-print.css">
+<link rel="stylesheet" href="static/css/search-ui.css">
 
 
 
@@ -68,9 +73,9 @@
       <a href="downloads.html">Downloads</a>
       <a href="contact.html">Contact</a>
     </nav>
-    <form class="topbar-search" action="browse/index.html" method="get" role="search">
-      <input type="search" name="q" class="topbar-search-input" placeholder="Search receptors, variants, positions" aria-label="Search receptors, variants and generic positions" spellcheck="false" autocapitalize="off">
-      <button type="submit" class="topbar-search-btn" aria-label="Search" title="Search receptors, variants and generic positions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    <form class="topbar-search" action="search/" method="get" role="search" data-search-index="search2/" data-suggest-host>
+      <input type="search" name="q" maxlength="300" class="topbar-search-input" placeholder="Search receptors, variants, positions" aria-label="Search receptors, variants, residues and genome positions" spellcheck="false" autocapitalize="off" autocomplete="off">
+      <button type="submit" class="topbar-search-btn" aria-label="Search" title="Search receptors, variants, residues and genome positions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
     </form>
     <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle color theme" title="Toggle light / dark">
       <svg class="icon icon-sun"  viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="2"  x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2"  y1="12" x2="5"  y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.5"  y1="4.5"  x2="6.5"  y2="6.5"/><line x1="17.5" y1="17.5" x2="19.5" y2="19.5"/><line x1="4.5"  y1="19.5" x2="6.5"  y2="17.5"/><line x1="17.5" y1="6.5"  x2="19.5" y2="4.5"/></g></svg>
@@ -82,7 +87,8 @@
   </div>
 </header>
 
-<div class="mobile-drawer" id="mobile-drawer" role="dialog" aria-modal="true" aria-label="Navigation menu" aria-hidden="true">
+
+<div class="mobile-drawer" id="mobile-drawer" role="dialog" aria-modal="true" aria-label="Navigation menu" aria-hidden="true" inert>
   <div class="mobile-drawer-backdrop" data-drawer-close></div>
   <aside class="mobile-drawer-panel">
     <div class="mobile-drawer-head">
@@ -91,8 +97,8 @@
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
       </button>
     </div>
-    <form class="drawer-search" action="browse/index.html" method="get" role="search">
-      <input type="search" name="q" class="v2-input" placeholder="Receptor, variant or position" aria-label="Search receptors, variants and generic positions" spellcheck="false" autocapitalize="off">
+    <form class="drawer-search" action="search/" method="get" role="search" data-search-index="search2/" data-suggest-host>
+      <input type="search" name="q" maxlength="300" class="v2-input" placeholder="Receptor, variant or position" aria-label="Search receptors, variants, residues and genome positions" spellcheck="false" autocapitalize="off" autocomplete="off">
       <button type="submit" class="topbar-search-btn" aria-label="Search"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
     </form>
     <nav class="mobile-drawer-nav" aria-label="Primary">
@@ -121,7 +127,7 @@
   <div class="section-inner">
     <header class="section-head">
       <h1 id="glossary-heading" data-glossary-skip>Glossary</h1>
-      <p class="section-sub">One plain sentence for each term and abbreviation the site uses. On the report pages, terms with a dotted underline show the same sentence when you point at, tab to or tap them.</p>
+      <p class="section-sub">One plain sentence for each term the site uses.</p>
     </header>
     <nav class="gloss-nav" aria-label="Glossary groups">
       <a href="#contact-scores">Contact scores</a><a href="#the-models">The models</a><a href="#the-receptor">The receptor</a><a href="#variants">Variants</a><a href="#statistics-page">Statistics page</a><a href="#links-and-files">Links and files</a>
@@ -142,7 +148,7 @@
       
       <div id="delta">
         <dt>ΔRRCS <span class="gloss-full">(delta RRCS)</span></dt>
-        <dd>The change in one contact: its RRCS in the active model minus its RRCS in the inactive model. Positive (red) means stronger in the active state, negative (blue) stronger in the inactive state.</dd>
+        <dd>The change in one contact: its RRCS in the active model minus its RRCS in the inactive model. Positive (red) means stronger in the active model, negative (blue) stronger in the inactive model.</dd>
       </div>
       
       <div id="absdelta">
@@ -182,7 +188,7 @@
       
       <div id="maxdelta">
         <dt>Largest single contact, Residue max Δ</dt>
-        <dd>The one contact of a residue with the largest |ΔRRCS|, coloured by that contact&#39;s sign.</dd>
+        <dd>The one contact of a residue with the largest |ΔRRCS|, colored by that contact&#39;s sign.</dd>
       </div>
       
       <div id="sd">
@@ -192,7 +198,7 @@
       
       <div id="angstrom">
         <dt>Å <span class="gloss-full">(ångström)</span></dt>
-        <dd>A tenth of a nanometre; atoms in contact sit about 3 to 4.6 Å apart.</dd>
+        <dd>A tenth of a nanometer; atoms in contact sit about 3 to 4.6 Å apart.</dd>
       </div>
       
     </dl>
@@ -202,12 +208,17 @@
       
       <div id="models">
         <dt>Active model, inactive model</dt>
-        <dd>Two computer predictions of the same receptor, one in the active (signalling) state and one in the inactive state. They are models, not experimental structures.</dd>
+        <dd>Two computer predictions of the same receptor, one in the active (signaling) state and one in the inactive state. They are models, not experimental structures.</dd>
       </div>
       
       <div id="multistate">
         <dt>AlphaFold-Multistate</dt>
-        <dd>A way of running AlphaFold that predicts a GPCR in a chosen activation state by giving it only template structures of that state (Heo and Feig, 2022). <a href="https://doi.org/10.1002/prot.26382" target="_blank" rel="noopener" aria-label="Learn more about AlphaFold-Multistate (opens in a new tab)">Learn more</a></dd>
+        <dd>A way of running AlphaFold that predicts a GPCR in a chosen activation state by giving it only template structures of that state (Heo and Feig, 2022). GPCRdb built most of the models here this way; each report names the method of its two models. <a href="https://doi.org/10.1002/prot.26382" target="_blank" rel="noopener" aria-label="Learn more about AlphaFold-Multistate (opens in a new tab)">Learn more</a></dd>
+      </div>
+      
+      <div id="alphafold2">
+        <dt>AlphaFold2</dt>
+        <dd>Standard AlphaFold2, run with template structures of any state (Jumper et al., 2021). GPCRdb classed each such model as active or inactive; plain AlphaFold2 built 165 of the inactive models and 26 of the active models here, and AlphaFold-Multistate built the rest. Each report names the method of its two models. <a href="https://doi.org/10.1038/s41586-021-03819-2" target="_blank" rel="noopener" aria-label="Learn more about AlphaFold2 (opens in a new tab)">Learn more</a></dd>
       </div>
       
     </dl>
@@ -277,7 +288,27 @@
       
       <div id="cfr">
         <dt>CFR <span class="gloss-full">(Core Functional Residue)</span></dt>
-        <dd>A generic-numbered position where an above-threshold contact change recurs across many receptors (at least three); the Statistics page ranks them.</dd>
+        <dd>The term has two meanings. A receptor-level CFR is a residue of one receptor that takes part in a contact whose |ΔRRCS| is above that receptor&#39;s threshold. The class-wide CFR positions are generic positions where receptor-level CFRs recur in at least three receptors, ranked by CFR score. The site marks the top 50, as in Figure 3 of the paper: the snake plots, the residue table and search call a residue a CFR when its generic number is one of the 50 top-ranked class-wide CFR positions (by CFR score), and the Statistics page lists them.</dd>
+      </div>
+      
+      <div id="cfr-connected">
+        <dt>CFR-connected residue</dt>
+        <dd>A residue that takes part in a contact above its receptor&#39;s ΔRRCS threshold whose partner residue sits at a CFR position in the same receptor. A CFR position here is one of the 50 top-ranked class-wide CFR positions (by CFR score), the positions search and the snake plots mark as CFR.</dd>
+      </div>
+      
+      <div id="cfr-near">
+        <dt>Near a CFR</dt>
+        <dd>A residue within two residues of a CFR position along the chain, in the same segment (helix, loop or terminus). CFR positions are the same 50 top-ranked class-wide CFR positions (by CFR score).</dd>
+      </div>
+      
+      <div id="cfr-touch">
+        <dt>In contact with a CFR, below threshold</dt>
+        <dd>A residue with a contact to a CFR residue in at least one of the two models (RRCS above 0) that stays below the receptor&#39;s threshold.</dd>
+      </div>
+      
+      <div id="xmy">
+        <dt>xMY motif</dt>
+        <dd>A TM3 sequence pattern: Met at 3.36 and Tyr at 3.37, after a variable residue at 3.35. Of the 283 Class A receptors, 30 carry it, the four PARs among them. Its two contacts, Met3.36 to Tyr3.37 and Met3.36 to the 6.48 toggle-switch position, tend to be weaker in the active model across the receptors that carry it (GPCompaRe study).</dd>
       </div>
       
       <div id="ligand">
@@ -302,7 +333,7 @@
       
       <div id="gnomad">
         <dt>gnomAD <span class="gloss-full">(Genome Aggregation Database)</span></dt>
-        <dd>Genetic variation seen in hundreds of thousands of people; the source of the missense variants and their frequencies (release v4.1, dataset gnomad_r4, accessed 2 February 2026). <a href="https://gnomad.broadinstitute.org/" target="_blank" rel="noopener" aria-label="Learn more about gnomAD (opens in a new tab)">Learn more</a></dd>
+        <dd>Genetic variation seen in hundreds of thousands of people; the source of the missense variants and their frequencies (gnomAD v4.1.2 (dataset gnomad_r4, accessed 18 October 2026)). <a href="https://gnomad.broadinstitute.org/" target="_blank" rel="noopener" aria-label="Learn more about gnomAD (opens in a new tab)">Learn more</a></dd>
       </div>
       
       <div id="af">
@@ -317,17 +348,17 @@
       
       <div id="hgvs">
         <dt>Protein change, DNA change <span class="gloss-full">(HGVS notation)</span></dt>
-        <dd>The standard way to write a variant: p.Met159Ile is the methionine at protein position 159 replaced by isoleucine, and c.477G&gt;A is the DNA letter change behind it.</dd>
+        <dd>The standard way to write a variant: p.Arg151Cys is the arginine at protein position 151 replaced by cysteine, and c.451C&gt;T is the DNA letter change behind it.</dd>
       </div>
       
       <div id="rsid">
         <dt>dbSNP, rsID</dt>
-        <dd>A variant&#39;s identifier in dbSNP, NCBI&#39;s catalogue of genetic variants, such as rs1042713.</dd>
+        <dd>A variant&#39;s identifier in dbSNP, NCBI&#39;s catalog of genetic variants, such as rs1042713.</dd>
       </div>
       
       <div id="am">
         <dt>AlphaMissense, AM</dt>
-        <dd>A machine-learning prediction of how likely one amino-acid change is to harm the protein, from 0 to 1: likely benign below 0.34, likely pathogenic from 0.564, ambiguous between. A prediction, not a clinical classification. <a href="https://doi.org/10.1126/science.adg7492" target="_blank" rel="noopener" aria-label="Learn more about AlphaMissense, AM (opens in a new tab)">Learn more</a></dd>
+        <dd>A machine-learning prediction of how likely one amino-acid change is to harm the protein, from 0 to 1. Likely pathogenic: score &gt; 0.564. Ambiguous: 0.34 ≤ score ≤ 0.564. Likely benign: score &lt; 0.34. Classes follow the source predictions before display rounding. A prediction, not a clinical classification. <a href="https://doi.org/10.1126/science.adg7492" target="_blank" rel="noopener" aria-label="Learn more about AlphaMissense, AM (opens in a new tab)">Learn more</a></dd>
       </div>
       
       <div id="pathogenicity">
@@ -347,7 +378,7 @@
       
       <div id="cfrscore">
         <dt>CFR score</dt>
-        <dd>The mean of a position&#39;s normalised recurrence (how many receptors) and normalised mean |ΔRRCS|; it orders the CFR table.</dd>
+        <dd>The mean of a position&#39;s normalized recurrence (how many receptors) and normalized mean |ΔRRCS|; it orders the CFR table.</dd>
       </div>
       
       <div id="kw">
@@ -382,10 +413,14 @@
       
     </dl>
     
+    <aside class="fine-print fine-print--page">
+    <p>On the report pages, terms with a dotted underline show the same sentence when you point at, tab to or tap them.</p>
+    </aside>
   </div>
 </section>
 
 </main>
+
 
 
 <footer class="site-footer">
@@ -409,9 +444,15 @@
       <a href="contact.html">Contact</a>
     </nav>
   </div>
+  
+  <div class="section-inner footer-versions"><aside class="fine-print fine-print--versions" data-data-versions>
+<span class="fine-print-title">Data versions:</span> <span class="fp-item">GPCompaRe database release 2026-11-05</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">GPCompaRe RRCS batch 2026-02-02</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">GPCRdb models (2024-05-15 build): AlphaFold-Multistate, with plain AlphaFold2 for some states</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">gnomAD v4.1.2</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">ClinVar 2026-10-11</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">AlphaMissense (Cheng et al. 2023)</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">UniProt 2026_04</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">Ensembl 116</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">HGNC 2026-10-30</span> <span class="fp-sep" aria-hidden="true">·</span> <a href="index.html#data-versions">Full list</a>
+</aside></div>
+  
 </footer>
 
 <script src="static/js/site.js" defer></script>
+<script src="static/js/search-box.js" defer></script>
 <script src="static/js/glossary-data.js" defer></script>
 <script src="static/js/glossary.js" defer></script>
 

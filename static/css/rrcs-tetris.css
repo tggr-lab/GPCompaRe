@@ -1,22 +1,34 @@
-/* RRCS Tetris easter egg (PAR2 report page only). See static/js/rrcs-tetris.js. */
+/* RRCS Tetris easter egg on every report page. See static/js/rrcs-tetris.js. */
 
+/* The pixel-art gamepad next to the "ΔRRCS distribution" heading: muted, but there to be
+   clicked. A 32 px square target (tappable on phones) around a 24 x 16 px icon. */
 .rrcs-tetris-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   margin-left: var(--s-2, 8px);
-  padding: 0 4px;
-  font-size: 0.9rem;
-  line-height: 1;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   color: var(--fgColor-muted);
   background: none;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: var(--r-sm);
   cursor: pointer;
-  opacity: 0.25;
+  opacity: 0.75;
   vertical-align: middle;
-  transition: opacity var(--t-fast);
+  transition: opacity var(--t-fast), color var(--t-fast), border-color var(--t-fast), background-color var(--t-fast);
 }
+.rrcs-tetris-icon { display: block; image-rendering: pixelated; }
 .rrcs-tetris-toggle:hover,
 .rrcs-tetris-toggle:focus-visible,
-.rrcs-tetris-toggle[aria-pressed="true"] { opacity: 1; color: var(--brand-primary); }
+.rrcs-tetris-toggle[aria-pressed="true"] { opacity: 1; color: var(--brand-primary); border-color: var(--borderColor-muted); background: var(--bgColor-muted); }
+.rrcs-tetris-toggle:focus-visible { outline: 2px solid var(--fgColor-accent); outline-offset: 1px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rrcs-tetris-toggle { transition: none; }
+}
+@media print { .rrcs-tetris-toggle { display: none; } }
 
 .rrcs-tetris {
   display: flex;
@@ -30,6 +42,8 @@
   padding: var(--s-3, 12px);
 }
 .rrcs-tetris[hidden] { display: none; }
+.rrcs-tetris:focus { outline: none; }
+.rrcs-tetris:focus-visible { outline: 2px solid var(--fgColor-accent); outline-offset: 2px; }
 
 .rrcs-tetris-board canvas {
   display: block;

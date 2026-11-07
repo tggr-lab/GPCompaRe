@@ -37,10 +37,15 @@
 })();
 </script>
 
+<link rel="icon" type="image/png" sizes="32x32" href="static/img/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="static/img/favicon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="static/img/apple-touch-icon.png">
 <link rel="stylesheet" href="static/css/fonts.css">
 <link rel="stylesheet" href="static/css/primer/primitives.css">
 <link rel="stylesheet" href="static/css/primer/primitives-dark.css">
 <link rel="stylesheet" href="static/css/site.css">
+<link rel="stylesheet" href="static/css/fine-print.css">
+<link rel="stylesheet" href="static/css/search-ui.css">
 
 
 
@@ -68,9 +73,9 @@
       <a href="downloads.html" aria-current="page">Downloads</a>
       <a href="contact.html">Contact</a>
     </nav>
-    <form class="topbar-search" action="browse/index.html" method="get" role="search">
-      <input type="search" name="q" class="topbar-search-input" placeholder="Search receptors, variants, positions" aria-label="Search receptors, variants and generic positions" spellcheck="false" autocapitalize="off">
-      <button type="submit" class="topbar-search-btn" aria-label="Search" title="Search receptors, variants and generic positions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    <form class="topbar-search" action="search/" method="get" role="search" data-search-index="search2/" data-suggest-host>
+      <input type="search" name="q" maxlength="300" class="topbar-search-input" placeholder="Search receptors, variants, positions" aria-label="Search receptors, variants, residues and genome positions" spellcheck="false" autocapitalize="off" autocomplete="off">
+      <button type="submit" class="topbar-search-btn" aria-label="Search" title="Search receptors, variants, residues and genome positions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
     </form>
     <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle color theme" title="Toggle light / dark">
       <svg class="icon icon-sun"  viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="2"  x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2"  y1="12" x2="5"  y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.5"  y1="4.5"  x2="6.5"  y2="6.5"/><line x1="17.5" y1="17.5" x2="19.5" y2="19.5"/><line x1="4.5"  y1="19.5" x2="6.5"  y2="17.5"/><line x1="17.5" y1="6.5"  x2="19.5" y2="4.5"/></g></svg>
@@ -82,7 +87,8 @@
   </div>
 </header>
 
-<div class="mobile-drawer" id="mobile-drawer" role="dialog" aria-modal="true" aria-label="Navigation menu" aria-hidden="true">
+
+<div class="mobile-drawer" id="mobile-drawer" role="dialog" aria-modal="true" aria-label="Navigation menu" aria-hidden="true" inert>
   <div class="mobile-drawer-backdrop" data-drawer-close></div>
   <aside class="mobile-drawer-panel">
     <div class="mobile-drawer-head">
@@ -91,8 +97,8 @@
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
       </button>
     </div>
-    <form class="drawer-search" action="browse/index.html" method="get" role="search">
-      <input type="search" name="q" class="v2-input" placeholder="Receptor, variant or position" aria-label="Search receptors, variants and generic positions" spellcheck="false" autocapitalize="off">
+    <form class="drawer-search" action="search/" method="get" role="search" data-search-index="search2/" data-suggest-host>
+      <input type="search" name="q" maxlength="300" class="v2-input" placeholder="Receptor, variant or position" aria-label="Search receptors, variants, residues and genome positions" spellcheck="false" autocapitalize="off" autocomplete="off">
       <button type="submit" class="topbar-search-btn" aria-label="Search"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
     </form>
     <nav class="mobile-drawer-nav" aria-label="Primary">
@@ -120,6 +126,23 @@
 
     <div class="downloads-grid">
 
+      <article class="downloads-block" aria-labelledby="downloads-statistics-heading">
+        <div class="downloads-block-head">
+          <h2 id="downloads-statistics-heading">Statistics tables and figures</h2>
+          <span class="badge badge-teal downloads-status">Available</span>
+        </div>
+        <p>
+          Every chart on the Statistics page downloads as PNG, SVG or CSV from its own card, and
+          the tables behind all of them come as one archive: the helix-pair atlas, the CFR atlas
+          (50 positions by 283 receptors), the receptor explorer, the variants at CFR
+          positions, and the paper's tables S3, S5 and the AlphaMissense summary as submitted.
+        </p>
+        <p>
+          <a class="btn btn-primary" href="data/stats/gpcompare_statistics_tables.zip" download>Download all statistics tables (zip)</a>
+          <a class="btn btn-ghost" href="statistics.html">Open the Statistics page</a>
+        </p>
+      </article>
+
       <article class="downloads-block" aria-labelledby="downloads-database-heading">
         <div class="downloads-block-head">
           <h2 id="downloads-database-heading">Database download</h2>
@@ -143,6 +166,7 @@
 </main>
 
 
+
 <footer class="site-footer">
   <div class="section-inner footer-inner">
     <div class="footer-brand">
@@ -164,9 +188,15 @@
       <a href="contact.html">Contact</a>
     </nav>
   </div>
+  
+  <div class="section-inner footer-versions"><aside class="fine-print fine-print--versions" data-data-versions>
+<span class="fine-print-title">Data versions:</span> <span class="fp-item">GPCompaRe database release 2026-11-05</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">GPCompaRe RRCS batch 2026-02-02</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">GPCRdb models (2024-05-15 build): AlphaFold-Multistate, with plain AlphaFold2 for some states</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">gnomAD v4.1.2</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">ClinVar 2026-10-11</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">AlphaMissense (Cheng et al. 2023)</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">UniProt 2026_04</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">Ensembl 116</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">HGNC 2026-10-30</span> <span class="fp-sep" aria-hidden="true">·</span> <a href="index.html#data-versions">Full list</a>
+</aside></div>
+  
 </footer>
 
 <script src="static/js/site.js" defer></script>
+<script src="static/js/search-box.js" defer></script>
 <script src="static/js/glossary-data.js" defer></script>
 <script src="static/js/glossary.js" defer></script>
 

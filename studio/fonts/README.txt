@@ -1,8 +1,8 @@
 Source Serif 4, self-hosted
 
-Used for headings (the --font-serif token in src/app/styles/tokens.css). Licence: SIL Open Font License 1.1, see OFL.txt
+Used for headings (the --font-serif token in src/app/styles/tokens.css). License: SIL Open Font License 1.1, see OFL.txt
 (text copied from https://github.com/adobe-fonts/source-serif/blob/main/LICENSE.md). Copyright 2014-2021 Adobe Systems
-Incorporated (as written in the font files; the upstream licence file says 2014-2023), with Reserved Font Name 'Source'.
+Incorporated (as written in the font files; the upstream license file says 2014-2023), with Reserved Font Name 'Source'.
 
 Files (variable font: wght 200-900, opsz 8-60; font version 4.004, name table "Version 4.004;hotconv 1.0.116;makeotfexe 2.5.65601").
 They are the Google Fonts subsets, unmodified, fetched 2026-10-19 from the URLs below. They are kept in

@@ -60,7 +60,11 @@
     var drawer = document.getElementById('mobile-drawer');
     if (!trigger || !drawer) return;
 
+    // Closed, the drawer is inert (set in the markup too) and hidden by the stylesheet, so
+    // its search box and links are not in the page's Tab order.
+    drawer.setAttribute('inert', '');
     function open() {
+      drawer.removeAttribute('inert');
       drawer.setAttribute('aria-hidden', 'false');
       trigger.setAttribute('aria-expanded', 'true');
       document.body.style.overflow = 'hidden';
@@ -69,6 +73,7 @@
     }
     function close() {
       drawer.setAttribute('aria-hidden', 'true');
+      drawer.setAttribute('inert', '');
       trigger.setAttribute('aria-expanded', 'false');
       document.body.style.overflow = '';
       trigger.focus();
@@ -435,8 +440,29 @@
     fillSelect(ligandSel, Array.from(new Set(data.map(function(d) { return d.ligand_type; }).filter(Boolean))));
     fillSelect(familySel, Array.from(new Set(data.map(function(d) { return d.receptor_family; }).filter(Boolean))));
 
+    // UniProt protein names ("Beta-2 adrenergic receptor") come from the search index, loaded the
+    // first time the reader types in the filter box. Until then (or if it fails) the filter
+    // matches name, gene, family and id as before.
+    var proteinNames = null;
+    var namesRequested = false;
+    function loadProteinNames() {
+      if (namesRequested || !opts.metaUrl || typeof fetch !== 'function') return;
+      namesRequested = true;
+      fetch(opts.metaUrl).then(function(r) { return r.ok ? r.json() : null; }).then(function(meta) {
+        if (!meta || !meta.receptorFields || !meta.receptors) return;
+        var gi = meta.receptorFields.indexOf('gid');
+        var ni = meta.receptorFields.indexOf('name');
+        var map = {};
+        meta.receptors.forEach(function(rec) { map[rec[gi]] = String(rec[ni] || '').toLowerCase(); });
+        proteinNames = map;
+        if (searchInput && searchInput.value.trim()) applyFilters();
+      }).catch(function() { namesRequested = false; });
+    }
+    function squash(s) { return s.replace(/[^a-z0-9]/g, ''); }
+
     function applyFilters() {
       var q = (searchInput ? searchInput.value : '').toLowerCase().trim();
+      var qs = squash(q);
       var lg = ligandSel ? ligandSel.value : '';
       var fm = familySel ? familySel.value : '';
       filtered = data.filter(function(d) {
@@ -444,7 +470,9 @@
         if (fm && d.receptor_family !== fm) return false;
         if (q) {
           var hay = (d.uniprot_name + ' ' + d.gene_name + ' ' + d.receptor_family + ' ' + d.gpcr_id).toLowerCase();
-          if (hay.indexOf(q) === -1) return false;
+          if (proteinNames && proteinNames[d.gpcr_id]) hay += ' ' + proteinNames[d.gpcr_id];
+          // "beta 2" finds "Beta-2"; punctuation-free text needs two characters to avoid noise
+          if (hay.indexOf(q) === -1 && !(qs.length >= 2 && squash(hay).indexOf(qs) !== -1)) return false;
         }
         return true;
       });
@@ -537,7 +565,11 @@
     }
 
     // Wire events
-    if (searchInput) searchInput.addEventListener('input', applyFilters);
+    if (searchInput) {
+      searchInput.addEventListener('input', applyFilters);
+      searchInput.addEventListener('focus', loadProteinNames);
+      searchInput.addEventListener('input', loadProteinNames);
+    }
     if (ligandSel) ligandSel.addEventListener('change', applyFilters);
     if (familySel) familySel.addEventListener('change', applyFilters);
     if (perPageSel) perPageSel.addEventListener('change', function() {

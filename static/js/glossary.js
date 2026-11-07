@@ -21,7 +21,10 @@
 
   var SCOPE = 'h1, h2, h3, th, .report-stat-label, .browse-legend, .callout-head, ' +
               '.v2-table-toolbar > strong, .snake-filter-label, .release-list dt, [data-glossary-scope]';
-  var SKIP = 'a, button, input, select, textarea, label, script, style, svg, .gloss-term, [data-glossary-skip]';
+  // Report section headings are titles, not definitions (a dotted line there reads as a broken
+  // link), and the ΔRRCS column headers carry their own tooltip: one tooltip per header.
+  var SKIP = 'a, button, input, select, textarea, label, script, style, svg, .gloss-term, [data-glossary-skip], ' +
+             '.report-section-head h2, th[data-sort="delta"], th[data-sort="d"]';
   var INTERACTIVE = 'th[data-sort], [role="button"]';
 
   var compiled = [];

@@ -1,0 +1,616 @@
+{
+ "schema": 1,
+ "_doc": "Sequence motifs defined by this database (website/motifs.py). Single source for the report pages (each report carries these definitions in its #rx-config block as `motifs`; snake-plus.js turns them into motif chips) and for search (the build copies this file to <site>/motifs.json with `members` added: every receptor that carries the motif, from the Studio packs). `requires` is the residue rule, by generic number (the part before the x); `contacts` are the motif's own contact pairs, by generic number. `count` is the published figure; the build checks it against the packs. No em dashes in any text.",
+ "motifs": [
+  {
+   "id": "xmy",
+   "name": "xMY",
+   "label": "xMY motif",
+   "positions": [
+    "3.35",
+    "3.36",
+    "3.37"
+   ],
+   "canonical": {
+    "3.35": "x",
+    "3.36": "M",
+    "3.37": "Y"
+   },
+   "requires": {
+    "3.36": "M",
+    "3.37": "Y"
+   },
+   "contacts": [
+    [
+     "3.36",
+     "3.37"
+    ],
+    [
+     "3.36",
+     "6.48"
+    ]
+   ],
+   "note": "TM3: a variable residue at 3.35, then Met3.36 and Tyr3.37",
+   "definition": "A TM3 sequence pattern: Met at 3.36 and Tyr at 3.37, after a variable residue at 3.35. Of the 283 Class A receptors, 30 carry it, the four PARs among them. Its two contacts, Met3.36 to Tyr3.37 and Met3.36 to the 6.48 toggle-switch position, tend to be weaker in the active model across the receptors that carry it (GPCompaRe study).",
+   "contact_finding": "Across the receptors that carry it, Met3.36 to 6.48 is weaker in the active model in 27 of 30 and Met3.36 to Tyr3.37 in 21 of 28 (the receptors where the contact exists).",
+   "source": "GPCompaRe study",
+   "glossary": "glossary.html#xmy",
+   "count": {
+    "receptors": 30,
+    "of": 283
+   },
+   "members": [
+    {
+     "gid": "apj_human",
+     "gene": "APLNR",
+     "name": "APJ",
+     "residues": {
+      "3.35": [
+       112,
+       "N"
+      ],
+      "3.36": [
+       113,
+       "M"
+      ],
+      "3.37": [
+       114,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "c5ar1_human",
+     "gene": "C5AR1",
+     "name": "C5AR1",
+     "residues": {
+      "3.35": [
+       119,
+       "N"
+      ],
+      "3.36": [
+       120,
+       "M"
+      ],
+      "3.37": [
+       121,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "c5ar2_human",
+     "gene": "C5AR2",
+     "name": "C5AR2",
+     "residues": {
+      "3.35": [
+       117,
+       "T"
+      ],
+      "3.36": [
+       118,
+       "M"
+      ],
+      "3.37": [
+       119,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "cltr2_human",
+     "gene": "CYSLTR2",
+     "name": "CLTR2",
+     "residues": {
+      "3.35": [
+       121,
+       "N"
+      ],
+      "3.36": [
+       122,
+       "M"
+      ],
+      "3.37": [
+       123,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "galr3_human",
+     "gene": "GALR3",
+     "name": "GALR3",
+     "residues": {
+      "3.35": [
+       105,
+       "T"
+      ],
+      "3.36": [
+       106,
+       "M"
+      ],
+      "3.37": [
+       107,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "gnrhr_human",
+     "gene": "GNRHR",
+     "name": "GNRHR",
+     "residues": {
+      "3.35": [
+       124,
+       "S"
+      ],
+      "3.36": [
+       125,
+       "M"
+      ],
+      "3.37": [
+       126,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "gp141_human",
+     "gene": "GPR141",
+     "name": "GP141",
+     "residues": {
+      "3.35": [
+       98,
+       "H"
+      ],
+      "3.36": [
+       99,
+       "M"
+      ],
+      "3.37": [
+       100,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "gp171_human",
+     "gene": "GPR171",
+     "name": "GP171",
+     "residues": {
+      "3.35": [
+       97,
+       "N"
+      ],
+      "3.36": [
+       98,
+       "M"
+      ],
+      "3.37": [
+       99,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "gp174_human",
+     "gene": "GPR174",
+     "name": "GP174",
+     "residues": {
+      "3.35": [
+       101,
+       "N"
+      ],
+      "3.36": [
+       102,
+       "M"
+      ],
+      "3.37": [
+       103,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "gp182_human",
+     "gene": "GPR182",
+     "name": "GP182",
+     "residues": {
+      "3.35": [
+       136,
+       "N"
+      ],
+      "3.36": [
+       137,
+       "M"
+      ],
+      "3.37": [
+       138,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "gper1_human",
+     "gene": "GPER1",
+     "name": "GPER1",
+     "residues": {
+      "3.35": [
+       140,
+       "N"
+      ],
+      "3.36": [
+       141,
+       "M"
+      ],
+      "3.37": [
+       142,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "gpr17_human",
+     "gene": "GPR17",
+     "name": "GPR17",
+     "residues": {
+      "3.35": [
+       142,
+       "N"
+      ],
+      "3.36": [
+       143,
+       "M"
+      ],
+      "3.37": [
+       144,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "gpr34_human",
+     "gene": "GPR34",
+     "name": "GPR34",
+     "residues": {
+      "3.35": [
+       137,
+       "N"
+      ],
+      "3.36": [
+       138,
+       "M"
+      ],
+      "3.37": [
+       139,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "gpr55_human",
+     "gene": "GPR55",
+     "name": "GPR55",
+     "residues": {
+      "3.35": [
+       104,
+       "S"
+      ],
+      "3.36": [
+       105,
+       "M"
+      ],
+      "3.37": [
+       106,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "gpr87_human",
+     "gene": "GPR87",
+     "name": "GPR87",
+     "residues": {
+      "3.35": [
+       124,
+       "N"
+      ],
+      "3.36": [
+       125,
+       "M"
+      ],
+      "3.37": [
+       126,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "lpar5_human",
+     "gene": "LPAR5",
+     "name": "LPAR5",
+     "residues": {
+      "3.35": [
+       104,
+       "N"
+      ],
+      "3.36": [
+       105,
+       "M"
+      ],
+      "3.37": [
+       106,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "lpar6_human",
+     "gene": "LPAR6",
+     "name": "LPAR6",
+     "residues": {
+      "3.35": [
+       99,
+       "N"
+      ],
+      "3.36": [
+       100,
+       "M"
+      ],
+      "3.37": [
+       101,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "lt4r1_human",
+     "gene": "LTB4R",
+     "name": "LT4R1",
+     "residues": {
+      "3.35": [
+       100,
+       "S"
+      ],
+      "3.36": [
+       101,
+       "M"
+      ],
+      "3.37": [
+       102,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "lt4r2_human",
+     "gene": "LTB4R2",
+     "name": "LT4R2",
+     "residues": {
+      "3.35": [
+       104,
+       "S"
+      ],
+      "3.36": [
+       105,
+       "M"
+      ],
+      "3.37": [
+       106,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "p2ry8_human",
+     "gene": "P2RY8",
+     "name": "P2RY8",
+     "residues": {
+      "3.35": [
+       106,
+       "N"
+      ],
+      "3.36": [
+       107,
+       "M"
+      ],
+      "3.37": [
+       108,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "p2y10_human",
+     "gene": "P2RY10",
+     "name": "P2Y10",
+     "residues": {
+      "3.35": [
+       116,
+       "N"
+      ],
+      "3.36": [
+       117,
+       "M"
+      ],
+      "3.37": [
+       118,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "p2y12_human",
+     "gene": "P2RY12",
+     "name": "P2Y12",
+     "residues": {
+      "3.35": [
+       107,
+       "T"
+      ],
+      "3.36": [
+       108,
+       "M"
+      ],
+      "3.37": [
+       109,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "p2y13_human",
+     "gene": "P2RY13",
+     "name": "P2Y13",
+     "residues": {
+      "3.35": [
+       126,
+       "T"
+      ],
+      "3.36": [
+       127,
+       "M"
+      ],
+      "3.37": [
+       128,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "p2y14_human",
+     "gene": "P2RY14",
+     "name": "P2Y14",
+     "residues": {
+      "3.35": [
+       104,
+       "N"
+      ],
+      "3.36": [
+       105,
+       "M"
+      ],
+      "3.37": [
+       106,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "par1_human",
+     "gene": "F2R",
+     "name": "PAR1",
+     "residues": {
+      "3.35": [
+       185,
+       "N"
+      ],
+      "3.36": [
+       186,
+       "M"
+      ],
+      "3.37": [
+       187,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "par2_human",
+     "gene": "F2RL1",
+     "name": "PAR2",
+     "residues": {
+      "3.35": [
+       158,
+       "N"
+      ],
+      "3.36": [
+       159,
+       "M"
+      ],
+      "3.37": [
+       160,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "par3_human",
+     "gene": "F2RL2",
+     "name": "PAR3",
+     "residues": {
+      "3.35": [
+       176,
+       "N"
+      ],
+      "3.36": [
+       177,
+       "M"
+      ],
+      "3.37": [
+       178,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "par4_human",
+     "gene": "F2RL3",
+     "name": "PAR4",
+     "residues": {
+      "3.35": [
+       159,
+       "H"
+      ],
+      "3.36": [
+       160,
+       "M"
+      ],
+      "3.37": [
+       161,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "rl3r1_human",
+     "gene": "RXFP3",
+     "name": "RL3R1",
+     "residues": {
+      "3.35": [
+       165,
+       "N"
+      ],
+      "3.36": [
+       166,
+       "M"
+      ],
+      "3.37": [
+       167,
+       "Y"
+      ]
+     }
+    },
+    {
+     "gid": "v2r_human",
+     "gene": "AVPR2",
+     "name": "V2R",
+     "residues": {
+      "3.35": [
+       122,
+       "G"
+      ],
+      "3.36": [
+       123,
+       "M"
+      ],
+      "3.37": [
+       124,
+       "Y"
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,105 @@
+/* fine-print.css: the "fine print" component.
+   Prose, definitions, release lines and method notes that support a block but must not compete
+   with it. Small, muted, readable in light and dark (colours come from the site tokens), and
+   placed at the end of the block it belongs to or at the bottom of the page, above the footer.
+
+   Markup (see templates/_partials/fine_print.html for the Jinja macros, render.js finePrint()
+   for the same in JS):
+     <aside class="fine-print">...</aside>                       a visible note
+     <aside class="fine-print fine-print--page">...</aside>      page bottom: adds a rule above
+     <details class="fine-print"><summary>About this data</summary>...</details>   collapsible
+   Inside: <p>, <ul>, <dl>, <code>, <a>. Use .fine-print-title for a bold first line. */
+
+.fine-print {
+  --fp-size: 0.8125rem;
+  margin: var(--s-3) 0 0;
+  max-width: 72ch;
+  font-size: var(--fp-size);
+  line-height: 1.55;
+  font-weight: 400;
+  color: var(--fgColor-muted);
+}
+.fine-print > :first-child { margin-top: 0; }
+.fine-print > :last-child { margin-bottom: 0; }
+.fine-print p, .fine-print li, .fine-print dd, .fine-print dt, .fine-print summary { font-size: inherit; color: inherit; line-height: inherit; }
+.fine-print p { margin: 0 0 var(--s-2); max-width: none; }
+.fine-print ul, .fine-print ol { margin: 0 0 var(--s-2); padding-left: 1.2rem; }
+.fine-print li { margin: 0 0 var(--s-1); }
+.fine-print a { color: var(--fgColor-accent); text-decoration: underline; text-underline-offset: 2px; }
+.fine-print strong, .fine-print .fine-print-title { font-weight: 600; color: var(--fgColor-muted); }
+.fine-print code, .fine-print .mono { font-family: var(--font-mono); font-size: 0.95em; white-space: normal; }
+.fine-print .mono { white-space: nowrap; }
+.fine-print dl { margin: 0 0 var(--s-2); display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px var(--s-4); }
+.fine-print dt { font-weight: 600; }
+.fine-print dd { margin: 0; overflow-wrap: anywhere; }
+
+/* the page-bottom placement: a rule above, wider measure */
+.fine-print--page {
+  margin-top: var(--s-7);
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--borderColor-muted);
+  max-width: none;
+}
+.fine-print--page > * { max-width: 72ch; }
+
+/* collapsible form: "About this data", "How this works" */
+details.fine-print > summary,
+.fine-print details > summary {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s-1);
+  cursor: pointer;
+  list-style: none;
+  color: var(--fgColor-muted);
+  font-weight: 500;
+  border-radius: var(--r-sm);
+}
+details.fine-print > summary::-webkit-details-marker,
+.fine-print details > summary::-webkit-details-marker { display: none; }
+details.fine-print > summary::before,
+.fine-print details > summary::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 0; height: 0;
+  border-left: 5px solid currentColor;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transform: translateY(-1px);
+  transition: transform 0.12s;
+}
+details.fine-print[open] > summary::before,
+.fine-print details[open] > summary::before { transform: translateY(-1px) rotate(90deg); }
+details.fine-print > summary:hover,
+.fine-print details > summary:hover { color: var(--fgColor-default); }
+details.fine-print > summary:focus-visible,
+.fine-print details > summary:focus-visible { outline: 2px solid var(--brand-primary); outline-offset: 2px; }
+details.fine-print[open] > summary,
+.fine-print details[open] > summary { margin-bottom: var(--s-2); }
+.fine-print details + details { margin-top: var(--s-2); }
+.fine-print details > :not(summary) { max-width: 72ch; }
+/* the body of an opened details block reads as a quote of the block above it */
+.fine-print-body, details.fine-print[open] > :not(summary), .fine-print details[open] > :not(summary) { border-left: 2px solid var(--borderColor-muted); padding-left: var(--s-3); }
+.fine-print details[open] > .sr-table-wrap, details.fine-print[open] > .sr-table-wrap { border-left: 0; padding-left: 0; max-width: none; }
+
+/* the site-wide data versions line (footer) */
+.footer-versions { margin-top: var(--s-4); padding-top: var(--s-3); border-top: 1px solid var(--borderColor-muted); }
+.fine-print--versions { margin: 0; max-width: none; }
+.fine-print--versions .fine-print-title { margin-right: var(--s-1); }
+.fine-print--versions .fp-sep { margin: 0 var(--s-1); opacity: 0.6; }
+
+/* the full list on the landing page */
+.fine-print .fp-versions { margin: 0 0 var(--s-2); }
+.fine-print .fp-versions th { text-align: left; font-weight: 600; padding: 2px var(--s-4) 2px 0; vertical-align: top; white-space: nowrap; }
+.fine-print .fp-versions td { padding: 2px var(--s-4) 2px 0; overflow-wrap: anywhere; }
+.fine-print .fp-versions { border-collapse: collapse; font-size: inherit; }
+
+@media (max-width: 720px) {
+  .fine-print dl { grid-template-columns: minmax(0, 1fr); }
+  .fine-print--page { margin-top: var(--s-6); }
+}
+@media print { .fine-print { color: #444; } }
+
+.fine-print .fp-detail { opacity: 0.9; }
+.fine-print .fp-versions td { padding-bottom: var(--s-2); }
+
+.fine-print .fp-item { display: inline-block; max-width: 100%; vertical-align: top; }

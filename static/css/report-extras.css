@@ -1,0 +1,289 @@
+/* report-extras.css: the opt-in report additions (3D view, ClinVar section,
+   residue table, residue drawer) and the report-page presentation rules that
+   live outside the frozen sections. The additions sit outside every
+   .report-section and are closed, collapsed or hidden until asked for. */
+
+/* Header: protein name beside the symbol */
+.report-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--s-3);
+  row-gap: 2px;
+  margin: 0 0 var(--s-3);
+}
+.report-title-row .report-title { margin: 0; }
+.report-protein-name {
+  font-family: var(--font-serif);
+  font-size: clamp(1.05rem, 1.8vw, 1.3rem);
+  color: var(--fgColor-muted);
+  overflow-wrap: anywhere;
+}
+
+/* Header stat cards: increase = stronger in the active model (red), decrease =
+   stronger in the inactive model (blue), the site-wide convention. The same
+   classes inside the frozen sections are untouched. */
+.report-stat.report-stat-up { border-left-color: var(--semantic-active); }
+.report-stat.report-stat-up .report-stat-num { color: var(--semantic-active); }
+.report-stat.report-stat-down { border-left-color: var(--semantic-inactive); }
+.report-stat.report-stat-down .report-stat-num { color: var(--semantic-inactive); }
+
+/* Charts are drawn when they near the screen: keep their place until then so the
+   page does not jump. Heights are the figures' own (website/page_generators/
+   gpcr_report_helpers.py). */
+.report-section .v2-chart:not([data-chart-rendered]) { min-height: 350px; }
+.report-section #scatter-chart:not([data-chart-rendered]) { min-height: 400px; }
+.report-section #residue-chart:not([data-chart-rendered]) { min-height: 620px; }
+.report-section #tm-breakdown-chart:not([data-chart-rendered]) { min-height: 380px; }
+
+.report-extra {
+  margin-bottom: var(--s-7);
+  scroll-margin-top: calc(var(--topbar-height, 68px) + 48px);
+}
+.report-extra .report-section-head { margin-bottom: var(--s-3); }
+
+.rx-actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0 0 var(--s-3); }
+.rx-attr, .rx-caption {
+  font-size: 0.82rem;
+  color: var(--fgColor-muted);
+  margin: var(--s-2) 0 0;
+  line-height: 1.5;
+}
+.rx-none { margin: var(--s-3) 0; }
+
+/* 3D view */
+.rx-3d-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-2); }
+.rx-3d-show { display: inline-flex; gap: 2px; }
+.rx-show-btn.active {
+  background: var(--bgColor-accent-muted);
+  color: var(--fgColor-accent);
+  border-color: var(--fgColor-accent);
+}
+.rx-3d-status { font-size: 0.82rem; color: var(--fgColor-muted); }
+.rx-3d-pane {
+  position: relative;
+  height: clamp(320px, 60vh, 560px);
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--bgColor-default);
+}
+.rx-3d-pane canvas { display: block; }
+
+/* ClinVar section */
+.rx-details > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: var(--s-2) 0;
+}
+.rx-details[open] > summary { margin-bottom: var(--s-2); }
+.rx-stars { white-space: nowrap; letter-spacing: 1px; color: var(--brand-accent, var(--fgColor-default)); }
+.rx-res-link {
+  font: inherit;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fgColor-accent);
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+.rx-res-link:hover { text-decoration-style: solid; }
+
+/* Cells that open the residue drawer (residue-drawer.js sets .rx-drawer-on on <html>) */
+.rx-drawer-on #top-changes-table tbody td:nth-child(2),
+.rx-drawer-on #top-changes-table tbody td:nth-child(3),
+.rx-drawer-on #variants-table tbody td:nth-child(1),
+.rx-drawer-on #variants-table tbody td:nth-child(2),
+.rx-drawer-on #rrcs-table tbody td:nth-child(1),
+.rx-drawer-on #rrcs-table tbody td:nth-child(3),
+.rx-drawer-on #tm-summary-table .tm-res { cursor: pointer; }
+.rx-drawer-on #top-changes-table tbody td:nth-child(2):hover,
+.rx-drawer-on #top-changes-table tbody td:nth-child(3):hover,
+.rx-drawer-on #variants-table tbody td:nth-child(1):hover,
+.rx-drawer-on #variants-table tbody td:nth-child(2):hover,
+.rx-drawer-on #rrcs-table tbody td:nth-child(1):hover,
+.rx-drawer-on #rrcs-table tbody td:nth-child(3):hover,
+.rx-drawer-on #tm-summary-table .tm-res:hover {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+/* Residue drawer */
+.rx-drawer {
+  position: fixed;
+  right: var(--s-4);
+  bottom: var(--s-4);
+  z-index: 60;
+  width: min(360px, calc(100vw - 2 * var(--s-4)));
+  max-height: min(70vh, 560px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bgColor-default);
+  color: var(--fgColor-default);
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--r-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+.rx-drawer[hidden] { display: none; }
+.rx-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  border-bottom: 1px solid var(--borderColor-muted);
+}
+.rx-drawer-title { font-family: var(--font-serif); font-size: 1.05rem; }
+.rx-drawer-close {
+  font: inherit;
+  font-size: 1.3rem;
+  line-height: 1;
+  padding: 2px 8px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--fgColor-muted);
+  cursor: pointer;
+}
+.rx-drawer-close:hover { background: var(--bgColor-neutral-muted); color: var(--fgColor-default); }
+.rx-drawer-body { padding: var(--s-3); overflow-y: auto; font-size: 0.9rem; }
+.rx-facts { display: grid; grid-template-columns: auto 1fr; gap: 2px var(--s-3); margin: 0 0 var(--s-3); }
+.rx-facts dt { color: var(--fgColor-muted); }
+.rx-facts dd { margin: 0; text-align: right; }
+.rx-drawer h3 {
+  font-size: 0.8rem;
+  text-transform: none;
+  color: var(--fgColor-muted);
+  margin: var(--s-3) 0 var(--s-1);
+}
+.rx-drawer ul { list-style: none; margin: 0; padding: 0; }
+.rx-drawer li { padding: 2px 0; border-top: 1px solid var(--borderColor-muted); }
+.rx-drawer li:first-child { border-top: 0; }
+.rx-drawer .rx-drawer-actions { display: flex; gap: var(--s-2); margin-top: var(--s-3); }
+
+@media (max-width: 600px) {
+  .rx-drawer {
+    right: 0;
+    left: 0;
+    bottom: 0;
+    width: auto;
+    border-radius: var(--r-md) var(--r-md) 0 0;
+    max-height: 60vh;
+  }
+}
+@media print {
+  .rx-drawer, .rx-actions, .rx-3d-panel { display: none !important; }
+}
+
+
+/* Cells that open the drawer are keyboard stops (residue-drawer.js adds tabindex) */
+[data-rx-cell]:focus-visible {
+  outline: 2px solid var(--fgColor-accent);
+  outline-offset: -2px;
+  border-radius: var(--r-sm);
+}
+
+/* Drawer: tools, contact partners */
+.rx-drawer { width: min(400px, calc(100vw - 2 * var(--s-4))); }
+.rx-drawer-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-2); }
+.rx-drawer-tools .btn { text-decoration: none; }
+.rx-copied { font-size: 0.8rem; color: var(--fgColor-muted); overflow-wrap: anywhere; }
+.rx-pairs-scroll { overflow-x: auto; }
+.rx-pairs { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.rx-pairs th {
+  text-align: right;
+  font-weight: 600;
+  color: var(--fgColor-muted);
+  padding: 2px 6px;
+  border-bottom: 1px solid var(--borderColor-muted);
+}
+.rx-pairs th:first-child, .rx-pairs td:first-child { text-align: left; }
+.rx-pairs td { padding: 2px 6px; border-top: 1px solid var(--borderColor-muted); white-space: nowrap; }
+.rx-pairs td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.rx-pairs tr[hidden] { display: none; }
+.rx-pair-focus { padding: 0 8px; min-height: 26px; font-size: 0.78rem; }
+.rx-note { font-size: 0.8rem; color: var(--fgColor-muted); margin: var(--s-2) 0 0; line-height: 1.45; }
+.rx-more-link { display: inline-block; margin-top: var(--s-1); font-size: 0.85rem; }
+.rx-drawer .muted { color: var(--fgColor-muted); }
+
+/* Residue table */
+.rx-rt-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-2); }
+.rx-rt-filters { display: inline-flex; flex-wrap: wrap; gap: var(--s-2); }
+.rx-filter-btn.active { background: var(--bgColor-accent-muted); color: var(--fgColor-accent); border-color: var(--fgColor-accent); }
+.rx-filter-btn.rx-filter-active.active { background: var(--semantic-active-soft); color: var(--semantic-active); border-color: var(--semantic-active); }
+.rx-filter-btn.rx-filter-inactive.active { background: var(--semantic-inactive-soft); color: var(--semantic-inactive); border-color: var(--semantic-inactive); }
+.rx-rt-count { font-size: 0.82rem; color: var(--fgColor-muted); }
+.rx-rt-csv { margin-left: auto; }
+.rx-rt-scroll { max-height: min(70vh, 640px); overflow: auto; }
+.rx-rt-table thead th { position: sticky; top: 0; z-index: 2; background: var(--bgColor-inset); white-space: nowrap; }
+.rx-sort-btn {
+  font: inherit;
+  font-weight: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-align: inherit;
+}
+.rx-sort-btn:focus-visible { outline: 2px solid var(--fgColor-accent); outline-offset: 2px; }
+.rx-rt-table th[aria-sort="ascending"] .rx-sort-btn::after { content: " ▲"; color: var(--brand-primary); }
+.rx-rt-table th[aria-sort="descending"] .rx-sort-btn::after { content: " ▼"; color: var(--brand-primary); }
+.rx-rt-table td { white-space: nowrap; }
+.rx-rt-table td:first-child, .rx-rt-table th:first-child {
+  position: sticky;
+  left: 0;
+  background: var(--bgColor-default);
+}
+.rx-rt-table thead th:first-child { z-index: 3; background: var(--bgColor-inset); }
+
+/* Phone tables: the ΔRRCS column stays in view and rsIDs stay on one line.
+   CSS only: the table markup inside the report sections is not touched. */
+@media (max-width: 720px) {
+  #top-changes-table th:nth-child(6), #top-changes-table td:nth-child(6),
+  #variants-table th:nth-child(6), #variants-table td:nth-child(6) {
+    position: sticky;
+    right: 0;
+    left: 4.75rem;   /* scrolled past the end it stays beside the pinned first column */
+    z-index: 1;
+    background: var(--bgColor-default);
+    box-shadow: -8px 0 8px -8px rgba(15, 23, 42, 0.28);
+  }
+  #top-changes-table thead th:nth-child(6), #variants-table thead th:nth-child(6) { background: var(--bgColor-inset); z-index: 2; }
+  #top-changes-table th:nth-child(1), #top-changes-table td:nth-child(1),
+  #variants-table th:nth-child(1), #variants-table td:nth-child(1) {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--bgColor-default);
+  }
+  #top-changes-table thead th:nth-child(1), #variants-table thead th:nth-child(1) { background: var(--bgColor-inset); z-index: 2; }
+  #top-changes-table th, #top-changes-table td, #variants-table th, #variants-table td { padding-left: 8px; padding-right: 8px; }
+  #variants-table td:last-child, #variants-table td.mono { white-space: nowrap; overflow-wrap: normal; }
+  #top-changes-table tr.significant-row td:nth-child(1), #top-changes-table tr.significant-row td:nth-child(6) {
+    background: color-mix(in srgb, var(--brand-accent) 8%, var(--bgColor-default));
+  }
+}
+[data-color-mode="dark"] #top-changes-table td:nth-child(6), [data-color-mode="dark"] #variants-table td:nth-child(6) {
+  box-shadow: -8px 0 8px -8px rgba(0, 0, 0, 0.6);
+}
+
+/* Motif badge in the report header (website/motifs.py): a receptor that carries a registry motif,
+   linked to its glossary entry. Neutral colours: a motif is not active or inactive. */
+.report-motif { display: inline-flex; align-items: center; gap: 6px; }
+.motif-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 999px;
+  background: var(--bgColor-muted);
+  color: var(--fgColor-default);
+  font-weight: 600;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  text-decoration: none;
+}
+.motif-badge:hover { border-color: var(--fgColor-accent); color: var(--fgColor-accent); }
+.motif-badge:focus-visible { outline: 2px solid var(--focus-outlineColor, var(--fgColor-accent)); outline-offset: 2px; }
+.motif-badge-res { font-family: var(--font-mono); font-size: 0.8rem; color: var(--fgColor-muted); }

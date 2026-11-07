@@ -1,0 +1,33 @@
+GPCompaRe pair viewer: notices
+
+pair-viewer.js and its chunks bundle Mol* 5.13.1 (https://molstar.org, https://github.com/molstar/molstar) and the packages it depends on.
+THIRD_PARTY_NOTICES.txt beside this file lists every package with its license text.
+
+Mol* license:
+
+The MIT License
+
+    Copyright (c) 2017 - now, Mol* contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+Structure models: if the page shows the GPCRdb models (2024-05-15 build: AlphaFold-Multistate, with plain AlphaFold2 for some states), credit them where they are shown:
+GPCRdb (https://gpcrdb.org), CC BY 4.0 (https://docs.gpcrdb.org/legal_notice);
+for an AlphaFold-Multistate model, Heo L, Feig M, Multi-state modeling of G-protein coupled receptors at experimental accuracy. Proteins 90:1873-1885 (2022), doi 10.1002/prot.26382;
+for a plain AlphaFold2 model, Jumper J et al., Highly accurate protein structure prediction with AlphaFold. Nature 596:583-589 (2021), doi 10.1038/s41586-021-03819-2.
