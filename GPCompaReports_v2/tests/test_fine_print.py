@@ -161,7 +161,7 @@ def test_statistics_text_is_untouched_by_the_presentation_changes():
     html = (BUILD_DIR / 'statistics.html').read_text(encoding='utf-8')
     # 2026-11-06: the box plots became the explorer's Families tab; the Kruskal-Wallis sentence moved with them
     for needle in ('The Families tab compares groups with a Kruskal-Wallis test', 'What are Core Functional Residues (CFRs)?',
-                   'Where these cross-receptor numbers come from.', 'This association supports the CFR score as a feature for prioritizing variants.'):
+                   'Where these cross-receptor numbers come from.', 'Predictions, not clinical evidence.'):
         assert needle in html, needle
 
 
@@ -228,8 +228,9 @@ def test_landing_methods_text_and_glossary_show_the_registry_release():
 def test_statistics_page_labels_its_variant_layer_as_the_february_batch():
     html = (BUILD_DIR / 'statistics.html').read_text(encoding='utf-8')
     refs = re.search(r'<p class="stats-refs.*?</p>', html, re.S).group(0)
-    assert SRC['gnomad_batch']['label'] in refs and 'batch layer' in refs
-    assert SRC['gnomad']['label'] not in refs                   # the search and report release is a different layer
+    assert SRC['gnomad_batch']['label'] in refs and 'AlphaMissense class comparison' in refs
+    assert SRC['gnomad']['label'] in refs and 'per-position variants' in refs   # each release named with its use
+    assert 'paper' not in refs and 'layer' not in refs
 
 
 @needs_build
@@ -246,12 +247,13 @@ def test_only_the_paper_batch_query_carries_the_february_access_date(page):
 
 
 @needs_build
-def test_the_versions_table_names_the_batch_query_as_the_papers_and_the_statistics_layer():
+def test_the_versions_table_names_the_batch_query_by_its_use():
     landing = (BUILD_DIR / 'index.html').read_text(encoding='utf-8')
     table = _VERSIONS_TABLE.search(landing)
     assert table, 'no data versions table on the landing page'
     table = table.group(0)
-    assert 'gnomAD, statistics and paper' in table and SRC['gnomad_batch']['long_label'] in table
+    assert 'gnomAD, statistics comparison' in table and SRC['gnomad_batch']['long_label'] in table
+    assert 'paper' not in table.lower() and 'frozen' not in table.lower()
     assert 'gnomAD, search and reports' in table and SRC['gnomad']['long_label'] in table
 
 
@@ -444,7 +446,6 @@ def test_the_help_examples_vary_across_receptors(open_page, scheme):
 @pytestmark_browser
 def test_statistics_methodology_reads_as_fine_print_without_losing_text(open_page):
     page = open_page('/statistics.html')
-    sizes = page.locator('.stats-page .callout').first.locator('p').evaluate_all('els => els.map(e => parseFloat(getComputedStyle(e).fontSize))')
-    assert sizes[0] > sizes[1], sizes                          # the definition leads, the method notes recede
+    assert page.locator('#chart-pathogenicity-method').evaluate('e => e.classList.contains("fine-print")')   # counts recede
     assert page.locator('.stats-refs').evaluate('e => e.classList.contains("fine-print")')
     assert 'Kruskal-Wallis' in page.locator('#sec-e').evaluate('e => e.closest("section").innerText')
