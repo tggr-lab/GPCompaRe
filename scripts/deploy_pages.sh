@@ -89,16 +89,17 @@ fi
 
 # 4. Sync the stage into the worktree. --delete drops files the stage does not
 #    hold, which is why the stage has to be a complete release. The stage is
-#    already free of /data/, /poster/ and /dossier/ (build_release.sh, and
-#    check_stage.py refuses them); the excludes stay as a second guard.
+#    already free of /poster/ and /dossier/ and holds only data/stats/ under
+#    data/ (build_release.sh; check_stage.py checks it); the excludes stay as
+#    a second guard. data/stats/ feeds the Statistics page and must ship.
 echo "==> Syncing stage to gh-pages..."
+rm -rf "$WORKTREE/data"
 rsync -a --delete \
   --exclude='.git' --exclude='.nojekyll' \
-  --exclude='/data/' \
+  --include='/data/' --include='/data/stats/***' --exclude='/data/*' \
   --exclude='/poster/' --exclude='/dossier/' \
   "$STAGE/" "$WORKTREE/"
-# Drop any stale data/ left from a previous deploy so gh-pages stays lean.
-rm -rf "$WORKTREE/data"
+[ -f "$WORKTREE/data/stats/receptors.json" ] || { echo "ERROR: data/stats missing after sync" >&2; exit 1; }
 touch "$WORKTREE/.nojekyll"
 
 # 5. Commit + push
