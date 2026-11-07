@@ -151,6 +151,11 @@
         </p>
       {% endcall %}
 
+      <div class="seg-order-row">
+        <span class="seg-order-slot" data-seg-order-slot></span>
+        <aside class="fine-print seg-order-fine">Segment order for every chart on this page. Helices first: TM1 to TM7 and H8, then the loops, then the termini. Sequence: along the chain. The models are most reliable in the helices. The choice is remembered in this browser.</aside>
+      </div>
+
       {% call chart_card(cards['chart-cfr-atlas'], static_prefix, layout_light_json, layout_dark_json) %}
         <span class="chips" role="group" aria-label="Group rows by" data-chips="group">
           <span class="chips-name">Rows</span>
@@ -164,7 +169,6 @@
         </span>
         <span class="chips" role="group" aria-label="Column order" data-chips="order">
           <span class="chips-name">Columns</span>
-          <span class="seg-order-slot" data-seg-order-slot></span>
           <button type="button" class="chip" data-value="rank" aria-pressed="false">CFR rank</button>
         </span>
         <span class="chips" role="group" aria-label="View" data-chips="view">
@@ -174,14 +178,12 @@
         <span class="find-box"><label class="chips-name" for="cfr-atlas-find">Find receptor</label><input id="cfr-atlas-find" type="search" autocomplete="off" placeholder="gene or name" data-find="cfr_atlas"></span>
       {% endcall %}
 
-      {% call chart_card(cards['chart-cfr-dotplot'], static_prefix, layout_light_json, layout_dark_json) %}
-        <span class="chips"><span class="chips-name">Legend</span><span class="seg-order-slot" data-seg-order-slot></span></span>
-      {% endcall %}
+      {{ chart_card(cards['chart-cfr-dotplot'], static_prefix, layout_light_json, layout_dark_json) }}
 
       {% if cfr_table %}
       <div class="v2-table-wrap">
         <div class="v2-table-toolbar">
-          <strong>Top {{ cfr_top_n }} Core Functional Residue positions</strong>
+          <strong>Top {{ cfr_top_n }} Core Functional Residue Positions</strong>
           <span class="layer-badge layer-badge--paper">Paper analysis</span>
           <span class="v2-table-tools">
             <a class="cc-btn" href="{{ static_prefix }}{{ stats_dir }}/cfr_top50.csv" download>CSV</a>
@@ -189,7 +191,7 @@
           <span class="v2-table-note">Supplementary Table S3, values as reported. Click a column to sort; a generic number opens search.</span>
         </div>
         <div class="v2-table-scroll">
-          <table class="v2-table" id="cfr-table" data-sortable>
+          <table class="v2-table" id="cfr-table" data-sortable data-gn-cols="1">
             <thead>
               <tr>
                 <th data-sort="num" data-tooltip="Rank by composite CFR score">Rank</th>
@@ -205,7 +207,7 @@
             {% for row in cfr_table %}
               <tr>
                 <td class="num">{{ row.cfr_score_rank }}</td>
-                <td><strong><a class="gn-link" href="{{ static_prefix }}search/index.html?q={{ row.generic_number }}">{{ row.generic_number }}</a></strong></td>
+                <td><strong>{{ row.generic_number }}</strong></td>
                 <td data-gpc-seg="{{ row.segment }}"><span class="badge badge-teal">{{ row.segment }}</span></td>
                 <td class="num">{{ row.n_receptors }}</td>
                 <td class="num">{{ "%.1f"|format(row.pct_receptors) }}%</td>
@@ -234,15 +236,15 @@
           </span>
         </div>
         <div class="v2-table-scroll">
-          <table class="v2-table" id="cfr-pairs-table" data-sortable>
+          <table class="v2-table" id="cfr-pairs-table" data-sortable data-gn-cols="0 1">
             <thead>
               <tr><th data-sort="text">Position 1</th><th data-sort="text">Position 2</th><th data-sort="num">Receptors</th><th data-sort="num">% of receptors</th></tr>
             </thead>
             <tbody>
             {% for row in cfr_network %}
               <tr>
-                <td><strong><a class="gn-link" href="{{ static_prefix }}search/index.html?q={{ row.cfr_1 }}">{{ row.cfr_1 }}</a></strong></td>
-                <td><strong><a class="gn-link" href="{{ static_prefix }}search/index.html?q={{ row.cfr_2 }}">{{ row.cfr_2 }}</a></strong></td>
+                <td><strong>{{ row.cfr_1 }}</strong></td>
+                <td><strong>{{ row.cfr_2 }}</strong></td>
                 <td class="num">{{ row.n_receptors }}</td>
                 <td class="num">{{ "%.1f"|format(row.pct_receptors) }}%</td>
               </tr>
@@ -306,7 +308,6 @@
       {% call chart_card(cards['chart-cfr-variants'], static_prefix, layout_light_json, layout_dark_json) %}
         <span class="chips" role="group" aria-label="Position order" data-chips="order">
           <span class="chips-name">Order</span>
-          <span class="seg-order-slot" data-seg-order-slot></span>
           <button type="button" class="chip" data-value="pathogenic" aria-pressed="false">By % predicted pathogenic</button>
         </span>
         <span class="chips" role="group" aria-label="Positions" data-chips="set">

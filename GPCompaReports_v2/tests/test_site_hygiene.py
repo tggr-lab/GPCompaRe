@@ -109,9 +109,18 @@ def test_no_google_fonts_and_privacy_lists_the_third_parties():
 
 @needs_build
 def test_statistics_histogram_ships_bins_not_raw_values():
+    # 2026-11-06: the histogram is fetched when its card scrolls near (data/stats/chart-histogram.json),
+    # no longer inline; the page itself carries no raw values
     html = (BUILD_DIR / 'statistics.html').read_text(encoding='utf-8')
-    line = next(l for l in html.split('\n')
-                if l.startswith("window.CHART_DATA['chart-histogram'] = "))
-    trace = json.loads(line.split(' = ', 1)[1].rstrip(';'))['data'][0]
-    assert trace['histfunc'] == 'sum' and len(trace['x']) < 500
-    assert len(line) < 20000
+    assert "['chart-histogram'] = " not in html
+    payload = (BUILD_DIR / 'data' / 'stats' / 'chart-histogram.json').read_bytes()
+    trace = json.loads(payload)['data'][0]
+    xs = trace['x']
+    if isinstance(xs, dict):      # Plotly's typed-array encoding: {dtype, bdata}
+        import base64
+        xs = base64.b64decode(xs['bdata'])
+        assert len(xs) < 500 * 8
+    else:
+        assert len(xs) < 500
+    assert trace['histfunc'] == 'sum'
+    assert len(payload) < 20000

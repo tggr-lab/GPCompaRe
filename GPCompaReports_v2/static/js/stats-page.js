@@ -160,7 +160,8 @@
       lay.title = { text: '' };
     }
     delete lay.height; delete lay.width;
-    var p = window.Plotly.react(card.plot, data, lay, merge(clone(CONFIG), opts.config || {}));
+    var cfg = merge(clone(CONFIG), opts.config || {});
+    var p = card.drawn ? window.Plotly.react(card.plot, data, lay, cfg) : window.Plotly.newPlot(card.plot, data, lay, cfg);
     return Promise.resolve(p).then(function () {
       card.plot.dataset.chartRendered = '1';
       card.drawn = true;
@@ -269,29 +270,47 @@
         }
         // a single-hue gray ramp (Plotly's named scale) runs light to dark; on the dark theme it runs the other way
         if (typeof tr.colorscale === 'string' && /^gr[ae]ys$/i.test(tr.colorscale)) tr.colorscale = t === 'dark' ? [[0, '#1f2937'], [1, '#f1f5f9']] : [[0, '#ffffff'], [1, '#111827']];
-        if (card.id === 'chart-cfr-dotplot') legendRank(tr);
+        if (card.id === 'chart-cfr-dotplot') legendRank(tr, data);
       });
       var layout = clone(payload.layout || {});
       if (card.id === 'chart-cfr-dotplot') layout.legend = merge(layout.legend || {}, { groupclick: 'toggleitem' });
       if (isPhone() && layout.legend && layout.legend.orientation !== 'h') layout.legend = merge(layout.legend, { orientation: 'h', y: -0.25, x: 0 });
       return plot(card, data, layout, { title: opts.title, theme: t, config: payload.config });
     };
+    if (card.id === 'chart-cfr-dotplot') document.addEventListener('gpc:segment-order', function () { applyLegendOrder(card); });
     card.render();
   }
 
-  // legend order for a chart whose traces are segments (the manuscript bubble plot): the shared switch
-  function legendRank(tr) {
+  function applyLegendOrder(card) {
+    if (!card.drawn || !card.payload || !window.Plotly || !window.Plotly.update) return;
+    var data = clone(card.payload.data || []), ranks = [], groups = [], titles = [], idx = [];
+    data.forEach(function (tr, i) {
+      legendRank(tr, data);
+      ranks.push(tr.legendrank === undefined ? 100 + i : tr.legendrank);
+      groups.push(tr.legendgroup === undefined ? '' : tr.legendgroup);
+      titles.push(tr.legendgrouptitle ? tr.legendgrouptitle.text : '');
+      idx.push(i);
+    });
+    window.Plotly.update(card.plot, { legendrank: ranks, legendgroup: groups, 'legendgrouptitle.text': titles },
+      { 'legend.groupclick': 'toggleitem' }, idx);
+  }
+
+  // legend order for a chart whose traces are segments (the paper bubble plot): the shared switch
+  function legendRank(tr, data) {
     var S = window.GPCSegOrder;
     if (!S || !tr.name) return;
     var order = S.order();
     var i = order.indexOf(String(tr.name).trim());
     if (i < 0) return;
     var g = S.group(tr.name);
-    var split = S.mode() === 'helices';
+    var present = (data || []).map(function (t) { return String(t.name || '').trim(); }).filter(function (n) { return order.indexOf(n) >= 0; });
+    var both = present.some(function (n) { return S.group(n) === 'helix'; }) && present.some(function (n) { return S.group(n) !== 'helix'; });
+    var split = S.mode() === 'helices' && both;
     tr.legendrank = 1 + i;
     tr.legendgroup = split ? 'seg-' + g : '';
-    var first = order.filter(function (s) { return S.group(s) === g; })[0];
-    tr.legendgrouptitle = { text: split && first === tr.name ? (g === 'helix' ? 'Helices' : 'Loops and termini') : '' };
+    // the group title sits on the first segment of the group that the chart has
+    var first = present.filter(function (n) { return S.group(n) === g; }).sort(function (a, b) { return order.indexOf(a) - order.indexOf(b); })[0];
+    tr.legendgrouptitle = { text: split && first === String(tr.name).trim() ? (g === 'helix' ? 'Helices' : 'Loops and termini') : '' };
   }
 
   // ------------------------------------------------------------------ exports, table, caption
@@ -467,6 +486,11 @@
     var i = H.indexOf(seg); return i < 0 ? 99 : i;
   }
   function segMode() { return window.GPCSegOrder ? window.GPCSegOrder.mode() : 'helices'; }
+  function onSwitchClick(fn) {
+    document.addEventListener('click', function (e) {
+      if (e.target.closest && e.target.closest('.seg-order button')) fn();
+    });
+  }
 
   // ---------------------------------------------- helix pairs
   VIEWS.helix_pairs = function (card, json) {
@@ -491,6 +515,9 @@
 
     function group() { return json.groups.filter(function (g) { return g.key === state.group; })[0] || json.groups[0]; }
     function segs() { return state.segments === 'helices' ? json.segments.slice(0, json.n_helices) : json.segments; }
+    function segsOrdered() {
+      return segs().slice().sort(function (a, b) { return segRank(a) - segRank(b); });
+    }
 
     function matrix() {
       var g = group(), S = segs(), n = S.length;
@@ -534,8 +561,8 @@
       var layout = {
         title: { text: (direction ? 'Net ΔRRCS by helix pair' : 'Share of receptors with an above-threshold pair by helix pair') + ', ' + m.group.label + ' (n = ' + m.group.n + '), site layer' },
         margin: { l: phone ? 40 : 54, r: 8, t: 30, b: 8 },
-        xaxis: { side: 'top', showgrid: false, constrain: 'domain', tickfont: { size: phone ? 10 : 12 } },
-        yaxis: { autorange: 'reversed', showgrid: false, scaleanchor: 'x', tickfont: { size: phone ? 10 : 12 } }
+        xaxis: { side: 'top', showgrid: false, constrain: 'domain', tickfont: { size: phone ? 10 : 12 }, categoryorder: 'array', categoryarray: segsOrdered() },
+        yaxis: { autorange: 'reversed', showgrid: false, scaleanchor: 'x', tickfont: { size: phone ? 10 : 12 }, categoryorder: 'array', categoryarray: segsOrdered() }
       };
       card.suffix = state.metric + '_' + state.group.replace(/\W+/g, '_').toLowerCase();
       setViewText(card, (direction ? (state.metric === 'mean_net' ? 'direction, mean net ΔRRCS per receptor' : 'mean net ΔRRCS among receptors with a pair') : 'coverage, share of receptors with an above-threshold pair')
@@ -562,6 +589,11 @@
       });
     }
     card.render().then(function () { card.plot.on('plotly_click', onClick); hint(); });
+    document.addEventListener('gpc:segment-order', function () {
+      if (!card.drawn) return;
+      var o = segsOrdered();
+      window.Plotly.relayout(card.plot, { 'xaxis.categoryarray': o, 'yaxis.categoryarray': o });
+    });
 
     function onClick(ev) {
       var p = ev.points && ev.points[0];
@@ -730,8 +762,7 @@
       card.render();
     };
     // the shared segment switch inside the card clears the local "CFR rank" order
-    var slot = card.el.querySelector('[data-seg-order-slot]');
-    if (slot) slot.addEventListener('click', function (e) { if (e.target.closest('button')) { state.order = null; setChip(card, 'order', ''); card.render(); } });
+    onSwitchClick(function () { if (state.order) { state.order = null; setChip(card, 'order', ''); card.render(); } });
     document.addEventListener('gpc:segment-order', function () { if (!state.order && card.drawn) card.render(); });
 
     var input = card.el.querySelector('[data-find="cfr_atlas"]');
@@ -1116,8 +1147,7 @@
       if (key === 'order') state.order = value; else state[key] = value;
       card.render();
     };
-    var slot = card.el.querySelector('[data-seg-order-slot]');
-    if (slot) slot.addEventListener('click', function (e) { if (e.target.closest('button')) { state.order = null; setChip(card, 'order', ''); card.render(); } });
+    onSwitchClick(function () { if (state.order) { state.order = null; setChip(card, 'order', ''); card.render(); } });
     document.addEventListener('gpc:segment-order', function () { if (!state.order && card.drawn) card.render(); });
 
     card.render().then(function () {
@@ -1222,6 +1252,20 @@
       if (card.inline) loadCard(card); else watch(card);
     });
     document.querySelectorAll('table[data-sortable]').forEach(initSortable);
+    // the paper tables keep their submitted markup; the generic-number cells (data-gn-cols) become search links
+    document.querySelectorAll('table[data-gn-cols]').forEach(function (table) {
+      var cols = table.getAttribute('data-gn-cols').split(/\s+/).map(Number);
+      Array.prototype.forEach.call(table.tBodies[0] ? table.tBodies[0].rows : [], function (tr) {
+        cols.forEach(function (c) {
+          var strong = tr.cells[c] && tr.cells[c].querySelector('strong');
+          if (!strong) return;
+          var gn = strong.textContent.trim();
+          var a = link(gn, SEARCH(gn), 'gn-link');
+          a.title = 'Search ' + gn;
+          clear(strong); strong.appendChild(a);
+        });
+      });
+    });
     // a hash to a card (from a copied caption) opens its disclosure
     if (location.hash) {
       var target = document.getElementById(location.hash.slice(1));

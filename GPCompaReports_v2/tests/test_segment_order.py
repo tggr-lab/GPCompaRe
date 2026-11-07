@@ -261,16 +261,20 @@ def test_statistics_page_default_is_helices_first_and_the_switch_flips_the_legen
         assert [n for n in names if n not in SEQUENCE] == ['Helices', 'Loops and termini']
         # a click on an entry still hides only that entry
         assert page.evaluate("document.getElementById('chart-cfr-dotplot')._fullLayout.legend.groupclick") == 'toggleitem'
-    _draw(page, 'chart-tm-heatmap')
-    hx = _xcats(page, 'chart-tm-heatmap')
-    hy = _xcats(page, 'chart-tm-heatmap', 'yaxis')
+    # 2026-11-06: the helix-pair atlas (site layer, all segments view) replaced the unsigned heatmap
+    page.locator('#card-chart-helix-pairs [data-chips="segments"] [data-value="all"]').click()
+    _draw(page, 'chart-helix-pairs')
+    hx = _xcats(page, 'chart-helix-pairs')
+    hy = _xcats(page, 'chart-helix-pairs', 'yaxis')
     assert hx['arr'] == _in(HELICES_FIRST, hx['arr']) and hy['arr'] == _in(HELICES_FIRST, hy['arr'])
 
     _flip(page, 'sequence')
     names2 = _legend(page, 'chart-cfr-dotplot')
     assert names2 == _in(SEQUENCE, segs), 'sequence order, no group titles'
     draws = page.evaluate("window.__draws")
-    assert draws.get('chart-cfr-dotplot') == 1 and draws.get('chart-tm-heatmap') == 1, draws
+    hx2 = _xcats(page, 'chart-helix-pairs')
+    assert hx2['arr'] == _in(SEQUENCE, hx2['arr'])
+    assert draws.get('chart-cfr-dotplot') == 1 and draws.get('chart-helix-pairs') == 1, draws
     # the choice made on the statistics page holds on a report too (one switch, site-wide)
     gid = _pick('class="seg-order-label', prefer='adrb2_human')
     if gid:

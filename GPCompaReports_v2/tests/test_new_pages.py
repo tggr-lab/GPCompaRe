@@ -65,8 +65,13 @@ def test_downloads_page_offers_no_dead_links():
     """
     html = DOWNLOADS.read_text(encoding='utf-8')
     lowered = html.lower()
-    for ext in ('.zip', '.tar.gz', '.tgz', '.7z'):
+    # 2026-11-06: the Statistics tables archive is linked; it must exist in the build. Any other archive is invented.
+    archives = re.findall(r'href="([^"]+\.(?:zip|tar\.gz|tgz|7z))"', html)
+    assert archives == ['data/stats/gpcompare_statistics_tables.zip'], archives
+    assert (DOWNLOADS.parent / archives[0]).is_file(), 'the linked statistics archive is not in the build'
+    for ext in ('.tar.gz', '.tgz', '.7z'):
         assert ext not in lowered, 'a download link was invented: %s' % ext
+    assert lowered.count('.zip') == 1, 'another archive is mentioned'
     body = html[html.find('downloads-page'):html.find('</section>')]
     assert 'disabled' not in body, 'a disabled download control is shown'
 

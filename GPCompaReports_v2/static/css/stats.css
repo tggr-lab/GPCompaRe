@@ -228,7 +228,7 @@ a.stats-tile:hover { border-color: var(--brand-primary); text-decoration: none; 
 /* folded charts */
 .stats-folded { margin: var(--s-4) 0 0; max-width: none; }
 .stats-coverage-note { margin-bottom: var(--s-6); }
-.chart-card .seg-order-name { display: none; }
+.stats-page .seg-order-row { margin: 0 0 var(--s-3); }
 .stats-folded > summary { font-size: 0.875rem; font-weight: 500; }
 .stats-folded[open] > .chart-card { margin-top: var(--s-3); border-left: 0; padding-left: var(--s-4); }
 .stats-folded[open] > :not(summary) { border-left: 0; padding-left: 0; max-width: none; }
