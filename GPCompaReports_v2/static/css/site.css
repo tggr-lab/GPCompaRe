@@ -1288,3 +1288,8 @@ p  { margin: 0 0 var(--s-4); }
 [data-seg-order="helices"] > [data-seg-group="helix"] { box-shadow: inset 2px 0 0 var(--borderColor-default); }
 /* a table split into the same groups: a rule above the first loop or terminus row */
 tr.seg-group-start > td { border-top: 2px solid var(--borderColor-default); }
+
+/* 404 page: one search box */
+.notfound-search { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: var(--s-4) 0; }
+.notfound-search label { flex-basis: 100%; font-weight: 600; }
+.notfound-search .v2-input { flex: 1 1 14rem; min-width: 0; }

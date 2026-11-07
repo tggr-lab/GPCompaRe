@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
+
+{% block content %}
+<section class="info-page" aria-labelledby="notfound-heading">
+  <div class="section-inner">
+    <header class="section-head">
+      <h1 id="notfound-heading">Page not found</h1>
+      <p class="section-sub">There is no page at this address. Receptor reports are at reports/ followed by the GPCRdb entry name, for example <a href="{{ static_prefix }}reports/adrb2_human.html">reports/adrb2_human.html</a>.</p>
+    </header>
+    <form class="notfound-search" action="{{ static_prefix }}search/index.html" method="get" role="search">
+      <label for="notfound-q">Search for a receptor, residue or variant</label>
+      <input class="v2-input" id="notfound-q" name="q" type="search" placeholder="e.g. DRD2 S311C">
+      <button class="btn btn-primary btn-sm" type="submit">Search</button>
+    </form>
+    <p><a href="{{ nav_browse_url }}">Browse all {{ total_gpcrs }} receptors</a> · <a href="{{ nav_home_url }}">Home</a></p>
+  </div>
+</section>
+{% endblock %}

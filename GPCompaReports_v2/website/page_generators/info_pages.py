@@ -1,7 +1,10 @@
 """Generate the Glossary and Privacy pages, and the glossary data file the
 term tooltips read (static/js/glossary-data.js)."""
 
+from urllib.parse import urlparse
+
 from ..glossary import glossary_groups, glossary_js
+from ..seo import SITE_URL
 
 _NAV = dict(
     static_prefix='',
@@ -42,3 +45,19 @@ def generate_privacy_page(env, store, output_dir):
     )
     (output_dir / 'privacy.html').write_text(html, encoding='utf-8')
     print("  Generated: privacy.html")
+
+
+def generate_not_found_page(env, store, output_dir):
+    """404.html: GitHub Pages serves it for any missing address under the site, at any depth, so
+    every link is absolute from the site root."""
+    root = urlparse(SITE_URL).path
+    nav = {k: (root + v if k.startswith('nav_') else root) for k, v in _NAV.items()}
+    html = env.get_template('not_found.html').render(
+        active_page='',
+        page_title='Page not found · GPCompaRe',
+        page_description='There is no page at this address in the GPCompaRe database.',
+        total_gpcrs=len(store.gpcr_ids),
+        **nav,
+    )
+    (output_dir / '404.html').write_text(html, encoding='utf-8')
+    print("  Generated: 404.html")
