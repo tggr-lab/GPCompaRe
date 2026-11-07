@@ -9651,7 +9651,7 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 
   // The arcs are drawn by snake-plus.js from the page's above-threshold pairs; the old top-50
-  // overlay and its contact_links payload were removed (P4, approved 2026-11-05). Every control
+  // overlay and its contact_links payload are not used. Every control
   // still calls this hook, so it stays.
   function redrawSnakeLinks() {
     var summary = document.getElementById('snake-filter-summary');

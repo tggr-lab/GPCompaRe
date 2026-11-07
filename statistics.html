@@ -231,9 +231,8 @@
       <p class="section-sub">
         What changes between the active and the inactive model across all 283 human Class A
         GPCRs: where the helix bundle rewires, the 50 Core Functional Residue positions,
-        variants at those positions, and every receptor placed in the class. Each chart says whether it
-        shows the paper's analysis (values as reported) or the site layer (recomputed from the same data
-        at build time), downloads as PNG, SVG or CSV, and can be read as a table.
+        variants at those positions, and every receptor placed in the class. Every chart downloads as
+        PNG, SVG or CSV and can be read as a table.
       </p>
     </header>
 
@@ -243,37 +242,31 @@
       <li><a class="stats-tile" href="#sec-e">
         <div class="stats-tile-num">283</div>
         <div class="stats-tile-label">human Class A receptors</div>
-        <div class="stats-tile-sub">60 families, 10 ligand types <span class="layer-badge layer-badge--site">site</span></div>
+        <div class="stats-tile-sub">60 families, 10 ligand types</div>
       </a></li>
       
       <li><a class="stats-tile" href="#sec-a">
         <div class="stats-tile-num">213,456</div>
         <div class="stats-tile-label">residue contact pairs compared</div>
-        <div class="stats-tile-sub">active against inactive model, per receptor <span class="layer-badge layer-badge--site">site</span></div>
+        <div class="stats-tile-sub">active against inactive model, per receptor</div>
       </a></li>
       
       <li><a class="stats-tile" href="#sec-a">
         <div class="stats-tile-num">23,025</div>
         <div class="stats-tile-label">pairs above the receptor threshold</div>
-        <div class="stats-tile-sub">median threshold |ΔRRCS| 2.40 <span class="layer-badge layer-badge--site">site</span></div>
+        <div class="stats-tile-sub">median threshold |ΔRRCS| 2.40</div>
       </a></li>
       
       <li><a class="stats-tile" href="#sec-c">
         <div class="stats-tile-num">368</div>
         <div class="stats-tile-label">recurrent positions</div>
-        <div class="stats-tile-sub">in 3 or more receptors (Supplementary Table S4) <span class="layer-badge layer-badge--paper">paper</span></div>
+        <div class="stats-tile-sub">in 3 or more receptors</div>
       </a></li>
       
       <li><a class="stats-tile" href="#sec-c">
         <div class="stats-tile-num">50</div>
         <div class="stats-tile-label">Core Functional Residues reported</div>
-        <div class="stats-tile-sub">top by CFR score (Supplementary Table S3) <span class="layer-badge layer-badge--paper">paper</span></div>
-      </a></li>
-      
-      <li><a class="stats-tile" href="#sec-d">
-        <div class="stats-tile-num">2.61</div>
-        <div class="stats-tile-label">odds ratio, predicted pathogenic at CFRs</div>
-        <div class="stats-tile-sub">95% CI 2.44 to 2.79 (Supplementary Table S7) <span class="layer-badge layer-badge--paper">paper</span></div>
+        <div class="stats-tile-sub">top by CFR score</div>
       </a></li>
       
     </ul>
@@ -291,17 +284,16 @@
           
             <tr><td>Structural summaries (helix pairs, CFR atlas, receptor explorer)</td><td class="num">283</td><td>GPCompaRe RRCS batch 2026-02-02, GPCRdb generic numbering, fetched 2026-10-18</td><td></td></tr>
           
-            <tr><td>Paper AlphaMissense comparison</td><td class="num">276</td><td>Supplementary Fig. S4 and Table S7, alleles from gnomAD v4.1.0</td><td>GPR3, GPR4 and XCR1 (mismatched annotations in the original inputs)</td></tr>
+            <tr><td>AlphaMissense class comparison</td><td class="num">276</td><td>AlphaMissense (Cheng et al. 2023), alleles from gnomAD v4.1.0</td><td>GPR3, GPR4 and XCR1</td></tr>
           
-            <tr><td>Site variant views (per-position variants, conservation)</td><td class="num">279</td><td>gnomAD v4.1.2, ClinVar 2026-10-11</td><td>NPY6R and TAAR3: pseudogene loci without protein-coding missense annotations. GP182 and P2RY8: their identifiers were not successfully resolved during data collection.</td></tr>
+            <tr><td>Variant views (per-position variants, conservation)</td><td class="num">279</td><td>gnomAD v4.1.2, ClinVar 2026-10-11</td><td>NPY6R and TAAR3: pseudogene loci without protein-coding missense annotations. GP182 and P2RY8: their identifiers were not successfully resolved during data collection.</td></tr>
           
           </tbody>
         </table>
       </div>
     </div>
-    <details class="fine-print stats-coverage-note"><summary>Receptors outside the database and the two sources</summary>
+    <details class="fine-print stats-coverage-note"><summary>Receptors outside the database</summary>
       <p>class_A_all.csv lists 287 human Class A receptors; GPR26, LGR5, OPSX and RXFP1 lack a complete active and inactive model pair and are not in the database, so every count here is over 283.</p>
-      <p>Paper analysis: Supplementary Tables S3, S4, S5 and S7 and the corrected AlphaMissense summary, shown as reported and never recomputed. Site layer: the same RRCS batch run and the Studio packs (GPCRdb numbering, gnomAD v4.1.2), summarized at build time. The paper's AlphaMissense alleles are gnomAD v4.1.0 (batch layer).</p>
     </details>
 
     
@@ -316,15 +308,13 @@
         </p>
       </header>
       <figure class="chart-card chart-card--atlas"
-        id="card-chart-helix-pairs" data-card="chart-helix-pairs" data-layer="site"
+        id="card-chart-helix-pairs" data-card="chart-helix-pairs"
         data-title="Net contact change by helix pair" data-source="GPCompaRe RRCS batch 2026-02-02; GPCRdb generic numbering, fetched 2026-10-18" data-receptors="283"
         data-csv="data/stats/helix_pairs.csv"
         style="--chart-h: 520px; --chart-h-phone: 380px">
   <figcaption class="chart-card-head">
     <div class="chart-card-titles">
-      <h3 class="chart-card-title" id="chart-helix-pairs-title">Net contact change by helix pair
-        <span class="layer-badge layer-badge--site" title="GPCompaRe RRCS batch 2026-02-02; GPCRdb generic numbering, fetched 2026-10-18">Site layer</span>
-      </h3>
+      <h3 class="chart-card-title" id="chart-helix-pairs-title">Net contact change by helix pair</h3>
       <p class="chart-card-lead">Mean net ΔRRCS per receptor over its above-threshold contact pairs between two helices (TM1 to TM7 and H8). Red: stronger in the active model. Blue: stronger in the inactive model.</p>
     </div>
     <div class="chart-card-tools" role="group" aria-label="Export and view options for Net contact change by helix pair">
@@ -364,17 +354,15 @@
   <details class="fine-print chart-card-method" id="chart-helix-pairs-method"><summary>How this is computed</summary><p>For each receptor, every contact pair with |ΔRRCS| at or above the receptor's own threshold (the batch run's per-receptor cutoff) is assigned to the segment pair of its two residues from the GPCRdb segment annotation. Net ΔRRCS per receptor and cell is the sum of signed ΔRRCS over those pairs; the cell shows the mean of that net over receptors with at least one pair there. Loops and termini are not shown.</p></details>
 </figure>
       <details class="fine-print stats-folded">
-        <summary>More site-layer charts: the ΔRRCS distribution and the per-helix means</summary>
+        <summary>More charts: the ΔRRCS distribution and the per-helix means</summary>
         <figure class="chart-card chart-card--plotly"
-        id="card-chart-histogram" data-card="chart-histogram" data-layer="site"
+        id="card-chart-histogram" data-card="chart-histogram"
         data-title="ΔRRCS distribution across all contact pairs" data-source="GPCompaRe RRCS batch 2026-02-02" data-receptors="283"
         data-csv="data/stats/chart-histogram.csv"
         style="--chart-h: 360px; --chart-h-phone: 300px">
   <figcaption class="chart-card-head">
     <div class="chart-card-titles">
-      <h3 class="chart-card-title" id="chart-histogram-title">ΔRRCS distribution across all contact pairs
-        <span class="layer-badge layer-badge--site" title="GPCompaRe RRCS batch 2026-02-02">Site layer</span>
-      </h3>
+      <h3 class="chart-card-title" id="chart-histogram-title">ΔRRCS distribution across all contact pairs</h3>
       <p class="chart-card-lead">All 213,456 contact pairs of the 283 receptors, binned.</p>
     </div>
     <div class="chart-card-tools" role="group" aria-label="Export and view options for ΔRRCS distribution across all contact pairs">
@@ -402,15 +390,13 @@
   
 </figure>
         <figure class="chart-card chart-card--plotly"
-        id="card-chart-tm-bar" data-card="chart-tm-bar" data-layer="site"
+        id="card-chart-tm-bar" data-card="chart-tm-bar"
         data-title="Mean |ΔRRCS| by helix" data-source="GPCompaRe RRCS batch 2026-02-02; GPCRdb generic numbering, fetched 2026-10-18" data-receptors="283"
         data-csv="data/stats/chart-tm-bar.csv"
         style="--chart-h: 360px; --chart-h-phone: 300px">
   <figcaption class="chart-card-head">
     <div class="chart-card-titles">
-      <h3 class="chart-card-title" id="chart-tm-bar-title">Mean |ΔRRCS| by helix
-        <span class="layer-badge layer-badge--site" title="GPCompaRe RRCS batch 2026-02-02; GPCRdb generic numbering, fetched 2026-10-18">Site layer</span>
-      </h3>
+      <h3 class="chart-card-title" id="chart-tm-bar-title">Mean |ΔRRCS| by helix</h3>
       <p class="chart-card-lead">Mean |ΔRRCS| of contact pairs touching each helix.</p>
     </div>
     <div class="chart-card-tools" role="group" aria-label="Export and view options for Mean |ΔRRCS| by helix">
@@ -477,12 +463,10 @@
           <strong>Where these cross-receptor numbers come from.</strong>
           Cross-receptor recurrence analyses are limited to residues assigned GPCRdb generic numbers. Residues
           without one, largely in loops and terminal regions, cannot be aligned to a shared position across
-          receptors and take no part in these statistics. The paper's recurrence counts (tables below) are
-          computed on the full GPCRdb residue maps for all 283 receptors. The site-layer atlas
-          uses each receptor's own GPCRdb numbering from the Studio packs; with it 49 of the 50
-          positions match the submitted receptor counts exactly, and 8.48x48 counts one receptor more (GPR4,
-          whose batch annotation belonged to GPR42). Individual receptor reports are unchanged and keep their
-          own report-generation data.
+          receptors and take no part in these statistics. The recurrence counts in the tables below are
+          computed on the full GPCRdb residue maps for all 283 receptors. The atlas uses each
+          receptor's own GPCRdb numbering; with it 49 of the 50 positions have the same receptor
+          count as the table, and 8.48x48 counts one receptor more.
         </p>
       </details>
 
@@ -492,15 +476,13 @@
       </div>
 
       <figure class="chart-card chart-card--atlas"
-        id="card-chart-cfr-atlas" data-card="chart-cfr-atlas" data-layer="site"
+        id="card-chart-cfr-atlas" data-card="chart-cfr-atlas"
         data-title="The 50 CFR positions across all 283 receptors" data-source="GPCompaRe RRCS batch 2026-02-02; GPCRdb generic numbering, fetched 2026-10-18" data-receptors="283"
         data-csv="data/stats/cfr_atlas.csv"
         style="--chart-h: 720px; --chart-h-phone: 520px">
   <figcaption class="chart-card-head">
     <div class="chart-card-titles">
-      <h3 class="chart-card-title" id="chart-cfr-atlas-title">The 50 CFR positions across all 283 receptors
-        <span class="layer-badge layer-badge--site" title="GPCompaRe RRCS batch 2026-02-02; GPCRdb generic numbering, fetched 2026-10-18">Site layer</span>
-      </h3>
+      <h3 class="chart-card-title" id="chart-cfr-atlas-title">The 50 CFR positions across all 283 receptors</h3>
       <p class="chart-card-lead">Rows: receptors grouped by ligand type (or family). Columns: the 50 top-ranked positions by CFR score, helices first. Cell: above-threshold contact at that residue, mapped with no above-threshold contact, or position not numbered in this receptor.</p>
     </div>
     <div class="chart-card-tools" role="group" aria-label="Export and view options for The 50 CFR positions across all 283 receptors">
@@ -544,20 +526,18 @@
     <div class="chart-card-table" hidden></div>
     <aside class="chart-card-side" hidden aria-live="polite"></aside>
   </div>
-  <p class="chart-card-caption fine-print"><span class="chart-card-view" data-view-text></span>Scope: 283 receptors. Source: GPCompaRe RRCS batch 2026-02-02; GPCRdb generic numbering, fetched 2026-10-18. Default cell states: above-threshold contact (dark), mapped with none (white), not numbered (gray). The direction toggle colors the first state by net ΔRRCS at the residue, a site-layer derivation. The paper's recurrence counts (table below) stay as reported.</p>
+  <p class="chart-card-caption fine-print"><span class="chart-card-view" data-view-text></span>Scope: 283 receptors. Source: GPCompaRe RRCS batch 2026-02-02; GPCRdb generic numbering, fetched 2026-10-18. Default cell states: above-threshold contact (dark), mapped with none (white), not numbered (gray). The direction toggle colors the first state by net ΔRRCS at the residue.</p>
   <details class="fine-print chart-card-method" id="chart-cfr-atlas-method"><summary>How this is computed</summary><p>A position is numbered in a receptor when the GPCRdb residue map of the Studio pack assigns it that generic number. It carries an above-threshold contact when at least one contact pair touching that residue has |ΔRRCS| at or above the receptor's threshold. Net ΔRRCS at the residue is the signed sum over those pairs.</p></details>
 </figure>
 
       <figure class="chart-card chart-card--plotly"
-        id="card-chart-cfr-dotplot" data-card="chart-cfr-dotplot" data-layer="paper"
-        data-title="Recurrence and magnitude of the top 50 positions" data-source="Supplementary Table S3" data-receptors="283"
+        id="card-chart-cfr-dotplot" data-card="chart-cfr-dotplot"
+        data-title="Recurrence and magnitude of the top 50 positions" data-source="GPCompaRe RRCS batch 2026-02-02; GPCRdb residue maps" data-receptors="283"
         data-csv="data/stats/chart-cfr-dotplot.csv"
         style="--chart-h: 440px; --chart-h-phone: 380px">
   <figcaption class="chart-card-head">
     <div class="chart-card-titles">
-      <h3 class="chart-card-title" id="chart-cfr-dotplot-title">Recurrence and magnitude of the top 50 positions
-        <span class="layer-badge layer-badge--paper" title="Supplementary Table S3">Paper analysis</span>
-      </h3>
+      <h3 class="chart-card-title" id="chart-cfr-dotplot-title">Recurrence and magnitude of the top 50 positions</h3>
       <p class="chart-card-lead">Each point is a position: how many receptors show an above-threshold change there, and the mean |ΔRRCS| among them. Size: CFR score. Labels on the top 10 by rank.</p>
     </div>
     <div class="chart-card-tools" role="group" aria-label="Export and view options for Recurrence and magnitude of the top 50 positions">
@@ -581,7 +561,7 @@
     <div class="chart-card-table" hidden></div>
     <aside class="chart-card-side" hidden aria-live="polite"></aside>
   </div>
-  <p class="chart-card-caption fine-print"><span class="chart-card-view" data-view-text></span>Scope: 283 receptors. Source: Supplementary Table S3. Figure of the paper, values as reported. Recurrence is counted on the full GPCRdb residue maps of all 283 receptors.</p>
+  <p class="chart-card-caption fine-print"><span class="chart-card-view" data-view-text></span>Scope: 283 receptors. Source: GPCompaRe RRCS batch 2026-02-02; GPCRdb residue maps. Recurrence is counted on the full GPCRdb residue maps of all 283 receptors.</p>
   <details class="fine-print chart-card-method" id="chart-cfr-dotplot-method"><summary>How this is computed</summary><p>CFR score: the mean of normalized recurrence (receptors with an above-threshold change at the position) and normalized mean |ΔRRCS|. The ranked list is cut at the top 50 positions for reporting; 368 positions meet the recurrence criterion of three or more receptors.</p></details>
 </figure>
 
@@ -589,11 +569,10 @@
       <div class="v2-table-wrap">
         <div class="v2-table-toolbar">
           <strong>Top 50 Core Functional Residue Positions</strong>
-          <span class="layer-badge layer-badge--paper">Paper analysis</span>
           <span class="v2-table-tools">
             <a class="cc-btn" href="data/stats/cfr_top50.csv" download>CSV</a>
           </span>
-          <span class="v2-table-note">Supplementary Table S3, values as reported. Click a column to sort; a generic number opens search.</span>
+          <span class="v2-table-note">Click a column to sort; a generic number opens search.</span>
         </div>
         <div class="v2-table-scroll">
           <table class="v2-table" id="cfr-table" data-sortable data-gn-cols="1">
@@ -1120,14 +1099,13 @@
       <div class="v2-table-wrap">
         <div class="v2-table-toolbar">
           <strong>CFR contact pairs</strong>
-          <span class="layer-badge layer-badge--paper">Paper analysis</span>
           <span class="v2-table-tools">
             <a class="cc-btn" href="data/stats/cfr_pairs_top20.csv" download>CSV</a>
           </span>
           <span class="v2-table-note">
             Contact pairs in which both residues are among the 50 highest-ranked
             recurrent CFR positions. Showing the 20 highest-ranked pairs,
-            ranked across 2,234 unique contact pairs (Supplementary Table S5).
+            ranked across 2,234 unique contact pairs.
           </span>
         </div>
         <div class="v2-table-scroll">
@@ -1284,17 +1262,15 @@
       
 
       <details class="fine-print stats-folded">
-        <summary>More site-layer charts: conserved and variable positions</summary>
+        <summary>More charts: conserved and variable positions</summary>
         <figure class="chart-card chart-card--plotly"
-        id="card-chart-cv-scatter" data-card="chart-cv-scatter" data-layer="site"
+        id="card-chart-cv-scatter" data-card="chart-cv-scatter"
         data-title="Conserved and variable positions" data-source="GPCompaRe RRCS batch 2026-02-02; GPCRdb generic numbering, fetched 2026-10-18" data-receptors="283"
         data-csv="data/stats/chart-cv-scatter.csv"
         style="--chart-h: 440px; --chart-h-phone: 380px">
   <figcaption class="chart-card-head">
     <div class="chart-card-titles">
-      <h3 class="chart-card-title" id="chart-cv-scatter-title">Conserved and variable positions
-        <span class="layer-badge layer-badge--site" title="GPCompaRe RRCS batch 2026-02-02; GPCRdb generic numbering, fetched 2026-10-18">Site layer</span>
-      </h3>
+      <h3 class="chart-card-title" id="chart-cv-scatter-title">Conserved and variable positions</h3>
       <p class="chart-card-lead">Per generic position: mean |ΔRRCS| against its coefficient of variation across receptors.</p>
     </div>
     <div class="chart-card-tools" role="group" aria-label="Export and view options for Conserved and variable positions">
@@ -1318,7 +1294,7 @@
     <div class="chart-card-table" hidden></div>
     <aside class="chart-card-side" hidden aria-live="polite"></aside>
   </div>
-  <p class="chart-card-caption fine-print"><span class="chart-card-view" data-view-text></span>Scope: 283 receptors. Source: GPCompaRe RRCS batch 2026-02-02; GPCRdb generic numbering, fetched 2026-10-18. Quadrant labels were removed: a coefficient of variation describes spread, not function.</p>
+  <p class="chart-card-caption fine-print"><span class="chart-card-view" data-view-text></span>Scope: 283 receptors. Source: GPCompaRe RRCS batch 2026-02-02; GPCRdb generic numbering, fetched 2026-10-18. A coefficient of variation describes spread, not function.</p>
   
 </figure>
       </details>
@@ -1331,20 +1307,19 @@
         <p class="section-kicker">Variants</p>
         <h2 id="sec-d" data-tooltip="How genetic variants relate to predicted pathogenicity, comparing the 50 top-ranked class-wide CFR positions (by CFR score) with other generic-numbered positions">Are variants at CFR positions predicted pathogenic?</h2>
         <p class="section-sub">
-          This AlphaMissense comparison uses 276 receptors, excluding GPR3, GPR4 and XCR1 because of mismatched annotations in the original inputs. The corrected analysis places alleles on model residue numbering.
+          AlphaMissense predicted class of the missense substitutions seen in gnomAD, at the 50
+          CFR positions and at other generic-numbered positions. Predictions, not clinical evidence.
         </p>
       </header>
 
       <figure class="chart-card chart-card--plotly"
-        id="card-chart-pathogenicity" data-card="chart-pathogenicity" data-layer="paper"
-        data-title="AlphaMissense predicted class at CFR positions" data-source="Supplementary Fig. S4 and Table S7; alleles from gnomAD v4.1.0" data-receptors="276"
+        id="card-chart-pathogenicity" data-card="chart-pathogenicity"
+        data-title="AlphaMissense predicted class at CFR positions" data-source="AlphaMissense (Cheng et al. 2023); alleles from gnomAD v4.1.0" data-receptors="276"
         data-csv="data/stats/chart-pathogenicity.csv"
         style="--chart-h: 400px; --chart-h-phone: 380px">
   <figcaption class="chart-card-head">
     <div class="chart-card-titles">
-      <h3 class="chart-card-title" id="chart-pathogenicity-title">AlphaMissense predicted class at CFR positions
-        <span class="layer-badge layer-badge--paper" title="Supplementary Fig. S4 and Table S7; alleles from gnomAD v4.1.0">Paper analysis</span>
-      </h3>
+      <h3 class="chart-card-title" id="chart-pathogenicity-title">AlphaMissense predicted class at CFR positions</h3>
       <p class="chart-card-lead">Share of scored missense substitutions predicted pathogenic, ambiguous or benign at the top 50 positions by CFR score and at other generic-numbered positions.</p>
     </div>
     <div class="chart-card-tools" role="group" aria-label="Export and view options for AlphaMissense predicted class at CFR positions">
@@ -1368,51 +1343,21 @@
     <div class="chart-card-table" hidden></div>
     <aside class="chart-card-side" hidden aria-live="polite"></aside>
   </div>
-  <p class="chart-card-caption fine-print"><span class="chart-card-view" data-view-text></span>Scope: 276 receptors. Source: Supplementary Fig. S4 and Table S7; alleles from gnomAD v4.1.0. Bars are shares of all scored substitutions (denominator under each bar). The odds ratio and the percentages in the text use decisive calls only. Prediction, not clinical evidence.</p>
-  <details class="fine-print chart-card-method" id="chart-pathogenicity-method"><summary>How this is computed</summary><p>Unique substitutions at generic-numbered positions of 276 receptors (GPR3, GPR4 and XCR1 excluded because of mismatched annotations in the original inputs), alleles placed on model residue numbering. Woolf 95% CI for the odds ratio; Mantel-Haenszel odds ratio over conservation quintiles of eligible decisive calls, Robins-Breslow-Greenland 95% CI.</p></details>
+  <p class="chart-card-caption fine-print"><span class="chart-card-view" data-view-text></span>Scope: 276 receptors. Source: AlphaMissense (Cheng et al. 2023); alleles from gnomAD v4.1.0. Bars are shares of all scored substitutions (denominator under each bar). Prediction, not clinical evidence.</p>
+  <details class="fine-print chart-card-method" id="chart-pathogenicity-method"><summary>How this is computed</summary><p>Unique substitutions at generic-numbered positions of 276 receptors (GPR3, GPR4 and XCR1 not included), alleles placed on model residue numbering. The comparison group is every other generic-numbered position, which includes recurrent positions ranked below the cutoff.</p><p>Top 50 positions by CFR score: 7,268 scored substitutions, 6,155 decisive (4,117 predicted pathogenic, 2,038 predicted benign) and 1,113 ambiguous. Other generic-numbered positions: 11,040 scored substitutions, 9,369 decisive (4,085 predicted pathogenic, 5,284 predicted benign) and 1,671 ambiguous.</p><p>Among decisive calls (pathogenic or benign), 66.9% at the top positions and 43.6% at other generic-numbered positions are predicted pathogenic.</p></details>
 </figure>
 
-      
-      <div class="callout callout-accent" id="am-comparison">
-        <div class="callout-head">AlphaMissense pathogenicity at the top 50 positions by CFR score</div>
-        <p>
-          Among decisive AlphaMissense predictions, <strong>66.9%</strong>
-          of substitutions at the top 50 positions by CFR score were classified as pathogenic,
-          compared with <strong>43.6%</strong> at other
-          generic-numbered positions: odds ratio
-          <strong>2.61</strong>
-          (95% CI 2.44 to 2.79).
-          After stratification by conservation the odds ratio is
-          <strong>1.54</strong>
-          (95% CI 1.42 to 1.67).
-          This association supports the CFR score as a feature for prioritizing variants. It does not
-          establish pathogenicity.
-        </p>
-        <details class="fine-print"><summary>Counts, denominators and method</summary>
-          <p>
-            Ambiguous predictions are shown in the chart but excluded from the odds ratio and the percentages.
-            Top 50 positions by CFR score: 7,268 scored substitutions, 6,155 decisive (4,117 pathogenic, 2,038 benign) and 1,113 ambiguous. Other generic-numbered positions: 11,040 scored substitutions, 9,369 decisive (4,085 pathogenic, 5,284 benign) and 1,671 ambiguous.
-            The comparison group is every other generic-numbered position, which includes recurrent
-            positions ranked below the cutoff.
-          </p>
-          <p>Source: Supplementary Figure S4 and Table S7 (unique substitutions; Woolf 95% CI; Mantel-Haenszel odds ratio over conservation quintiles of eligible decisive calls, Robins-Breslow-Greenland 95% CI). Alleles are the gnomAD v4.1.0 records behind the paper (batch layer).</p>
-        </details>
-      </div>
-      
-
       <figure class="chart-card chart-card--atlas"
-        id="card-chart-cfr-variants" data-card="chart-cfr-variants" data-layer="site"
-        data-title="Variants at each CFR position (site layer)" data-source="Site data: gnomAD v4.1.2 missense alleles, ClinVar 2026-10-11, AlphaMissense per substitution, VarSite conservation via ProtVar, GPCRdb generic numbering fetched 2026-10-18. Not the paper's analysis" data-receptors="279"
+        id="card-chart-cfr-variants" data-card="chart-cfr-variants"
+        data-title="Variants at each CFR position" data-source="gnomAD v4.1.2 missense alleles, ClinVar 2026-10-11, AlphaMissense per substitution, VarSite conservation via ProtVar, GPCRdb generic numbering fetched 2026-10-18" data-receptors="279"
         data-csv="data/stats/cfr_variants.csv"
         style="--chart-h: 480px; --chart-h-phone: 420px">
   <figcaption class="chart-card-head">
     <div class="chart-card-titles">
-      <h3 class="chart-card-title" id="chart-cfr-variants-title">Variants at each CFR position (site layer)
-        <span class="layer-badge layer-badge--site" title="Site data: gnomAD v4.1.2 missense alleles, ClinVar 2026-10-11, AlphaMissense per substitution, VarSite conservation via ProtVar, GPCRdb generic numbering fetched 2026-10-18. Not the paper's analysis">Site layer</span>
-      </h3>
+      <h3 class="chart-card-title" id="chart-cfr-variants-title">Variants at each CFR position</h3>
       <p class="chart-card-lead">For each of the 50 positions: unique missense substitutions seen in gnomAD v4.1.2 pooled across receptors, by AlphaMissense predicted class, with allele counts and ClinVar pathogenic or likely pathogenic records marked.</p>
     </div>
-    <div class="chart-card-tools" role="group" aria-label="Export and view options for Variants at each CFR position (site layer)">
+    <div class="chart-card-tools" role="group" aria-label="Export and view options for Variants at each CFR position">
       <button type="button" class="cc-btn" data-export="png" title="Download the chart as a PNG at twice the screen resolution, light background">PNG 2x</button>
       <button type="button" class="cc-btn" data-export="svg" title="Download the chart as an SVG, light background">SVG</button>
       <a class="cc-btn" href="data/stats/cfr_variants.csv" download title="The table behind this chart">CSV</a>
@@ -1446,23 +1391,21 @@
     <div class="chart-card-table" hidden></div>
     <aside class="chart-card-side" hidden aria-live="polite"></aside>
   </div>
-  <p class="chart-card-caption fine-print"><span class="chart-card-view" data-view-text></span>Scope: receptors with site variant data (279 of 283). Source: Site data: gnomAD v4.1.2 missense alleles, ClinVar 2026-10-11, AlphaMissense per substitution, VarSite conservation via ProtVar, GPCRdb generic numbering fetched 2026-10-18. Not the paper's analysis. Site summary from the Studio packs, not the paper's analysis: the paper's odds ratio above is the reference. Unique receptor, position, reference and alternate substitutions; allele counts are shown separately. Prediction, not clinical evidence. Conservation on hover is an observation.</p>
+  <p class="chart-card-caption fine-print"><span class="chart-card-view" data-view-text></span>Scope: receptors with site variant data (279 of 283). Source: gnomAD v4.1.2 missense alleles, ClinVar 2026-10-11, AlphaMissense per substitution, VarSite conservation via ProtVar, GPCRdb generic numbering fetched 2026-10-18. Unique receptor, position, reference and alternate substitutions; allele counts are shown separately. Prediction, not clinical evidence. Conservation on hover is an observation.</p>
   <details class="fine-print chart-card-method" id="chart-cfr-variants-method"><summary>How this is computed</summary><p>Substitutions are pooled over the receptors in which the position is numbered. The comparison chip shows the same bars for the recurrent positions ranked 51 to 368. Bars with fewer than 20 substitutions are faded.</p></details>
 </figure>
 
       <details class="fine-print stats-folded">
-        <summary>More site-layer charts: conservation against contact change (a null result)</summary>
+        <summary>More charts: conservation against contact change (a null result)</summary>
         <figure class="chart-card chart-card--plotly"
-        id="card-chart-conservation" data-card="chart-conservation" data-layer="site"
+        id="card-chart-conservation" data-card="chart-conservation"
         data-title="Conservation and contact change" data-source="gnomAD v4.1.2; VarSite conservation via ProtVar" data-receptors="279"
         data-csv="data/stats/chart-conservation.csv"
         style="--chart-h: 440px; --chart-h-phone: 380px">
   <figcaption class="chart-card-head">
     <div class="chart-card-titles">
-      <h3 class="chart-card-title" id="chart-conservation-title">Conservation and contact change
-        <span class="layer-badge layer-badge--site" title="gnomAD v4.1.2; VarSite conservation via ProtVar">Site layer</span>
-      </h3>
-      <p class="chart-card-lead">Residue conservation (VarSite via ProtVar) against |ΔRRCS| at variant residues, one point per variant row of the site variant layer.</p>
+      <h3 class="chart-card-title" id="chart-conservation-title">Conservation and contact change</h3>
+      <p class="chart-card-lead">Residue conservation (VarSite via ProtVar) against |ΔRRCS| at variant residues, one point per variant row of the variant data.</p>
     </div>
     <div class="chart-card-tools" role="group" aria-label="Export and view options for Conservation and contact change">
       <button type="button" class="cc-btn" data-export="png" title="Download the chart as a PNG at twice the screen resolution, light background">PNG 2x</button>
@@ -1489,7 +1432,7 @@
   
 </figure>
         <p>
-          The conservation chart uses the site's own variant layer, which covers 279 receptors. NPY6R and TAAR3 lack protein-coding missense
+          The conservation chart uses the variant data, which covers 279 receptors. NPY6R and TAAR3 lack protein-coding missense
           annotations because they are annotated as pseudogene loci. GP182 and P2RY8 are excluded
           from the current variant dataset because their identifiers were not successfully
           resolved during data collection.
@@ -1509,15 +1452,13 @@
         </p>
       </header>
       <figure class="chart-card chart-card--atlas"
-        id="card-chart-receptors" data-card="chart-receptors" data-layer="site"
+        id="card-chart-receptors" data-card="chart-receptors"
         data-title="Every receptor, placed by how much changes and in which direction" data-source="GPCompaRe RRCS batch 2026-02-02; GPCRdb generic numbering, fetched 2026-10-18" data-receptors="283"
         data-csv="data/stats/receptors.csv"
         style="--chart-h: 520px; --chart-h-phone: 440px">
   <figcaption class="chart-card-head">
     <div class="chart-card-titles">
-      <h3 class="chart-card-title" id="chart-receptors-title">Every receptor, placed by how much changes and in which direction
-        <span class="layer-badge layer-badge--site" title="GPCompaRe RRCS batch 2026-02-02; GPCRdb generic numbering, fetched 2026-10-18">Site layer</span>
-      </h3>
+      <h3 class="chart-card-title" id="chart-receptors-title">Every receptor, placed by how much changes and in which direction</h3>
       <p class="chart-card-lead">One point per receptor. Metric chips change the axes; color by ligand type or family; the find box highlights one receptor and lists the ones with the most similar CFR pattern.</p>
     </div>
     <div class="chart-card-tools" role="group" aria-label="Export and view options for Every receptor, placed by how much changes and in which direction">
@@ -1574,14 +1515,14 @@
         <table class="fp-versions" data-data-versions-table>
 <tbody>
 <tr><th scope="row">Database</th><td>GPCompaRe database release 2026-11-05</td></tr>
-<tr><th scope="row">RRCS batch</th><td>GPCompaRe RRCS batch 2026-02-02<br><span class="fp-detail">Run 2026-02-02</span><br><span class="fp-detail">RRCS, dRRCS, CFR ranking and every structural number. Frozen; the paper uses the same run.</span></td></tr>
+<tr><th scope="row">RRCS batch</th><td>GPCompaRe RRCS batch 2026-02-02<br><span class="fp-detail">Run 2026-02-02</span><br><span class="fp-detail">RRCS, dRRCS, CFR ranking and every structural number.</span></td></tr>
 <tr><th scope="row">GPCRdb models</th><td>GPCRdb models (2024-05-15 build): AlphaFold-Multistate, with plain AlphaFold2 for 165 inactive and 26 active models<br><span class="fp-detail">GPCRdb ran standard AlphaFold2 with all templates, classed the best model as active or inactive, and built the other state with AlphaFold-Multistate on state-filtered templates (Herrera et al., NAR 2025). The method of each model is GPCRdb's own label (model list read 2026-10-20), kept in data/model_methods.json; MCHR1 has none recorded.</span></td></tr>
-<tr><th scope="row">GPCRdb numbering</th><td>GPCRdb generic numbering<br><span class="fp-detail">Fetched 2026-10-18</span><br><span class="fp-detail">Residue segments and generic numbers of the Studio packs: GPCRdb API fetched 2026-10-18, with the batch annotation (GPCRdb, fetched 2026-02-02 to 2026-02-03) kept at the residues it covers. For GPR3, GPR4 and XCR1 the batch annotation belonged to GPR31, GPR42 and CXCR1; the packs skip it and the reports now use the packs for these three. Snake-plot layouts come from the published 2026 snapshot (data/snake_residues.json).</span></td></tr>
-<tr><th scope="row">gnomAD, search and reports</th><td>gnomAD v4.1.2 (dataset gnomad_r4, accessed 18 October 2026)<br><span class="fp-detail">Fetched 2026-10-18</span><br><span class="fp-detail">Studio packs: one transcript per gene (MANE Select or the transcript whose protein equals the model), positions mapped onto the model; exome counts where present, else genome. v4.1.2 variant data equal v4.1.1; neither changed allele counts or the variant set.</span></td></tr>
-<tr><th scope="row">gnomAD, statistics and paper</th><td>gnomAD v4.1 (dataset gnomad_r4, accessed 2 February 2026)<br><span class="fp-detail">Fetched 2026-02-02/2026-02-03</span><br><span class="fp-detail">Batch variant CSVs. The batch stored no point release; it ran before v4.1.1 (2026-03-30). Used by the paper's database description and the statistics page; no longer used by the report tables.</span></td></tr>
+<tr><th scope="row">GPCRdb numbering</th><td>GPCRdb generic numbering<br><span class="fp-detail">Fetched 2026-10-18</span><br><span class="fp-detail">Residue segments and generic numbers: GPCRdb API fetched 2026-10-18, with the batch annotation (GPCRdb, fetched 2026-02-02 to 2026-02-03) kept at the residues it covers; GPR3, GPR4 and XCR1 use the API numbering throughout. Snake-plot layouts come from the 2026 snapshot (data/snake_residues.json).</span></td></tr>
+<tr><th scope="row">gnomAD, search and reports</th><td>gnomAD v4.1.2 (dataset gnomad_r4, accessed 18 October 2026)<br><span class="fp-detail">Fetched 2026-10-18</span><br><span class="fp-detail">One transcript per gene (MANE Select or the transcript whose protein equals the model), positions mapped onto the model; exome counts where present, else genome. v4.1.2 variant data equal v4.1.1; neither changed allele counts or the variant set.</span></td></tr>
+<tr><th scope="row">gnomAD, statistics comparison</th><td>gnomAD v4.1 (dataset gnomad_r4, accessed 2 February 2026)<br><span class="fp-detail">Fetched 2026-02-02/2026-02-03</span><br><span class="fp-detail">Variant query of the RRCS batch run, made before v4.1.1 (2026-03-30). Used by the AlphaMissense class comparison on the Statistics page.</span></td></tr>
 <tr><th scope="row">ClinVar</th><td>ClinVar 2026-10-11<br><span class="fp-detail">Fetched 2026-10-19</span></td></tr>
-<tr><th scope="row">AlphaMissense</th><td>AlphaMissense (Cheng et al. 2023)<br><span class="fp-detail">One score per substitution from the Zenodo table (the same file as Zenodo 8208688). The batch variant CSVs carried ProtVar's copy of the same scores for the first allele at each position only.</span></td></tr>
-<tr><th scope="row">Conservation</th><td>VarSite conservation via ProtVar<br><span class="fp-detail">Fetched 2026-04-22</span><br><span class="fp-detail">ProtVar CONSERV per residue, cached 2026-04-22; GPR3, GPR4 and XCR1 fetched for the right accession 2026-10-18; OPN1SW and LPAR2 re-keyed from UniProt to model numbering (3 residues).</span></td></tr>
+<tr><th scope="row">AlphaMissense</th><td>AlphaMissense (Cheng et al. 2023)<br><span class="fp-detail">One score per substitution from the Zenodo table (the same file as Zenodo 8208688).</span></td></tr>
+<tr><th scope="row">Conservation</th><td>VarSite conservation via ProtVar<br><span class="fp-detail">Fetched 2026-04-22</span><br><span class="fp-detail">ProtVar CONSERV per residue, cached 2026-04-22 (GPR3, GPR4 and XCR1 fetched 2026-10-18), placed on model residue numbering.</span></td></tr>
 <tr><th scope="row">UniProt</th><td>UniProt 2026_04<br><span class="fp-detail">Fetched 2026-11-04</span></td></tr>
 <tr><th scope="row">Ensembl</th><td>Ensembl 116<br><span class="fp-detail">Fetched 2026-11-04</span><br><span class="fp-detail">Search transcripts and coordinates. The gnomAD transcript of each gene was chosen from Ensembl on 2026-10-18.</span></td></tr>
 <tr><th scope="row">RefSeq</th><td>NCBI RefSeq (Ensembl otherfeatures GRCh38; UCSC hg19.ncbiRefSeq 2024-09-18)<br><span class="fp-detail">Fetched 2026-11-04</span></td></tr>
@@ -1594,7 +1535,7 @@
         <a href="https://github.com/huhlim/alphafold-multistate" target="_blank" rel="noopener">AlphaFold multistate</a> ·
         <a href="https://doi.org/10.1038/s41586-021-03819-2" target="_blank" rel="noopener">AlphaFold2</a> (some states) ·
         <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6954041/" target="_blank" rel="noopener">RRCS</a> ·
-        <a href="https://gnomad.broadinstitute.org/" target="_blank" rel="noopener">gnomAD v4.1.0</a> (batch layer, as in the paper; the site layer's release is in the table above) ·
+        <a href="https://gnomad.broadinstitute.org/" target="_blank" rel="noopener">gnomAD</a> (gnomAD v4.1.0 for the AlphaMissense class comparison, gnomAD v4.1.2 for the per-position variants) ·
         <a href="https://zenodo.org/records/10813168" target="_blank" rel="noopener">AlphaMissense</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>) ·
         <a href="https://www.ncbi.nlm.nih.gov/clinvar/" target="_blank" rel="noopener">ClinVar 2026-10-11</a> ·
         <a href="https://gpcrdb.org/" target="_blank" rel="noopener">GPCRdb</a> ·
@@ -1647,7 +1588,7 @@ window.STATS_CHART_DATA = window.STATS_CHART_DATA || {};
 
 window.STATS_CHART_DATA['chart-cfr-dotplot'] = {"data":[{"customdata":[["3.50x50",1,1,96.8198],["3.49x49",4,7,80.212],["3.40x40",16,16,65.7244],["3.19x19",18,327,2.1201],["3.43x43",28,17,61.4841],["3.36x36",30,25,52.6502],["3.29x29",37,39,45.2297],["3.37x37",41,36,48.0565],["3.33x33",44,43,42.7562],["3.26x26",47,48,42.0495]],"hovertemplate":"Segment=TM3<br>Mean |\u0394RRCS|=%{x}<br>Receptors with an above-threshold change=%{y}<br>CFR score=%{marker.size}<br>generic_number=%{customdata[0]}<br>cfr_score_rank=%{customdata[1]}<br>recurrence_rank=%{customdata[2]}<br>pct_receptors=%{customdata[3]}<extra></extra>","legendgroup":"TM3","marker":{"color":"rgb(102,194,165)","size":{"dtype":"f8","bdata":"5jpkLMw75z+ufg/vdNHkPzWNwnwPUuE/lOmrhLFZ4D+dxhJOD/beP4aSLMS4W94/ge3ixwF73T/sIM46Qg7dP4m1eTv2Q9w/ruksaAOr2z8="},"sizemode":"area","sizeref":0.0018151237647585745,"symbol":"circle"},"mode":"markers+text","name":"TM3","orientation":"v","showlegend":true,"text":["3.50x50","3.49x49","","","","","","","",""],"x":{"dtype":"f8","bdata":"D5TK7FQ9EkAyHK7tyRETQJtiMs57SRBAXUrgCw8sJEDo/6lAM9QKQI/NhSjdVRBAxsMq0x9SEkAj3Xvnd5sQQMB15kTU0RFA+F6/0mJcEUA="},"xaxis":"x","y":{"dtype":"i2","bdata":"EgHjALoABgCuAJUAgACIAHkAdwA="},"yaxis":"y","type":"scatter","textfont":{"size":8},"textposition":"top center"},{"customdata":[["6.48x48",2,3,86.5724],["6.44x44",6,5,82.3322],["6.30x30",13,15,66.4311],["6.38x38",14,21,55.8304],["6.36x36",19,18,57.9505],["6.58x58",22,26,52.2968],["6.32x32",26,38,46.6431],["6.52x52",29,24,53.0035],["6.55x55",32,32,49.1166],["6.51x51",33,27,51.9435],["6.37x37",42,29,51.5901],["6.59x59",49,44,42.7562],["6.33x33",50,53,40.9894]],"hovertemplate":"Segment=TM6<br>Mean |\u0394RRCS|=%{x}<br>Receptors with an above-threshold change=%{y}<br>CFR score=%{marker.size}<br>generic_number=%{customdata[0]}<br>cfr_score_rank=%{customdata[1]}<br>recurrence_rank=%{customdata[2]}<br>pct_receptors=%{customdata[3]}<extra></extra>","legendgroup":"TM6","marker":{"color":"rgb(252,141,98)","size":{"dtype":"f8","bdata":"6X36tGg35T8OGn14ak/kPwuLSqjDC+I/RKfZxq/i4T9SE2bTsQjgP/GG4Zv6xt8/uVfyXa1F3z9TQC8+tebePxKR5FMwRd4/qGPGvocj3j8jLaOFRA3dP01JRj96eNs/D5aOIX9v2z8="},"sizemode":"area","sizeref":0.0018151237647585745,"symbol":"circle"},"mode":"markers+text","name":"TM6","orientation":"v","showlegend":true,"text":["6.48x48","6.44x44","","","","","","","","","","",""],"x":{"dtype":"f8","bdata":"dyjOil9sEUDr12XSuecQQKAgqLVZ0hFAehUTn5bVFUBQ4IGJP0gQQIwgnmGJRRJApbLJ0p79E0BM9kLZZd8QQGksptdkshFA07eyZ2haEED8LAuFj0IOQOVaVfVI0RBAFdAbeW6CEUA="},"xaxis":"x","y":{"dtype":"i2","bdata":"9QDpALwAngCkAJQAhACWAIsAkwCSAHkAdAA="},"yaxis":"y","type":"scatter","textfont":{"size":8},"textposition":"top center"},{"customdata":[["7.53x53",3,2,89.7527],["7.56x56",7,6,80.9187],["7.54x54",9,9,73.8516],["7.45x45",12,10,73.4982],["7.55x55",15,13,67.1378],["7.49x49",17,14,66.7845],["7.42x41",23,22,54.417],["7.50x50",24,19,57.2438],["7.35x34",31,33,48.7633],["7.36x35",38,37,47.7032],["7.32x31",40,40,44.1696]],"hovertemplate":"Segment=TM7<br>Mean |\u0394RRCS|=%{x}<br>Receptors with an above-threshold change=%{y}<br>CFR score=%{marker.size}<br>generic_number=%{customdata[0]}<br>cfr_score_rank=%{customdata[1]}<br>recurrence_rank=%{customdata[2]}<br>pct_receptors=%{customdata[3]}<extra></extra>","legendgroup":"TM7","marker":{"color":"rgb(141,160,203)","size":{"dtype":"f8","bdata":"EBnCWZAo5T/eyKsQlyHkP9TrOD8LruM/aTWzyVBj4j/CZvbWFdHhPyP6tUBpiuA/+62+/NKX3z/yKvK63Y3fP1iZGtcsSt4/clm5oChr3T/w5DAF4UXdPw=="},"sizemode":"area","sizeref":0.0018151237647585745,"symbol":"circle"},"mode":"markers+text","name":"TM7","orientation":"v","showlegend":true,"text":["7.53x53","7.56x56","7.54x54","","","","","","","",""],"x":{"dtype":"f8","bdata":"9heTe2TnD0A7dBVx8woRQK825Bp62RJAgRyhTHh6D0ArSma+APMQQGC915f3wQtAFVOrPOwnEUBdk5lwotsPQAWOjNdf3hFAC7OgWEk2EUAnZht2OYASQA=="},"xaxis":"x","y":{"dtype":"i2","bdata":"/gDlANEA0AC+AL0AmgCiAIoAhwB9AA=="},"yaxis":"y","type":"scatter","textfont":{"size":8},"textposition":"top center"},{"customdata":[["5.58x58",5,4,82.3322],["5.47x47",21,20,56.1837],["5.35x36",27,34,48.0565],["5.66x66",43,69,36.3958],["5.62x62",45,45,42.4028],["5.68x68",46,46,42.4028]],"hovertemplate":"Segment=TM5<br>Mean |\u0394RRCS|=%{x}<br>Receptors with an above-threshold change=%{y}<br>CFR score=%{marker.size}<br>generic_number=%{customdata[0]}<br>cfr_score_rank=%{customdata[1]}<br>recurrence_rank=%{customdata[2]}<br>pct_receptors=%{customdata[3]}<extra></extra>","legendgroup":"TM5","marker":{"color":"rgb(231,138,195)","size":{"dtype":"f8","bdata":"PpAPl7Gx5D89t0GRvsvfP9OWaY9SJd8/So0rLcDV3D8g4nrN39TbPwHDeyAn1Ns/"},"sizemode":"area","sizeref":0.0018151237647585745,"symbol":"circle"},"mode":"markers+text","name":"TM5","orientation":"v","showlegend":true,"text":["5.58x58","","","","",""],"x":{"dtype":"f8","bdata":"Y2PT3ojfEUA0BwuL6awQQDBTU7UNPhNAkGCjdR8wFUAXiQv2d2sRQFk5QyGPahFA"},"xaxis":"x","y":{"dtype":"i2","bdata":"6QCfAIgAZwB4AHgA"},"yaxis":"y","type":"scatter","textfont":{"size":8},"textposition":"top center"},{"customdata":[["8.50x50",8,8,76.6784],["8.51x51",11,11,72.0848],["8.48x48",36,57,39.576]],"hovertemplate":"Segment=H8<br>Mean |\u0394RRCS|=%{x}<br>Receptors with an above-threshold change=%{y}<br>CFR score=%{marker.size}<br>generic_number=%{customdata[0]}<br>cfr_score_rank=%{customdata[1]}<br>recurrence_rank=%{customdata[2]}<br>pct_receptors=%{customdata[3]}<extra></extra>","legendgroup":"H8","marker":{"color":"rgb(166,216,84)","size":{"dtype":"f8","bdata":"vJGgV/L94z9iE5SmkcXiP1d62Da6jd0/"},"sizemode":"area","sizeref":0.0018151237647585745,"symbol":"circle"},"mode":"markers+text","name":"H8","orientation":"v","showlegend":true,"text":["8.50x50","",""],"x":{"dtype":"f8","bdata":"59no3mZ1EkCbWDPvwUsRQPLmQvfTxBRA"},"xaxis":"x","y":{"dtype":"i2","bdata":"2QDMAHAA"},"yaxis":"y","type":"scatter","textfont":{"size":8},"textposition":"top center"},{"customdata":[["2.39x39",10,12,70.6714],["2.43x43",34,31,50.53],["2.50x50",39,23,53.7102]],"hovertemplate":"Segment=TM2<br>Mean |\u0394RRCS|=%{x}<br>Receptors with an above-threshold change=%{y}<br>CFR score=%{marker.size}<br>generic_number=%{customdata[0]}<br>cfr_score_rank=%{customdata[1]}<br>recurrence_rank=%{customdata[2]}<br>pct_receptors=%{customdata[3]}<extra></extra>","legendgroup":"TM2","marker":{"color":"rgb(255,217,47)","size":{"dtype":"f8","bdata":"LDNH3mv24j90DeeVMO/dP6ih7S1zZt0/"},"sizemode":"area","sizeref":0.0018151237647585745,"symbol":"circle"},"mode":"markers+text","name":"TM2","orientation":"v","showlegend":true,"text":["2.39x39","",""],"x":{"dtype":"f8","bdata":"CICtCbddEkCW5tjWMa8QQNzXq8gbXw1A"},"xaxis":"x","y":{"dtype":"i2","bdata":"yACPAJgA"},"yaxis":"y","type":"scatter","textfont":{"size":8},"textposition":"top center"},{"customdata":[["45.52x52",20,28,51.5901],["45.51x51",25,30,50.8834]],"hovertemplate":"Segment=ECL2<br>Mean |\u0394RRCS|=%{x}<br>Receptors with an above-threshold change=%{y}<br>CFR score=%{marker.size}<br>generic_number=%{customdata[0]}<br>cfr_score_rank=%{customdata[1]}<br>recurrence_rank=%{customdata[2]}<br>pct_receptors=%{customdata[3]}<extra></extra>","legendgroup":"ECL2","marker":{"color":"rgb(229,196,148)","size":{"dtype":"f8","bdata":"AeIjYfsA4D+s6C4/v4HfPw=="},"sizemode":"area","sizeref":0.0018151237647585745,"symbol":"circle"},"mode":"markers+text","name":"ECL2","orientation":"v","showlegend":true,"text":["",""],"x":{"dtype":"f8","bdata":"ktoSQErbEkDyNYsMB4USQA=="},"xaxis":"x","y":{"dtype":"i2","bdata":"kgCQAA=="},"yaxis":"y","type":"scatter","textfont":{"size":8},"textposition":"top center"},{"customdata":[["1.60x60",35,35,48.0565]],"hovertemplate":"Segment=TM1<br>Mean |\u0394RRCS|=%{x}<br>Receptors with an above-threshold change=%{y}<br>CFR score=%{marker.size}<br>generic_number=%{customdata[0]}<br>cfr_score_rank=%{customdata[1]}<br>recurrence_rank=%{customdata[2]}<br>pct_receptors=%{customdata[3]}<extra></extra>","legendgroup":"TM1","marker":{"color":"rgb(179,179,179)","size":{"dtype":"f8","bdata":"3CcMD0vB3T8="},"sizemode":"area","sizeref":0.0018151237647585745,"symbol":"circle"},"mode":"markers+text","name":"TM1","orientation":"v","showlegend":true,"text":[""],"x":{"dtype":"f8","bdata":"KTtu8S99EUA="},"xaxis":"x","y":{"dtype":"i2","bdata":"iAA="},"yaxis":"y","type":"scatter","textfont":{"size":8},"textposition":"top center"},{"customdata":[["34.53x53",48,66,36.7491]],"hovertemplate":"Segment=ICL2<br>Mean |\u0394RRCS|=%{x}<br>Receptors with an above-threshold change=%{y}<br>CFR score=%{marker.size}<br>generic_number=%{customdata[0]}<br>cfr_score_rank=%{customdata[1]}<br>recurrence_rank=%{customdata[2]}<br>pct_receptors=%{customdata[3]}<extra></extra>","legendgroup":"ICL2","marker":{"color":"rgb(102,194,165)","size":{"dtype":"f8","bdata":"Smi5vOKZ2z8="},"sizemode":"area","sizeref":0.0018151237647585745,"symbol":"circle"},"mode":"markers+text","name":"ICL2","orientation":"v","showlegend":true,"text":[""],"x":{"dtype":"f8","bdata":"wNZLPjN8E0A="},"xaxis":"x","y":{"dtype":"i1","bdata":"aA=="},"yaxis":"y","type":"scatter","textfont":{"size":8},"textposition":"top center"}],"layout":{"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"xaxis":{"anchor":"y","domain":[0.0,1.0],"title":{"text":"Mean |\u0394RRCS|"}},"yaxis":{"anchor":"x","domain":[0.0,1.0],"title":{"text":"Receptors with an above-threshold change"}},"legend":{"title":{"text":"Segment"},"tracegroupgap":0,"itemsizing":"constant"},"title":{"text":"Top 50 recurrent Core Functional Residue positions","font":{"size":13},"x":0,"xanchor":"left","automargin":true},"autosize":true,"margin":{"l":56,"r":16,"b":56,"t":48}},"config":{"displayModeBar":false,"responsive":true,"displaylogo":false}};
 
-window.STATS_CHART_DATA['chart-pathogenicity'] = {"data":[{"customdata":[4117,4085],"hovertemplate":"%{x}<br>Predicted pathogenic: %{customdata:,} (%{y:.1f}%)<extra></extra>","insidetextfont":{"color":"#ffffff"},"marker":{"color":"#B4234B"},"meta":{"path_class":"pathogenic"},"name":"Predicted pathogenic","text":["56.6%","37.0%"],"textposition":"inside","x":["Top 50 positions by CFR score<br>n = 7,268 scored, 6,155 decisive","Other generic-numbered positions<br>n = 11,040 scored, 9,369 decisive"],"y":[56.64556962025316,37.0018115942029],"type":"bar"},{"customdata":[1113,1671],"hovertemplate":"%{x}<br>Ambiguous: %{customdata:,} (%{y:.1f}%)<extra></extra>","insidetextfont":{"color":"#ffffff"},"marker":{"color":"#555C68"},"meta":{"path_class":"ambiguous"},"name":"Ambiguous","text":["15.3%","15.1%"],"textposition":"inside","x":["Top 50 positions by CFR score<br>n = 7,268 scored, 6,155 decisive","Other generic-numbered positions<br>n = 11,040 scored, 9,369 decisive"],"y":[15.313703907539901,15.13586956521739],"type":"bar"},{"customdata":[2038,5284],"hovertemplate":"%{x}<br>Predicted benign: %{customdata:,} (%{y:.1f}%)<extra></extra>","insidetextfont":{"color":"#ffffff"},"marker":{"color":"#2B6E2F"},"meta":{"path_class":"benign"},"name":"Predicted benign","text":["28.0%","47.9%"],"textposition":"inside","x":["Top 50 positions by CFR score<br>n = 7,268 scored, 6,155 decisive","Other generic-numbered positions<br>n = 11,040 scored, 9,369 decisive"],"y":[28.040726472206934,47.86231884057971],"type":"bar"}],"layout":{"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"barmode":"stack","title":{"text":"AlphaMissense class at the top 50 positions by CFR score and at other generic-numbered positions (odds ratio 2.61)","font":{"size":13},"x":0,"xanchor":"left","automargin":true},"yaxis":{"title":{"text":"Share of scored missense substitutions (%)"}},"autosize":true,"margin":{"l":56,"r":16,"b":56,"t":48}},"config":{"displayModeBar":false,"responsive":true,"displaylogo":false}};
+window.STATS_CHART_DATA['chart-pathogenicity'] = {"data":[{"customdata":[4117,4085],"hovertemplate":"%{x}<br>Predicted pathogenic: %{customdata:,} (%{y:.1f}%)<extra></extra>","insidetextfont":{"color":"#ffffff"},"marker":{"color":"#B4234B"},"meta":{"path_class":"pathogenic"},"name":"Predicted pathogenic","text":["56.6%","37.0%"],"textposition":"inside","x":["Top 50 positions by CFR score<br>n = 7,268 scored, 6,155 decisive","Other generic-numbered positions<br>n = 11,040 scored, 9,369 decisive"],"y":[56.64556962025316,37.0018115942029],"type":"bar"},{"customdata":[1113,1671],"hovertemplate":"%{x}<br>Ambiguous: %{customdata:,} (%{y:.1f}%)<extra></extra>","insidetextfont":{"color":"#ffffff"},"marker":{"color":"#555C68"},"meta":{"path_class":"ambiguous"},"name":"Ambiguous","text":["15.3%","15.1%"],"textposition":"inside","x":["Top 50 positions by CFR score<br>n = 7,268 scored, 6,155 decisive","Other generic-numbered positions<br>n = 11,040 scored, 9,369 decisive"],"y":[15.313703907539901,15.13586956521739],"type":"bar"},{"customdata":[2038,5284],"hovertemplate":"%{x}<br>Predicted benign: %{customdata:,} (%{y:.1f}%)<extra></extra>","insidetextfont":{"color":"#ffffff"},"marker":{"color":"#2B6E2F"},"meta":{"path_class":"benign"},"name":"Predicted benign","text":["28.0%","47.9%"],"textposition":"inside","x":["Top 50 positions by CFR score<br>n = 7,268 scored, 6,155 decisive","Other generic-numbered positions<br>n = 11,040 scored, 9,369 decisive"],"y":[28.040726472206934,47.86231884057971],"type":"bar"}],"layout":{"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"barmode":"stack","title":{"text":"AlphaMissense class at the top 50 positions by CFR score and at other generic-numbered positions","font":{"size":13},"x":0,"xanchor":"left","automargin":true},"yaxis":{"title":{"text":"Share of scored missense substitutions (%)"}},"autosize":true,"margin":{"l":56,"r":16,"b":56,"t":48}},"config":{"displayModeBar":false,"responsive":true,"displaylogo":false}};
 
 </script>
 <script src="static/js/segment-order.js" defer></script>

@@ -5540,7 +5540,6 @@
     
     <aside class="fine-print rx-variants-fine" id="variants-fine-print">
       <p>gnomAD v4.1.2 (dataset gnomad_r4, accessed 18 October 2026): missense alleles on one transcript per gene, placed on the model's residues. One AlphaMissense score per substitution (AlphaMissense (Cheng et al. 2023)); conservation from VarSite conservation via ProtVar.</p>
-      <p>The paper's database variant counts come from the earlier query (gnomAD v4.1.0); this table uses gnomAD v4.1.2, the release the search also shows.</p>
     </aside>
     
 
@@ -14302,7 +14301,7 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 
   // The arcs are drawn by snake-plus.js from the page's above-threshold pairs; the old top-50
-  // overlay and its contact_links payload were removed (P4, approved 2026-11-05). Every control
+  // overlay and its contact_links payload are not used. Every control
   // still calls this hook, so it stays.
   function redrawSnakeLinks() {
     var summary = document.getElementById('snake-filter-summary');

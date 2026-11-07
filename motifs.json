@@ -1,6 +1,6 @@
 {
  "schema": 1,
- "_doc": "Sequence motifs defined by this database (website/motifs.py). Single source for the report pages (each report carries these definitions in its #rx-config block as `motifs`; snake-plus.js turns them into motif chips) and for search (the build copies this file to <site>/motifs.json with `members` added: every receptor that carries the motif, from the Studio packs). `requires` is the residue rule, by generic number (the part before the x); `contacts` are the motif's own contact pairs, by generic number. `count` is the published figure; the build checks it against the packs. No em dashes in any text.",
+ "_doc": "Sequence motifs defined by this database (website/motifs.py). Single source for the report pages (each report carries these definitions in its #rx-config block as `motifs`; snake-plus.js turns them into motif chips) and for search (the build copies this file to <site>/motifs.json with `members` added: every receptor that carries the motif, from the Studio packs). `requires` is the residue rule, by generic number (the part before the x); `contacts` are the motif's own contact pairs, by generic number. `count` is the stated figure; the build checks it against the packs. No em dashes in any text.",
  "motifs": [
   {
    "id": "xmy",
@@ -31,9 +31,9 @@
     ]
    ],
    "note": "TM3: a variable residue at 3.35, then Met3.36 and Tyr3.37",
-   "definition": "A TM3 sequence pattern: Met at 3.36 and Tyr at 3.37, after a variable residue at 3.35. Of the 283 Class A receptors, 30 carry it, the four PARs among them. Its two contacts, Met3.36 to Tyr3.37 and Met3.36 to the 6.48 toggle-switch position, tend to be weaker in the active model across the receptors that carry it (GPCompaRe study).",
+   "definition": "A TM3 sequence pattern: Met at 3.36 and Tyr at 3.37, after a variable residue at 3.35. Of the 283 Class A receptors, 30 carry it, the four PARs among them. Its two contacts, Met3.36 to Tyr3.37 and Met3.36 to the 6.48 toggle-switch position, tend to be weaker in the active model across the receptors that carry it.",
    "contact_finding": "Across the receptors that carry it, Met3.36 to 6.48 is weaker in the active model in 27 of 30 and Met3.36 to Tyr3.37 in 21 of 28 (the receptors where the contact exists).",
-   "source": "GPCompaRe study",
+   "source": "GPCompaRe database",
    "glossary": "glossary.html#xmy",
    "count": {
     "receptors": 30,

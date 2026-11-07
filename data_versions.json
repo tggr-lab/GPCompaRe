@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "_doc": "Single source of truth for the data releases this database release shows. database.release is the release every page and the landing JSON-LD state (version); database.build_date is the JSON-LD dateModified. Read by website/data_versions.py: exposed to every template as `data_versions` and copied to <site>/data_versions.json. Search (search_index_v2.py meta.releases) and the report variant labels read from here. Edit this file, not the labels. `layers` says which source each part of the site uses; the batch entries are the frozen inputs of the RRCS run and the paper's database numbers.",
+  "_doc": "Single source of truth for the data releases this database release shows. database.release is the release every page and the landing JSON-LD state (version); database.build_date is the JSON-LD dateModified. Read by website/data_versions.py: exposed to every template as `data_versions` and copied to <site>/data_versions.json. Search (search_index_v2.py meta.releases) and the report variant labels read from here. Edit this file, not the labels. `layers` says which source each part of the site uses; the batch entries are the inputs of the RRCS run.",
   "database": {
     "label": "GPCompaRe database release 2026-11-05",
     "release": "2026-11-05",
@@ -12,7 +12,7 @@
       "label": "GPCompaRe RRCS batch 2026-02-02",
       "run_id": "batch_analysis_20260202_151051",
       "date": "2026-02-02",
-      "note": "RRCS, dRRCS, CFR ranking and every structural number. Frozen; the paper uses the same run."
+      "note": "RRCS, dRRCS, CFR ranking and every structural number."
     },
     "gpcrdb_models": {
       "label": "GPCRdb models (2024-05-15 build): AlphaFold-Multistate, with plain AlphaFold2 for some states",
@@ -26,7 +26,7 @@
     "gpcrdb_numbering": {
       "label": "GPCRdb generic numbering",
       "fetched": "2026-10-18",
-      "note": "Residue segments and generic numbers of the Studio packs: GPCRdb API fetched 2026-10-18, with the batch annotation (GPCRdb, fetched 2026-02-02 to 2026-02-03) kept at the residues it covers. For GPR3, GPR4 and XCR1 the batch annotation belonged to GPR31, GPR42 and CXCR1; the packs skip it and the reports now use the packs for these three. Snake-plot layouts come from the published 2026 snapshot (data/snake_residues.json)."
+      "note": "Residue segments and generic numbers: GPCRdb API fetched 2026-10-18, with the batch annotation (GPCRdb, fetched 2026-02-02 to 2026-02-03) kept at the residues it covers; GPR3, GPR4 and XCR1 use the API numbering throughout. Snake-plot layouts come from the 2026 snapshot (data/snake_residues.json)."
     },
     "gnomad": {
       "label": "gnomAD v4.1.2",
@@ -34,7 +34,7 @@
       "release": "v4.1.2",
       "dataset": "gnomad_r4",
       "fetched": "2026-10-18",
-      "note": "Studio packs: one transcript per gene (MANE Select or the transcript whose protein equals the model), positions mapped onto the model; exome counts where present, else genome. v4.1.2 variant data equal v4.1.1; neither changed allele counts or the variant set."
+      "note": "One transcript per gene (MANE Select or the transcript whose protein equals the model), positions mapped onto the model; exome counts where present, else genome. v4.1.2 variant data equal v4.1.1; neither changed allele counts or the variant set."
     },
     "gnomad_batch": {
       "label": "gnomAD v4.1.0",
@@ -42,7 +42,7 @@
       "release": "v4.1.0",
       "dataset": "gnomad_r4",
       "fetched": "2026-02-02/2026-02-03",
-      "note": "Batch variant CSVs. The batch stored no point release; it ran before v4.1.1 (2026-03-30). Used by the paper's database description and the statistics page; no longer used by the report tables."
+      "note": "Variant query of the RRCS batch run, made before v4.1.1 (2026-03-30). Used by the AlphaMissense class comparison on the Statistics page."
     },
     "clinvar": {
       "label": "ClinVar 2026-10-11",
@@ -57,12 +57,12 @@
       "md5": "b9ccb339e0de6cb0a8d1973ad2026576",
       "published": "2023-09-19",
       "licence": "CC BY 4.0",
-      "note": "One score per substitution from the Zenodo table (the same file as Zenodo 8208688). The batch variant CSVs carried ProtVar's copy of the same scores for the first allele at each position only."
+      "note": "One score per substitution from the Zenodo table (the same file as Zenodo 8208688)."
     },
     "conservation": {
       "label": "VarSite conservation via ProtVar",
       "fetched": "2026-04-22",
-      "note": "ProtVar CONSERV per residue, cached 2026-04-22; GPR3, GPR4 and XCR1 fetched for the right accession 2026-10-18; OPN1SW and LPAR2 re-keyed from UniProt to model numbering (3 residues)."
+      "note": "ProtVar CONSERV per residue, cached 2026-04-22 (GPR3, GPR4 and XCR1 fetched 2026-10-18), placed on model residue numbering."
     },
     "uniprot": {
       "label": "UniProt 2026_04",
