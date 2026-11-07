@@ -23,8 +23,13 @@ def test_deploy_runs_the_stage_check_before_syncing():
 
 
 def test_publication_exclusions_are_kept():
-    for path in ('/data/', '/poster/', '/dossier/'):
+    for path in ('/poster/', '/dossier/'):
         assert "--exclude='%s'" % path in BUILD, path
+    # the data caches stay out; the Statistics page's payloads under /data/stats/ are the one exception
+    assert "--exclude='/data/*'" in BUILD and "--include='/data/stats/***'" in BUILD
+    assert BUILD.index("--include='/data/stats/***'") < BUILD.index("--exclude='/data/*'")
+    check = (ROOT / 'scripts' / 'check_stage.py').read_text(encoding='utf-8')
+    assert "DATA_PUBLISHED = 'stats'" in check and "'data'" not in check.split('EXCLUDED_DIRS = ')[1].split('\n')[0]
 
 
 def test_build_refuses_to_run_without_snake_plots():

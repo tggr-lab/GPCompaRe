@@ -82,8 +82,11 @@ fi
 
 echo "==> Assembling $STAGE..."
 mkdir -p "$STAGE"
+# /data/ holds the conservation and AlphaMissense caches, which are not published; only the
+# Statistics page's payloads and tables under /data/stats/ are staged (the stage check enforces it)
 rsync -a --delete \
-  --exclude='/data/' --exclude='/poster/' --exclude='/dossier/' --exclude='/studio/' --exclude='/models/' \
+  --include='/data/' --include='/data/stats/***' --exclude='/data/*' \
+  --exclude='/poster/' --exclude='/dossier/' --exclude='/studio/' --exclude='/models/' \
   "$BUILD/" "$STAGE/"
 mkdir -p "$STAGE/studio"
 rsync -a --delete "${STUDIO_DIST%/}/" "$STAGE/studio/"

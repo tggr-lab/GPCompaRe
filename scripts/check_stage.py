@@ -18,9 +18,14 @@ MODEL_MIN = 8 * 2**10
 MODEL_MAX = 2 * 2**20
 STATES = ('active', 'inactive')
 
-ALLOWED = {'.css', '.gif', '.gz', '.html', '.ico', '.jpg', '.js', '.json', '.mjs', '.nojekyll',
-           '.png', '.svg', '.ttf', '.txt', '.wasm', '.webp', '.woff', '.woff2', '.xml'}
-EXCLUDED_DIRS = ('data', 'poster', 'dossier')
+ALLOWED = {'.css', '.csv', '.gif', '.gz', '.html', '.ico', '.jpg', '.js', '.json', '.mjs', '.nojekyll',
+           '.png', '.svg', '.ttf', '.txt', '.wasm', '.webp', '.woff', '.woff2', '.xml', '.zip'}
+EXCLUDED_DIRS = ('poster', 'dossier')
+# /data/ carries the build caches (conservation, AlphaMissense), which are never published; the one
+# published subdirectory is the Statistics page's payloads and tables
+DATA_PUBLISHED = 'stats'
+STATS_REQUIRED = ('helix_pairs.json', 'helix_pair_cells.json', 'cfr_atlas.json', 'receptors.json',
+                  'cfr_variants.json', 'gpcompare_statistics_tables.zip')
 # the embed demo takes ?active=/?inactive=/?base= URLs from the address bar, so it is not shipped
 EXCLUDED_FILES = ('studio/embed/demo.html',)
 SECRET_NAME = re.compile(r'(^\.env|\.pem$|\.key$|id_rsa|credential|secret|\.docx?$|\.xlsx?$|\.pptx?$|'
@@ -113,6 +118,16 @@ def main(stage):
     for name in EXCLUDED_DIRS:
         if (stage / name).exists():
             fails.append('excluded directory is present: /%s/' % name)
+    data = stage / 'data'
+    if data.exists():
+        extra = sorted(p.name for p in data.iterdir() if p.name != DATA_PUBLISHED)
+        if extra:
+            fails.append('unpublished data in /data/: %s' % extra[:5])
+        if (data / 'index.html').exists():
+            fails.append('/data/ must not have an index')
+    for name in STATS_REQUIRED:
+        if not (data / DATA_PUBLISHED / name).is_file():
+            fails.append('missing: data/%s/%s' % (DATA_PUBLISHED, name))
     for rel in EXCLUDED_FILES:
         if (stage / rel).exists():
             fails.append('excluded file is present: /%s' % rel)

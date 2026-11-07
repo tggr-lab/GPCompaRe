@@ -397,9 +397,27 @@ def test_check_stage_accepts_a_complete_model_stage_and_catches_each_fault(tmp_p
     assert any('without a report' in f for f in fails), fails
 
 
-def test_check_stage_still_excludes_data_poster_and_dossier():
+def test_check_stage_still_excludes_poster_and_dossier_and_publishes_only_data_stats(tmp_path, capsys):
+    # 2026-11-06: /data/stats/ (the Statistics page's payloads and tables) is the one published part of /data/;
+    # the caches beside it stay out
     check_stage = _load_script('check_stage')
-    assert check_stage.EXCLUDED_DIRS == ('data', 'poster', 'dossier')
+    assert check_stage.EXCLUDED_DIRS == ('poster', 'dossier')
+    assert check_stage.DATA_PUBLISHED == 'stats'
+    assert {'.csv', '.zip'} <= check_stage.ALLOWED
+    stage = tmp_path / 'stage'
+    (stage / 'data' / 'stats').mkdir(parents=True)
+    for name in check_stage.STATS_REQUIRED:
+        (stage / 'data' / 'stats' / name).write_bytes(b'{}' if name.endswith('.json') else b'PK')
+    (stage / 'data' / 'stats' / 'helix_pairs.csv').write_text('a,b\n')
+    check_stage.main(stage)
+    out = capsys.readouterr().out
+    assert 'unpublished data' not in out and 'missing: data/stats' not in out and 'unexpected file type' not in out
+    (stage / 'data' / 'conservation_a_human.json').write_text('{}')
+    (stage / 'data' / 'stats' / 'cfr_atlas.json').unlink()
+    check_stage.main(stage)
+    out = capsys.readouterr().out
+    assert "unpublished data in /data/: ['conservation_a_human.json']" in out
+    assert 'missing: data/stats/cfr_atlas.json' in out
 
 
 def test_the_release_script_hosts_models_and_keeps_the_exclusions():
@@ -407,8 +425,9 @@ def test_the_release_script_hosts_models_and_keeps_the_exclusions():
     assert 'stage_models.py' in build
     assert build.index('rsync -a --delete "${STUDIO_DIST%/}/"') < build.index('stage_models.py')
     assert build.index('stage_models.py') < build.index('check_stage.py')
-    for path in ('/data/', '/poster/', '/dossier/'):
+    for path in ('/data/*', '/poster/', '/dossier/'):
         assert "--exclude='%s'" % path in build
+    assert "--include='/data/stats/***'" in build
     assert 'rm -f "$STAGE/studio/embed/demo.html"' in build
     assert build.index('rm -f "$STAGE/studio/embed/demo.html"') < build.index('check_stage.py')
 
