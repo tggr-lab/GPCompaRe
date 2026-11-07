@@ -921,7 +921,7 @@
       var small = json.families.filter(function (f) { return !f.plotted; });
       var k = json.kruskal && json.kruskal[metric];
       var layout = {
-        title: { text: label[metric] + ' by family (families with at least 4 receptors), site layer' },
+        title: { text: label[metric] + ' by family (families with at least 4 receptors)' },
         xaxis: merge(axisSpec(metric, t), { type: 'linear' }), yaxis: { automargin: true, tickfont: { size: isPhone() ? 9 : 11 } },
         margin: { l: 10, r: 12, t: 12, b: 50 }, legend: { orientation: 'h', y: -0.08 }
       };
@@ -1174,7 +1174,7 @@
               var rec = recs[r[F.receptor]];
               return [link(rec[RF.gene], rec[RF.report_url] || REPORT(rec[RF.gid])), (r[F.aa] || '') + r[F.residue], r[F.substitutions], r[F.pathogenic], r[F.ambiguous], r[F.benign], r[F.allele_count], r[F.clinvar_plp_db] || '', r[F.conservation] === null ? '' : Number(r[F.conservation]).toFixed(2), link('search', SEARCH(r[F.search_q]))];
             })));
-          side.appendChild(el('p', 'side-note', 'Path., Amb., Ben.: AlphaMissense predicted class counts of the unique substitutions (a prediction). AC: gnomAD allele count. P/LP: ClinVar pathogenic or likely pathogenic missense records in the database set. Cons.: conservation (observed). Source: ' + (json.label || 'site layer') + '.'));
+          side.appendChild(el('p', 'side-note', 'Path., Amb., Ben.: AlphaMissense predicted class counts of the unique substitutions (a prediction). AC: gnomAD allele count. P/LP: ClinVar pathogenic or likely pathogenic missense records in the database set. Cons.: conservation (observed). Source: ' + (json.label || 'GPCompaRe database') + '.'));
         });
       }).catch(function (err) { openSide(card, pos.generic, function (side) { side.appendChild(el('p', 'side-note', 'The receptor list could not be loaded (' + err.message + ').')); }); });
     }
