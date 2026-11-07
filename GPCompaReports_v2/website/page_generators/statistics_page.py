@@ -446,7 +446,7 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
                      'at the position) and normalized mean |ΔRRCS|. The ranked list is cut at the top %d '
                      'positions for reporting; %s positions meet the recurrence criterion of three or more '
                      'receptors.</p>' % (CFR_TOP_N, format(paper.get('n_recurrent_positions', 0), ',')),
-              height=440, height_phone=380),
+              height=440, height_phone=520),
         fig=_shrink_dotplot(_fig_dict(paper.get('fig_recurrence_dotplot'))), inline=True)
 
     # D. variants: the paper comparison in the clinical tint, then the site's per-position panel
@@ -459,7 +459,7 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
               'Bars are shares of all scored substitutions (denominator under each bar). Prediction, not '
               'clinical evidence.',
               method=_am_method(am),
-              height=400, height_phone=380),
+              height=400, height_phone=480),
         fig=paper.get('fig_enrichment_bar'), inline=True)
 
     add(_card('chart-cfr-variants', 'Variants at each CFR position',
