@@ -798,7 +798,7 @@ async function resolveChange(ctx, gid, ch, i, accession) {
   if (!gene.res) return answer('not_in_resource', [], { interpretation: i });
   const label = `${ctx.meta.byGid.get(gid)?.symbol ?? gid}`;
   if (ch.pos === null || ch.pos === undefined) {
-    const res = await makeResult(ctx, gid, null, { gene, type: 'not_in_resource', alt: ch.alt, kind: ch.kind, notes: [note('not_in_resource', `${ch.label ?? 'This variant'} is a ${ch.alt === 'del' ? 'deletion' : 'non-missense change'}; the database analyses single-residue missense changes only.`)] });
+    const res = await makeResult(ctx, gid, null, { gene, type: 'not_in_resource', alt: ch.alt, kind: ch.kind, notes: [note('not_in_resource', `${ch.label ?? 'This variant'} is a ${ch.alt === 'del' ? 'deletion' : 'non-missense change'}; the database analyzes single-residue missense changes only.`)] });
     return answer('not_in_resource', [res], { interpretation: i, message: res.notes[0].text });
   }
   const preNotes = [];
