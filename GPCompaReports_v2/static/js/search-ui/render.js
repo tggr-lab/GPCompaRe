@@ -2248,7 +2248,7 @@ export function renderAnswer(answer, query, o) {
   // the card's own "Did you mean" button replaces the same link in the list at the top
   const fixes = new Set(rs.map((r) => mismatchFix(r, ro)?.query).filter(Boolean));
   if (reading && !(answer.interpretation?.kind === 'receptor' && !rs.length)) {
-    out += html`<section class="sr-read" aria-label="How the query was read"><p class="sr-read-line"><span class="sr-label">I read this as</span> <strong>${reading}</strong>${answer.assembly ? html` <span class="sr-badge">${answer.assembly}</span>` : ''}</p>
+    out += html`<section class="sr-read" aria-label="How the query was read"><p class="sr-read-line"><span class="sr-label">I read this as</span> <strong>${reading}</strong>${answer.assembly && !reading.includes(answer.assembly) ? html` <span class="sr-badge">${answer.assembly}</span>` : ''}</p>
       ${alternatesBlock(answer, o.symbolOf, base, fixes)}</section>`.s;
   } else if (answer.alternates?.length) {
     out += html`<section class="sr-read">${alternatesBlock(answer, o.symbolOf, base, fixes)}</section>`.s;
