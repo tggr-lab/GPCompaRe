@@ -149,7 +149,7 @@ GLOSSARY = [
          definition="The term has two meanings. A receptor-level CFR is a residue of one receptor that takes part "
                     "in a contact whose |ΔRRCS| is above that receptor's threshold. The class-wide CFR positions "
                     'are generic positions where receptor-level CFRs recur in at least three receptors, ranked by '
-                    'CFR score. The site marks the top %d, as in Figure 3 of the paper: the snake plots, the '
+                    'CFR score. The site marks the top %d: the snake plots, the '
                     'residue table and search call a residue a CFR when its generic number is one of the %d '
                     'top-ranked class-wide CFR positions (by CFR score), and the Statistics page lists them.'
                     % (CFR_TOP_N, CFR_TOP_N),
@@ -233,10 +233,6 @@ GLOSSARY = [
                     'values; H is the test statistic, and a small p means a difference this large would be '
                     'unlikely if the groups were alike.',
          match=[_L + r'Kruskal-Wallis' + _R]),
-    dict(id='or', group='Statistics page', term='Odds ratio, 95% CI', full='95% confidence interval',
-         definition='How much more often something happens in one group than in another (1 means no difference); '
-                    'the confidence interval is the range the true value plausibly lies in.',
-         match=[_L + r'[Oo]dds ratio' + _R]),
     dict(id='recurrence', group='Statistics page', term='Recurrence',
          definition='How many receptors show an above-threshold change at the same generic-numbered position.',
          match=[_L + r'[Rr]ecurrence' + _R]),

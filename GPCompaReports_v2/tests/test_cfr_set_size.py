@@ -64,7 +64,7 @@ def test_every_generator_uses_the_one_constant_and_the_one_set():
 def test_glossary_names_the_same_size():
     by_id = {t['id']: t['definition'] for t in glossary.GLOSSARY}
     assert '%d top-ranked class-wide CFR positions (by CFR score)' % CFR_TOP_N in by_id['cfr']
-    assert 'receptor-level CFR' in by_id['cfr'] and 'Figure 3' in by_id['cfr']
+    assert 'receptor-level CFR' in by_id['cfr'] and 'Figure 3' not in by_id['cfr'] and 'paper' not in by_id['cfr']
     for k in ('cfr', 'cfr-connected', 'cfr-near'):
         assert _sizes(by_id[k]) == {CFR_TOP_N}, (k, by_id[k])
 
