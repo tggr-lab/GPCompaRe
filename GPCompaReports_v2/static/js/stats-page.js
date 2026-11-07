@@ -274,11 +274,32 @@
       });
       var layout = clone(payload.layout || {});
       if (card.id === 'chart-cfr-dotplot') layout.legend = merge(layout.legend || {}, { groupclick: 'toggleitem' });
-      if (isPhone() && layout.legend && layout.legend.orientation !== 'h') layout.legend = merge(layout.legend, { orientation: 'h', y: -0.25, x: 0 });
+      if (isPhone()) phoneLayout(layout, data);
       return plot(card, data, layout, { title: opts.title, theme: t, config: payload.config });
     };
     if (card.id === 'chart-cfr-dotplot') document.addEventListener('gpc:segment-order', function () { applyLegendOrder(card); });
     card.render();
+  }
+
+  // A plain payload on a phone: a side legend moves above the plot (below it, it ran into the
+  // x-axis title), a long axis title wraps onto two lines instead of being cut, and a bar's
+  // value label may sit outside the plot area. Wording and data are unchanged.
+  function phoneLayout(layout, data) {
+    var named = data.filter(function (tr) { return tr.showlegend !== false && tr.name; }).length;
+    if (layout.legend ? layout.legend.orientation !== 'h' : named > 1 && layout.showlegend !== false) {
+      layout.legend = merge(layout.legend || {}, { orientation: 'h', x: 0, xanchor: 'left', y: 1.02, yanchor: 'bottom' });
+    }
+    ['xaxis', 'yaxis'].forEach(function (k) {
+      var ax = layout[k], title = ax && ax.title;
+      var text = title && (typeof title === 'string' ? title : title.text);
+      if (!text || text.length <= 28 || text.indexOf('<br>') >= 0) return;
+      var mid = text.length / 2, cut = -1;
+      for (var i = 0; i < text.length; i++) if (text[i] === ' ' && (cut < 0 || Math.abs(i - mid) < Math.abs(cut - mid))) cut = i;
+      if (cut < 0) return;
+      ax.title = merge(typeof title === 'string' ? {} : title, { text: text.slice(0, cut) + '<br>' + text.slice(cut + 1) });
+      ax.automargin = true;
+    });
+    data.forEach(function (tr) { if (tr.type === 'bar' && tr.textposition === 'outside') tr.cliponaxis = false; });
   }
 
   function applyLegendOrder(card) {
