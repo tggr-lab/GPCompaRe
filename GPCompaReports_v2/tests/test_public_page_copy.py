@@ -85,10 +85,21 @@ def test_the_downloads_page_offers_the_database_and_no_local_program():
 
 @needs_build
 def test_no_page_mentions_the_manuscript():
-    for name in ('index.html', 'statistics.html'):
-        html = (BUILD_DIR / name).read_text(encoding='utf-8').lower()
-        assert 'manuscript' not in html, name
-        assert 'as submitted' not in html, name
+    """The site reads as a standalone database: no paper, manuscript, supplement or source-layer talk
+    (owner, 2026-11-07)."""
+    for name in ('index.html', 'statistics.html', 'downloads.html', 'glossary.html', 'contact.html',
+                 'privacy.html', 'browse/index.html', 'search/index.html', 'data_versions.json', 'motifs.json',
+                 'static/js/glossary-data.js', 'static/js/stats-page.js'):
+        path = BUILD_DIR / name
+        if not path.is_file():
+            continue
+        html = path.read_text(encoding='utf-8').lower()
+        html = re.sub(r'(?:xref|yref|paper_bgcolor)["\']?\s*:\s*["\']?paper|\.paper\b|paper:', ' ', html)
+        for bad in ('manuscript', 'as submitted', "the paper", "paper's", 'paper analysis', 'supplementary',
+                    'site layer', 'site-layer', 'batch layer', 'dossier', 'gpcompare study', 'associated study',
+                    'figure 3', 'table s3', 'table s4', 'table s5', 'table s7', 'fig. s4', 'pi-approved',
+                    'frozen', 'odds ratio'):
+            assert bad not in html, (name, bad)
 
 
 @needs_build
