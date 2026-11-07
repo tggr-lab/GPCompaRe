@@ -373,8 +373,28 @@
       el.dataset.chartRendered = '1';
       var theme = currentTheme();
       var override = readOverride(el, theme);
-      if (override) Plotly.relayout(id, override);
+      return override ? Plotly.relayout(id, override) : null;
+    }).then(function() { fitAnnotations(el); });
+  }
+
+  // On a phone a subplot title can be wider than the chart and is cut at the chart's edges:
+  // shrink each such annotation's font until it fits around its own center. The text is unchanged.
+  function fitAnnotations(el) {
+    var full = el._fullLayout;
+    if (!full || !full.annotations || !full.annotations.length) return;
+    var box = el.getBoundingClientRect();
+    var update = {};
+    full.annotations.forEach(function(a, i) {
+      var node = el.querySelector('.annotation[data-index="' + i + '"] .annotation-text');
+      if (!node || !a.font) return;
+      var r = node.getBoundingClientRect();
+      if (!r.width) return;
+      var cx = r.left + r.width / 2;
+      var avail = 2 * Math.min(cx - box.left, box.right - cx) - 8;
+      if (r.width <= avail) return;
+      update['annotations[' + i + '].font.size'] = Math.max(9, Math.floor(a.font.size * avail / r.width));
     });
+    if (Object.keys(update).length) Plotly.relayout(el.id, update);
   }
 
   function relayoutCharts(theme) {
