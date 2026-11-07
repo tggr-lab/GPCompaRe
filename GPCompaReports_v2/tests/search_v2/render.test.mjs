@@ -960,7 +960,7 @@ test('W5: the xMY motif is named where the receptor carries Met 3.36 and Tyr 3.3
   assert.deepEqual(par2.motifs.map((m) => [m.key, m.position, m.required, m.carried]), [['xmy', '3.36', true, true]]);
   const out = renderAnswer(await search('PAR2 p.Met159Ile', loader), 'PAR2 p.Met159Ile', OPTS2).html;
   assert.match(out, /<span class="sr-badge sr-badge--cfr">xMY motif<\/span>/);
-  assert.match(out, /<strong>xMY motif<\/strong> <span class="sr-sub">position 3\.36, canonical Met<\/span> <span class="sr-sub">\(Met 3\.36 and Tyr 3\.37, preceded by a variable residue at 3\.35; carried by 30 of 283 Class A receptors \(GPCompaRe study\)\)<\/span>/);
+  assert.match(out, /<strong>xMY motif<\/strong> <span class="sr-sub">position 3\.36, canonical Met<\/span> <span class="sr-sub">\(Met 3\.36 and Tyr 3\.37, preceded by a variable residue at 3\.35; carried by 30 of 283 Class A receptors\)<\/span>/);
   assert.ok(!/novel|PAR-specific/i.test(out));
   // the x of the window and a receptor without the motif
   const x = (await search('PAR2 3.35', loader)).results[0];

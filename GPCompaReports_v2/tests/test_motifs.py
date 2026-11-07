@@ -60,7 +60,7 @@ def test_the_glossary_entry_comes_from_the_registry():
     assert 'Met at 3.36 and Tyr at 3.37' in d and '3.35' in d
     assert 'Of the 283 Class A receptors, 30 carry it' in d
     assert 'weaker in the active model' in d
-    assert 'GPCompaRe study' in d
+    assert 'study' not in d and 'paper' not in d
     assert 'novel' not in d.lower() and 'PAR-specific' not in d
     assert re.search(t['match'][0], 'the xMY motif') and not re.search(t['match'][0], 'xMYs')
 
@@ -127,7 +127,7 @@ def test_the_glossary_page_has_the_xmy_entry(open_report):
     assert entry.is_visible()
     assert entry.locator('dt').inner_text().startswith('xMY motif')
     dd = entry.locator('dd').inner_text()
-    assert '30 carry it' in dd and 'GPCompaRe study' in dd
+    assert '30 carry it' in dd and 'study' not in dd
 
 
 @needs_build

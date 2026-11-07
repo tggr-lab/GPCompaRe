@@ -1,7 +1,7 @@
 /* snake-plus.js: a run-time layer over the approved snake plot of a receptor report.
 
    The plot itself (the SVG inside #snake-plot-container, its view buttons, the contact-link
-   checkbox and its filter panel) is PI-approved content and is not changed in the built HTML.
+   checkbox and its filter panel) is not changed in the built HTML.
    This module only adds to it on screen, once the plot comes near the viewport:
 
      - contact arcs for every above-threshold pair on the page (the RRCS table), red when the
@@ -1062,7 +1062,7 @@
       if (!m.glossary) return;
       var badge = document.querySelector('.motif-badge[data-motif="' + m.id + '"]');
       var more = el('p', 'sp-panel-note sp-motif-more');
-      more.appendChild(document.createTextNode(m.name + ' is named in the GPCompaRe study: '));
+      more.appendChild(document.createTextNode(m.name + ' is defined by GPCompaRe: '));
       var a = el('a', null, 'what it is');
       a.href = badge ? badge.getAttribute('href') : '../' + m.glossary;
       more.appendChild(a);
