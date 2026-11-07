@@ -1,0 +1,4 @@
+# AlphaMissense predicted class of unique missense substitutions at generic-numbered positions, 276 receptors, gnomAD v4.1.0 alleles on model residue numbering.
+group,scored,decisive,pathogenic,ambiguous,benign,pathogenic_pct_of_decisive
+"Top 50 positions by CFR score",7268,6155,4117,1113,2038,66.88870836718115
+"Other generic-numbered positions",11040,9369,4085,1671,5284,43.6012381257338

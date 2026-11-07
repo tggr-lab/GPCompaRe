@@ -1,0 +1,11 @@
+# Mean |ΔRRCS| by helix. Mean |ΔRRCS| of contact pairs touching each helix.
+# Source: GPCompaRe RRCS batch 2026-02-02; GPCRdb generic numbering, fetched 2026-10-18. Receptors: 283.
+# GPCompaRe database release 2026-11-05
+series,x,y,text
+,1.576431,TM2,1.58
+,1.685025,TM3,1.69
+,1.707873,TM1,1.71
+,1.715325,TM7,1.72
+,1.768466,TM4,1.77
+,1.814307,TM5,1.81
+,1.848567,TM6,1.85

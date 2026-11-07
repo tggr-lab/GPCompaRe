@@ -1,0 +1,10 @@
+# AlphaMissense predicted class at CFR positions. Share of scored missense substitutions predicted pathogenic, ambiguous or benign at the top 50 positions by CFR score and at other generic-numbered positions.
+# Source: AlphaMissense (Cheng et al. 2023); alleles from gnomAD v4.1.0. Receptors: 276.
+# GPCompaRe database release 2026-11-05
+series,x,y,text,customdata_0
+Predicted pathogenic,"Top 50 positions by CFR score<br>n = 7,268 scored, 6,155 decisive",56.64557,56.6%,4117
+Predicted pathogenic,"Other generic-numbered positions<br>n = 11,040 scored, 9,369 decisive",37.001812,37.0%,4085
+Ambiguous,"Top 50 positions by CFR score<br>n = 7,268 scored, 6,155 decisive",15.313704,15.3%,1113
+Ambiguous,"Other generic-numbered positions<br>n = 11,040 scored, 9,369 decisive",15.13587,15.1%,1671
+Predicted benign,"Top 50 positions by CFR score<br>n = 7,268 scored, 6,155 decisive",28.040726,28.0%,2038
+Predicted benign,"Other generic-numbered positions<br>n = 11,040 scored, 9,369 decisive",47.862319,47.9%,5284
