@@ -278,7 +278,7 @@
         out.s('All ' + shard.v.length + ' alleles at ' + Object.keys(shard.res).length +
           ' residues in the ' + esc(receptorLabel(d)) + ' variant table, ordered as in the report. ' +
           'Add a change to narrow it, for example <code>' + esc(d.gene_name || d.uniprot_name) + ' ' +
-          esc(shard.v[0] ? shard.v[0][1] : 'p.Met159Ile') + '</code>.');
+          esc(shard.v[0] ? shard.v[0][1] : 'p.Ser311Cys') + '</code>.');
         out.r(groupCards(d, shard, shard.v, function (rows) { return residuePrefix(rows[0]); }));
       });
     });
@@ -450,8 +450,8 @@
     }
     if (c.type === 'unknown' || c.type === 'unknown-change') {
       setStatus(c.receptor
-        ? 'Could not read <strong>' + esc(c.text) + '</strong> as a protein change. Use a form like <code>M159I</code>, <code>p.Met159Ile</code>, <code>159</code> or <code>c.477G&gt;A</code>.'
-        : 'Not recognized. Search a gene or receptor with a change (<code>F2RL1 M159I</code>), an rsID, a gnomAD variant ID or a generic number (<code>6.48x48</code>). Receptor names and families are searched on the Receptors tab.');
+        ? 'Could not read <strong>' + esc(c.text) + '</strong> as a protein change. Use a form like <code>S311C</code>, <code>p.Ser311Cys</code>, <code>311</code> or <code>c.932C&gt;G</code>.'
+        : 'Not recognized. Search a gene or receptor with a change (<code>DRD2 S311C</code>), an rsID, a gnomAD variant ID or a generic number (<code>6.48x48</code>). Receptor names and families are searched on the Receptors tab.');
       return;
     }
     setStatus('Searching\u2026');
