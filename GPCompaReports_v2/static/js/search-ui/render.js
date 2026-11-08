@@ -1930,7 +1930,7 @@ function receptorCard(r, o, idx) {
     ${receptorLinks(rec, o) ? html`<div class="sr-row"><h4>Records elsewhere</h4><div>${receptorLinks(rec, o)}</div></div>` : ''}
     ${r.clinvarList ? clinvarListSection(r, o) : ''}
     <div class="sr-row"><h4>Search inside this receptor</h4><div><ul class="sr-chips">
-      ${[`${rec.symbol} 3.50`, `${rec.symbol} 6.48`, `${rec.symbol} 159`, ...(r.cfrList !== undefined ? [] : [`${rec.symbol} CFR variants`])].map((q) => html`<li><a class="sr-chip" href="?q=${encodeURIComponent(q)}" data-q="${q}">${q}</a></li>`)}
+      ${[`${rec.symbol} 3.50`, `${rec.symbol} 6.48`, ...(r.example ? [`${rec.symbol} ${r.example.aa}${r.example.pos}`] : []), ...(r.cfrList !== undefined ? [] : [`${rec.symbol} CFR variants`])].map((q) => html`<li><a class="sr-chip" href="?q=${encodeURIComponent(q)}" data-q="${q}">${q}</a></li>`)}
     </ul>${finePrint(html`<p>Add a protein change, a residue number, a generic number or a coding change to the receptor name.</p>`)}</div></div>
     ${r.clinvarList ? '' : clinvarListSection(r, o)}
     <div class="sr-actions">${intLink(L.reportUrl(o, r.gid), 'Open report', { cls: 'btn btn-primary btn-sm' })}

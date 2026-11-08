@@ -295,9 +295,36 @@ function receptorResult(meta, gid, extraNotes = []) {
   return { type: 'receptor', gid, receptor: receptorInfo(meta, gid), pos: null, ref: null, alt: null, notes: extraNotes };
 }
 
+/**
+ * The receptor's own example residue for the "Search inside this receptor" chips: its residue at
+ * 3.50x50 (the arginine of the DRY motif in most receptors), else its residue at the best-ranked
+ * class-wide CFR position. {pos, aa, generic} or null (no residue map).
+ */
+export function exampleResidue(r) {
+  if (!r) return null;
+  let pos = r.findGeneric('3.50', '3x50')[0] ?? null;
+  if (pos === null) {
+    let best = Infinity;
+    for (let p = 1; p <= r.length; p++) {
+      const rank = r.residue(p)?.cfrRank;
+      if (rank && rank < best) { best = rank; pos = p; }
+    }
+  }
+  if (pos === null) return null;
+  const x = r.residue(pos);
+  return { pos, aa: x.aa, generic: x.generic || null };
+}
+
+/** A receptor result with its example residue (one small residues/ shard per receptor). */
+async function receptorCardResult(ctx, gid, r) {
+  const res = receptorResult(ctx.meta, gid);
+  res.example = exampleResidue(r === undefined ? await ctx.S.residues(gid) : r);
+  return res;
+}
+
 /** One receptor with every ClinVar record the index holds for it (`clinvarList` when the reader asked for them). */
 async function receptorWithClinvar(ctx, gid, i) {
-  const res = receptorResult(ctx.meta, gid);
+  const res = await receptorCardResult(ctx, gid);
   const vars = await ctx.S.variants(gid);
   if (vars) res.clinvar = vars.clinvar;
   if (i?.flags?.includes('clinvar-list')) res.clinvarList = true;
@@ -317,8 +344,8 @@ function hoodFor(res, det) {
 
 /** One receptor with its variants in the CFR neighbourhood ("ADRB2 CFR variants"); flag `cfr-list`. */
 async function receptorWithCfrList(ctx, gid) {
-  const res = receptorResult(ctx.meta, gid);
   const [r, vars, det] = await Promise.all([ctx.S.residues(gid), ctx.S.variants(gid), ctx.S.detail(gid)]);
+  const res = await receptorCardResult(ctx, gid, r);
   res.releases = { gnomad: ctx.meta.releases?.gnomad?.label, clinvar: ctx.meta.releases?.clinvar?.label };
   if (!r) { res.cfrList = null; return res; }
   const hood = hoodFor(r, det);
@@ -359,7 +386,7 @@ async function resolveReceptorQuery(ctx, list) {
     return answer('receptor', res, { interpretation: top });
   }
   if (r.status === 'prefix' && r.gids.length === 1) return answer('receptor', [await receptorWithClinvar(ctx, r.gids[0], top)], { interpretation: top });
-  const res = r.gids.map((g) => receptorResult(meta, g));
+  const res = await Promise.all(r.gids.map((g) => receptorCardResult(ctx, g)));
   const why = r.status === 'exact' ? `"${top.receptorTerm}" names ${r.gids.length} receptors.` : `${r.gids.length} receptor names start with "${top.receptorTerm}".`;
   return answer('ambiguous', res, { alternates, interpretation: top, message: why });
 }
@@ -383,7 +410,7 @@ async function resolveBareInteger(ctx, list) {
   const results = [];
   const gene = meta.receptors.find((r) => String(r.geneId) === String(n));
   if (gene) {
-    results.push(receptorResult(meta, gene.gid));
+    results.push(await receptorCardResult(ctx, gene.gid));
     alternates.splice(1, 1);
   }
   const rec = await clinvarRecord(ctx, n);

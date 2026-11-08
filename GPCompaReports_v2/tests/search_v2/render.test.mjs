@@ -1182,3 +1182,36 @@ test('AlphaMissense intervals: > 0.564 likely pathogenic, 0.34 to 0.564 ambiguou
   const b = (await search('HTR1A 416', loader)).results[0];
   assert.deepEqual([b.residue.amMean, b.residue.amMeanClass], [0.34, 'benign']);
 });
+
+test('receptor chips offer the receptor\'s own residue, never a fixed number', { skip }, async () => {
+  const chips = async (q) => {
+    const out = renderAnswer(await search(q, loader), q, OPTS);
+    const m = /Search inside this receptor<\/h4><div><ul class="sr-chips">([\s\S]*?)<\/ul>/.exec(out.html);
+    assert.ok(m, `${q}: chip list`);
+    return [...m[1].matchAll(/data-q="([^"]*)"/g)].map((x) => x[1]);
+  };
+  // the residue at 3.50x50, the DRY arginine
+  assert.ok((await chips('ADRB2')).includes('ADRB2 R131'));
+  assert.ok((await chips('OPSD')).includes('RHO R135'));
+  const par2 = await chips('PAR2');
+  assert.ok(!par2.some((c) => /\b(M?159)\b/.test(c)), `PAR2 chips: ${par2}`);
+  // the example differs between receptors and reads back as that receptor's residue
+  const picks = new Set();
+  for (const q of ['ADRB2', 'MC4R', 'CNR1', 'DRD2', 'PAR2']) {
+    const c = (await chips(q)).find((x) => /\s[A-Z]\d+$/.test(x));
+    assert.ok(c, `${q}: residue chip`);
+    picks.add(c.split(' ')[1]);
+    const a = await search(c, loader);
+    assert.equal(a.results[0].pos, Number(c.split(' ')[1].slice(1)), `${c} resolves`);
+  }
+  assert.ok(picks.size >= 3, `varied examples: ${[...picks]}`);
+});
+
+test('example residue falls back to the best-ranked CFR position without 3.50x50', async () => {
+  const { exampleResidue } = await import('../../static/js/search/resolve.js');
+  const res = { 3: { aa: 'D', cfrRank: 4, generic: '3.49x49' }, 7: { aa: 'Y', cfrRank: 3, generic: '7.53x53' }, 9: { aa: 'A', cfrRank: null, generic: '' } };
+  const r = { length: 10, findGeneric: () => [], residue: (p) => (res[p] ? { pos: p, ...res[p] } : { pos: p, aa: 'G', cfrRank: null, generic: '' }) };
+  assert.deepEqual(exampleResidue(r), { pos: 7, aa: 'Y', generic: '7.53x53' });
+  assert.equal(exampleResidue(null), null);
+  assert.equal(exampleResidue({ length: 2, findGeneric: () => [], residue: (p) => ({ pos: p, aa: 'G', cfrRank: null }) }), null);
+});
