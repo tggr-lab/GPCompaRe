@@ -70,9 +70,35 @@
     });
     return {
       index: index, receptors: index.receptors, positions: positions, groups: groups,
+      links: index.links || [],
       byGid: byGid, gnIndex: gnIndex, layers: D, segRuns: segRuns,
       helices: index.helices || ['TM1', 'TM2', 'TM3', 'TM4', 'TM5', 'TM6', 'TM7', 'H8']
     };
+  };
+
+  // A short neutral name for a linked group from its families: up to two non-orphan families with at
+  // least two members each; none when orphans dominate.
+  var FAMILY_SHORT = {
+    '5-Hydroxytryptamine receptors': '5-HT', 'Acetylcholine receptors (muscarinic)': 'Muscarinic',
+    'Lysophospholipid (LPA) receptors': 'LPA', 'Lysophospholipid (S1P) receptors': 'S1P',
+    'Vasopressin and oxytocin receptors': 'Vasopressin and oxytocin', 'Glycoprotein hormone receptors': 'Glycoprotein hormone',
+    'Neuropeptide FF/neuropeptide AF receptors': 'NPFF', 'Neuropeptide W/neuropeptide B receptors': 'NPW/NPB',
+    'Hydroxycarboxylic acid receptors': 'Hydroxycarboxylic acid', 'Relaxin family peptide receptors': 'Relaxin family',
+    'Free fatty acid receptors': 'Free fatty acid', 'Melanin-concentrating hormone': 'MCH',
+    'GPR18, GPR55 and GPR119': 'GPR18, GPR55, GPR119', 'Estrogen (G protein-coupled) receptors': 'GPER'
+  };
+  A.shortFamily = function(f) {
+    return FAMILY_SHORT[f] || f.replace(/\s+receptors?$/i, '');
+  };
+  // families: [[name, count], ...]; size: group size. A family names the group when it has at least
+  // two members and at least 30% of the group.
+  A.groupLabel = function(families, size) {
+    size = size || families.reduce(function(t, f) { return t + f[1]; }, 0);
+    var names = families.filter(function(f) { return !/orphan/i.test(f[0]) && f[1] >= 2 && f[1] >= 0.3 * size; })
+      .sort(function(a, b) { return b[1] - a[1]; }).slice(0, 2).map(function(f) { return A.shortFamily(f[0]); });
+    if (!names.length) return '';
+    if (names.length > 1 && /^[A-Z][a-z]/.test(names[1])) names[1] = names[1][0].toLowerCase() + names[1].slice(1);
+    return names.join(' + ');
   };
 
   // value of receptor i at position j
@@ -193,6 +219,13 @@
     for (var s = 0; s < SEQ; s++) add(ramp(consStops, s / (SEQ - 1)));
     P.amBase = colors.length;
     for (s = 0; s < SEQ; s++) add(ramp(amStops, s / (SEQ - 1)));
+    // linked-group colors: calm hues that are neither the active red nor the inactive blue
+    var groupHues = dark
+      ? ['#2DD4BF', '#FBBF24', '#C4B5FD', '#A3E635', '#67E8F9', '#FDBA74', '#F0ABFC', '#CBD5E1']
+      : ['#0F766E', '#B45309', '#7C3AED', '#4D7C0F', '#0E7490', '#9A3412', '#A21CAF', '#475569'];
+    P.grpBase = colors.length;
+    groupHues.forEach(function(h) { add(parseColor(h)); });
+    P.nGroupHues = groupHues.length;
     P.neutralId = add(neutral);
     P.lineNeutralId = add([neutral[0], neutral[1], neutral[2], dark ? 0.55 : 0.7]);
     P.missingId = add(dark ? [70, 76, 88, 1] : [205, 209, 215, 1]);
@@ -316,11 +349,12 @@
              bounds: [-ext, -ext, ext, ext], deco: { fams: famDeco, groups: groupDeco } };
   };
 
-  A.layoutSimilarity = function(data) {
+  // pts: [[x, y] per receptor] in -1..1 (a rule's map)
+  A.layoutSimilarity = function(data, pts, ruleId) {
     var R = data.receptors, n = R.length, S = 31;
     var xy = new Float32Array(2 * n), home = new Float32Array(2 * n);
     R.forEach(function(r, i) {
-      var p = r.sim_xy || [0, 0];
+      var p = pts[i] || [0, 0];
       xy[2 * i] = home[2 * i] = p[0] * S;
       xy[2 * i + 1] = home[2 * i + 1] = -p[1] * S;
     });
@@ -366,7 +400,7 @@
       y0 = Math.min(y0, xy[2 * i + 1]); y1 = Math.max(y1, xy[2 * i + 1]);
     }
     for (i = 0; i < n; i++) ord[i] = (xy[2 * i] - x0) / Math.max(1, x1 - x0);
-    return { key: 'similarity', xy: xy, s: 1, order: ord, bounds: [x0 - 2, y0 - 2, x1 + 2, y1 + 2], deco: {} };
+    return { key: 'similarity', rule: ruleId, xy: xy, s: 1, order: ord, bounds: [x0 - 2, y0 - 2, x1 + 2, y1 + 2], deco: {} };
   };
 
   A.layoutRanked = function(data, metric, aspect) {
@@ -420,6 +454,102 @@
     for (var i = 0; i < n; i++) ord[i] = rowY[i] / y;
     return { key: 'fingerprints', xy: xy, s: 0.42, order: ord, rowY: rowY, height: y, m: m, cw: CW,
              bounds: [-3, -1, m * CW + 1, y + 1], deco: { blocks: blocks, groups: groupsDeco } };
+  };
+
+  // ------------------------------------------------------------------ grouping rules
+
+  // One rule as the page uses it. raw: an entry of atlas/rules.json, or the default rule built from
+  // index.json (no tree). similar entries become {j, sim, comp, pairs}.
+  A.prepareRule = function(data, raw) {
+    var n = data.receptors.length, R = data.receptors;
+    var rule = { id: raw.id, label: raw.label, description: raw.description || '', treeMethod: raw.tree_method || '',
+                 xy: raw.xy, links: raw.links || [], similar: [], tree: null };
+    for (var i = 0; i < n; i++) {
+      rule.similar.push((raw.similar[i] || []).map(function(sm) {
+        var j = typeof sm[0] === 'number' ? sm[0] : (data.byGid[sm[0]] ? data.byGid[sm[0]].index : -1);
+        return { j: j, sim: sm[1], comp: sm[2], pairs: sm[3] || [] };
+      }).filter(function(o) { return o.j >= 0 && o.j !== i; }));
+    }
+    var t = raw.tree;
+    if (t && t.merges && t.merges.length === n - 1) {
+      var M = t.merges, N = 2 * n - 1, size = new Int32Array(N), parentRow = new Int32Array(N).fill(-1);
+      var hmax = M[n - 2][2] || 1, f = new Float32Array(N);
+      for (i = 0; i < n; i++) size[i] = 1;
+      for (var r = 0; r < n - 1; r++) {
+        var a = M[r][0], b = M[r][1];
+        size[n + r] = size[a] + size[b];
+        parentRow[a] = r; parentRow[b] = r;
+        // the merge height on a mixed scale (half square root, half rank) so the inner tree stays readable
+        f[n + r] = 0.5 * Math.sqrt(Math.max(0, M[r][2]) / hmax) + 0.5 * r / Math.max(1, n - 2);
+      }
+      // stable hues: a split keeps the parent's hue on its larger part and gives the smaller part the
+      // next hue in turn, so groups keep their colors as the cut moves
+      var hue = new Int16Array(N), HUES = 8;
+      hue[N - 1] = 0;
+      for (r = n - 2; r >= 0; r--) {
+        var node = n + r, ca = M[r][0], cb = M[r][1];
+        var big = size[ca] >= size[cb] ? ca : cb, small = big === ca ? cb : ca;
+        hue[big] = hue[node];
+        var c = (n - 2 - r) % HUES;
+        if (c === hue[node]) c = (c + 1) % HUES;
+        hue[small] = c;
+      }
+      // leaf angles in tree order, node angles at the middle of their children
+      var ang = new Float32Array(N), pos = new Int32Array(n);
+      t.order.forEach(function(leaf, p) { pos[leaf] = p; ang[leaf] = -Math.PI / 2 + (p + 0.5) / n * Math.PI * 2; });
+      for (r = 0; r < n - 1; r++) ang[n + r] = (ang[M[r][0]] + ang[M[r][1]]) / 2;
+      rule.tree = { merges: M, order: t.order, pos: pos, n: n, size: size, f: f, hue: hue, ang: ang, parentRow: parentRow };
+    }
+    return rule;
+  };
+
+  // Cut a rule's tree into k groups: apply only the first n - k merges. Returns, per receptor, the
+  // group index; per group: tree node, hue, members (in tree order), label.
+  A.cutTree = function(data, rule, k) {
+    var T = rule.tree, n = T.n, M = T.merges, keep = n - k;
+    var root = new Int32Array(2 * n - 1).fill(-1);
+    for (var r = n - 2; r >= 0; r--) {
+      var node = n + r;
+      if (r < keep) {
+        if (root[node] < 0) root[node] = node;
+        root[M[r][0]] = root[node]; root[M[r][1]] = root[node];
+      } else {
+        for (var c = 0; c < 2; c++) {
+          var ch = M[r][c];
+          if (ch < n || ch - n < keep) root[ch] = ch;
+        }
+      }
+    }
+    var gOf = new Int32Array(n), byNode = {}, groups = [];
+    T.order.forEach(function(leaf) {
+      var nd = root[leaf] < 0 ? leaf : root[leaf];
+      if (byNode[nd] == null) { byNode[nd] = groups.length; groups.push({ node: nd, hue: T.hue[nd], members: [] }); }
+      gOf[leaf] = byNode[nd];
+      groups[byNode[nd]].members.push(leaf);
+    });
+    groups.forEach(function(g) {
+      var fam = {};
+      g.members.forEach(function(i) { var f = data.receptors[i].family; fam[f] = (fam[f] || 0) + 1; });
+      g.label = g.members.length >= 2 ? A.groupLabel(Object.keys(fam).map(function(f) { return [f, fam[f]]; }), g.members.length) : '';
+    });
+    // the height (0..1 scale of the tree drawing) between the last kept and the first undone merge
+    var fk = keep > 0 ? T.f[n + keep - 1] : 0, fu = keep < n - 1 ? T.f[n + keep] : 1;
+    return { k: k, group: gOf, groups: groups, root: root, fCut: (fk + fu) / 2 };
+  };
+
+  // Radial tree: leaves on the rim in tree order (glyph spacing as the other layouts), internal nodes
+  // inward by merge height.
+  A.layoutTree = function(data, rule) {
+    var n = data.receptors.length, T = rule.tree, R = n * SP / (2 * Math.PI);
+    var xy = new Float32Array(2 * n), ord = new Float32Array(n);
+    for (var i = 0; i < n; i++) {
+      var a = T.ang[i];
+      xy[2 * i] = Math.cos(a) * R; xy[2 * i + 1] = Math.sin(a) * R;
+      ord[i] = T.pos[i] / n;
+    }
+    var ext = R + 2.4;
+    return { key: 'tree', rule: rule.id, xy: xy, s: 1, order: ord, R: R, Rtree: R - 1.3,
+             bounds: [-ext, -ext, ext, ext], deco: {} };
   };
 
   // ------------------------------------------------------------------ easing

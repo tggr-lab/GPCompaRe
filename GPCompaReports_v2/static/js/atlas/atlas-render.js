@@ -219,13 +219,13 @@
 
   // ------------------------------------------------------------------ halo sprites
 
-  A.buildHalos = function(groupsList, P) {
+  A.buildHalos = function(groupsList, P, strength) {
     return groupsList.map(function(g) {
       var c = document.createElement('canvas'), s = 96;
       c.width = c.height = s;
       var x = c.getContext('2d'), col = A.parseColor(g.color);
       var grd = x.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
-      var a = P.dark ? 0.12 : 0.12;
+      var a = (P.dark ? 0.12 : 0.12) * (strength || 1);
       grd.addColorStop(0, A.css(col, a));
       grd.addColorStop(0.5, A.css(col, a * 0.45));
       grd.addColorStop(1, A.css(col, 0));

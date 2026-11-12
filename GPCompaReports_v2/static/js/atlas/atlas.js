@@ -14,8 +14,9 @@
   var rulerCv = $('atlas-ruler'), tip = $('atlas-tip'), legendEl = $('atlas-legend');
   var panel = $('atlas-panel');
   var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var VIEWS = ['families', 'similarity', 'ranked', 'fingerprints'];
-  var COLORS = ['activation', 'ligand', 'cons', 'am', 'share'];
+  var VIEWS = ['families', 'similarity', 'tree', 'ranked', 'fingerprints'];
+  var COLORS = ['activation', 'ligand', 'group', 'cons', 'am', 'share'];
+  var K_MIN = 4, K_MAX = 40, K_DEFAULT = 12;
   var FONT = (getComputedStyle(document.body).fontFamily || 'system-ui, sans-serif');
   var SERIF = (getComputedStyle(root).getPropertyValue('--font-serif') || 'Georgia, serif').trim();
 
@@ -24,10 +25,12 @@
     view: 'families', metric: 'n_above', color: 'activation',
     lensPin: -1, lensHover: -1, sel: -1, hover: -1, hoverCell: null,
     layouts: {},
-    trans: null, decoA: { families: 0, similarity: 0, ranked: 0, fingerprints: 0 },
+    trans: null, decoA: { families: 0, similarity: 0, tree: 0, ranked: 0, fingerprints: 0 },
+    rules: {}, ruleOrder: [], rule: 'pattern', k: K_DEFAULT, cut: null, rulesState: 'none', groupCount: 0,
     cam: { x: 0, y: 0, k: 1 }, fly: null, zoom: null, inertia: null,
     W: 0, H: 0, dpr: 1,
-    hoverA: 0, hoverShown: -1,
+    hoverA: 0, hoverShown: -1,     // the focused receptor (hovered, else selected) and its fade
+    rowHover: -1,
     heat: {}, heatIdx: null, halos: null, groupText: [],
     lastT: 0, raf: 0, legendKey: '', tipKey: '', userMoved: false,
     stats: { frames: 0, drawMs: 0, maxDrawMs: 0 }   // draw time per frame, read by tests
@@ -64,7 +67,7 @@
 
   function insets(viewKey) {
     viewKey = viewKey || st.view;
-    var round = viewKey === 'families' || viewKey === 'similarity';
+    var round = viewKey === 'families' || viewKey === 'similarity' || viewKey === 'tree';
     var r = stage.getBoundingClientRect(), ins = { l: 16, r: 16, t: 16, b: 16 };
     var top = root.querySelector('.atlas-top');
     if (top) {
@@ -128,12 +131,14 @@
       }
       stepX /= 4; stepY /= 4;
     }
-    var ext = L.Rout + 2.3, k = Math.max(0.5, best.r) / ext;
+    // the tree keeps room outside its rim for the group names
+    var ext = (L.key === 'tree' ? L.R + 2.6 : L.Rout + 2.3), room = L.key === 'tree' ? Math.min(90, best.r * 0.22) : 0;
+    var k = Math.max(0.5, best.r - room) / ext;
     return { x: -(best.x - st.W / 2) / k, y: -(best.y - st.H / 2) / k, k: k };
   }
 
   function fitView(L, ins) {
-    if (L.key === 'families' && !ins) return fitCircle(L);
+    if ((L.key === 'families' || L.key === 'tree') && !ins) return fitCircle(L);
     ins = ins || insets(L.key);
     var b = L.bounds, w = Math.max(80, st.W - ins.l - ins.r), h = Math.max(80, st.H - ins.t - ins.b);
     // the heat map keeps room for its labels: group names on the left, family names on the right
@@ -252,6 +257,11 @@
   function setView(view, opts) {
     opts = opts || {};
     if (VIEWS.indexOf(view) < 0) view = 'families';
+    if (view === 'tree' && !st.layouts.tree) {
+      $('atlas-caption').textContent = 'Loading the trees';
+      loadRules().then(function(ok) { if (ok && st.layouts.tree) setView('tree', opts); });
+      return;
+    }
     var prev = st.view;
     st.view = view;
     syncViewUI();
@@ -310,11 +320,118 @@
       if (Math.abs(target - v) > 0.003) { st.decoA[key] = v + (target - v) * a; busy = true; }
       else st.decoA[key] = target;
     }
-    var ht = st.hover >= 0 ? 1 : 0;
-    if (st.hover >= 0) st.hoverShown = st.hover;
+    var f = st.hover >= 0 ? st.hover : (T ? -1 : st.sel);
+    var ht = f >= 0 ? 1 : 0;
+    if (f >= 0) st.hoverShown = f;
     if (Math.abs(ht - st.hoverA) > 0.01) { st.hoverA += (ht - st.hoverA) * (1 - Math.exp(-dt / 110)); busy = true; }
     else { st.hoverA = ht; if (!ht) st.hoverShown = -1; }
     return busy;
+  }
+
+  // ================================================================== grouping rules
+
+  function rule() { return st.rules[st.rule] || st.rules.pattern; }
+  function neighbors(i) { var r = rule(); return (r && r.similar[i]) || []; }
+
+  function ruleSimilarity(id) {
+    var r = st.rules[id];
+    if (!r.simLayout) r.simLayout = A.layoutSimilarity(st.data, r.xy, id);
+    return r.simLayout;
+  }
+
+  function recut() {
+    var r = rule();
+    st.cut = r && r.tree ? A.cutTree(st.data, r, st.k) : null;
+    st.groupCount = st.cut ? st.cut.groups.length : 0;
+    st.groupField = null;
+    st.legendKey = '';
+    invalidate();
+  }
+
+  // atlas/rules.json: every rule's map, links, neighbor lists and tree; fetched after first paint
+  function loadRules() {
+    if (st.rulesPromise) return st.rulesPromise;
+    var url = root.getAttribute('data-rules');
+    st.rulesState = 'loading';
+    st.rulesPromise = fetch(url).then(function(r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function(raw) {
+      var sel = $('atlas-rule');
+      sel.innerHTML = '';
+      st.ruleOrder = [];
+      (raw.rules || []).forEach(function(rr) {
+        var prev = st.rules[rr.id];
+        var pr = A.prepareRule(st.data, rr);
+        if (prev && prev.simLayout && rr.id === 'pattern') pr.simLayout = prev.simLayout;
+        st.rules[rr.id] = pr;
+        st.ruleOrder.push(rr.id);
+        var o = document.createElement('option');
+        o.value = rr.id; o.textContent = rr.label;
+        sel.appendChild(o);
+      });
+      st.rulesNotes = raw.notes || {};
+      if (!st.rules[st.rule]) st.rule = raw['default'] || 'pattern';
+      sel.value = st.rule;
+      sel.disabled = false; $('atlas-k').disabled = false;
+      $('atlas-tree-btn').disabled = false;
+      st.rulesState = 'ready';
+      // the other rules' maps (overlap removal) are prepared one at a time while the page is idle
+      var pending = st.ruleOrder.slice();
+      (function next() {
+        var id = pending.shift();
+        if (!id) return;
+        var idle = window.requestIdleCallback || function(f) { return setTimeout(f, 120); };
+        idle(function() { ruleSimilarity(id); next(); });
+      })();
+      st.layouts.tree = A.layoutTree(st.data, rule());
+      recut();
+      syncRuleUI();
+      return true;
+    }).catch(function(err) {
+      st.rulesState = 'failed';
+      $('atlas-rule-desc').textContent = 'The grouping rules could not be loaded; the map shows the contact-pattern layout.';
+      if (window.console) console.error(err);
+      return false;
+    });
+    return st.rulesPromise;
+  }
+
+  function setRule(id, opts) {
+    opts = opts || {};
+    if (!st.rules[id]) return;
+    st.rule = id;
+    st.layouts.similarity = ruleSimilarity(id);
+    if (rule().tree) st.layouts.tree = A.layoutTree(st.data, rule());
+    recut();
+    syncRuleUI();
+    if (!opts.quiet && (st.view === 'similarity' || st.view === 'tree')) {
+      var sel = st.sel;
+      setView(st.view, { camera: sel < 0 });
+      if (sel >= 0) setTimeout(function() { if (st.sel === sel) flyToReceptor(sel); }, reduced ? 0 : 900);
+    }
+    if (st.sel >= 0 && !panel.hidden) fillNeighbors(st.sel);
+    st.tipKey = '';
+    writeHash();
+  }
+
+  function setK(k) {
+    k = A.clamp(Math.round(k) || K_DEFAULT, K_MIN, K_MAX);
+    if (k === st.k && st.cut) return;
+    st.k = k;
+    $('atlas-k').value = String(k);
+    $('atlas-k-out').textContent = String(k);
+    recut();
+    writeHash();
+  }
+
+  function syncRuleUI() {
+    var r = rule(), show = st.view === 'similarity' || st.view === 'tree' || st.color === 'group';
+    $('atlas-rule-wrap').hidden = !show;
+    $('atlas-rule').value = st.rule;
+    $('atlas-k').value = String(st.k);
+    $('atlas-k-out').textContent = String(st.k);
+    if (st.rulesState !== 'failed') $('atlas-rule-desc').textContent = r && r.description ? r.description : '';
+    $('atlas-caption').textContent = caption();
+    $('atlas-newick').hidden = !(st.view === 'tree' && st.rule === 'sequence');
+    st.legendKey = '';
   }
 
   // ================================================================== colors per glyph
@@ -336,6 +453,8 @@
       switch (mode) {
         case 'ligand':
           c.scalar = c.dot = lig; break;
+        case 'group':
+          c.scalar = c.dot = st.cut ? P.grpBase + st.cut.groups[st.cut.group[i]].hue % P.nGroupHues : P.neutralId; break;
         case 'share':
           c.scalar = c.dot = A.divId(P, r.share_active - 0.5, A.SCALE.share); break;
         case 'cons':
@@ -387,7 +506,12 @@
     computeColors();
 
     if (st.decoA.families > 0.004) drawFamiliesDeco(st.decoA.families);
-    if (st.decoA.similarity > 0.004) drawHalos(st.decoA.similarity);
+    if (st.decoA.similarity > 0.004) {
+      if (st.cut && st.layouts.similarity.rule === st.rule) drawGroupHalos(st.decoA.similarity);
+      else drawHalos(st.decoA.similarity);
+      drawLinks(st.decoA.similarity);
+    }
+    if (st.decoA.tree > 0.004 && st.layouts.tree) drawTree(st.decoA.tree);
     if (st.decoA.fingerprints > 0.004) drawHeat(st.decoA.fingerprints);
 
     // hover glow + lines to the most similar receptors, under the glyphs
@@ -396,12 +520,27 @@
 
     A.drawGlyphs({ ctx: ctx, P: P, data: st.data, n: n, X: X, Y: Y, S: S, vis: vis, colors: colors });
 
+    // focus: the rest of the map recedes gently, the receptor and its neighbors come forward
+    if (h >= 0 && st.hoverA > 0.01 && st.view !== 'fingerprints') {
+      ctx.fillStyle = P.dark ? 'rgba(9,13,20,' + (0.5 * st.hoverA).toFixed(3) + ')' : 'rgba(248,248,245,' + (0.55 * st.hoverA).toFixed(3) + ')';
+      ctx.fillRect(0, 0, W, H);
+      drawFocusEdges(h, st.hoverA);
+      var fv = st.focusVis || (st.focusVis = new Uint8Array(n));
+      fv.fill(0);
+      fv[h] = vis[h];
+      neighbors(h).forEach(function(o) { fv[o.j] = vis[o.j]; });
+      A.drawGlyphs({ ctx: ctx, P: P, data: st.data, n: n, X: X, Y: Y, S: S, vis: fv, colors: colors });
+    } else if (h >= 0 && st.hoverA > 0.01) drawFocusEdges(h, st.hoverA);
+
     if (h >= 0 && st.hoverA > 0.01) drawHoverOver(h, st.hoverA);
     if (st.sel >= 0 && vis[st.sel]) {
       ctx.strokeStyle = P.accentCss; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(X[st.sel], Y[st.sel], Math.max(S[st.sel] * 1.16 + 2, 6), 0, Math.PI * 2); ctx.stroke();
     }
-    drawGlyphLabels();
+    var placed = [];
+    if (st.decoA.similarity > 0.004 && st.cut && st.layouts.similarity.rule === st.rule) drawGroupLabels(st.decoA.similarity, placed);
+    if (st.decoA.tree > 0.004 && st.cut && st.layouts.tree) drawTreeLabels(st.decoA.tree);
+    drawGlyphLabels(placed);
     if (st.decoA.fingerprints > 0.004) drawHeatOverlay(st.decoA.fingerprints);
     if (st.decoA.families > 0.004) drawFamiliesLabels(st.decoA.families);
     if (!st.trans) maybeLegend();
@@ -575,7 +714,7 @@
   // Soft ligand-group halos behind the similarity map: rendered once per theme into a low
   // resolution image of the whole layout, then drawn as one scaled image per frame.
   function haloField() {
-    if (st.haloField) return st.haloField;
+    if (st.haloField && st.haloField.field === st.layouts.similarity.field) return st.haloField;
     var L = st.layouts.similarity, b = L.bounds, pad = 6, R = st.data.receptors;
     var x0 = b[0] - pad, y0 = b[1] - pad, w = b[2] - b[0] + 2 * pad, h = b[3] - b[1] + 2 * pad;
     var res = 6, c = document.createElement('canvas');   // pixels per world unit
@@ -585,7 +724,7 @@
       var hr = 3.6 * res, px = (L.xy[2 * i] - x0) * res, py = (L.xy[2 * i + 1] - y0) * res;
       x.drawImage(st.halos[R[i].group], px - hr, py - hr, 2 * hr, 2 * hr);
     }
-    st.haloField = { canvas: c, x0: x0, y0: y0, w: w, h: h };
+    st.haloField = { canvas: c, x0: x0, y0: y0, w: w, h: h, field: L.field };
     return st.haloField;
   }
 
@@ -739,8 +878,10 @@
     ctx.restore();
   }
 
+  // the soft glow under a hovered receptor
   function drawHoverUnder(h, a) {
-    var P = st.P, r = st.data.receptors[h];
+    if (h !== st.hover) return;
+    var P = st.P;
     ctx.save();
     var rad = Math.max(S[h] * 2.3, 16);
     var g = ctx.createRadialGradient(X[h], Y[h], 0, X[h], Y[h], rad);
@@ -750,40 +891,299 @@
     g.addColorStop(1, A.css(ac, 0));
     ctx.fillStyle = g;
     ctx.fillRect(X[h] - rad, Y[h] - rad, 2 * rad, 2 * rad);
-    ctx.strokeStyle = A.css(P.fg, 0.38 * a);
-    ctx.lineWidth = 1.25;
-    (r.similar || []).forEach(function(s) {
-      var o = st.data.byGid[s[0]];
-      if (!o) return;
-      var j = o.index, dx = X[j] - X[h], dy = Y[j] - Y[h], d = Math.sqrt(dx * dx + dy * dy) || 1;
-      var bend = st.view === 'fingerprints' ? -Math.min(80, d * 0.35) : d * 0.18;
-      var mx = (X[h] + X[j]) / 2 + (st.view === 'fingerprints' ? bend : -dy / d * bend);
-      var my = (Y[h] + Y[j]) / 2 + (st.view === 'fingerprints' ? 0 : dx / d * bend);
+    ctx.restore();
+  }
+
+  function simT(v) { return A.clamp((v - 0.1) / 0.55, 0, 1); }
+
+  // edges from the focused receptor to its 8 most similar contact patterns, wider and stronger
+  // for higher similarity; the neighbor hovered in the panel is drawn in the accent color
+  function drawFocusEdges(h, a) {
+    var P = st.P, fp = st.view === 'fingerprints';
+    ctx.save();
+    ctx.lineCap = 'round';
+    neighbors(h).slice().reverse().forEach(function(o) {
+      var j = o.j, t = simT(o.sim), hot = j === st.rowHover;
+      var dx = X[j] - X[h], dy = Y[j] - Y[h], d = Math.sqrt(dx * dx + dy * dy) || 1;
+      var bend = fp ? -Math.min(80, d * 0.35) : d * 0.16;
+      var mx = (X[h] + X[j]) / 2 + (fp ? bend : -dy / d * bend);
+      var my = (Y[h] + Y[j]) / 2 + (fp ? 0 : dx / d * bend);
+      ctx.strokeStyle = hot ? A.css(P.accent, a) : A.css(P.fg, (0.22 + 0.55 * t) * a);
+      ctx.lineWidth = hot ? 3 : 0.8 + 2.4 * t;
       ctx.beginPath(); ctx.moveTo(X[h], Y[h]); ctx.quadraticCurveTo(mx, my, X[j], Y[j]); ctx.stroke();
     });
     ctx.restore();
   }
 
   function drawHoverOver(h, a) {
-    var P = st.P, r = st.data.receptors[h];
+    var P = st.P, placed = [], R = st.data.receptors;
     ctx.save();
-    ctx.strokeStyle = A.css(P.fg, 0.75 * a);
-    ctx.lineWidth = 1.5;
-    (r.similar || []).forEach(function(s) {
-      var o = st.data.byGid[s[0]];
-      if (!o) return;
-      var j = o.index;
+    neighbors(h).forEach(function(nb) {
+      var j = nb.j, o = R[j], hot = j === st.rowHover;
+      ctx.strokeStyle = hot ? A.css(P.accent, a) : A.css(P.fg, (0.4 + 0.45 * simT(nb.sim)) * a);
+      ctx.lineWidth = hot ? 2.5 : 1.5;
       ctx.beginPath(); ctx.arc(X[j], Y[j], Math.max(S[j] * 1.12 + 1.5, 5), 0, Math.PI * 2); ctx.stroke();
-      if (S[j] < 20 && st.view !== 'fingerprints') {
+      if (S[j] < 20 && st.view !== 'fingerprints' && vis[j]) {
         ctx.font = '600 11px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-        ctx.globalAlpha = a;
-        A.haloText(ctx, o.symbol, X[j], Y[j] - Math.max(S[j] * 1.2, 6) - 2, P, P.fgCss);
-        ctx.globalAlpha = 1;
+        var tw = ctx.measureText(o.symbol).width / 2 + 2, ty = Y[j] - Math.max(S[j] * 1.2, 6) - 2;
+        var clash = false;
+        for (var q = 0; q < placed.length; q += 4) {
+          if (X[j] - tw < placed[q + 2] && X[j] + tw > placed[q] && ty - 12 < placed[q + 3] && ty > placed[q + 1]) clash = true;
+        }
+        if (!clash || hot) {
+          placed.push(X[j] - tw, ty - 12, X[j] + tw, ty);
+          ctx.globalAlpha = a;
+          A.haloText(ctx, o.symbol, X[j], ty, P, hot ? P.accentCss : P.fgCss);
+          ctx.globalAlpha = 1;
+        }
       }
     });
     ctx.strokeStyle = A.css(P.accent, a);
     ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(X[h], Y[h], Math.max(S[h] * 1.12 + 2, 6), 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+
+  // ------------------------------------------------------------------ similarity map: links, groups
+
+  // the current rule's mutual-nearest links, thin and calm, one path per opacity step
+  function drawLinks(alpha) {
+    var P = st.P, links = rule().links, steps = [0.4, 0.55, 2], alphas = [0.14, 0.24, 0.36];
+    if (!links || !links.length || st.layouts.similarity.rule !== st.rule) return;
+    ctx.save();
+    ctx.strokeStyle = P.fgCss;
+    ctx.lineWidth = A.clamp(st.meanS / 8, 0.8, 1.6);
+    var lo = -1;
+    for (var b = 0; b < steps.length; b++) {
+      ctx.globalAlpha = alpha * alphas[b];
+      ctx.beginPath();
+      for (var q = 0; q < links.length; q++) {
+        var l = links[q], v = l[2];
+        if (v < lo || v >= steps[b]) continue;
+        var i = l[0], j = l[1];
+        if (!vis[i] && !vis[j]) continue;
+        ctx.moveTo(X[i], Y[i]); ctx.lineTo(X[j], Y[j]);
+      }
+      ctx.stroke();
+      lo = steps[b];
+    }
+    ctx.restore();
+  }
+
+  // soft halos in each group's color, rendered once per rule, cut and theme into a low-resolution
+  // image of the whole map and drawn as one scaled image per frame
+  function groupHaloSprites() {
+    if (st.grpSprites && st.grpSprites.dark === st.P.dark) return st.grpSprites;
+    var list = [];
+    for (var hh = 0; hh < st.P.nGroupHues; hh++) list.push({ color: A.css(st.P.colors[st.P.grpBase + hh]) });
+    st.grpSprites = A.buildHalos(list, st.P, st.P.dark ? 1.3 : 1.9);
+    st.grpSprites.dark = st.P.dark;
+    return st.grpSprites;
+  }
+  function groupField() {
+    var L = st.layouts.similarity, key = st.rule + ':' + st.k + ':' + st.P.dark;
+    if (st.groupField && st.groupField.key === key) return st.groupField;
+    var b = L.bounds, pad = 6, res = 6, sprites = groupHaloSprites();
+    var x0 = b[0] - pad, y0 = b[1] - pad, w = b[2] - b[0] + 2 * pad, h = b[3] - b[1] + 2 * pad;
+    var c = st.groupFieldCanvas || (st.groupFieldCanvas = document.createElement('canvas'));
+    var cw = Math.ceil(w * res), chh = Math.ceil(h * res);
+    if (c.width !== cw || c.height !== chh) { c.width = cw; c.height = chh; }
+    var x = c.getContext('2d');
+    x.clearRect(0, 0, c.width, c.height);
+    st.cut.groups.forEach(function(g) {
+      if (g.members.length < 2) return;
+      var spr = sprites[g.hue % sprites.length];
+      g.members.forEach(function(i) {
+        var hr = 3.4 * res, px = (L.xy[2 * i] - x0) * res, py = (L.xy[2 * i + 1] - y0) * res;
+        x.drawImage(spr, px - hr, py - hr, 2 * hr, 2 * hr);
+      });
+    });
+    st.groupField = { canvas: c, x0: x0, y0: y0, w: w, h: h, key: key };
+    return st.groupField;
+  }
+  function drawGroupHalos(alpha) {
+    var fade = A.clamp((40 - st.meanS) / 26, 0.25, 1);
+    var f = groupField(), k = st.cam.k;
+    ctx.save();
+    ctx.globalAlpha = alpha * fade * 1.6;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(f.canvas, sx(f.x0), sy(f.y0), f.w * k, f.h * k);
+    ctx.restore();
+  }
+
+  // a group's name next to its densest member, clear of glyphs and of other names
+  function drawGroupLabels(alpha, placed) {
+    var P = st.P, L = st.layouts.similarity, groups = st.cut.groups;
+    ctx.save();
+    ctx.font = '600 11px ' + FONT;
+    ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+    groups.map(function(g, gi) { return gi; }).sort(function(a, b) { return groups[b].members.length - groups[a].members.length; })
+      .forEach(function(gi) {
+        var g = groups[gi];
+        if (!g.label) return;
+        var mkey = L.rule + ':' + g.node, cache = st.medoids || (st.medoids = {});
+        if (cache[mkey] != null) { g.medoid = cache[mkey]; g.medoidKey = L.rule; }
+        if (g.medoid == null || g.medoidKey !== L.rule) {
+          var best = -1, bd = Infinity;
+          g.members.forEach(function(i) {
+            var d = 0;
+            g.members.forEach(function(j) { var dx = L.xy[2 * i] - L.xy[2 * j], dy = L.xy[2 * i + 1] - L.xy[2 * j + 1]; d += Math.sqrt(dx * dx + dy * dy); });
+            if (d < bd) { bd = d; best = i; }
+          });
+          g.medoid = best; g.medoidKey = L.rule; cache[mkey] = best;
+        }
+        var mx = X[g.medoid], my = Y[g.medoid], off = Math.max(S[g.medoid] * 1.3, 8) + 6;
+        if (!vis[g.medoid]) return;
+        var tw = ctx.measureText(g.label).width / 2 + 3;
+        // outward from the middle of the map, so names settle at the cloud's edge
+        var ccx = sx((L.bounds[0] + L.bounds[2]) / 2), ccy = sy((L.bounds[1] + L.bounds[3]) / 2);
+        var dx = mx - ccx, dy = my - ccy, dl = Math.sqrt(dx * dx + dy * dy);
+        if (dl < 1) { dx = 0; dy = -1; dl = 1; }
+        dx /= dl; dy /= dl;
+        var ins = st.insCache || insets(), col = st.grpText[g.hue % st.grpText.length];
+        for (var t = off, tMax = off + (st.W < 700 ? 90 : 150); t < tMax; t += 6) {
+          var x = mx + dx * (t + tw * Math.abs(dx)), y = my + dy * (t + 8 * Math.abs(dy));
+          if (x < ins.l + tw || x > st.W - ins.r - tw || y < ins.t + 8 || y > st.H - ins.b - 8) break;
+          if (boxHits(-1, x - tw, y - 8, x + tw, y + 8, placed)) continue;
+          placed.push(x - tw, y - 8, x + tw, y + 8);
+          ctx.globalAlpha = alpha * 0.55;
+          if (t > off + 10) {
+            ctx.strokeStyle = col; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(mx + dx * (S[g.medoid] + 2), my + dy * (S[g.medoid] + 2));
+            ctx.lineTo(x - dx * tw * Math.abs(dx), y - dy * 8 * Math.abs(dy)); ctx.stroke();
+          }
+          ctx.globalAlpha = alpha;
+          A.haloText(ctx, g.label, x, y, P, col);
+          break;
+        }
+      });
+    ctx.restore();
+  }
+
+  // ------------------------------------------------------------------ tree layout
+
+  // radial dendrogram of the current rule's tree: elbow branches (radial line, then an arc), colored
+  // by the current cut; above the cut in a neutral gray; a faint ring marks the cut
+  function drawTree(alpha) {
+    var L = st.layouts.tree, T = rule().tree;
+    if (!T || L.rule !== st.rule) return;
+    var k = st.cam.k, E = L.R + 1, dpr = st.dpr;
+    // the whole tree is rendered once per rule, cut and theme into an image at twice the overview
+    // scale; vectors take over only when zoomed in past that
+    var c = st.treeCache, key = st.rule + ':' + st.k + ':' + st.P.dark;
+    if (!c || c.key !== key) {
+      var fitK = fitView(L).k, scale = Math.min(fitK * 2.2 * dpr, 4096 / (2 * E));
+      var cv = (c && c.canvas) || document.createElement('canvas');
+      cv.width = cv.height = Math.ceil(2 * E * scale);
+      var c2 = cv.getContext('2d');
+      c2.clearRect(0, 0, cv.width, cv.height);
+      paintTree(c2, cv.width / 2, cv.height / 2, scale, 1, Math.max(1, dpr));
+      c = st.treeCache = { canvas: cv, key: key, scale: scale };
+    }
+    if (k * dpr <= c.scale * 1.15) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(c.canvas, sx(-E), sy(-E), 2 * E * k, 2 * E * k);
+      ctx.restore();
+    } else paintTree(ctx, sx(0), sy(0), k, alpha, 1);
+  }
+
+  // radial dendrogram of the current rule's tree: elbow branches (radial line, then an arc), colored
+  // by the current cut; above the cut in a neutral gray; a faint dashed ring marks the cut
+  function paintTree(c2, cx, cy, k, alpha, px) {
+    var L = st.layouts.tree, T = rule().tree, P = st.P, n = T.n, M = T.merges, cut = st.cut;
+    var Rt = L.Rtree, keep = n - st.k;
+    function rad(node) { return node < n ? Rt * k : Rt * (1 - 0.94 * T.f[node]) * k; }
+    var paths = [], neutral = [];
+    c2.save();
+    c2.lineCap = 'round';
+    if (cut) {
+      c2.globalAlpha = alpha * 0.5;
+      c2.strokeStyle = P.mutedCss; c2.lineWidth = px;
+      c2.setLineDash([3 * px, 4 * px]);
+      c2.beginPath(); c2.arc(cx, cy, Rt * (1 - 0.94 * cut.fCut) * k, 0, Math.PI * 2); c2.stroke();
+      c2.setLineDash([]);
+    }
+    for (var r = 0; r < n - 1; r++) {
+      var list = neutral;
+      if (cut && r < keep) {
+        var hu = T.hue[cut.root[n + r]] % P.nGroupHues;
+        list = paths[hu] || (paths[hu] = []);
+      }
+      list.push(r);
+    }
+    function stroke(list, color, width, a) {
+      if (!list || !list.length) return;
+      c2.strokeStyle = color; c2.lineWidth = width * px; c2.globalAlpha = alpha * a;
+      c2.beginPath();
+      for (var q = 0; q < list.length; q++) {
+        var row = list[q], ca = M[row][0], cb = M[row][1], rp = rad(n + row);
+        var ra = rad(ca), rb = rad(cb), aa = T.ang[ca], ab = T.ang[cb], a0 = Math.min(aa, ab), a1 = Math.max(aa, ab);
+        c2.moveTo(cx + Math.cos(aa) * ra, cy + Math.sin(aa) * ra); c2.lineTo(cx + Math.cos(aa) * rp, cy + Math.sin(aa) * rp);
+        c2.moveTo(cx + Math.cos(ab) * rb, cy + Math.sin(ab) * rb); c2.lineTo(cx + Math.cos(ab) * rp, cy + Math.sin(ab) * rp);
+        c2.moveTo(cx + Math.cos(a0) * rp, cy + Math.sin(a0) * rp);
+        c2.arc(cx, cy, rp, a0, a1);
+      }
+      c2.stroke();
+    }
+    stroke(neutral, P.mutedCss, 1.1, 0.6);
+    for (var h2 = 0; h2 < paths.length; h2++) stroke(paths[h2], P.fill[P.grpBase + h2], 1.6, 0.9);
+    c2.restore();
+  }
+
+  // the floating cards and the lens bar as rectangles in stage coordinates (cached briefly)
+  function uiRects() {
+    var now = performance.now();
+    if (st.uiRects && now - st.uiRectsT < 300) return st.uiRects;
+    var r = stage.getBoundingClientRect(), out = [];
+    Array.prototype.forEach.call(root.querySelectorAll('.atlas-top > .atlas-card, .atlas-legend, .atlas-zoom, .atlas-lens, .atlas-panel, .atlas-hint'), function(el) {
+      if (el.hidden || !el.offsetWidth) return;
+      var b = el.getBoundingClientRect();
+      out.push([b.left - r.left, b.top - r.top, b.right - r.left, b.bottom - r.top]);
+    });
+    st.uiRects = out; st.uiRectsT = now;
+    return out;
+  }
+  function underUI(x, y) {
+    if (x < 2 || y < 2 || x > st.W - 2 || y > st.H - 2) return true;
+    var rs = uiRects();
+    for (var q = 0; q < rs.length; q++) if (x >= rs[q][0] && x <= rs[q][2] && y >= rs[q][1] && y <= rs[q][3]) return true;
+    return false;
+  }
+
+  // group names outside the rim, radial, where a group's arc has room
+  function drawTreeLabels(alpha) {
+    var L = st.layouts.tree, T = rule().tree;
+    if (!T || L.rule !== st.rule) return;
+    var P = st.P, k = st.cam.k, cx = sx(0), cy = sy(0), n = T.n;
+    if (2 * Math.PI * L.R / n * k >= 11) return;          // receptor names take the rim when zoomed in
+    var rr = (L.R + 2) * k, W = st.W, H = st.H;
+    ctx.save();
+    ctx.font = '600 11px ' + FONT;
+    ctx.textBaseline = 'middle';
+    st.cut.groups.forEach(function(g) {
+      if (!g.label) return;
+      var p0 = T.pos[g.members[0]], p1 = T.pos[g.members[g.members.length - 1]];
+      var span = (p1 - p0 + 1) / n * Math.PI * 2 * rr;
+      if (span < 13) return;
+      var a = -Math.PI / 2 + ((p0 + p1 + 1) / 2) / n * Math.PI * 2;
+      var x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr;
+      var tl = ctx.measureText(g.label).width;
+      // skip a name that would run under a card or off the stage
+      for (var u = 0; u <= 4; u++) {
+        var d = tl * u / 4;
+        if (underUI(x + Math.cos(a) * d, y + Math.sin(a) * d)) return;
+      }
+      ctx.save();
+      ctx.translate(x, y);
+      var flip = Math.cos(a) < 0;
+      ctx.rotate(flip ? a + Math.PI : a);
+      ctx.textAlign = flip ? 'right' : 'left';
+      ctx.globalAlpha = alpha;
+      A.haloText(ctx, g.label, 0, 0, P, st.grpText[g.hue % st.grpText.length]);
+      ctx.restore();
+    });
     ctx.restore();
   }
 
@@ -801,8 +1201,9 @@
     return false;
   }
 
-  function drawGlyphLabels() {
-    var P = st.P, R = st.data.receptors, D = st.data, j = lens(), Ly = D.layers, placed = [];
+  function drawGlyphLabels(placed) {
+    var P = st.P, R = st.data.receptors, D = st.data, j = lens(), Ly = D.layers;
+    placed = placed || [];
     var fpa = st.decoA.fingerprints, other = 1 - fpa;
     var ranked = st.view === 'ranked' && st.layouts.ranked;
     var heat = null;
@@ -990,7 +1391,7 @@
 
   function maybeLegend() {
     var lod = st.meanS < 5.2 ? 'dots' : 'bundle';
-    var key = [st.view, st.color, lens() >= 0 ? st.data.positions[lens()].gn : '', lod, st.P.dark].join('|');
+    var key = [st.view, st.color, st.rule, st.cut ? st.cut.k : 0, lens() >= 0 ? st.data.positions[lens()].gn : '', lod, st.P.dark].join('|');
     if (key !== st.legendKey) { st.legendKey = key; buildLegend(lod); }
   }
   function updateLegend() { st.legendKey = ''; invalidate(); }
@@ -1011,6 +1412,12 @@
       } else {
         h += '<p class="lg-title">Mean AlphaMissense per residue</p>' + bar(P.amStops) + '<div class="lg-ends"><span>0</span><span>1</span></div>';
       }
+    } else if (st.color === 'group') {
+      var rr = rule();
+      h += '<p class="lg-title">Group: ' + esc(rr ? rr.label.toLowerCase() : '') + (st.cut ? ', ' + st.cut.groups.length + ' groups' : '') + '</p>';
+      h += '<div class="lg-hues">' + (st.P.colors.slice(st.P.grpBase, st.P.grpBase + st.P.nGroupHues).map(function(c) {
+        return '<span class="lg-dot" style="background:' + A.css(c) + '"></span>'; }).join('')) + '</div>';
+      h += '<p class="lg-note">Groups are cut from the similarity tree of the chosen rule; colors repeat. A browsing aid, not a classification.</p>';
     } else if (st.color === 'ligand') {
       h += '<p class="lg-title">Ligand group</p>' + groupsHtml;
     } else if (st.color === 'share') {
@@ -1036,6 +1443,11 @@
       h += '<span class="lg-desc">Disc size: summed |ΔRRCS| on the helix. Color: net. Lines: contacts between helices.</span></div></div>';
       h += divBar() + '<div class="lg-ends"><span>stronger inactive</span><span>stronger active</span></div>';
       h += '<p class="lg-note">One scale for every receptor.</p>';
+    }
+    if (st.view === 'similarity' || st.view === 'tree') {
+      h += '<p class="lg-note lg-viewnote">' + (st.view === 'similarity'
+        ? 'Lines: each receptor is among the other\u2019s nearest under the rule. Colored halos: the current groups.'
+        : 'Branches: the ' + (st.rule === 'sequence' ? 'sequence tree' : 'similarity tree') + ', colored by the current groups; the dashed ring is the cut.') + '</p>';
     }
     if (lod === 'dots' && st.view !== 'fingerprints' && h.indexOf('lg-sizes') < 0) {
       h += '<p class="lg-note lg-dotnote">Zoomed out, dot area shows total change (sum of |ΔRRCS| above threshold).</p>';
@@ -1364,18 +1776,7 @@
     row('TM6 displacement', r.tm6_shift.toFixed(1) + ' Å', 'Mean C-alpha distance of TM6 between the two models after superposition');
     row('Length', r.length + ' <small>residues</small>');
     $('atlas-panel-stats').innerHTML = dl;
-    var sim = $('atlas-panel-similar');
-    sim.innerHTML = '';
-    (r.similar || []).forEach(function(s) {
-      var o = st.data.byGid[s[0]];
-      if (!o) return;
-      var li = document.createElement('li'), b = document.createElement('button');
-      b.type = 'button';
-      b.innerHTML = '<span class="sm-dot" style="background:' + st.data.groups[o.group].color + '"></span><span class="sm-sym">' + esc(o.symbol) + '</span><span class="sm-fam">' + esc(o.family) + '</span><span class="sm-val">' + s[1].toFixed(2) + '</span>';
-      b.title = 'Similarity of the per-position activation patterns (cosine): ' + s[1].toFixed(2);
-      b.addEventListener('click', function() { select(o.index, { fly: true }); });
-      li.appendChild(b); sim.appendChild(li);
-    });
+    fillNeighbors(i);
     positionOverlays();
     if (panel.hidden) {
       panel.hidden = false;
@@ -1385,6 +1786,42 @@
     panel.classList.remove('is-closed');
     requestAnimationFrame(function() { refreshPanelDrawings(); });
     open3D(r.gid);
+  }
+
+  // the panel's neighbor list follows the current grouping rule
+  function fillNeighbors(i) {
+    var r = st.data.receptors[i], R = st.data.receptors, ru = rule(), seqRule = st.rule === 'sequence';
+    var sim = $('atlas-panel-similar');
+    $('atlas-sim-h').textContent = seqRule ? 'Most similar sequences' : 'Most similar contact patterns';
+    $('atlas-sim-rule').textContent = 'Rule: ' + (ru ? ru.label : 'Contact pattern') + (st.rulesState === 'ready' ? '' : '') + '.';
+    $('atlas-sim-note').innerHTML = seqRule
+      ? 'Bar: sequence identity. Pattern: whole-receptor contact-pattern similarity.'
+      : 'Bar: similarity under this rule (0 to 1). Seq.: sequence identity. Chips: the contacts that weigh most in the match, <span class="is-act">red</span> stronger in the active model, <span class="is-ina">blue</span> in the inactive model.';
+    sim.innerHTML = '';
+    neighbors(i).forEach(function(nb) {
+      var o = R[nb.j], pat = nb.sim, comp = nb.comp;
+      var li = document.createElement('li'), b = document.createElement('button');
+      b.type = 'button';
+      var chips = (nb.pairs || []).map(function(pp) {
+        return '<span class="sm-chip ' + (pp[2] > 0 ? 'is-act' : 'is-ina') + '" title="Contact ' + pp[0] + ' to ' + pp[1] + ': stronger in the ' +
+          (pp[2] > 0 ? 'active' : 'inactive') + ' model of ' + esc(r.symbol) + '">' + pp[0] + '\u2013' + pp[1] + '</span>';
+      }).join('');
+      var compTxt = seqRule ? 'pattern ' + comp.toFixed(2) : 'seq. ' + Math.round(comp * 100) + '%';
+      var contrast = !seqRule && pat >= 0.3 && comp <= 0.22;
+      b.innerHTML = '<span class="sm-top"><span class="sm-dot" style="background:' + st.data.groups[o.group].color + '"></span>' +
+        '<span class="sm-sym">' + esc(o.symbol) + '</span><span class="sm-fam">' + esc(o.family) + '</span>' +
+        '<span class="sm-bar" aria-hidden="true"><span style="width:' + Math.round(A.clamp(pat, 0, 1) * 100) + '%"></span></span>' +
+        '<span class="sm-val">' + pat.toFixed(2) + '</span></span>' +
+        '<span class="sm-sub"><span class="sm-seq">' + compTxt + '</span>' +
+        (contrast ? '<span class="sm-flag">similar pattern, low sequence identity</span>' : '') + chips + '</span>';
+      b.setAttribute('aria-label', o.symbol + ', ' + o.family + ': ' + (seqRule ? 'sequence identity ' : 'similarity ') + pat.toFixed(2) + ', ' + compTxt);
+      b.addEventListener('click', function() { st.rowHover = -1; select(o.index, { fly: true }); });
+      b.addEventListener('mouseenter', function() { st.rowHover = o.index; invalidate(); });
+      b.addEventListener('mouseleave', function() { st.rowHover = -1; invalidate(); });
+      b.addEventListener('focus', function() { st.rowHover = o.index; invalidate(); });
+      b.addEventListener('blur', function() { st.rowHover = -1; invalidate(); });
+      li.appendChild(b); sim.appendChild(li);
+    });
   }
 
   function closePanel() {
@@ -1629,16 +2066,31 @@
 
   var CAPTIONS = {
     families: 'GPCRdb family classification, grouped by ligand type. Not a phylogeny.',
-    similarity: 'Receptors with similar activation patterns sit close. A browsing aid, not a classification.',
+    similarity: 'Receptors whose residue contacts change alike sit close. A browsing aid, not a classification.',
     ranked: 'One number per receptor, highest first, read left to right.',
     fingerprints: 'One row per receptor, one column per generic position.'
   };
+
+  function caption() {
+    var r = rule(), lbl = r ? r.label.toLowerCase() : 'contact pattern';
+    if (st.view === 'similarity') {
+      return (st.rule === 'sequence' ? 'Placed by sequence identity at the shared generic positions.' :
+              'Placed by ' + lbl + ' similarity.') + ' Lines join mutual nearest neighbors; colors mark groups. A browsing aid, not a classification.';
+    }
+    if (st.view === 'tree') {
+      return st.rule === 'sequence'
+        ? 'Phylogenetic tree of the sequences (neighbor joining, GPCRdb generic residue positions). Colors: the current groups, a browsing aid, not a classification.'
+        : 'Similarity tree (hierarchical clustering) of the ' + lbl + ' measure, not a phylogeny. Colors: the current groups, a browsing aid, not a classification.';
+    }
+    return CAPTIONS[st.view];
+  }
 
   function syncViewUI() {
     Array.prototype.forEach.call(root.querySelectorAll('.atlas-seg-btn'), function(b) {
       b.setAttribute('aria-pressed', b.getAttribute('data-view') === st.view ? 'true' : 'false');
     });
-    $('atlas-caption').textContent = CAPTIONS[st.view];
+    $('atlas-caption').textContent = caption();
+    syncRuleUI();
     $('atlas-metric-wrap').hidden = st.view !== 'ranked';
     $('atlas-metric').value = st.metric;
     $('atlas-color').value = st.color;
@@ -1648,6 +2100,7 @@
   function setColor(c) {
     if (COLORS.indexOf(c) < 0) c = 'activation';
     st.color = c;
+    if (c === 'group' && st.rulesState !== 'ready') loadRules().then(function() { st.legendKey = ''; invalidate(); });
     if ((c === 'cons' || c === 'am') && st.lensPin < 0) {
       pinLens(st.data.gnIndex['3.50x50'] != null ? st.data.gnIndex['3.50x50'] : 0);
     }
@@ -1666,6 +2119,8 @@
     });
     $('atlas-metric').addEventListener('change', function() { st.metric = this.value; setView('ranked'); });
     $('atlas-color').addEventListener('change', function() { setColor(this.value); });
+    $('atlas-rule').addEventListener('change', function() { var v = this.value; loadRules().then(function() { setRule(v); }); });
+    $('atlas-k').addEventListener('input', function() { setK(+this.value); });
     $('atlas-zoom-in').addEventListener('click', function() { zoomBy(1.8); });
     $('atlas-zoom-out').addEventListener('click', function() { zoomBy(1 / 1.8); });
     $('atlas-fit').addEventListener('click', function() { fit(); });
@@ -1705,6 +2160,8 @@
     hashTimer = setTimeout(function() {
       var parts = ['view=' + st.view];
       if (st.view === 'ranked') parts.push('metric=' + st.metric);
+      if (st.rule !== 'pattern') parts.push('rule=' + st.rule);
+      if (st.k !== K_DEFAULT && (st.view === 'similarity' || st.view === 'tree' || st.color === 'group')) parts.push('k=' + st.k);
       if (st.color !== 'activation') parts.push('color=' + st.color);
       if (st.lensPin >= 0) parts.push('pos=' + st.data.positions[st.lensPin].gn);
       if (st.sel >= 0) parts.push('receptor=' + st.data.receptors[st.sel].gid);
@@ -1726,7 +2183,13 @@
     var h = readHash();
     applyingHash = true;
     if (h.metric && A.METRICS[h.metric]) st.metric = h.metric;
+    if (st.rulesState === 'ready') {
+      if (h.k) { st.k = A.clamp(parseInt(h.k, 10) || K_DEFAULT, K_MIN, K_MAX); }
+      var wantRule = st.rules[h.rule] ? h.rule : 'pattern';
+      if (wantRule !== st.rule || h.k) setRule(wantRule, { quiet: true });
+    }
     var view = VIEWS.indexOf(h.view) >= 0 ? h.view : 'families';
+    if (view === 'tree' && !st.layouts.tree) view = 'similarity';
     var j = h.pos ? A.parseGn(st.data, h.pos) : -1;
     st.lensPin = j;
     $('atlas-pos-input').value = j >= 0 ? st.data.positions[j].gn : '';
@@ -1756,6 +2219,12 @@
       var c = A.parseColor(g.color);
       return A.css(st.P.dark ? A.mix(c, [255, 255, 255, 1], 0.38) : A.mix(c, [0, 0, 0, 1], 0.12));
     });
+    st.grpText = [];
+    for (var gh = 0; gh < st.P.nGroupHues; gh++) {
+      var gc = st.P.colors[st.P.grpBase + gh];
+      st.grpText.push(A.css(st.P.dark ? A.mix(gc, [255, 255, 255, 1], 0.2) : A.mix(gc, [0, 0, 0, 1], 0.15)));
+    }
+    st.groupField = null; st.grpSprites = null; st.treeCache = null;
     st.legendKey = ''; st.tipKey = '';
     drawRuler();
     refreshPanelDrawings();
@@ -1768,7 +2237,7 @@
     var oldW = st.W, oldH = st.H;
     st.W = W; st.H = H; st.dpr = dpr;
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
-    st.insCache = null;
+    st.insCache = null; st.treeCache = null;
     positionOverlays();
     if (st.data && st.P) {
       if (oldW && !st.userMoved && !st.fly && st.sel < 0) {
@@ -1799,7 +2268,11 @@
     tx = new Float32Array(n); ty = new Float32Array(n); ts = new Float32Array(n); delay = new Float32Array(n);
     colors = []; for (var i = 0; i < n; i++) colors.push({ scalar: -1, dot: 0, dim: false, lensHelix: -1 });
     st.layouts.families = A.layoutFamilies(D);
-    st.layouts.similarity = A.layoutSimilarity(D);
+    // the default rule (contact pattern) ships in index.json; the other rules and every tree load later
+    st.rules.pattern = A.prepareRule(D, { id: 'pattern', label: 'Contact pattern', xy: D.receptors.map(function(r) { return r.sim_xy; }),
+                                          links: index.links || [], similar: D.receptors.map(function(r) { return r.similar || []; }) });
+    st.rules.pattern.description = 'Which contacts change between the two models, and in which direction, over the whole receptor.';
+    st.layouts.similarity = ruleSimilarity('pattern');
     st.layouts.ranked = A.layoutRanked(D, st.metric);
     var fp = A.layoutFingerprints(D);
     // heat map rows in display order, and each block's first row in that order
@@ -1825,7 +2298,14 @@
       var fc = fitCircle(st.layouts.families);
       if ((st.layouts.families.R0 - 2.4) * fc.k < 215 || VIEWS.indexOf(readHash().view) > 0) dockHint();
     }
-    applyHash(true);
+    var hh = readHash();
+    var needRules = hh.view === 'tree' || (hh.rule && hh.rule !== 'pattern') || hh.color === 'group' || hh.k;
+    if (needRules) loadRules().then(function() { applyHash(true); });
+    else {
+      applyHash(true);
+      // after the opening, quietly
+      setTimeout(function() { loadRules(); }, reduced ? 200 : 1600);
+    }
     var ld = $('atlas-loading');
     ld.classList.add('is-done');
     setTimeout(function() { ld.hidden = true; }, 500);
@@ -1846,7 +2326,7 @@
         st.tipKey = '';
       }).catch(function() { /* names stay as the entry names */ });
     }
-    window.__atlas = st; // for debugging and tests
+    window.__atlas = st; // for debugging and tests (st.rule, st.k, st.groupCount, st.rulesState)
   }
 
   measureTop();
