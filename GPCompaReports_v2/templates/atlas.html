@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{#
+  GPCRome Atlas: one zoomable canvas over every receptor. Data: atlas/index.json (all receptors)
+  and atlas/r/<gid>.json (one receptor's C-alpha traces, read by the 3D view).
+  Scripts: static/js/atlas/atlas-core.js (data, colors, layouts), atlas-render.js (drawing),
+  atlas.js (camera, interaction, controls); atlas-3d.js is loaded the first time a receptor opens.
+#}
+
+{% block content %}
+<section class="atlas" id="atlas" aria-labelledby="atlas-title"
+         data-index="{{ static_prefix }}atlas/index.json"
+         data-detail="{{ static_prefix }}atlas/r/"
+         data-meta="{{ static_prefix }}search2/meta.json"
+         data-search="{{ static_prefix }}search/"
+         data-static="{{ static_prefix }}static/">
+  <div class="atlas-stage" id="atlas-stage">
+    <canvas class="atlas-canvas" id="atlas-canvas" tabindex="0" role="img"
+            aria-label="GPCRome Atlas: a zoomable map of {{ total_gpcrs }} human Class A GPCRs. Each receptor is a glyph showing how its helix contacts change between the inactive and the active model."
+            aria-describedby="atlas-desc"></canvas>
+    <p class="atlas-sr" id="atlas-desc">Use the receptor search to open any receptor's details. With the map focused, arrow keys move the view, plus and minus zoom, 0 fits the view, and Escape clears the position lens. The position lens below the map accepts a generic residue number such as 3.50x50.</p>
+
+    <div class="atlas-loading" id="atlas-loading" role="status">Loading {{ total_gpcrs }} receptors</div>
+
+    <div class="atlas-top">
+      <div class="atlas-card atlas-brand">
+        <h1 class="atlas-title" id="atlas-title">GPCRome Atlas</h1>
+        <p class="atlas-sub">{{ total_gpcrs }} human Class A GPCRs, inactive to active</p>
+        <div class="atlas-search" role="search">
+          <label class="atlas-sr" for="atlas-search-input">Find a receptor</label>
+          <input type="search" id="atlas-search-input" class="atlas-input" placeholder="Find a receptor" autocomplete="off" spellcheck="false" autocapitalize="off"
+                 role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="atlas-suggest">
+          <ul class="atlas-suggest" id="atlas-suggest" role="listbox" aria-label="Matching receptors" hidden></ul>
+        </div>
+      </div>
+
+      <div class="atlas-card atlas-views">
+        <div class="atlas-seg" role="group" aria-label="Layout">
+          <button type="button" class="atlas-seg-btn" data-view="families" aria-pressed="true">Families</button>
+          <button type="button" class="atlas-seg-btn" data-view="similarity" aria-pressed="false">Similarity</button>
+          <button type="button" class="atlas-seg-btn" data-view="ranked" aria-pressed="false">Ranked</button>
+          <button type="button" class="atlas-seg-btn" data-view="fingerprints" aria-pressed="false">Fingerprints</button>
+        </div>
+        <p class="atlas-caption" id="atlas-caption" aria-live="polite"></p>
+        <label class="atlas-metric" id="atlas-metric-wrap" hidden>
+          <span>Sort by</span>
+          <select id="atlas-metric" class="atlas-select">
+            <option value="n_above">Contacts above threshold</option>
+            <option value="share_active">Share stronger in active</option>
+            <option value="tm6_shift">TM6 displacement</option>
+            <option value="sum_abs_above">Total change</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="atlas-card atlas-colorcard">
+        <label class="atlas-colorby">
+          <span>Color by</span>
+          <select id="atlas-color" class="atlas-select">
+            <option value="activation">Activation pattern</option>
+            <option value="ligand">Ligand group</option>
+            <option value="cons">Conservation at lens</option>
+            <option value="am">AlphaMissense at lens</option>
+            <option value="share">Share stronger in active</option>
+          </select>
+        </label>
+        <button type="button" class="atlas-btn atlas-help-btn" id="atlas-help-btn" aria-expanded="false" aria-controls="atlas-help">How to read this</button>
+      </div>
+    </div>
+
+    <div class="atlas-card atlas-help" id="atlas-help" hidden>
+      <div class="atlas-help-head">
+        <h2>How to read this</h2>
+        <button type="button" class="atlas-icon-btn" data-close-help aria-label="Close">&times;</button>
+      </div>
+      <p><strong>One glyph per receptor.</strong> Zoomed out, a glyph is a dot in its ligand group's color. Zoomed in, it shows the receptor's seven transmembrane helices as discs, laid out as the bundle is seen from the extracellular side (TM1 to TM7 counterclockwise, TM3 near the center), with helix 8 as a small bar. The layout is a schematic, the same for every receptor, not the model's coordinates.</p>
+      <p><strong>Discs and lines.</strong> Disc size is the summed |&Delta;RRCS| of the receptor's above-threshold contacts on that helix; disc color is their net sum. Lines join two helices that share above-threshold contacts, colored by the net sum and drawn thicker for larger sums. Every glyph uses the same scale, so glyphs can be compared directly.</p>
+      <p><strong>Sign.</strong> <span id="atlas-help-sign"></span> <span class="atlas-swatch atlas-swatch-act"></span> Red: stronger in the active model. <span class="atlas-swatch atlas-swatch-ina"></span> Blue: stronger in the inactive model.</p>
+      <p><strong>Threshold.</strong> <span id="atlas-help-threshold"></span></p>
+      <p><strong>Models.</strong> Each receptor has one predicted active model and one predicted inactive model from GPCRdb. The values describe these models, not measured structures.</p>
+      <p><strong>Layouts.</strong> Families follows GPCRdb's family classification, grouped by ligand type; it is not a phylogeny. Similarity places receptors with similar per-position activation patterns near each other; it is a browsing aid, not a classification. Ranked sorts receptors by one number. Fingerprints shows every receptor's net &Delta;RRCS at each of the <span id="atlas-help-npos">298</span> generic positions shared by at least a quarter of the receptors.</p>
+      <p><strong>Position lens.</strong> The bars under the map count, for each generic position, the receptors with an above-threshold contact change there: up (red) when the residue's net change is stronger in the active model, down (blue) when stronger in the inactive model. Hover or drag along it to color every receptor by that one position; click to keep it.</p>
+    </div>
+
+    <div class="atlas-hint" id="atlas-hint" hidden>
+      <span>Scroll to zoom, drag to move. Hover the bars at the bottom to light up one position. Click a receptor for details.</span>
+      <button type="button" class="atlas-icon-btn" id="atlas-hint-close" aria-label="Dismiss hint">&times;</button>
+    </div>
+
+    <div class="atlas-zoom atlas-card" role="group" aria-label="Zoom">
+      <button type="button" class="atlas-icon-btn" id="atlas-zoom-in" aria-label="Zoom in" title="Zoom in">+</button>
+      <button type="button" class="atlas-icon-btn" id="atlas-zoom-out" aria-label="Zoom out" title="Zoom out">&minus;</button>
+      <button type="button" class="atlas-icon-btn" id="atlas-fit" aria-label="Fit everything in view" title="Fit everything in view">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+      </button>
+    </div>
+
+    <div class="atlas-card atlas-legend" id="atlas-legend" aria-live="polite"></div>
+
+    <div class="atlas-tip" id="atlas-tip" role="tooltip" hidden></div>
+
+    <div class="atlas-card atlas-lens" id="atlas-lens">
+      <div class="atlas-lens-row">
+        <label class="atlas-lens-label" for="atlas-pos-input">Position lens</label>
+        <input type="text" id="atlas-pos-input" class="atlas-input atlas-pos-input" placeholder="e.g. 6.48x48" autocomplete="off" spellcheck="false" autocapitalize="off" aria-describedby="atlas-lens-readout">
+        <div class="atlas-chips" role="group" aria-label="Example positions">
+          <button type="button" class="atlas-chip" data-gn="3.50x50">3.50x50</button>
+          <button type="button" class="atlas-chip" data-gn="6.48x48">6.48x48</button>
+          <button type="button" class="atlas-chip" data-gn="7.53x53">7.53x53</button>
+          <button type="button" class="atlas-chip" data-gn="5.58x58">5.58x58</button>
+          <button type="button" class="atlas-chip" data-gn="2.50x50">2.50x50</button>
+        </div>
+        <span class="atlas-lens-readout" id="atlas-lens-readout" aria-live="polite"></span>
+        <button type="button" class="atlas-btn atlas-lens-clear" id="atlas-lens-clear" hidden>Clear</button>
+      </div>
+      <canvas class="atlas-ruler" id="atlas-ruler" tabindex="0" role="slider" aria-label="Generic position" aria-valuemin="1" aria-valuemax="298" aria-valuenow="1" aria-valuetext="none"></canvas>
+    </div>
+
+    <aside class="atlas-panel" id="atlas-panel" aria-labelledby="atlas-panel-title" hidden>
+      <div class="atlas-panel-grip" aria-hidden="true"></div>
+      <header class="atlas-panel-head">
+        <div>
+          <h2 class="atlas-panel-title" id="atlas-panel-title"></h2>
+          <p class="atlas-panel-name" id="atlas-panel-name"></p>
+        </div>
+        <button type="button" class="atlas-icon-btn" id="atlas-panel-close" aria-label="Close receptor details">&times;</button>
+      </header>
+      <div class="atlas-panel-body" id="atlas-panel-body">
+        <p class="atlas-panel-meta" id="atlas-panel-meta"></p>
+        <div class="atlas-panel-links">
+          <a class="atlas-btn atlas-btn-primary" id="atlas-panel-report" href="#">Open report</a>
+          <a class="atlas-btn" id="atlas-panel-search" href="#">Search this receptor</a>
+        </div>
+        <div class="atlas-panel-glyphrow">
+          <canvas class="atlas-panel-glyph" id="atlas-panel-glyph" aria-hidden="true"></canvas>
+          <p class="atlas-panel-note">Discs: TM1 to TM7, seen from the extracellular side; 8 is helix 8. Size: summed |&Delta;RRCS| on the helix. Color: net, <span class="is-act">red</span> stronger in the active model, <span class="is-ina">blue</span> in the inactive model. Same scale as the map.</p>
+        </div>
+        <dl class="atlas-stats" id="atlas-panel-stats"></dl>
+        <p class="atlas-panel-lens" id="atlas-panel-lens" hidden></p>
+
+        <section class="atlas-panel-sec" aria-labelledby="atlas-fp-h">
+          <h3 id="atlas-fp-h">Fingerprint</h3>
+          <canvas class="atlas-strip" id="atlas-panel-strip" aria-hidden="true"></canvas>
+          <p class="atlas-strip-readout" id="atlas-strip-readout">Net &Delta;RRCS at each generic position. Hover to read a position; click to set the lens.</p>
+        </section>
+
+        <section class="atlas-panel-sec" aria-labelledby="atlas-3d-h">
+          <h3 id="atlas-3d-h">3D models</h3>
+          <div class="atlas-3d" id="atlas-3d"></div>
+          <div class="atlas-3d-controls" id="atlas-3d-controls" hidden>
+            <button type="button" class="atlas-btn" id="atlas-3d-play" aria-pressed="false">Play</button>
+            <label class="atlas-morph">
+              <span>Inactive</span>
+              <input type="range" id="atlas-3d-morph" min="0" max="1000" value="0" aria-label="Morph from the inactive model (left) to the active model (right)">
+              <span>Active</span>
+            </label>
+            <label class="atlas-check"><input type="checkbox" id="atlas-3d-contacts" checked> Contacts</label>
+          </div>
+          <p class="atlas-3d-status" id="atlas-3d-status"></p>
+        </section>
+
+        <section class="atlas-panel-sec" aria-labelledby="atlas-sim-h">
+          <h3 id="atlas-sim-h">Most similar activation patterns</h3>
+          <ul class="atlas-similar" id="atlas-panel-similar"></ul>
+        </section>
+      </div>
+    </aside>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ static_prefix }}static/js/atlas/atlas-core.js" defer></script>
+<script src="{{ static_prefix }}static/js/atlas/atlas-render.js" defer></script>
+<script src="{{ static_prefix }}static/js/atlas/atlas.js" defer></script>
+{% endblock %}
