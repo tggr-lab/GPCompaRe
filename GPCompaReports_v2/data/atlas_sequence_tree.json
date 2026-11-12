@@ -1,0 +1,10 @@
+{
+  "tree": "atlas_sequence_tree.nwk",
+  "made": "2026-11-12",
+  "program": "FastTree 2.1.11 (Ubuntu package fasttree 2.1.11-2build1)",
+  "command": "fasttree -lg -gamma -seed 7 alignment.fasta",
+  "model": "LG + CAT, branch lengths rescaled under Gamma20; local support values (Shimodaira-Hasegawa-like, 1,000 resamples)",
+  "alignment": "283 human Class A receptors x 298 GPCRdb generic residue positions (the atlas position axis; '-' where a receptor lacks the position), leaves named by receptor id",
+  "alignment_sha256": "d05be860fdf2b02ea6fd6560b694f74f2d0f3c320d395c61ce8298e444d0bdb4",
+  "regenerate": "write the alignment from atlas/index.json (layers.aa, one row per receptor), run the command, replace the .nwk; the atlas builder falls back to neighbor joining when the file's leaves do not match the receptor list"
+}

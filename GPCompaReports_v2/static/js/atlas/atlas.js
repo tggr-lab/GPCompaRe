@@ -2079,7 +2079,7 @@
     }
     if (st.view === 'tree') {
       return st.rule === 'sequence'
-        ? 'Phylogenetic tree of the sequences (neighbor joining, GPCRdb generic residue positions). Colors: the current groups, a browsing aid, not a classification.'
+        ? 'Phylogenetic tree of the sequences (maximum likelihood, GPCRdb generic residue positions). Colors: the current groups, a browsing aid, not a classification.'
         : 'Similarity tree (hierarchical clustering) of the ' + lbl + ' measure, not a phylogeny. Colors: the current groups, a browsing aid, not a classification.';
     }
     return CAPTIONS[st.view];

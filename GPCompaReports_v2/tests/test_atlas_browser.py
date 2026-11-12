@@ -69,7 +69,7 @@ def test_rule_tree_and_neighbors_follow_the_rule(atlas):
     page.wait_for_function('window.__atlas.sel >= 0')
     s = _state(page)
     assert (s['rule'], s['k'], s['groups']) == ('sequence', 8, 8)
-    assert 'neighbor joining' in page.locator('#atlas-caption').inner_text()
+    assert 'maximum likelihood' in page.locator('#atlas-caption').inner_text()
     assert page.locator('#atlas-newick').is_visible()
     assert page.locator('#atlas-sim-rule').inner_text() == 'Rule: Sequence.'
     assert page.locator('#atlas-panel-similar li').count() == 8

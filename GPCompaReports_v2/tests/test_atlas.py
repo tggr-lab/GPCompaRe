@@ -167,7 +167,7 @@ def test_the_page_has_the_grouping_controls_and_the_tree_layout():
     js = (STATIC / 'js' / 'atlas' / 'atlas.js').read_text(encoding='utf-8')
     # the contact-rule trees are similarity trees, never a phylogeny; groups stay browsing aids
     assert 'Similarity tree (hierarchical clustering)' in js and 'not a phylogeny' in js
-    assert 'neighbor joining' in js
+    assert 'maximum likelihood' in js
     assert 'a browsing aid, not a classification' in js
     assert not re.search(r'evolutionary tree', ' '.join([html, js]), re.I)
 

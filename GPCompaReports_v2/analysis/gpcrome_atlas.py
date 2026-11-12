@@ -40,6 +40,7 @@ MIN_SHARE = 0.25          # a position is on the axis when at least this share o
 NET_SCALE = 10.0          # int8 = round(net dRRCS * 10), clipped to +-127
 LINK_K = 3                # a link needs each receptor among the other's LINK_K nearest
 N_SIMILAR = 8
+SEQ_TREE = pathlib.Path(__file__).resolve().parent.parent / 'data' / 'atlas_sequence_tree.nwk'
 _GN = re.compile(r'^(\d+)\.(\d+)x(\d+)$')
 
 
@@ -184,11 +185,7 @@ def axis_sides(axis):
 
 
 def nj_tree(dist):
-    """Neighbor-joining tree, rooted at the midpoint of its longest leaf-to-leaf path.
-
-    Returns (merges, order, newick_fn): merges are scipy-linkage-style rows [a, b, height] sorted by
-    height, where the height of a node is the largest distance from it down to a leaf, so cutting by
-    height never splits a parent before its children; order is the leaf order of the rooted tree."""
+    """Neighbor-joining tree as (adjacency, next free node id, {})."""
     n = dist.shape[0]
     d = dist.astype(float).copy()
     live = list(range(n))
@@ -212,6 +209,64 @@ def nj_tree(dist):
         nxt += 1
     ia, ib = live
     adj[ia][ib] = adj[ib][ia] = max(d[ia, ib], 0.0)
+    return adj, nxt, {}
+
+
+def read_newick(text, leaf_index):
+    """Unrooted tree from Newick as (adjacency, next free node id, {branch: support}); None when the
+    leaves are not exactly `leaf_index`. A two-child root is dissolved into one edge."""
+    n = len(leaf_index)
+    adj, support, stack, seen = defaultdict(dict), {}, [], set()
+    nxt, last, root = n, None, None
+    for tok in re.findall(r"[(),;]|[^(),;]+", text.strip()):
+        if tok == '(':
+            stack.append(nxt)
+            nxt += 1
+        elif tok in ',;':
+            last = None
+            continue
+        elif tok == ')':
+            last = stack.pop()
+            if not stack:
+                root = last
+        else:
+            label, _, length = tok.partition(':')
+            if last is None:                    # a leaf
+                if label not in leaf_index or label in seen:
+                    return None
+                seen.add(label)
+                node = leaf_index[label]
+            else:                               # label and length of the group just closed
+                node, last = last, None
+                if label and stack:
+                    try:
+                        support[frozenset((node, stack[-1]))] = float(label)
+                    except ValueError:
+                        pass
+            if stack:
+                w = max(float(length or 0.0), 0.0)
+                adj[node][stack[-1]] = adj[stack[-1]][node] = w
+            continue
+        last = last if tok == ')' else None
+    if len(seen) != n or root is None:
+        return None
+    if len(adj[root]) == 2:
+        (a, wa), (b, wb) = adj.pop(root).items()
+        del adj[a][root], adj[b][root]
+        adj[a][b] = adj[b][a] = wa + wb
+        for old in (frozenset((a, root)), frozenset((b, root))):
+            if old in support:
+                support[frozenset((a, b))] = support.pop(old)
+    return adj, nxt, support
+
+
+def root_tree(adj, n, nxt, support=None):
+    """Root a binary unrooted tree at the midpoint of its longest leaf-to-leaf path.
+
+    Returns (merges, order, newick_fn): merges are scipy-linkage-style rows [a, b, height] sorted by
+    height, where the height of a node is the largest distance from it down to a leaf, so cutting by
+    height never splits a parent before its children; order is the leaf order of the rooted tree."""
+    support = support or {}
 
     def far(src):
         seen, stack = {src: (0.0, None)}, [src]
@@ -235,13 +290,16 @@ def nj_tree(dist):
     du = min(max(seen[u][0] - half, 0.0), w)
     adj[root][u] = adj[u][root] = du
     adj[root][v] = adj[v][root] = w - du
+    if frozenset((u, v)) in support:
+        support[frozenset((root, u))] = support[frozenset((root, v))] = support[frozenset((u, v))]
 
-    kids, height, order, todo = {}, {}, [], [(root, None, False)]
+    kids, height, order, todo, closed = {}, {}, [], [(root, None, False)], {}
     while todo:
         x, par, done = todo.pop()
         ch = [c for c in adj[x] if c != par]
         if done:
             height[x] = max(height[c] + adj[x][c] for c in ch)
+            closed[x] = len(closed)             # children close before their parent: breaks height ties
             continue
         if x < n:
             height[x] = 0.0
@@ -250,7 +308,7 @@ def nj_tree(dist):
         kids[x] = ch
         todo.append((x, par, True))
         todo.extend((c, x, False) for c in sorted(ch, key=lambda c: -c))
-    rank = {x: n + k for k, x in enumerate(sorted(kids, key=lambda x: (height[x], x)))}
+    rank = {x: n + k for k, x in enumerate(sorted(kids, key=lambda x: (height[x], closed[x])))}
     name = lambda x: x if x < n else rank[x]
     merges = [[name(kids[x][0]), name(kids[x][1]), round(height[x], 4)]
               for x in sorted(kids, key=lambda x: rank[x])]
@@ -259,6 +317,8 @@ def nj_tree(dist):
         def w(x, par):
             ch = [c for c in adj[x] if c != par]
             me = labels[x] if x < n else '(' + ','.join(w(c, x) for c in ch) + ')'
+            if x >= n and frozenset((x, par)) in support:
+                me += '%.3f' % support[frozenset((x, par))]
             return me if par is None else '%s:%.5f' % (me, adj[x][par])
         return w(root, None) + ';'
     return merges, order, newick
@@ -423,14 +483,23 @@ def build(stage, batch, models, out):
             sim = seqid.copy()
             dist = 1.0 - sim
             np.fill_diagonal(dist, 0.0)
-            # Kimura protein distance from the share of differing residues, then neighbor joining
-            pd = np.clip(dist, 0.0, 0.8)
-            merges, leaf_order, newick = nj_tree(-np.log(1.0 - pd - 0.2 * pd * pd))
+            tree, tree_note = None, json.loads(SEQ_TREE.with_suffix('.json').read_text(encoding='utf-8'))
+            if SEQ_TREE.is_file():
+                tree = read_newick(SEQ_TREE.read_text(encoding='utf-8'), {r['gid']: i for i, r in enumerate(rows)})
+            if tree is not None:
+                method = ('Maximum-likelihood tree (%s; %s) over the GPCRdb generic residue positions, rooted '
+                          'at the midpoint; node height = largest distance down to a leaf'
+                          % (tree_note['program'].split(' (')[0], tree_note['model'].split(',')[0]))
+            else:
+                # fallback: Kimura protein distance from the share of differing residues, neighbor joining
+                pd = np.clip(dist, 0.0, 0.8)
+                tree = nj_tree(-np.log(1.0 - pd - 0.2 * pd * pd))
+                method = ('Neighbor-joining tree on Kimura protein distances over the GPCRdb generic residue '
+                          'positions, rooted at the midpoint; node height = largest distance down to a leaf')
+            merges, leaf_order, newick = root_tree(tree[0], n, tree[1], tree[2])
             (out / 'atlas' / 'sequence_tree.txt').write_text(
                 newick([r['symbol'] for r in rows]) + '\n', encoding='utf-8')
             xy = tsne(onehot)
-            method = ('Neighbor-joining tree on Kimura protein distances over the GPCRdb generic residue '
-                      'positions, rooted at the midpoint; node height = largest distance down to a leaf')
         else:
             xn = unit(x)
             sim = xn @ xn.T
@@ -481,8 +550,8 @@ def build(stage, batch, models, out):
                      'unless the similarity is in the weakest quarter of best matches (link_floor).' % LINK_K,
             'tree': 'merges: scipy linkage rows [a, b, height]; ids below n are receptors, id n + k is the '
                     'cluster made by row k. Undo the last k - 1 merges to get k groups. order: leaf order. '
-                    'The sequence tree is a neighbor-joining tree (Newick, in atlas/sequence_tree.txt, with '
-                    'branch lengths). Groups are browsing aids, not classifications.',
+                    'The sequence tree is also in atlas/sequence_tree.txt (Newick, branch lengths, support '
+                    'values on internal branches); tree_method says how it was made. Groups are browsing aids, not classifications.',
         },
     }
     (out / 'atlas' / 'rules.json').write_text(json.dumps(rules_doc, separators=(',', ':')), encoding='utf-8')
