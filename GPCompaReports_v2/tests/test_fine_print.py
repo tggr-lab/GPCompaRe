@@ -24,7 +24,7 @@ if not BUILD_DIR.is_absolute():
 
 needs_build = pytest.mark.skipif(not (BUILD_DIR / 'index.html').is_file(), reason='no build in %s' % BUILD_DIR)
 
-NON_REPORT_PAGES = ['index.html', 'browse/index.html', 'search/index.html', 'statistics.html',
+NON_REPORT_PAGES = ['index.html', 'browse/index.html', 'search/index.html', 'statistics.html', 'atlas.html',
                     'glossary.html', 'downloads.html', 'privacy.html', 'contact.html']
 FORBIDDEN_EXAMPLES = ('M159I', 'Met159Ile', 'rs115885685', 'NM_005242')
 

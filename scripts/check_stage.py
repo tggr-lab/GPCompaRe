@@ -17,6 +17,9 @@ RECEPTORS = 283
 MODEL_MIN = 8 * 2**10
 MODEL_MAX = 2 * 2**20
 STATES = ('active', 'inactive')
+# the GPCRome Atlas page: atlas.html reads atlas/index.json and one atlas/r/<gid>.json per receptor
+# (top level on purpose: /data/ is reserved for the Statistics payloads)
+ATLAS_SCHEMA = 'gpcompare-atlas/1'
 
 ALLOWED = {'.css', '.csv', '.gif', '.gz', '.html', '.ico', '.jpg', '.js', '.json', '.mjs', '.nojekyll',
            '.png', '.svg', '.ttf', '.txt', '.wasm', '.webp', '.woff', '.woff2', '.xml', '.zip'}
@@ -97,6 +100,55 @@ def check_models(stage, reports, fails):
     return len(wanted)
 
 
+def check_atlas(stage, reports, fails):
+    """atlas/index.json has the atlas schema and all receptors, every receptor has its atlas/r file,
+    nothing else sits under atlas/, and the page's local scripts and stylesheet are staged.
+    Returns the number of per-receptor files checked."""
+    atlas = stage / 'atlas'
+    index_path = atlas / 'index.json'
+    if not index_path.is_file():
+        fails.append('missing: atlas/index.json')
+        return 0
+    try:
+        index = json.loads(index_path.read_text(encoding='utf-8'))
+    except ValueError:
+        fails.append('atlas/index.json is not valid JSON')
+        return 0
+    if index.get('schema') != ATLAS_SCHEMA:
+        fails.append('atlas/index.json schema is %r, expected %r' % (index.get('schema'), ATLAS_SCHEMA))
+    gids = [r.get('gid') for r in index.get('receptors', [])]
+    if len(gids) != RECEPTORS or len(set(gids)) != RECEPTORS:
+        fails.append('atlas/index.json lists %d receptors (%d distinct), expected %d'
+                     % (len(gids), len(set(gids)), RECEPTORS))
+    if index.get('n_receptors') not in (None, len(gids)):
+        fails.append('atlas/index.json n_receptors disagrees with its receptor list')
+    wanted = {'atlas/r/%s.json' % g for g in gids}
+    for rel in sorted(wanted):
+        if not (stage / rel).is_file():
+            fails.append('missing: %s' % rel)
+    present = {p.relative_to(stage).as_posix() for p in atlas.rglob('*') if p.is_file()}
+    extra = sorted(present - wanted - {'atlas/index.json'})
+    if extra:
+        fails.append('unexpected files under atlas/: %s' % extra[:5])
+    page = stage / 'atlas.html'
+    if not page.is_file():
+        fails.append('missing: atlas.html')
+    else:
+        html = page.read_text(encoding='utf-8')
+        refs = set(re.findall(r'(?:src|href)="((?:\.\./)?static/[^"?#]+)', html))
+        if 'static/css/atlas.css' not in refs:
+            fails.append('atlas.html does not load static/css/atlas.css')
+        if not any(r.startswith('static/js/atlas/') for r in refs):
+            fails.append('atlas.html loads no script from static/js/atlas/')
+        for ref in sorted(refs):
+            if not (stage / ref).is_file():
+                fails.append('atlas.html references a file that is not staged: %s' % ref)
+    for name in ('atlas-core.js', 'atlas-render.js', 'atlas-3d.js', 'atlas.js'):
+        if not (stage / 'static' / 'js' / 'atlas' / name).is_file():
+            fails.append('missing: static/js/atlas/%s' % name)
+    return len(wanted)
+
+
 def main(stage):
     fails, total, counts = [], 0, {}
     files = sorted(p for p in stage.rglob('*') if p.is_file())
@@ -133,7 +185,7 @@ def main(stage):
             fails.append('excluded file is present: /%s' % rel)
     if total > MAX_SITE:
         fails.append('site is %.0f MiB, over the Pages limit' % (total / 2**20))
-    for rel in ('.nojekyll', 'index.html', 'statistics.html', 'sitemap.xml', 'studio/index.html',
+    for rel in ('.nojekyll', 'index.html', 'statistics.html', 'atlas.html', 'sitemap.xml', 'studio/index.html',
                 'studio/sw.js', 'studio/pack/index.json', 'studio/THIRD_PARTY_NOTICES.txt',
                 'studio/fonts/OFL.txt'):
         if not (stage / rel).is_file():
@@ -165,6 +217,8 @@ def main(stage):
             fails.append('pack files not staged: %s' % missing[:5])
 
     n_models = check_models(stage, reports, fails)
+    n_atlas = check_atlas(stage, reports, fails)
+    print('atlas: %d receptor files' % n_atlas)
     print('models: %d files' % n_models)
     print('files: %d, %.1f MiB' % (len(files), total / 2**20))
     print('by type: %s' % ', '.join('%s %d' % kv for kv in sorted(counts.items())))

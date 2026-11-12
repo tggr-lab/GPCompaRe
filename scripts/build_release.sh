@@ -78,6 +78,12 @@ if [ "$SKIP_BUILD" -eq 0 ]; then
   # release ships, and the 3D view needs the models to exist.
   export STUDIO_PACK_DIR="$STUDIO_DIST/pack" GPCOMPARE_MODELS_DIR="$MODELS_DIR"
   "$PY" "$ROOT/GPCompaReports_v2/generate_site.py" --output "$BUILD" --batch-dir "$BATCH"
+  # The GPCRome Atlas data (atlas/index.json, atlas/r/<gid>.json) is built from the generated
+  # search2/residues and data/stats/receptors.json, the batch's contact tables and the models;
+  # the page itself (atlas.html) was rendered by the generator above.
+  echo "==> Building the GPCRome Atlas data..."
+  (cd "$ROOT" && "$PY" -m GPCompaReports_v2.analysis.gpcrome_atlas \
+    --stage "$BUILD" --batch "$BATCH" --models "$MODELS_DIR")
 fi
 
 echo "==> Assembling $STAGE..."
