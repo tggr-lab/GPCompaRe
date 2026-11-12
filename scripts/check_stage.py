@@ -102,6 +102,7 @@ def check_models(stage, reports, fails):
 
 def check_atlas(stage, reports, fails):
     """atlas/index.json has the atlas schema and all receptors, every receptor has its atlas/r file,
+    atlas/rules.json covers every receptor in each rule,
     nothing else sits under atlas/, and the page's local scripts and stylesheet are staged.
     Returns the number of per-receptor files checked."""
     atlas = stage / 'atlas'
@@ -127,7 +128,19 @@ def check_atlas(stage, reports, fails):
         if not (stage / rel).is_file():
             fails.append('missing: %s' % rel)
     present = {p.relative_to(stage).as_posix() for p in atlas.rglob('*') if p.is_file()}
-    extra = sorted(present - wanted - {'atlas/index.json'})
+    rules_path = atlas / 'rules.json'
+    try:
+        rules = json.loads(rules_path.read_text(encoding='utf-8')).get('rules', [])
+    except (OSError, ValueError):
+        rules = []
+        fails.append('missing or invalid: atlas/rules.json')
+    for rule in rules:
+        if not (len(rule.get('xy', [])) == len(rule.get('similar', [])) == len(gids)
+                and len(rule.get('tree', {}).get('merges', [])) == len(gids) - 1):
+            fails.append('atlas/rules.json rule %r does not cover every receptor' % rule.get('id'))
+    if rules and rules[0].get('id') != 'pattern':
+        fails.append('atlas/rules.json: the first rule must be the default (pattern)')
+    extra = sorted(present - wanted - {'atlas/index.json', 'atlas/rules.json', 'atlas/sequence_tree.txt'})
     if extra:
         fails.append('unexpected files under atlas/: %s' % extra[:5])
     page = stage / 'atlas.html'

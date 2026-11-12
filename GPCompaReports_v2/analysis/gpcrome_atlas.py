@@ -23,9 +23,10 @@ import json
 import math
 import pathlib
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 import numpy as np
+from scipy.cluster.hierarchy import leaves_list, linkage
 
 SCHEMA = 'gpcompare-atlas/1'
 SEG_ORDER = ['N-term', 'TM1', 'ICL1', 'TM2', 'ECL1', 'TM3', 'ICL2', 'TM4', 'ECL2', 'TM5', 'ICL3',
@@ -37,6 +38,8 @@ PREFIX_SEG = {'1': 'TM1', '12': 'ICL1', '2': 'TM2', '23': 'ECL1', '3': 'TM3', '3
 PREFIX_ORDER = list(PREFIX_SEG)
 MIN_SHARE = 0.25          # a position is on the axis when at least this share of receptors has it
 NET_SCALE = 10.0          # int8 = round(net dRRCS * 10), clipped to +-127
+LINK_K = 3                # a link needs each receptor among the other's LINK_K nearest
+N_SIMILAR = 8
 _GN = re.compile(r'^(\d+)\.(\d+)x(\d+)$')
 
 
@@ -161,6 +164,106 @@ def tsne(x, perplexity=22.0, iters=900, seed=7):
     return y
 
 
+def axis_sides(axis):
+    """'in' (intracellular half), 'out' (extracellular half) per axis position. Helices are split at the
+    middle of their numbered range; odd helices run outside-in, even helices inside-out."""
+    by = defaultdict(list)
+    for g in axis:
+        by[_GN.match(g).group(1)].append(int(_GN.match(g).group(2)))
+    side = []
+    for g in axis:
+        pre, num = _GN.match(g).group(1), int(_GN.match(g).group(2))
+        seg = PREFIX_SEG[pre]
+        if seg.startswith('TM'):
+            mid = (min(by[pre]) + max(by[pre])) / 2.0
+            odd = int(seg[2:]) % 2 == 1
+            side.append('in' if (num > mid) == odd else 'out')
+        else:
+            side.append('out' if seg.startswith('ECL') or seg == 'N-term' else 'in')
+    return side
+
+
+def nj_tree(dist):
+    """Neighbor-joining tree, rooted at the midpoint of its longest leaf-to-leaf path.
+
+    Returns (merges, order, newick_fn): merges are scipy-linkage-style rows [a, b, height] sorted by
+    height, where the height of a node is the largest distance from it down to a leaf, so cutting by
+    height never splits a parent before its children; order is the leaf order of the rooted tree."""
+    n = dist.shape[0]
+    d = dist.astype(float).copy()
+    live = list(range(n))
+    adj = defaultdict(dict)
+    nxt = n
+    while len(live) > 2:
+        sub = d[np.ix_(live, live)]
+        r = sub.sum(1)
+        q = (len(live) - 2) * sub - r[:, None] - r[None, :]
+        np.fill_diagonal(q, np.inf)
+        a, b = np.unravel_index(np.argmin(q), q.shape)
+        la = 0.5 * sub[a, b] + (r[a] - r[b]) / (2 * (len(live) - 2))
+        la, lb = max(la, 0.0), max(sub[a, b] - la, 0.0)
+        ia, ib = live[a], live[b]
+        new = 0.5 * (d[ia] + d[ib] - d[ia, ib])
+        d = np.pad(d, ((0, 1), (0, 1)))
+        d[nxt, :nxt], d[:nxt, nxt] = new, new
+        adj[nxt][ia] = adj[ia][nxt] = la
+        adj[nxt][ib] = adj[ib][nxt] = lb
+        live = [x for x in live if x not in (ia, ib)] + [nxt]
+        nxt += 1
+    ia, ib = live
+    adj[ia][ib] = adj[ib][ia] = max(d[ia, ib], 0.0)
+
+    def far(src):
+        seen, stack = {src: (0.0, None)}, [src]
+        while stack:
+            u = stack.pop()
+            for v, w in adj[u].items():
+                if v not in seen:
+                    seen[v] = (seen[u][0] + w, u)
+                    stack.append(v)
+        end = max((x for x in seen if x < n), key=lambda x: (seen[x][0], -x))
+        return end, seen
+    e1, _ = far(0)
+    e2, seen = far(e1)
+    half, u = seen[e2][0] / 2.0, e2
+    while seen[seen[u][1]][0] > half:          # walk back from e2 to the edge that holds the midpoint
+        u = seen[u][1]
+    v = seen[u][1]
+    w = adj[u].pop(v)
+    adj[v].pop(u)
+    root = nxt
+    du = min(max(seen[u][0] - half, 0.0), w)
+    adj[root][u] = adj[u][root] = du
+    adj[root][v] = adj[v][root] = w - du
+
+    kids, height, order, todo = {}, {}, [], [(root, None, False)]
+    while todo:
+        x, par, done = todo.pop()
+        ch = [c for c in adj[x] if c != par]
+        if done:
+            height[x] = max(height[c] + adj[x][c] for c in ch)
+            continue
+        if x < n:
+            height[x] = 0.0
+            order.append(x)
+            continue
+        kids[x] = ch
+        todo.append((x, par, True))
+        todo.extend((c, x, False) for c in sorted(ch, key=lambda c: -c))
+    rank = {x: n + k for k, x in enumerate(sorted(kids, key=lambda x: (height[x], x)))}
+    name = lambda x: x if x < n else rank[x]
+    merges = [[name(kids[x][0]), name(kids[x][1]), round(height[x], 4)]
+              for x in sorted(kids, key=lambda x: rank[x])]
+
+    def newick(labels):
+        def w(x, par):
+            ch = [c for c in adj[x] if c != par]
+            me = labels[x] if x < n else '(' + ','.join(w(c, x) for c in ch) + ')'
+            return me if par is None else '%s:%.5f' % (me, adj[x][par])
+        return w(root, None) + ';'
+    return merges, order, newick
+
+
 def build(stage, batch, models, out):
     stage, batch, models, out = (pathlib.Path(p) for p in (stage, batch, models, out))
     table = json.loads((stage / 'data' / 'stats' / 'receptors.json').read_text())
@@ -188,6 +291,7 @@ def build(stage, batch, models, out):
     aa = np.full((n, m), ord('-'), np.uint8)
     pos = np.zeros((n, m), np.uint16)      # the receptor's own residue number, 0 = absent
     feat = np.zeros((n, m), np.float64)    # layout input: net dRRCS over above-threshold contacts
+    pair_all = [defaultdict(float) for _ in range(n)]  # signed dRRCS per generic-numbered contact pair
     rows, detail_dir = [], out / 'atlas' / 'r'
     detail_dir.mkdir(parents=True, exist_ok=True)
 
@@ -205,6 +309,9 @@ def build(stage, batch, models, out):
         contacts = []
         for a, b, v in pairs:
             ends = (a, b) if a != b else (a,)
+            ja, jb = col.get(gn.get(a)), col.get(gn.get(b))
+            if ja is not None and jb is not None and ja != jb:
+                pair_all[i][(min(ja, jb), max(ja, jb))] += v
             for p in ends:
                 net_all[p] += v
             if abs(v) >= thr:
@@ -270,10 +377,122 @@ def build(stage, batch, models, out):
             'report': r['report'],
         })
 
-    xy = tsne(feat)
+    # ---- grouping rules: each gives a similarity matrix, a map, links, neighbor lists and a tree
+    keys = sorted({k for d in pair_all for k in d})
+    kix = {k: j for j, k in enumerate(keys)}
+    pf = np.zeros((n, len(keys)))
+    for i, d in enumerate(pair_all):
+        for k, v in d.items():
+            pf[i, kix[k]] = math.copysign(math.sqrt(abs(v)), v)
+    side = axis_sides(axis)
+    k_in = np.array([side[a] == 'in' and side[b] == 'in' for a, b in keys])
+    k_out = np.array([side[a] == 'out' and side[b] == 'out' for a, b in keys])
+    have = aa != ord('-')
+    seqid = np.zeros((n, n))
+    for i in range(n):
+        both = have & have[i]
+        seqid[i] = ((aa == aa[i]) & both).sum(1) / np.maximum(both.sum(1), 1)
+    onehot = np.zeros((n, m * 26))
+    for i in range(n):
+        j = np.nonzero(have[i])[0]
+        onehot[i, j * 26 + np.clip(aa[i, j].astype(int) - ord('A'), 0, 25)] = 1.0
+
+    def unit(x):
+        return x / np.maximum(np.linalg.norm(x, axis=1, keepdims=True), 1e-12)
+
+    def ward(x):
+        xn = unit(x)
+        u, sv, _ = np.linalg.svd(xn - xn.mean(0), full_matrices=False)
+        d = min(20, len(sv))
+        return linkage(u[:, :d] * sv[:d], 'ward', optimal_ordering=True)
+
+    sim_all = unit(pf) @ unit(pf).T
+    specs = [
+        ('pattern', 'Contact pattern', 'Which contacts change between the two models, and in which direction, '
+         'over the whole receptor.', pf, None),
+        ('inner', 'Intracellular side', 'The same measure, restricted to contacts on the intracellular half '
+         'of the helices, the intracellular loops and helix 8.', pf[:, k_in], np.nonzero(k_in)[0]),
+        ('outer', 'Extracellular side', 'The same measure, restricted to contacts on the extracellular half '
+         'of the helices and the extracellular loops.', pf[:, k_out], np.nonzero(k_out)[0]),
+        ('sequence', 'Sequence', 'Residue identity over the GPCRdb generic positions both receptors have.',
+         None, None),
+    ]
+    rules = []
+    for rid, label, desc, x, kmap in specs:
+        if rid == 'sequence':
+            sim = seqid.copy()
+            dist = 1.0 - sim
+            np.fill_diagonal(dist, 0.0)
+            # Kimura protein distance from the share of differing residues, then neighbor joining
+            pd = np.clip(dist, 0.0, 0.8)
+            merges, leaf_order, newick = nj_tree(-np.log(1.0 - pd - 0.2 * pd * pd))
+            (out / 'atlas' / 'sequence_tree.txt').write_text(
+                newick([r['symbol'] for r in rows]) + '\n', encoding='utf-8')
+            xy = tsne(onehot)
+            method = ('Neighbor-joining tree on Kimura protein distances over the GPCRdb generic residue '
+                      'positions, rooted at the midpoint; node height = largest distance down to a leaf')
+        else:
+            xn = unit(x)
+            sim = xn @ xn.T
+            z, xy = ward(x), tsne(x)
+            merges = [[int(a), int(b), round(float(h), 4)] for a, b, h, _ in z]
+            leaf_order = [int(v) for v in leaves_list(z)]
+            method = 'Ward linkage on the 20 leading principal axes of the unit-length vectors'
+        off = sim.copy()
+        np.fill_diagonal(off, -9.0)
+        order = np.argsort(-off, axis=1, kind='stable')
+        top = [set(order[i, :LINK_K].tolist()) for i in range(n)]
+        floor = float(np.quantile(off[np.arange(n), order[:, 0]], 0.25))  # weakest quarter of best matches: no link
+        links = sorted([i, j, round(float(sim[i, j]), 3)] for i in range(n) for j in top[i]
+                       if i < j and i in top[j] and sim[i, j] >= floor)
+        similar = []
+        for i in range(n):
+            near = []
+            for j in order[i, :N_SIMILAR].tolist():
+                shared = []
+                if rid in ('pattern', 'inner', 'outer'):
+                    prod = xn[i] * xn[j]
+                    for k in np.argsort(-prod, kind='stable')[:3].tolist():
+                        if prod[k] > 0:
+                            ka, kb = keys[k if kmap is None else int(kmap[k])]
+                            shared.append([axis[ka], axis[kb], 1 if x[i, k] > 0 else -1])
+                other = sim_all[i, j] if rid == 'sequence' else seqid[i, j]
+                near.append([j, round(float(sim[i, j]), 3), round(float(other), 3), shared])
+            similar.append(near)
+        rules.append({
+            'id': rid, 'label': label, 'description': desc, 'tree_method': method,
+            'n_features': int(m if rid == 'sequence' else x.shape[1]), 'link_floor': round(floor, 3),
+            'xy': [[round(float(a), 4), round(float(b), 4)] for a, b in xy],
+            'links': links, 'similar': similar,
+            'tree': {'merges': merges, 'order': leaf_order},
+        })
+    rules_doc = {
+        'schema': SCHEMA, 'default': 'pattern', 'rules': rules,
+        'notes': {
+            'similarity': 'Cosine similarity of the rule\'s vectors (signed, square-root damped dRRCS per contact '
+                          'pair between generic-numbered positions); share of '
+                          'identical residues for the sequence rule. 1 = the same, 0 = unrelated.',
+            'similar': 'similar[i]: the %d nearest receptors as [index, similarity under this rule, companion '
+                       'score, [[position, position, sign] ...]]. The companion score is sequence identity, or '
+                       'whole-receptor contact-pattern similarity for the sequence rule. The last item lists up '
+                       'to 3 contact pairs that contribute most (sign +1 stronger in the active model, -1 in the '
+                       'inactive model); empty for the sequence rule.' % N_SIMILAR,
+            'links': 'A link joins two receptors that are each among the other\'s %d nearest under the rule, '
+                     'unless the similarity is in the weakest quarter of best matches (link_floor).' % LINK_K,
+            'tree': 'merges: scipy linkage rows [a, b, height]; ids below n are receptors, id n + k is the '
+                    'cluster made by row k. Undo the last k - 1 merges to get k groups. order: leaf order. '
+                    'The sequence tree is a neighbor-joining tree (Newick, in atlas/sequence_tree.txt, with '
+                    'branch lengths). Groups are browsing aids, not classifications.',
+        },
+    }
+    (out / 'atlas' / 'rules.json').write_text(json.dumps(rules_doc, separators=(',', ':')), encoding='utf-8')
+
+    first = rules[0]
+    links = first['links']
     for i, row in enumerate(rows):
-        row['sim_xy'] = [round(float(xy[i, 0]), 4), round(float(xy[i, 1]), 4)]
-        row['similar'] = table['similar'].get(row['gid'], [])
+        row['sim_xy'] = first['xy'][i]
+        row['seq_xy'] = rules[-1]['xy'][i]
+        row['similar'] = [[rows[j]['gid'], a, b, sh] for j, a, b, sh in first['similar'][i]]
 
     present = (pos > 0)
     index = {
@@ -301,8 +520,14 @@ def build(stage, batch, models, out):
             'pos': {'dtype': 'uint16', 'endian': 'little', 'data': _b64(pos.astype('<u2')),
                     'note': "the receptor's own residue number, 0 where it lacks the position"},
         },
-        'layout_note': 'sim_xy: t-SNE (perplexity 22, cosine distance) of the per-position net dRRCS over '
-                       'above-threshold contacts. A browsing aid, not a classification.',
+        'links': links,
+        'rules_file': 'atlas/rules.json',
+        'similarity_note': 'receptors[].similar, links and sim_xy follow the default rule (contact pattern); '
+                           'atlas/rules.json holds every grouping rule with its map, links, neighbor lists '
+                           'and tree, and the definitions.',
+        'layout_note': 'sim_xy: t-SNE (perplexity 22, cosine distance) of the contact-pattern vectors. '
+                       'seq_xy: the same on residue identity at the generic positions. '
+                       'Browsing aids, not classifications.',
     }
     (out / 'atlas' / 'index.json').write_text(json.dumps(index, separators=(',', ':')), encoding='utf-8')
     return index
