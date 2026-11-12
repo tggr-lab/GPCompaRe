@@ -224,6 +224,7 @@ p  { margin: 0 0 var(--s-4); }
   margin-left: auto;
 }
 .topnav a {
+  white-space: nowrap;
   color: var(--fgColor-muted);
   padding: var(--s-2) var(--s-3);
   border-radius: var(--r-sm);
@@ -232,6 +233,20 @@ p  { margin: 0 0 var(--s-4); }
   transition: background-color var(--t-fast), color var(--t-fast);
 }
 .topnav a:hover { background: var(--bgColor-muted); color: var(--fgColor-default); }
+/* a quiet "Preview" tag on a nav link (the Atlas) */
+.nav-pill {
+  display: inline-block;
+  margin-left: 0.3em;
+  padding: 0 0.45em;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 999px;
+  font-size: 0.68em;
+  font-weight: 500;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+  color: var(--fgColor-muted);
+  vertical-align: 0.15em;
+}
 .topnav a[aria-current="page"] { color: var(--fgColor-default); background: var(--bgColor-muted); }
 
 .theme-toggle {
