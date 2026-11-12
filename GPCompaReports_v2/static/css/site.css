@@ -329,6 +329,9 @@ p  { margin: 0 0 var(--s-4); }
 @media (max-width: 1179px) {
   .topbar-search-input { display: none; }
 }
+@media (min-width: 1180px) and (max-width: 1399px) {
+  .topbar-search-input { width: 160px; }
+}
 .drawer-search { display: flex; gap: var(--s-2); }
 .drawer-search .v2-input { flex: 1 1 auto; min-width: 0; }
 .drawer-search .topbar-search-btn { width: 40px; height: 40px; }
