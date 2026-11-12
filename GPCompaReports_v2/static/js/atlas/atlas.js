@@ -491,31 +491,47 @@
   function drawFamiliesLabels(alpha) {
     var L = st.layouts.families, k = st.cam.k, P = st.P, cx = sx(0), cy = sy(0), W = st.W, H = st.H;
     ctx.save();
-    // ligand group names inside the ring; a name is skipped when it would collide with one
-    // already placed (larger groups first)
+    // ligand group names inside the ring. Each name looks for a spot clear of every glyph and of
+    // the names already placed (larger groups first): it starts just inside its arc and moves along
+    // the arc and inward toward the center until nothing is under it; if no spot is free it is left out.
     var fs = A.clamp(11 + (k - 5) * 0.25, 11, 15), placed = [];
     var order = L.deco.groups.slice().sort(function(a, b) { return b.n - a.n; });
+    function clearOfGlyphs(bx) {
+      for (var i = 0; i < st.n; i++) {
+        var r = Math.max(S[i], 1.5) + 3, dx = Math.max(bx[0] - X[i], 0, X[i] - bx[2]), dy = Math.max(bx[1] - Y[i], 0, Y[i] - bx[3]);
+        if (dx * dx + dy * dy < r * r) return false;
+      }
+      for (var q = 0; q < placed.length; q++) {
+        var b2 = placed[q];
+        if (bx[0] < b2[2] && bx[2] > b2[0] && bx[1] < b2[3] && bx[3] > b2[1]) return false;
+      }
+      return true;
+    }
     ctx.textBaseline = 'middle';
     order.forEach(function(g) {
-      var a = (g.a0 + g.a1) / 2, rr = (L.R0 - 4.4 - 2.4 * Math.abs(Math.sin(a))) * k;
-      var x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr;
-      if (x < -200 || x > W + 200 || y < -40 || y > H + 40) return;
-      var ca = Math.cos(a), align = ca > 0.35 ? 'right' : ca < -0.35 ? 'left' : 'center';
       ctx.font = '600 ' + fs + 'px ' + FONT;
-      var tw = ctx.measureText(g.key).width;
-      var x0 = align === 'right' ? x - tw : align === 'left' ? x : x - tw / 2;
-      var box = [x0 - 3, y - fs * 1.1, x0 + tw + 3, y + fs * 1.25];
-      for (var q = 0; q < placed.length; q++) {
-        var b = placed[q];
-        if (box[0] < b[2] && box[2] > b[0] && box[1] < b[3] && box[3] > b[1]) return;
+      var tw = Math.max(ctx.measureText(g.key).width, (ctx.font = (fs - 2) + 'px ' + FONT, ctx.measureText(g.n + ' receptors').width));
+      var am = (g.a0 + g.a1) / 2, half = (g.a1 - g.a0) / 2, spot = null;
+      var r0 = L.R0 - 3.6, rMin = L.R0 * 0.3, offs = [0, 0.35, -0.35, 0.7, -0.7];
+      for (var rw = r0; rw >= rMin && !spot; rw -= 0.7) {
+        for (var o = 0; o < offs.length && !spot; o++) {
+          var a = am + offs[o] * half, rr = rw * k;
+          var x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr, ca = Math.cos(a);
+          var align = ca > 0.35 ? 'right' : ca < -0.35 ? 'left' : 'center';
+          var x0 = align === 'right' ? x - tw : align === 'left' ? x : x - tw / 2;
+          var box = [x0 - 3, y - fs * 1.1, x0 + tw + 3, y + fs * 1.3];
+          if (clearOfGlyphs(box)) spot = { x: x, y: y, align: align, box: box };
+        }
       }
-      placed.push(box);
-      ctx.textAlign = align;
+      if (!spot || spot.x < -200 || spot.x > W + 200 || spot.y < -40 || spot.y > H + 40) return;
+      placed.push(spot.box);
+      ctx.textAlign = spot.align;
+      ctx.font = '600 ' + fs + 'px ' + FONT;
       ctx.globalAlpha = alpha;
-      A.haloText(ctx, g.key, x, y - fs * 0.45, P, groupText(g.group));
+      A.haloText(ctx, g.key, spot.x, spot.y - fs * 0.45, P, groupText(g.group));
       ctx.font = fs - 2 + 'px ' + FONT;
       ctx.globalAlpha = alpha * 0.9;
-      A.haloText(ctx, g.n + ' receptors', x, y + fs * 0.7, P, P.mutedCss);
+      A.haloText(ctx, g.n + ' receptors', spot.x, spot.y + fs * 0.7, P, P.mutedCss);
     });
     st.glBoxes = placed; st.capBox = null;
     // center caption
@@ -1012,7 +1028,7 @@
     } else if (lod === 'dots') {
       h += '<p class="lg-title">Dots: ligand group</p>' + groupsHtml;
       h += '<div class="lg-sizes"><span class="lg-sz" style="width:7px;height:7px"></span><span class="lg-sz" style="width:15px;height:15px"></span>';
-      h += '<span class="lg-long">Dot area: total change, the sum of <span class="nw">|ΔRRCS|</span> over above-threshold contacts (150 to 700; larger values drawn at 700)</span><span class="lg-short">Dot area: total change</span></div>';
+      h += '<span class="lg-long">Dot area: total change, the sum of <span class="nw">|ΔRRCS|</span> over above-threshold contacts</span><span class="lg-short">Dot area: total change</span></div>';
       h += '<p class="lg-note">Zoom in to see each receptor’s helix bundle.</p>';
     } else {
       h += '<div class="lg-row"><canvas class="lg-key" id="atlas-lg-key" aria-hidden="true"></canvas><div>';
