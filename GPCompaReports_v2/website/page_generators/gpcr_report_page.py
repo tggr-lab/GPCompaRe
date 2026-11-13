@@ -130,9 +130,12 @@ CFR_COLOR = '#FF8F00'  # orange accent, matches ouroboros' legend swatch
 # AlphaMissense classification thresholds (the values AlphaMissense ships with)
 AM_PATHOGENIC_CUTOFF = 0.564
 AM_BENIGN_CUTOFF = 0.34
-AM_PATHOGENIC_COLOR = '#D32F2F'
-AM_AMBIGUOUS_COLOR = '#F57C00'
-AM_BENIGN_COLOR = '#388E3C'
+# The site's pathogenicity palette ("clinical tint": search-ui.css --path-*, manuscript_stats.CLINICAL_TINT
+# light): crimson, neutral gray, green. Never the red / blue of "stronger in the active / inactive model",
+# and not the CFR orange.
+AM_PATHOGENIC_COLOR = '#B4234B'
+AM_AMBIGUOUS_COLOR = '#555C68'
+AM_BENIGN_COLOR = '#2B6E2F'
 
 # Conservation: ConSurf-inspired diverging palette, but rebalanced so each of
 # the 9 grades reads as a distinct step. The canonical ConSurf scale has four
@@ -224,7 +227,7 @@ def _am_bucket_color(score):
         return None
     if s != s:  # NaN
         return None
-    if s >= AM_PATHOGENIC_CUTOFF:
+    if s > AM_PATHOGENIC_CUTOFF:  # likely pathogenic is > 0.564; 0.564 itself is ambiguous
         return AM_PATHOGENIC_COLOR
     if s >= AM_BENIGN_CUTOFF:
         return AM_AMBIGUOUS_COLOR
@@ -379,9 +382,9 @@ def _patch_snake_views(snake_json_str, annot_map, cfr_generic_numbers, var_df,
     am_view['label'] = 'AlphaMissense'
     am_view['legend_type'] = 'categorical'
     am_view['legend_items'] = [
-        {'color': AM_PATHOGENIC_COLOR, 'label': f"Pathogenic (≥ {AM_PATHOGENIC_CUTOFF})"},
-        {'color': AM_AMBIGUOUS_COLOR,  'label': f"Ambiguous ({AM_BENIGN_CUTOFF}-{AM_PATHOGENIC_CUTOFF})"},
-        {'color': AM_BENIGN_COLOR,     'label': f"Benign (< {AM_BENIGN_CUTOFF})"},
+        {'color': AM_PATHOGENIC_COLOR, 'label': f"Likely pathogenic (> {AM_PATHOGENIC_CUTOFF})"},
+        {'color': AM_AMBIGUOUS_COLOR,  'label': f"Ambiguous ({AM_BENIGN_CUTOFF} to {AM_PATHOGENIC_CUTOFF})"},
+        {'color': AM_BENIGN_COLOR,     'label': f"Likely benign (< {AM_BENIGN_CUTOFF})"},
     ]
     if am_source == 'landscape':
         am_view['description'] = (
@@ -389,16 +392,16 @@ def _patch_snake_views(snake_json_str, annot_map, cfr_generic_numbers, var_df,
             f"substitutions (not just the substitutions seen in gnomAD). "
             f"Mean is used rather than max because max-of-19 saturates "
             f"(almost every position has at least one pathogenic substitution). "
-            f"{am_counts['pathogenic']} pathogenic, "
-            f"{am_counts['ambiguous']} ambiguous, {am_counts['benign']} benign."
+            f"{am_counts['pathogenic']} likely pathogenic, "
+            f"{am_counts['ambiguous']} ambiguous, {am_counts['benign']} likely benign."
         )
     elif am_source == 'observed':
         am_view['description'] = (
             f"AlphaMissense classification at GNOMAD-OBSERVED variant positions only "
             f"(max across observed substitutions). Run scripts/fetch_alphamissense.py "
             f"to enable the full theoretical landscape view. "
-            f"{am_counts['pathogenic']} pathogenic, {am_counts['ambiguous']} ambiguous, "
-            f"{am_counts['benign']} benign."
+            f"{am_counts['pathogenic']} likely pathogenic, {am_counts['ambiguous']} ambiguous, "
+            f"{am_counts['benign']} likely benign."
         )
     else:
         am_view['description'] = 'No AlphaMissense data for this receptor'
