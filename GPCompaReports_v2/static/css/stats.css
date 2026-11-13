@@ -90,7 +90,7 @@ a.stats-tile:hover { border-color: var(--brand-primary); text-decoration: none; 
   white-space: nowrap;
 }
 .cc-btn:hover { color: var(--fgColor-default); border-color: var(--borderColor-default); text-decoration: none; }
-.cc-btn[aria-pressed="true"], .cc-btn[aria-expanded="true"] { background: var(--brand-primary); color: #fff; border-color: var(--brand-primary); }
+.cc-btn[aria-pressed="true"], .cc-btn[aria-expanded="true"] { background: var(--brand-primary); color: var(--on-brand); border-color: var(--brand-primary); }
 .cc-btn:focus-visible { outline: 2px solid var(--fgColor-accent); outline-offset: 1px; }
 .cc-btn[disabled] { opacity: 0.5; cursor: default; }
 .cc-btn.is-done { border-color: var(--brand-primary); color: var(--brand-primary); }
@@ -155,9 +155,9 @@ a.stats-tile:hover { border-color: var(--brand-primary); text-decoration: none; 
   cursor: pointer;
 }
 .chip:hover { color: var(--fgColor-default); border-color: var(--borderColor-default); }
-.chip[aria-pressed="true"] { background: var(--brand-primary); color: #fff; border-color: var(--brand-primary); }
+.chip[aria-pressed="true"] { background: var(--brand-primary); color: var(--on-brand); border-color: var(--brand-primary); }
 .chip:focus-visible { outline: 2px solid var(--fgColor-accent); outline-offset: 1px; }
-.chip small { opacity: 0.8; }
+.chip small { opacity: 1; font-weight: 400; }
 .find-box { display: inline-flex; align-items: center; gap: var(--s-1); position: relative; }
 .find-box input {
   font: inherit; font-size: 0.8125rem;

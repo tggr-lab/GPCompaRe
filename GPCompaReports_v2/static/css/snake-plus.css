@@ -43,7 +43,7 @@
 .sp-btn:hover { border-color: var(--brand-primary); color: var(--brand-primary); }
 .sp-btn:disabled { opacity: 0.45; cursor: default; }
 .sp-btn:focus-visible { outline: 2px solid var(--fgColor-accent); outline-offset: 1px; }
-.sp-btn.is-on { background: var(--brand-primary); border-color: var(--brand-primary); color: #fff; }
+.sp-btn.is-on { background: var(--brand-primary); border-color: var(--brand-primary); color: var(--on-brand); }
 .sp-seg { display: inline-flex; }
 .sp-seg .sp-btn { border-radius: 0; margin-left: -1px; }
 .sp-seg .sp-btn:first-child { border-radius: var(--r-sm) 0 0 var(--r-sm); margin-left: 0; }
