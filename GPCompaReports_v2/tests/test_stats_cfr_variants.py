@@ -51,10 +51,18 @@ def test_class_counts_are_the_summary_exactly_without_a_test_statistic():
 def test_write_am_comparison_round_trips(tmp_path):
     p = write_am_comparison(tmp_path)
     assert json.loads((tmp_path / 'data/stats/am_comparison.json').read_text()) == json.loads(json.dumps(p))
-    csv = (tmp_path / 'data/stats/am_comparison.csv').read_text()
-    assert '"Top 50 positions by CFR score",7268,6155,4117,1113,2038,' in csv
-    assert '"Other generic-numbered positions",11040,9369,4085,1671,5284,' in csv
-    assert 'odds' not in csv.lower() and 'paper' not in csv.lower()
+    assert not (tmp_path / 'data/stats/am_comparison.csv').exists()   # written from class_variants.json
+
+
+def test_am_comparison_csv_from_class_variants():
+    from GPCompaReports_v2.analysis.class_results import _csv, build_class_variants
+    cv = build_class_variants()
+    rows = [[g['label'], g['scored'], g['decisive'], g['predicted_pathogenic'], g['ambiguous'], g['predicted_benign']]
+            for g in cv['groups']]
+    assert rows == [['Top 50 positions by CFR score', 7268, 6155, 4117, 1113, 2038],
+                    ['Other generic-numbered positions', 11040, 9369, 4085, 1671, 5284]]
+    text = _csv(['a'], rows).lower()
+    assert 'odds' not in text and 'paper' not in text
 
 
 @pytest.mark.parametrize('make', [make_enrichment_bar, fig_am_composition])

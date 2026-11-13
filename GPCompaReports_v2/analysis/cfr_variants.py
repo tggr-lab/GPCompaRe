@@ -87,7 +87,8 @@ from urllib.parse import quote
 import plotly.graph_objects as go
 
 from . import pack_layer
-from .manuscript_stats import ALL_CSV, CLINICAL_TINT, class_cfr_ranks, class_cfr_set
+from .class_results import class_ranking
+from .manuscript_stats import CLINICAL_TINT, class_cfr_ranks, class_cfr_set
 
 SCHEMA = 'gpcompare.stats.cfr_variants/1'
 STATS_SUBDIR = Path('data') / 'stats'
@@ -330,7 +331,6 @@ def build_cfr_variants(gids, pack_folder=None, search2_dir=None, ranks=None):
     search2_dir None: ClinVar all-class counts are null. Raises when a receptor has no pack, when search2
     lacks a receptor, or when search2 and the packs disagree on the database P/LP set (different releases).
     """
-    import pandas as pd
     folder = Path(pack_folder) if pack_folder else pack_layer.pack_dir()
     index = pack_layer.pack_index(folder)
     if index is None:
@@ -338,8 +338,7 @@ def build_cfr_variants(gids, pack_folder=None, search2_dir=None, ranks=None):
     ranks = class_cfr_ranks() if ranks is None else ranks
     top = class_cfr_set(ranks)
     top_order = sorted(top, key=lambda g: ranks[g])
-    seg_of = {str(g): str(s) for g, s in
-              pd.read_csv(ALL_CSV, usecols=['generic_number', 'segment']).itertuples(index=False)}
+    seg_of = {str(g): str(s) for g, s in class_ranking()[['generic_number', 'segment']].itertuples(index=False)}
     with_clinvar = search2_dir is not None
 
     per_pos = {g: _acc() for g in top_order}

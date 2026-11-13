@@ -1,29 +1,17 @@
-"""Cross-receptor recurrence statistics, as submitted with the manuscript.
+"""Cross-receptor recurrence statistics and the AlphaMissense class comparison of the Statistics page.
 
-The site computes ΔRRCS per receptor from its own batch data, and that is what
-every one of the 283 report pages shows. It cannot compute the cross-receptor
-recurrence statistics the same way the manuscript did, because mapping a
-residue to a shared generic position needs a GPCRdb number, and the site's
-per-receptor annotation files only number residues that took part in a
-high-magnitude contact. The manuscript analysis used the full GPCRdb residue
-maps for all 283 receptors instead, which changes the answers:
+The ranked class tables (368 recurrent positions, 2,231 pairs) are read from data/class_tables_2026-11-13/
+through analysis/class_results.py, which asserts their sha256 (provenance in that folder's PROVENANCE.md).
+They are recomputed from the full GPCRdb residue maps of all 283 receptors, as the site's own per-receptor
+annotation files number only residues of high-magnitude contacts (that gives 356 positions and 3.50x50 in 261
+receptors, against 368 and 274).
 
-    recurrent positions (CFR in >= 3 receptors)   site 356   manuscript 368
-    3.50x50                                       site 261   manuscript 274
-    CFR-CFR contact pair universe                 site 179   manuscript 2,234
+This module is the one source of the class-wide CFR set the whole site marks (class_cfr_ranks,
+class_cfr_set): the ranking by CFR score, cut at CFR_TOP_N. The report snake plots and residue table, the
+search index and every CFR feature of search read it. Report pages otherwise keep their own
+report-generation data and stay frozen against tests/fixtures/freeze_manifest.json.
 
-So the statistics page reads the submitted tables rather than recomputing.
-Provenance, including the source workbook's sha256, is in
-data/manuscript_2026-08-24/PROVENANCE.md.
-
-This module feeds the statistics page, and it is the one source of the
-class-wide CFR set the whole site marks (class_cfr_ranks, class_cfr_set): the
-submitted ranking by CFR score (Supplementary Table S4, the same ranks as the
-paper's full_cfr_positions.tsv), cut at CFR_TOP_N. The report snake plots and
-residue table, the search index and every CFR feature of search read it, so
-they mark the positions the Statistics page lists and the paper's Figure 3
-uses. Report pages otherwise keep their own report-generation data and stay
-frozen against tests/fixtures/freeze_manifest.json.
+The AlphaMissense comparison (section D) reads data/supplement_2026-11-05b/ (load_am_comparison).
 """
 import json
 import pathlib
@@ -33,13 +21,16 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 from .cfr_analysis import CFR_TOP_N
+from .class_results import class_pairs, class_ranking
 
 DATA_DIR = pathlib.Path(__file__).resolve().parent.parent / 'data' / 'manuscript_2026-08-24'
 
+#: The tables of the 2026-08-24 extraction. The build no longer reads them (class_results reads
+#: data/class_tables_2026-11-13/); tests compare the class tables with them.
 TOP50_CSV = DATA_DIR / 'S3_top50_recurrent_cfr_positions.csv'
 ALL_CSV = DATA_DIR / 'S4_all_recurrent_positions.csv'
 PAIRS_CSV = DATA_DIR / 'S5_top20_recurrent_cfr_pairs.csv'
-FIG3_JSON = DATA_DIR / 'figure3_enrichment.json'   # retired for section D; read only for n_pairs_universe
+FIG3_JSON = DATA_DIR / 'figure3_enrichment.json'   # retired; no longer read by the build
 
 #: Section D (AlphaMissense comparison): the corrected supplement summary, a byte copy of
 #: 02_supplement/source_tables/FigS4_S7_summary_modelnum_2026-11-05b.json (see its PROVENANCE.md).
@@ -73,12 +64,13 @@ def _require(path):
 
 
 def class_cfr_ranks():
-    """{generic number: CFR score rank} for every recurrent position of the submitted catalog (S4, 368 positions).
+    """{generic number: CFR score rank} for every recurrent position (368), from the class tables
+    (class_results.class_ranking(), data/class_tables_2026-11-13/positions.tsv).
 
-    The class-wide CFR ranking the site shows next to a residue ("class-wide rank N"). Ranks are the
-    submitted cfr_score_rank, never recomputed from the site's own annotation layer.
+    The class-wide CFR ranking the site shows next to a residue ("class-wide rank N"). The top 50 and their
+    order equal S3; below them some ranks moved when GPR4 was numbered with its own GPCRdb entry.
     """
-    table = pd.read_csv(_require(ALL_CSV), usecols=['generic_number', 'cfr_score_rank'])
+    table = class_ranking()
     return {str(g): int(r) for g, r in zip(table['generic_number'], table['cfr_score_rank'])}
 
 
@@ -96,9 +88,11 @@ def load_am_comparison(path=None):
 
     groups: scored substitutions (including ambiguous) with pathogenic / ambiguous / benign counts and their
     shares of all scored; decisive_pct: percent pathogenic among decisive calls; odds_ratio and
-    conservation_adjusted: [estimate, CI low, CI high].
+    conservation_adjusted: [estimate, CI low, CI high] (never shown); dropped: the gids left out of the 276;
+    query_receptors: receptors with records in the allele query before they were left out (279).
     """
-    s = json.loads(_require(path or AM_SUMMARY_JSON).read_text(encoding='utf-8'))['without_gpr3_gpr4_xcr1']
+    doc = json.loads(_require(path or AM_SUMMARY_JSON).read_text(encoding='utf-8'))
+    s = doc['without_gpr3_gpr4_xcr1']
     a, b, c, d = s['cells']
     groups = []
     for label, path_, amb, ben, n in ((AM_GROUP_LABELS[0], a, s['ambiguous_cfr'], b, s['n_cfr']),
@@ -115,34 +109,26 @@ def load_am_comparison(path=None):
         'decisive_pct': {'top': s['pct_cfr'], 'other': s['pct_other']},
         'odds_ratio': s['or'],
         'conservation_adjusted': s['mh_conservation'],
+        'dropped': sorted(doc.get('dropped_rows') or {}),
+        'query_receptors': (doc.get('all_rows_incl_gpr3_gpr4_xcr1') or {}).get('receptors'),
     }
 
 
 def load_manuscript_stats():
-    """Everything the statistics page needs, straight from the submitted tables."""
-    top50 = pd.read_csv(_require(TOP50_CSV))
-    all_positions = pd.read_csv(_require(ALL_CSV))
-    pairs = pd.read_csv(_require(PAIRS_CSV))
-    figure3 = json.loads(_require(FIG3_JSON).read_text(encoding='utf-8'))
+    """Everything the statistics page needs from the class tables and the AlphaMissense summary."""
+    ranking = class_ranking()
+    pairs = class_pairs()
     am = load_am_comparison()
-
+    top50 = ranking.head(CFR_TOP_N).reset_index(drop=True)
     if len(top50) != CFR_TOP_N:
-        raise ValueError(
-            'the submitted top-position table has %d rows but the site reports '
-            'a top %d. These must agree.' % (len(top50), CFR_TOP_N))
-
-    # Preserve the submitted order exactly. Re-sorting here would silently
-    # diverge from the published ranking, which is the whole point of reading
-    # these files rather than recomputing.
-    top50 = top50.sort_values('cfr_score_rank').reset_index(drop=True)
-
+        raise ValueError('the ranking has %d rows, fewer than the top %d' % (len(top50), CFR_TOP_N))
     return {
         'top50': top50,
-        'all_positions': all_positions,
+        'all_positions': ranking,
         'pairs': pairs,
         'am_comparison': am,
-        'n_recurrent_positions': len(all_positions),
-        'n_pairs_universe': figure3.get('n_pairs_universe'),
+        'n_recurrent_positions': len(ranking),
+        'n_pairs_universe': len(pairs),
         'fig_recurrence_dotplot': make_recurrence_dotplot(top50),
         'fig_enrichment_bar': make_enrichment_bar(am),
         'fig_am_composition': fig_am_composition(am),
@@ -278,16 +264,11 @@ def am_comparison_payload(am=None):
 
 
 def write_am_comparison(output_dir, am=None):
-    """Write data/stats/am_comparison.json and am_comparison.csv (one row per group); return the payload."""
+    """Write data/stats/am_comparison.json; return the payload. Its CSV (am_comparison.csv) is written from
+    class_variants.json by class_results.csv_tables."""
     out = pathlib.Path(output_dir) / 'data' / 'stats'
     out.mkdir(parents=True, exist_ok=True)
     payload = am_comparison_payload(am)
     (out / 'am_comparison.json').write_text(json.dumps(payload, separators=(',', ':'), allow_nan=False),
                                            encoding='utf-8')
-    lines = ['# %s' % payload['label'],
-             'group,scored,decisive,pathogenic,ambiguous,benign,pathogenic_pct_of_decisive']
-    for g, pct in zip(payload['groups'], (payload['decisive_pct']['top'], payload['decisive_pct']['other'])):
-        lines.append('"%s",%d,%d,%d,%d,%d,%r' % (g['label'], g['n'], g['decisive'], g['pathogenic_n'],
-                                                g['ambiguous_n'], g['benign_n'], pct))
-    (out / 'am_comparison.csv').write_text('\n'.join(lines) + '\n', encoding='utf-8')
     return payload

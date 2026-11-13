@@ -72,11 +72,12 @@ def test_the_loader_reports_the_submitted_counts():
 
 def test_no_source_path_outside_the_repo_is_read_at_build_time():
     """Provenance may name where the workbook came from; code may not read it."""
-    src = (BASE / 'analysis' / 'manuscript_stats.py').read_text(encoding='utf-8')
-    for bad in ('/media/', '/mnt/', 'Downloads', 'C:\\\\'):
-        assert bad not in src, (
-            'analysis/manuscript_stats.py references %r, so the build would '
-            'depend on a location outside the repository' % bad)
+    for name in ('manuscript_stats.py', 'class_results.py'):
+        src = (BASE / 'analysis' / name).read_text(encoding='utf-8')
+        for bad in ('/media/', '/mnt/', 'Downloads', 'C:\\\\', '/home/', 'figures_overhaul', 'deliverables/'):
+            assert bad not in src, (
+                'analysis/%s references %r, so the build would '
+                'depend on a location outside the repository' % (name, bad))
 
 
 # ---------------------------------------------------------------------------
@@ -104,43 +105,61 @@ def test_the_superseded_site_computed_count_is_gone():
 
 
 @needs_build
-def test_the_top50_table_matches_the_submitted_ordering_exactly():
+def test_the_top50_table_matches_the_class_ranking_and_the_submitted_order():
+    import pandas as pd
     html = STATS.read_text(encoding='utf-8')
     idx = html.find('Core Functional Residue Positions')
+    if idx == -1:
+        idx = html.find('The 50 top-ranked positions')
     assert idx != -1, 'ranked table heading not found'
     body = re.search(r'<tbody>(.*?)</tbody>', html[idx:], re.S).group(1)
     rendered = re.findall(
         r'<td class="num">(\d+)</td>\s*<td><strong>([^<]+)</strong></td>', body)
-    submitted = load_manuscript_stats()['top50']
-    assert len(rendered) == len(submitted) == CFR_TOP_N, (
-        'ranked table shows %d rows, submitted table has %d'
-        % (len(rendered), len(submitted)))
+    top50 = load_manuscript_stats()['top50']
+    assert len(rendered) == len(top50) == CFR_TOP_N, (
+        'ranked table shows %d rows, the ranking has %d' % (len(rendered), len(top50)))
     for i, (rank, gn) in enumerate(rendered):
-        exp_rank = int(submitted.iloc[i]['cfr_score_rank'])
-        exp_gn = str(submitted.iloc[i]['generic_number'])
+        exp_rank = int(top50.iloc[i]['cfr_score_rank'])
+        exp_gn = str(top50.iloc[i]['generic_number'])
         assert int(rank) == exp_rank and gn == exp_gn, (
-            'row %d shows rank %s %s, submitted has rank %d %s. The page must '
-            'preserve the submitted ordering.'
-            % (i + 1, rank, gn, exp_rank, exp_gn))
+            'row %d shows rank %s %s, positions.tsv has rank %d %s' % (i + 1, rank, gn, exp_rank, exp_gn))
+    s3 = pd.read_csv(DATA_DIR / 'S3_top50_recurrent_cfr_positions.csv')
+    assert [gn for _, gn in rendered] == list(s3['generic_number']), 'the top 50 order moved away from S3'
 
 
 @needs_build
-def test_the_pair_table_matches_the_submitted_pairs():
+def test_row_36_is_8_48x48_with_113_receptors():
+    """GPR4 numbered with its own GPCRdb entry: 8.48x48 is a CFR in 113 receptors (39.9%), mean |ΔRRCS| 5.21,
+    CFR score 0.465, rank 36; the table and the CFR atlas agree."""
+    html = STATS.read_text(encoding='utf-8')
+    row = re.search(r'<td class="num">36</td>\s*<td><strong>([^<]+)</strong></td>(.*?)</tr>', html, re.S)
+    assert row and row.group(1) == '8.48x48'
+    cells = re.findall(r'<td class="num">([^<]+)</td>', row.group(2))
+    assert cells == ['113', '39.9%', '5.21', '0.465'], cells
+
+
+@needs_build
+def test_the_pair_table_matches_the_class_pairs():
+    """The pair table shows the 20 most recurrent rows of pairs.tsv: the S5 pairs and counts (S5 lists the two
+    pairs tied at 116 receptors the other way round)."""
+    import pandas as pd
     html = STATS.read_text(encoding='utf-8')
     idx = html.find('CFR contact pairs')
     body = re.search(r'<tbody>(.*?)</tbody>', html[idx:], re.S).group(1)
     rendered = re.findall(
         r'<td><strong>([^<]+)</strong></td>\s*<td><strong>([^<]+)</strong></td>'
         r'\s*<td class="num">(\d+)</td>', body)
-    submitted = load_manuscript_stats()['pairs']
-    assert len(rendered) == len(submitted), (
-        'pair table shows %d rows, submitted has %d' % (len(rendered), len(submitted)))
+    pairs = load_manuscript_stats()['pairs'].head(20)
+    assert len(rendered) == len(pairs) == 20, 'pair table shows %d rows' % len(rendered)
     for i, (a, b, n) in enumerate(rendered):
-        row = submitted.iloc[i]
-        assert (a, b, int(n)) == (str(row['cfr_1']), str(row['cfr_2']),
-                                  int(row['n_receptors'])), (
-            'pair row %d is %s-%s (%s), submitted has %s-%s (%s)'
+        row = pairs.iloc[i]
+        assert (a, b, int(n)) == (str(row['cfr_1']), str(row['cfr_2']), int(row['n_receptors'])), (
+            'pair row %d is %s-%s (%s), pairs.tsv has %s-%s (%s)'
             % (i + 1, a, b, n, row['cfr_1'], row['cfr_2'], row['n_receptors']))
+    s5 = pd.read_csv(DATA_DIR / 'S5_top20_recurrent_cfr_pairs.csv')
+    assert sorted((a, b, int(n)) for a, b, n in rendered) == sorted(
+        (str(r.cfr_1), str(r.cfr_2), int(r.n_receptors)) for r in s5.itertuples())
+    assert [int(n) for _, _, n in rendered] == list(s5['n_receptors'])
 
 
 @needs_build
