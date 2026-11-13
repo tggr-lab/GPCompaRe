@@ -1679,8 +1679,11 @@ async function resolveRsid(ctx, i) {
   for (const idx of idxs) {
     const gid = ctx.meta.receptors[idx].gid;
     const gene = await loadGene(ctx, gid);
+    // one result per protein change: alleles of one rsID that give different amino acids at a codon
+    // (ADRB2 rs33973603: Asn15Ile and Asn15Ser) are different changes, each with its own frequency and score;
+    // alleles that give the same change (PAR2 rs115885685: two bases, both Met159Ile) stay together
     for (const a of gene.vars.alleles.filter((x) => x.rsids.includes(rs))) {
-      const k = `${gid}:${a.pos}`;
+      const k = `${gid}:${a.pos}:${a.ref}>${a.alt}`;
       let grp = groups.find((x) => x.k === k);
       if (!grp) { grp = { k, gid, gene, pos: a.pos, alleles: [] }; groups.push(grp); }
       grp.alleles.push(a);
@@ -1688,13 +1691,13 @@ async function resolveRsid(ctx, i) {
   }
   const results = [];
   for (const grp of groups) {
-    const alts = [...new Set(grp.alleles.map((a) => a.alt))];
     const a0 = grp.alleles[0];
     const notes = a0.conflict ? [note('model_conflict', `The model has ${three(grp.gene.res.seq[a0.pos - 1])} at ${a0.pos}; the reference genome transcript has ${three(a0.ref)}.`)] : [];
-    results.push(await makeResult(ctx, grp.gid, grp.pos, { gene: grp.gene, ref: a0.ref, alt: alts.length === 1 ? alts[0] : null, alts: alts.length > 1 ? alts : undefined, kind: 'missense', alleles: grp.alleles, notes }));
+    const others = groups.filter((x) => x !== grp && x.gid === grp.gid && x.pos === grp.pos);
+    if (others.length) notes.push(note('rsid_other_changes', `${rs} also gives ${others.map((x) => proteinText(x.alleles[0].ref, x.pos, x.alleles[0].alt)).join(' and ')} at this residue; each change is shown separately.`));
+    results.push(await makeResult(ctx, grp.gid, grp.pos, { gene: grp.gene, ref: a0.ref, alt: a0.alt, kind: 'missense', alleles: grp.alleles, notes }));
   }
-  const multi = results.length > 1 || results.some((x) => x.alts);
-  return answer(multi ? 'targets' : 'target', results, { interpretation: i });
+  return answer(results.length > 1 ? 'targets' : 'target', results, { interpretation: i });
 }
 
 // ============================================================================== ClinVar

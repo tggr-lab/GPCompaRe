@@ -236,7 +236,8 @@ describe('property: every notation of an allele reaches the same residue', { ski
       }
       for (const q of queries) {
         const ans = await search(q, loader);
-        let hit = ans.results.find((r) => r.gid === rec.gid && r.pos === a.pos);
+        // one rsID with two changes at a codon gives one result per change: the allele's own result
+        let hit = ans.results.find((r) => r.gid === rec.gid && r.pos === a.pos && r.alleles.some((x) => x.id === a.id)) ?? ans.results.find((r) => r.gid === rec.gid && r.pos === a.pos);
         checked += 1;
         // a GRCh37 id whose coordinate is also a recorded allele on GRCh38: GRCh38 wins, GRCh37 is offered
         if (q === a.id37 && ans.alternates.some((x) => x.kind === 'genomic' && x.assembly === 'GRCh37' && x.gid === rec.gid && x.pos === a.pos && x.allele === a.id)) continue;
@@ -782,5 +783,47 @@ describe('variant card evidence: per-substitution AlphaMissense, contacts, motif
     const d = counted();
     await search('M159I', d.f);
     assert.ok(![...d.seen].some((p) => p.startsWith('detail/')));
+  });
+});
+
+describe('one rsID with several protein changes (review 2026-11-13, search-01)', { skip }, () => {
+  test('rs33973603: Asn15Ile and Asn15Ser are two results, each with its own allele', async () => {
+    const ans = await search('rs33973603', loader);
+    assert.equal(ans.expect, 'targets');
+    const by = Object.fromEntries(ans.results.map((r) => [r.alt, r]));
+    assert.deepEqual(Object.keys(by).sort(), ['I', 'S']);
+    assert.deepEqual(by.I.alleles.map((a) => a.id), ['5-148826875-A-T']);
+    assert.deepEqual(by.S.alleles.map((a) => a.id), ['5-148826875-A-G']);
+    for (const r of ans.results) assert.equal(r.alts, undefined);
+  });
+  test('every result of every multi-allelic rsID holds alleles of one change only', async () => {
+    const S = shardsFor(loader);
+    const meta = await S.meta();
+    const seen = [];
+    for (const rec of meta.receptors) {
+      const v = await S.variants(rec.gid);
+      const at = new Map();
+      for (const a of v?.alleles ?? []) for (const rs of a.rsids) {
+        const k = `${rs}:${a.pos}`;
+        if (!at.has(k)) at.set(k, new Set());
+        at.get(k).add(a.alt);
+      }
+      for (const [k, alts] of at) if (alts.size > 1 && seen.length < 40) seen.push(k.split(':')[0]);
+      if (seen.length >= 40) break;
+    }
+    assert.ok(seen.length >= 10, `multi-change rsIDs found: ${seen.length}`);
+    for (const rs of seen) {
+      const ans = await search(rs, loader);
+      assert.ok(ans.results.length >= 2, rs);
+      for (const r of ans.results) {
+        assert.ok(/^[A-Z]$/.test(r.alt ?? ''), `${rs}: result without one change`);
+        for (const a of r.alleles) assert.equal(a.alt, r.alt, `${rs}: allele ${a.id} (${a.alt}) on the ${r.alt} result`);
+      }
+    }
+  });
+  test('alleles that give the same change stay on one result (PAR2 rs115885685)', async () => {
+    const ans = await search('rs115885685', loader);
+    assert.equal(ans.results.length, 1);
+    assert.equal(ans.results[0].alleles.length, 2);
   });
 });
