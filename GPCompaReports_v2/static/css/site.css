@@ -226,9 +226,9 @@ p  { margin: 0 0 var(--s-4); }
 .topnav a {
   white-space: nowrap;
   color: var(--fgColor-muted);
-  padding: var(--s-2) var(--s-3);
+  padding: var(--s-2) 0.5rem;
   border-radius: var(--r-sm);
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   font-weight: 500;
   transition: background-color var(--t-fast), color var(--t-fast);
 }
@@ -244,8 +244,11 @@ p  { margin: 0 0 var(--s-4); }
   font-weight: 500;
   line-height: 1.6;
   letter-spacing: 0.02em;
-  color: var(--fgColor-muted);
+  color: var(--fgColor-attention);
+  background: var(--bgColor-attention-muted);
+  border-color: var(--borderColor-attention-emphasis);
   vertical-align: 0.15em;
+  white-space: nowrap;
 }
 .topnav a[aria-current="page"] { color: var(--fgColor-default); background: var(--bgColor-muted); }
 
@@ -326,11 +329,12 @@ p  { margin: 0 0 var(--s-4); }
   flex-shrink: 0;
 }
 .topbar-search-btn:hover { background: var(--bgColor-muted); color: var(--fgColor-default); border-color: var(--borderColor-default); }
-@media (max-width: 1179px) {
+/* the search box folds to its button where the bar (1200 px wide with a scrollbar) does not fit */
+@media (max-width: 1229px) {
   .topbar-search-input { display: none; }
 }
-@media (min-width: 1180px) and (max-width: 1399px) {
-  .topbar-search-input { width: 160px; }
+@media (min-width: 1230px) {
+  .topbar-search-input { width: 140px; }
 }
 .drawer-search { display: flex; gap: var(--s-2); }
 .drawer-search .v2-input { flex: 1 1 auto; min-width: 0; }
@@ -1199,8 +1203,8 @@ p  { margin: 0 0 var(--s-4); }
   .contact-grid { grid-template-columns: 1fr; }
 }
 
-/* the full bar needs 936 px with the search box folded, 1150 px with it open */
-@media (max-width: 959px) {
+/* the full bar needs about 1060 px with the search box folded, 1215 px with it open */
+@media (max-width: 1079px) {
   .topnav { display: none; }
   .topbar-mobile-toggle { display: inline-flex; }
   .topbar-search { margin-left: auto; }

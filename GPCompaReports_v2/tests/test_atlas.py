@@ -38,7 +38,7 @@ def _render(total=283):
     return atlas_page.render_atlas(atlas_page._env(), total)
 
 
-PILL = '<span class="nav-pill">Preview</span>'
+PILL = '<span class="nav-pill">Experimental preview</span>'
 
 
 def _anchors(html, region_class):
@@ -54,13 +54,14 @@ def _anchors(html, region_class):
 
 # ---------------------------------------------------------------------------------- the nav
 
-def test_the_atlas_link_is_in_both_navs_after_statistics():
+def test_the_atlas_link_is_last_in_both_navs():
     topbar = (TEMPLATES / '_partials' / 'topbar.html').read_text(encoding='utf-8')
-    link = '<a href="{{ static_prefix }}atlas.html"{% if active_page == \'atlas\' %} aria-current="page"{% endif %}>Atlas ' + PILL + '</a>'
+    link = ('<a href="{{ static_prefix }}atlas.html" class="nav-exp" title="The GPCRome Atlas is an experimental preview: '
+            'views and measures may change"{% if active_page == \'atlas\' %} aria-current="page"{% endif %}>Atlas ' + PILL + '</a>')
     assert topbar.count(link) == 2
     for nav in re.findall(r'<nav class="(?:topnav|mobile-drawer-nav)".*?</nav>', topbar, re.S):
-        labels = re.findall(r'>([A-Za-z]+)(?: <span class="nav-pill">Preview</span>)?</a>', nav)
-        assert labels.index('Atlas') == labels.index('Statistics') + 1
+        labels = re.findall(r'>([A-Za-z]+)(?: <span class="nav-pill">Experimental preview</span>)?</a>', nav)
+        assert labels[-1] == 'Atlas' and labels[-2] == 'Contact'
 
 
 def test_the_atlas_is_marked_as_a_preview_in_the_nav_and_on_the_page():
@@ -76,7 +77,8 @@ def test_atlas_page_renders_with_its_nav_link_active_and_no_other():
     html = _render()
     for cls in ('topnav', 'mobile-drawer-nav'):
         links = _anchors(html, cls)
-        assert [t for _, _, t in links][:4] == ['Home', 'Browse', 'Statistics', 'Atlas'], cls
+        labels = [t for _, _, t in links]
+        assert labels[:3] == ['Home', 'Browse', 'Statistics'] and labels[-2:] == ['Contact', 'Atlas'], cls
         current = [t for _, attrs, t in links if 'aria-current="page"' in attrs]
         assert current == ['Atlas'], cls
         assert ('atlas.html' in [h for h, _, t in links if t == 'Atlas'])
@@ -177,7 +179,7 @@ def test_the_page_has_the_grouping_controls_and_the_tree_layout():
 @needs_build
 def test_built_atlas_page_has_the_nav_and_sits_in_the_sitemap():
     html = (BUILD_DIR / 'atlas.html').read_text(encoding='utf-8')
-    assert 'aria-current="page"' in html and re.search(r'aria-current="page">Atlas(?: <span class="nav-pill">Preview</span>)?</a>', html)
+    assert 'aria-current="page"' in html and re.search(r'aria-current="page">Atlas(?: <span class="nav-pill">Experimental preview</span>)?</a>', html)
     sitemap = BUILD_DIR / 'sitemap.xml'
     if sitemap.is_file():
         assert '<loc>%satlas.html</loc>' % seo.SITE_URL in sitemap.read_text(encoding='utf-8')
