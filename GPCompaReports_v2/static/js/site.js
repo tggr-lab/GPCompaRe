@@ -253,7 +253,7 @@
       html += '<button type="button" data-page="' + totalPages + '">' + totalPages + '</button>';
     }
     html += '<button type="button" ' + (st.page >= totalPages ? 'disabled' : '') + ' data-page="next">Next →</button>';
-    html += '<select class="v2-select" data-page-size>';
+    html += '<select class="v2-select" data-page-size aria-label="Rows per page">';
     [25, 50, 100, 99999].forEach(function(ps) {
       html += '<option value="' + ps + '"' + (st.pageSize === ps ? ' selected' : '') + '>' +
               (ps === 99999 ? 'All' : (ps + ' per page')) + '</option>';
@@ -342,7 +342,7 @@
     }
     Array.from(table.tBodies[0].rows).forEach(function(r) {
       if (r.hasAttribute('data-search-hidden')) return;
-      var cells = Array.from(r.cells).map(function(c) { return csvCell(c.textContent); });
+      var cells = Array.from(r.cells).map(function(c) { return csvCell(visibleText(c)); });
       csv.push(cells.join(','));
     });
     var blob = new Blob([csv.join('\n')], { type: 'text/csv;charset=utf-8' });
@@ -354,6 +354,14 @@
     link.click();
     document.body.removeChild(link);
     setTimeout(function() { URL.revokeObjectURL(link.href); }, 1000);
+  }
+  // A cell's text without the parts the page keeps hidden (a second metric switched off by a
+  // toggle, for example), so the export holds what the reader sees.
+  function visibleText(cell) {
+    if (!cell.querySelector('[hidden]')) return cell.textContent;
+    var copy = cell.cloneNode(true);
+    copy.querySelectorAll('[hidden]').forEach(function(n) { n.parentNode.removeChild(n); });
+    return copy.textContent;
   }
   function csvCell(s) {
     var v = String(s || '').replace(/\s+/g, ' ').trim().replace(/"/g, '""');
