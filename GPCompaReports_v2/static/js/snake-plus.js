@@ -1425,8 +1425,8 @@
 
   // ------------------------------------------------------------------ phones
   // Below 640 px the plot comes straight under its heading: the nine view buttons become one
-  // "Colour by" menu under the plot, and the filters, the legend and the contacts bar fold into
-  // one "Filters and tools". The plot opens zoomed on TM3 to TM6 with the minimap showing.
+  // "Colour by" menu under the plot (with the colors of the chosen view under it), and the
+  // filters, the legend and the contacts bar fold into one "Filters and tools". The plot opens zoomed on TM3 to TM6 with the minimap showing.
   // Run-time rearrangement only: every approved element stays on the page, moved, not changed.
   var PHONE_MQ = '(max-width: 640px)';
   function isPhone() { return !!(window.matchMedia && matchMedia(PHONE_MQ).matches); }
@@ -1448,9 +1448,21 @@
     });
     sel.value = window.SnakeAPI.getView ? window.SnakeAPI.getView() : 'delta_rrcs';
     sel.addEventListener('change', function () { if (window.switchSnakeView) window.switchSnakeView(sel.value); });
+    // the colors of the chosen view, under the menu (the full legend, with its description,
+    // stays in "Filters and tools"): a copy of the legend's color bar or swatches
+    var key = el('div', 'sp-viewkey');
+    key.setAttribute('aria-hidden', 'true');
+    function syncKey() {
+      var legend = document.getElementById('snake-legend');
+      key.textContent = '';
+      if (!legend) return;
+      Array.prototype.forEach.call(legend.querySelectorAll('.snake-legend-gradient, .snake-legend-labels, .snake-legend-swatches'),
+        function (n) { key.appendChild(n.cloneNode(true)); });
+      key.hidden = !key.childNodes.length;
+    }
     var sw = window.switchSnakeView;
     if (typeof sw === 'function') {
-      window.switchSnakeView = function (name) { sw(name); if (views[name]) sel.value = name; };
+      window.switchSnakeView = function (name) { sw(name); if (views[name]) sel.value = name; syncKey(); };
       window.SnakeAPI.setView = window.switchSnakeView;
     }
     row.appendChild(lab); row.appendChild(sel);
@@ -1462,6 +1474,8 @@
     [links, document.getElementById('snake-filter-panel'), document.getElementById('snake-legend'), document.getElementById('sp-bar')]
       .forEach(function (n) { if (n) tools.appendChild(n); });
     row.insertAdjacentElement('afterend', tools);
+    row.insertAdjacentElement('afterend', key);
+    syncKey();
   }
   function phoneZoom() {
     if (!section.classList.contains('sp-phone') || !fitBox) return;
