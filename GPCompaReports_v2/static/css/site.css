@@ -1213,13 +1213,13 @@ p  { margin: 0 0 var(--s-4); }
 }
 
 /* the full bar needs about 1060 px with the search box folded, 1215 px with it open */
+@media (min-width: 1080px) {
+  .mobile-drawer { display: none; }
+}
 @media (max-width: 1079px) {
   .topnav { display: none; }
   .topbar-mobile-toggle { display: inline-flex; }
   .topbar-search { margin-left: auto; }
-}
-@media (min-width: 1080px) {
-  .mobile-drawer { display: none; }
 }
 
 @media (max-width: 600px) {
