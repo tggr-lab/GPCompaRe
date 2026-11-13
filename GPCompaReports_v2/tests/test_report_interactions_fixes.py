@@ -1,7 +1,8 @@
 """Browser tests for report interaction fixes (2026-11-13):
 
 - Reset filters takes min, max and dir out of the link (RD-5);
-- a link or the selection bar's Plot button opens a collapsed loop or terminus so the residue shows (RD-6);
+- a link or the selection bar's Plot button opens a collapsed loop or terminus so the residue shows, and on a
+  phone a link lands the residue in the band above the residue sheet, inside the zoomed plot (RD-6);
 - on a phone, "Color by" shows the chosen view's colors under the menu and writes the view to the link (RD-8);
 - the selection bar never docks over the 3D view's controls (RD-9);
 - on a phone a tapped snake residue stays visible above the drawer and the bar (RD-10);
@@ -103,25 +104,63 @@ def test_reset_filters_clears_the_link(open_report):
 
 
 def _circle_shown(page, res):
+    """The residue's circle can be seen: drawn, inside the plot and the window, under the stuck
+    sticky bars, above the selection bar and (on a phone) above the residue sheet, and not
+    covered by the minimap or the zoom buttons."""
     return page.evaluate("""r=>{const c=document.querySelector('#snake-plot-container circle[id="'+r+'"]');
         if(!c||!c.getClientRects().length)return false;const b=c.getBoundingClientRect();
-        return b.width>0&&b.top>0&&b.bottom<innerHeight}""", res)
+        if(!(b.width>0))return false;
+        let top=0,bottom=innerHeight;
+        for(const s of ['.topbar','.v3-secnav']){const n=document.querySelector(s);if(!n)continue;
+          const cs=getComputedStyle(n),nr=n.getBoundingClientRect();
+          if(cs.position==='sticky'&&Math.abs(nr.top-(parseFloat(cs.top)||0))<2)top=Math.max(top,nr.bottom);}
+        for(const n of [document.getElementById('rx-drawer'),document.getElementById('gpc-selbar')]){
+          if(!n||n.hidden||!n.getClientRects().length)continue;const nr=n.getBoundingClientRect();
+          if(n.id==='rx-drawer'&&nr.width<innerWidth*0.9)continue;if(nr.top>top)bottom=Math.min(bottom,nr.top);}
+        const p=document.querySelector('#snake-plot-container svg').getBoundingClientRect();
+        if(b.top<top||b.bottom>bottom||b.left<Math.max(0,p.left)||b.right>Math.min(innerWidth,p.right))return false;
+        const e=document.elementFromPoint(b.left+b.width/2,b.top+b.height/2);
+        return !!e&&!e.closest('.sp-minimap,.sp-zoom')&&(e===c||e.id===r+'t'||c.parentNode.contains(e))}""", res)
 
 
-@pytest.mark.parametrize('gid,hash_,res', [
-    ('adrb2_human', '#res=390', 390),          # C-terminus
-    ('hrh1_human', '#res=165', 165),           # ECL2
-    ('hrh1_human', '#pair=304-409', 304),      # ICL3 to the C-terminus
-])
+LANDINGS = [
+    ('adrb2_human', '#res=390', [390]),          # C-terminus
+    ('adrb2_human', '#res=79', [79]),            # TM2, outside the phone's opening zoom on TM3 to TM6
+    ('hrh1_human', '#res=165', [165]),           # ECL2
+    ('hrh1_human', '#pair=304-409', [304, 409]), # ICL3 to TM6
+]
+
+
+@pytest.mark.parametrize('gid,hash_,res', LANDINGS)
 def test_link_into_a_collapsed_loop_shows_the_residue(open_report, gid, hash_, res):
     page = open_report(gid, hash_)
     page.wait_for_timeout(1500)
-    assert _circle_shown(page, res)
+    for r in res:
+        assert _circle_shown(page, r), r
     page.evaluate('scrollTo(0,0)')
     page.wait_for_timeout(200)
     page.locator('.gpc-selbar-btn', has_text='Plot').first.click()
     page.wait_for_timeout(1500)
-    assert _circle_shown(page, res)
+    assert _circle_shown(page, res[0])
+
+
+@pytest.mark.parametrize('theme', ['light', 'dark'])
+@pytest.mark.parametrize('gid,hash_,res', LANDINGS)
+def test_phone_link_lands_the_residue_above_the_sheet(open_report, gid, hash_, res, theme):
+    # a link opens the residue sheet on a phone: the residue must land in the band above it,
+    # panned into the zoomed plot, clear of the minimap
+    page = open_report(gid, hash_, viewport=PHONE, phone=True, theme=theme)
+    page.wait_for_timeout(1500)
+    for r in res:
+        assert _circle_shown(page, r), r
+    assert page.evaluate('document.documentElement.scrollWidth') <= PHONE['width']
+    # pan the zoomed plot away and leave the plot; the selection bar's Plot brings the residue back
+    page.evaluate("()=>{const k=document.querySelector('#snake-plot-container svg').getBoundingClientRect();"
+                  "SnakePlus.zoomBy(3,{x:k.right-2,y:k.top+2});scrollTo(0,0)}")
+    page.wait_for_timeout(300)
+    page.locator('.gpc-selbar-btn', has_text='Plot').first.click()
+    page.wait_for_timeout(1500)
+    assert _circle_shown(page, res[0])
 
 
 @pytest.mark.parametrize('theme', ['light', 'dark'])
