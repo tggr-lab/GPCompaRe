@@ -74,11 +74,7 @@ def test_loader_gives_the_corrected_numbers_at_full_precision():
 def test_section_d_no_longer_reads_the_retired_figure3_values():
     m = load_manuscript_stats()
     assert 'figure3' not in m and m['am_comparison'] == load_am_comparison()
-    fig = m['fig_enrichment_bar']
-    assert [t.name for t in fig.data] == ['Predicted pathogenic', 'Ambiguous', 'Predicted benign']
-    assert list(fig.data[0].x) == ['Top 50 positions by CFR score<br>n = 7,268 scored, 6,155 decisive',
-                                   'Other generic-numbered positions<br>n = 11,040 scored, 9,369 decisive']
-    assert list(fig.data[1].customdata) == [1113, 1671]
+    assert not any(k.startswith('fig_') for k in m), 'the page draws section 4 itself; no Plotly figure is built'
 
 
 # ---------------------------------------------------------------------------- the built page

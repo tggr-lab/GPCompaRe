@@ -19,8 +19,7 @@ import pytest
 from GPCompaReports_v2.analysis import pack_layer
 from GPCompaReports_v2.analysis import cfr_variants as cv
 from GPCompaReports_v2.analysis.manuscript_stats import (
-    AM_TRACE_NAMES, CLINICAL_TINT, am_comparison_payload, class_cfr_ranks, class_cfr_set, fig_am_composition,
-    load_am_comparison, make_enrichment_bar, write_am_comparison)
+    CLINICAL_TINT, am_comparison_payload, class_cfr_ranks, class_cfr_set, load_am_comparison, write_am_comparison)
 from GPCompaReports_v2.analysis.variant_correlation import conservation_by_residue, make_conservation_density
 from GPCompaReports_v2.website import data_versions
 
@@ -63,30 +62,6 @@ def test_am_comparison_csv_from_class_variants():
                     ['Other generic-numbered positions', 11040, 9369, 4085, 1671, 5284]]
     text = _csv(['a'], rows).lower()
     assert 'odds' not in text and 'paper' not in text
-
-
-@pytest.mark.parametrize('make', [make_enrichment_bar, fig_am_composition])
-def test_paper_charts_carry_the_summary_values_in_the_clinical_tint(make):
-    am = load_am_comparison()
-    fig = make(am)
-    by = {t.name: t for t in fig.data}
-    assert set(by) == set(AM_TRACE_NAMES.values())
-    groups = am['groups'] if make is make_enrichment_bar else am['groups'][::-1]
-    for cls, name in AM_TRACE_NAMES.items():
-        t = by[name]
-        vals = t.y if make is make_enrichment_bar else t.x
-        assert list(vals) == [g[cls.lower()] for g in groups]          # exact, no rounding on the way
-        counts = [c if isinstance(c, int) else c[0] for c in t.customdata]
-        assert counts == [g[cls.lower() + '_n'] for g in groups]
-        assert t.marker.color == CLINICAL_TINT['light'][cls.lower()]
-        assert t.meta == {'path_class': cls.lower()}
-    if make is fig_am_composition:
-        title = fig.layout.title.text
-        for s in ('66.9% vs 43.6%', '276 receptors'):
-            assert s in title
-        assert 'paper' not in title and 'Odds' not in title
-        notes = ' '.join(a.text for a in fig.layout.annotations)
-        assert '7,268 scored, 6,155 decisive' in notes and '11,040 scored, 9,369 decisive' in notes
 
 
 def test_clinical_tint_equals_the_css_tokens():

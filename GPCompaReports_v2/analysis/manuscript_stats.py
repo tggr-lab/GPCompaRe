@@ -17,8 +17,6 @@ import json
 import pathlib
 
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 
 from .cfr_analysis import CFR_TOP_N
 from .class_results import class_pairs, class_ranking
@@ -42,15 +40,13 @@ AM_GROUP_LABELS = ('Top 50 positions by CFR score', 'Other generic-numbered posi
 #: Pathogenicity palette, the "clinical tint" (owner's choice 2026-11-05): green likely benign, neutral gray
 #: ambiguous, crimson likely pathogenic. The text tokens of static/css/search-ui.css (--path-benign,
 #: --path-ambiguous, --path-pathogenic, light and dark); tests/test_stats_cfr_variants.py checks they agree.
-#: Figures are drawn with the light set; each trace carries meta {'path_class': ...} so the page can restyle
-#: to the dark set. `neutral` is for counts that carry no class (it is not a pathogenicity color).
+#: `neutral` is for counts that carry no class (it is not a pathogenicity color).
 CLINICAL_TINT = {
     'light': {'benign': '#2B6E2F', 'ambiguous': '#555C68', 'pathogenic': '#B4234B', 'neutral': '#8C959F'},
     'dark': {'benign': '#81C784', 'ambiguous': '#B0B4BC', 'pathogenic': '#F48FB1', 'neutral': '#6E7781'},
 }
 #: AlphaMissense classes as the chart legend names them: a prediction, never a clinical classification.
 AM_TRACE_NAMES = {'Pathogenic': 'Predicted pathogenic', 'Ambiguous': 'Ambiguous', 'Benign': 'Predicted benign'}
-AM_COLORS = {cls: CLINICAL_TINT['light'][cls.lower()] for cls in AM_TRACE_NAMES}
 
 
 def _require(path):
@@ -129,111 +125,7 @@ def load_manuscript_stats():
         'am_comparison': am,
         'n_recurrent_positions': len(ranking),
         'n_pairs_universe': len(pairs),
-        'fig_recurrence_dotplot': make_recurrence_dotplot(top50),
-        'fig_enrichment_bar': make_enrichment_bar(am),
-        'fig_am_composition': fig_am_composition(am),
     }
-
-
-def make_recurrence_dotplot(top50):
-    """The ranked recurrent positions, in the submitted order."""
-    if top50.empty:
-        return go.Figure()
-    fig = px.scatter(
-        top50, x='mean_abs_delta', y='n_receptors',
-        size='cfr_score', color='segment',
-        hover_data=['generic_number', 'cfr_score_rank', 'recurrence_rank',
-                    'pct_receptors'],
-        text='generic_number',
-        title='Top %d recurrent Core Functional Residue positions' % CFR_TOP_N,
-        labels={
-            'mean_abs_delta': 'Mean |ΔRRCS|',
-            'n_receptors': 'Receptors with an above-threshold change',
-            'segment': 'Segment',
-            'cfr_score': 'CFR score',
-        },
-        color_discrete_sequence=px.colors.qualitative.Set2,
-    )
-    fig.update_traces(textposition='top center', textfont_size=8)
-    fig.update_layout(height=600)
-    return fig
-
-
-def _group_label(g, sep='<br>'):
-    return '%s%sn = %s scored, %s decisive' % (g['label'], sep, format(g['n'], ','), format(g['decisive'], ','))
-
-
-def make_enrichment_bar(am):
-    """AlphaMissense class composition at the top 50 positions by CFR score and at other generic-numbered positions.
-
-    Corrected supplement analysis (Fig. S4a, 276 receptors). Bars are shares of all scored substitutions;
-    ambiguous predictions are drawn but excluded from the odds ratio. Clinical tint; legend says "predicted";
-    each axis label gives both denominators (all scored, decisive).
-    """
-    groups = am['groups']
-    if not groups:
-        return go.Figure()
-    labels = [_group_label(g) for g in groups]
-    fig = go.Figure()
-    for cls in ('Pathogenic', 'Ambiguous', 'Benign'):
-        key = cls.lower()
-        fig.add_trace(go.Bar(
-            name=AM_TRACE_NAMES[cls], x=labels, y=[g[key] for g in groups],
-            marker_color=AM_COLORS[cls], meta={'path_class': key},
-            text=['%.1f%%' % g[key] for g in groups],
-            customdata=[g[key + '_n'] for g in groups],
-            hovertemplate='%{x}<br>' + AM_TRACE_NAMES[cls] + ': %{customdata:,} (%{y:.1f}%)<extra></extra>',
-            textposition='inside', insidetextfont=dict(color='#ffffff'),
-        ))
-    fig.update_layout(
-        barmode='stack',
-        title=('AlphaMissense class at the top %d positions by CFR score and at '
-               'other generic-numbered positions' % CFR_TOP_N),
-        yaxis_title='Share of scored missense substitutions (%)',
-        height=450,
-    )
-    return fig
-
-
-def fig_am_composition(am):
-    """The same corrected comparison as two horizontal composition bars (idea 6a): one bar per group, the
-    three predicted classes as shares of all scored substitutions, each group's label and both denominators
-    (all scored, decisive) written above its bar so the bars keep the full width on a phone, and the
-    decisive-call percentages, odds ratio and conservation-adjusted odds ratio (each rounded once) under the
-    title. Every value is load_am_comparison()'s; nothing is recomputed."""
-    groups = am['groups']
-    if not groups:
-        return go.Figure()
-    keys = ['top', 'other'][::-1]                       # the top group drawn on top
-    gs = groups[::-1]
-    fig = go.Figure()
-    for cls in ('Benign', 'Ambiguous', 'Pathogenic'):
-        key = cls.lower()
-        fig.add_trace(go.Bar(
-            name=AM_TRACE_NAMES[cls], orientation='h', y=keys, x=[g[key] for g in gs], width=0.5,
-            marker_color=AM_COLORS[cls], meta={'path_class': key},
-            text=['%.1f%%' % g[key] for g in gs], textposition='inside', insidetextanchor='middle',
-            insidetextfont=dict(color='#ffffff'),
-            customdata=[[g[key + '_n'], g['label']] for g in gs],
-            hovertemplate=('%{customdata[1]}<br>' + AM_TRACE_NAMES[cls]
-                           + ': %{customdata[0]:,} (%{x:.1f}% of scored)<extra></extra>'),
-        ))
-    fig.update_layout(
-        barmode='stack',
-        title=dict(text=(
-            'AlphaMissense predictions (%d receptors)<br><sub>Predicted pathogenic among decisive '
-            'calls: %.1f%% vs %.1f%%</sub>' % (am['receptors'], am['decisive_pct']['top'],
-                                              am['decisive_pct']['other']))),
-        xaxis=dict(title='Share of scored substitutions (%)', range=[0, 100], fixedrange=True),
-        yaxis=dict(showticklabels=False, fixedrange=True),
-        annotations=[dict(xref='paper', x=0, xanchor='left', y=k, yanchor='bottom', yshift=17, showarrow=False,
-                          align='left', text='<b>%s</b>  n = %s scored, %s decisive' % (
-                              g['label'], format(g['n'], ','), format(g['decisive'], ',')))
-                     for k, g in zip(keys, gs)],
-        legend=dict(orientation='h', y=-0.35, x=0, xanchor='left', traceorder='normal'),
-        height=360, margin=dict(t=122, l=10, r=10, b=80),
-    )
-    return fig
 
 
 def am_comparison_payload(am=None):
