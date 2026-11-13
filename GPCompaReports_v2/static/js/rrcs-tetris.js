@@ -419,12 +419,15 @@
     var byWidth = (wrapEl.clientWidth - 32 - M.l - M.r) / COLS;
     return Math.max(8, Math.floor(Math.min(avail / ROWS, byWidth, 26)));
   }
-  // Bring the whole board on screen under the sticky chrome.
+  // Bring the whole board on screen under the sticky chrome, with the touch buttons when they
+  // sit under it (a phone).
   function reveal() {
     var r = wrapEl.getBoundingClientRect();
     var top = chromeHeight() + 8;
-    var board = canvas.getBoundingClientRect();
-    if (r.top < top || board.bottom > window.innerHeight) {
+    var bottom = canvas.getBoundingClientRect().bottom;
+    var touch = wrapEl.querySelector('.rrcs-tetris-touch');
+    if (touch && getComputedStyle(touch).display !== 'none') bottom = Math.max(bottom, touch.getBoundingClientRect().bottom);
+    if (r.top < top || bottom > window.innerHeight) {
       window.scrollBy({ top: r.top - top, behavior: 'auto' });
     }
   }

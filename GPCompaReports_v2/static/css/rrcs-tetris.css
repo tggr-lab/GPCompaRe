@@ -97,3 +97,11 @@
   .rrcs-tetris-touch { display: flex; }
   .rrcs-tetris-help { display: none; }
 }
+/* a phone: the touch buttons come right under the board (both sized to the screen by
+   rrcs-tetris.js), the score and the other buttons after them */
+@media (max-width: 600px) {
+  .rrcs-tetris { gap: var(--s-2, 8px); }
+  .rrcs-tetris-board { order: 0; }
+  .rrcs-tetris-touch { order: 1; }
+  .rrcs-tetris-side { order: 2; }
+}
