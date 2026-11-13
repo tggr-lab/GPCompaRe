@@ -25,6 +25,8 @@
 
   var ROOT = document.documentElement;
   var PHONE = window.matchMedia('(max-width: 720px)');
+  var REDUCE_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var SCROLL = function () { return REDUCE_MOTION.matches ? 'auto' : 'smooth'; };
   var REPORT = function (gid) { return 'reports/' + gid + '.html'; };
   var SEARCH = function (q) { return 'search/index.html?q=' + encodeURIComponent(q); };
 
@@ -190,6 +192,8 @@
       render: null, tableRows: null, caption: null
     };
     cards[card.id] = card;
+    // the plot is one figure to assistive technology, named by the card title (aria-labelledby in the markup)
+    if (plotEl.getAttribute('aria-labelledby')) plotEl.setAttribute('role', 'img');
 
     fig.querySelectorAll('[data-export]').forEach(function (b) {
       b.addEventListener('click', function () { exportImage(card, b.getAttribute('data-export'), b); });
@@ -204,7 +208,7 @@
       mbtn.addEventListener('click', function () {
         method.open = !method.open;
         mbtn.setAttribute('aria-expanded', method.open ? 'true' : 'false');
-        if (method.open) method.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        if (method.open) method.scrollIntoView({ block: 'nearest', behavior: SCROLL() });
       });
       method.addEventListener('toggle', function () { mbtn.setAttribute('aria-expanded', method.open ? 'true' : 'false'); });
     }
@@ -430,7 +434,7 @@
     side.hidden = false;
     card.body.classList.add('has-side');
     if (card.drawn && !card.plot.hidden) window.Plotly.Plots.resize(card.plot);
-    if (isPhone()) side.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    if (isPhone()) side.scrollIntoView({ block: 'nearest', behavior: SCROLL() });
   }
   function closeSide(card) {
     card.side.hidden = true;
