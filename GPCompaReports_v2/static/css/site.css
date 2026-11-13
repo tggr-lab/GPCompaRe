@@ -1071,6 +1071,11 @@ p  { margin: 0 0 var(--s-4); }
   margin: 0 0 var(--s-4);
 }
 .v2-chart-wide { min-height: 420px; }
+/* On a phone Plotly keeps its toolbar showing and it lies across the left-aligned chart title:
+   hide it there (the charts stay pannable and hoverable; the tables below carry the numbers). */
+@media (max-width: 600px) {
+  .v2-chart .modebar-container { display: none; }
+}
 
 /* ----------- 17. Contact page ----------- */
 
