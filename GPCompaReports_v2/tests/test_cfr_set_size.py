@@ -112,3 +112,31 @@ def test_statistics_landing_and_glossary_pages_state_the_same_size():
     body = stats[stats.index('Core Functional Residue Positions'):]
     shown = re.findall(r'<td class="num">\d+</td>\s*<td><strong>([^<]+)</strong></td>', body.split('</tbody>')[0])
     assert set(shown) == class_cfr_set(), 'the Statistics table and the marked set differ'
+
+
+def test_other_counts_in_the_class_copy_are_not_read_as_a_set_size():
+    """Counts the Statistics page states beside the set size are not sizes of the CFR set."""
+    for text in ('the 15 most recurrent positions', 'in the first 10', '20 of the first 50',
+                 'The 20 exact contact pairs (both residues CFRs)', '9 of the 16 motif positions are in the top 50.'):
+        assert not _sizes(text), text
+
+
+@needs_build
+def test_class_payloads_state_the_same_size():
+    from GPCompaReports_v2.analysis.class_results import computed_notes, finding_sentences
+    stats = BUILD / 'data' / 'stats'
+    payloads = {}
+    for name in ('class_scale', 'class_positions', 'class_variants', 'helix_pairs', 'receptors'):
+        path = stats / ('%s.json' % name)
+        if not path.is_file():
+            pytest.skip('no class payloads in %s' % stats)
+        payloads[name] = json.loads(path.read_text(encoding='utf-8'))
+    for name, p in payloads.items():
+        assert _sizes(json.dumps(p, ensure_ascii=False)) <= {CFR_TOP_N}, name
+    pos = payloads['class_positions']
+    top = {r[pos['ranking_columns'].index('gn')] for r in pos['ranking'][:pos['top_n']]}
+    assert pos['top_n'] == CFR_TOP_N and top == class_cfr_set()
+    fs = finding_sentences(payloads)
+    text = ' '.join(list(fs['findings'].values()) + [g['line'] for g in fs['glance']]
+                    + [v if isinstance(v, str) else ' '.join(v) for v in computed_notes(payloads).values()])
+    assert _sizes(text) == {CFR_TOP_N}
