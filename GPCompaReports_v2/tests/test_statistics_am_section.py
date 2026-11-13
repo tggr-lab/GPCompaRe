@@ -15,7 +15,7 @@ import pytest
 
 from GPCompaReports_v2.analysis.cfr_analysis import CFR_TOP_N
 from GPCompaReports_v2.analysis.manuscript_stats import (
-    AM_SUMMARY_JSON, AM_GROUP_LABELS, AM_TRACE_NAMES, load_am_comparison, load_manuscript_stats)
+    AM_SUMMARY_JSON, AM_GROUP_LABELS, load_am_comparison, load_manuscript_stats)
 
 BASE = pathlib.Path(__file__).resolve().parent.parent
 _env = os.environ.get('FREEZE_BUILD_DIR')
@@ -139,17 +139,3 @@ def test_class_variants_payload_equals_the_summary():
             assert bad not in low, (name, bad)
 
 
-@needs_build
-def test_the_chart_data_equal_the_summary():
-    html = STATS.read_text(encoding='utf-8')
-    j = re.search(r"\['chart-pathogenicity'\] = (\{.*?\});\n", html, re.S)
-    if not j:
-        pytest.skip('no inline chart-pathogenicity payload (the page draws section D from class_variants.json)')
-    fig = json.loads(j.group(1))
-    am = load_am_comparison()
-    by = {t['name']: t for t in fig['data']}
-    for cls, name in AM_TRACE_NAMES.items():
-        assert by[name]['y'] == pytest.approx([g[cls.lower()] for g in am['groups']], abs=1e-12)
-        assert by[name]['customdata'] == [g[cls.lower() + '_n'] for g in am['groups']]
-    assert 'most recurrent' not in fig['layout']['title']['text']
-    assert 'odds ratio' not in fig['layout']['title']['text']

@@ -149,15 +149,18 @@ def test_ranks(rec):
         assert max(v[1] for v in vals) <= N_RECEPTORS
 
 
-def test_ligand_groups_and_families(rec):
+def test_ligand_groups(rec):
     groups = rec['ligand_groups']
     assert len(groups) == 8 and groups[-1]['key'] == 'Other'
     assert sum(g['n'] for g in groups) == N_RECEPTORS
     rows = ca.explorer_rows(rec)
     other = {r['ligand'] for r in rows if r['ligand_group'] == 'Other'}
     assert other == {'Alicarboxylic acid receptors', 'Melatonin receptors', 'Steroid receptors'}
-    assert sum(f['n'] for f in rec['families']) == N_RECEPTORS
-    assert all(f['plotted'] == (f['n'] >= ca.FAMILY_MIN) for f in rec['families'])
+    assert 'families' not in rec, 'the families list had no reader; Kruskal-Wallis is rendered on the server'
+    # no ligand hue is the signed blue or red, the predicted pathogenic crimson or the old Other indigo
+    colors = {g['color'].upper() for g in groups}
+    assert not colors & {'#2563EB', '#1D4ED8', '#B91C1C', '#DB2777', '#B4234B', '#4338CA'}
+    assert dict((g['key'], g['color']) for g in groups)['Other'] == '#6B7280'
 
 
 def test_kruskal_wallis_on_total_change_only(rec):
@@ -166,7 +169,10 @@ def test_kruskal_wallis_on_total_change_only(rec):
     kw = rec['kruskal']['sum_abs']
     assert kw['ligand_types'] == {'H': 27.866, 'p': 0.001, 'k': 10, 'n': 283}
     assert kw['families'] == {'H': 27.36, 'p': 0.0259, 'k': 16, 'n': 192}
-    assert kw['families']['n'] == sum(f['n'] for f in rec['families'] if f['n'] >= ca.FAMILY_MIN_KW)
+    fam = {}
+    for r in ca.explorer_rows(rec):
+        fam[r['family']] = fam.get(r['family'], 0) + 1
+    assert kw['families']['n'] == sum(n for n in fam.values() if n >= ca.FAMILY_MIN_KW)
 
 
 def test_protein_names_for_the_finder(rec):

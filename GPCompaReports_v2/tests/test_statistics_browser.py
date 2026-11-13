@@ -340,3 +340,194 @@ def test_without_javascript_the_server_parts_render(browser, server):
     assert page.locator('.nojs-note').count() >= 10
     assert page.locator('.foot-tools button').count() == 0
     ctx.close()
+
+
+# ------------------------------------------------------------------------------------- review round 1
+def _rank_gn(rank):
+    cp = __import__('json').loads((BUILD_DIR / 'data' / 'stats' / 'class_positions.json').read_text(encoding='utf-8'))
+    cols = cp['ranking_columns']
+    return {r[cols.index('rank')]: r[cols.index('gn')] for r in cp['ranking']}[rank]
+
+
+@needs_build
+def test_the_pairs_tab_draws_its_bars(open_page):
+    page = open_page()
+    _settle(page, ['chart-partners'])
+    page.locator('#card-chart-partners [data-ctl="tab"] [data-value="pairs"]').click()
+    page.wait_for_timeout(400)
+    text = page.locator('#chart-partners').inner_text()
+    assert 'NaN' not in text and 'undefined' not in text
+    widths = page.evaluate("Array.from(document.querySelectorAll('#chart-partners rect')).map(r => +r.getAttribute('width'))")
+    assert len(widths) == 20 and all(w > 0 for w in widths)
+    assert page.locator('#card-chart-partners [data-ctl="tab"] [data-value="pairs"]').get_attribute('aria-pressed') == 'true'
+    assert _errors(page) == []
+
+
+@needs_build
+def test_explorer_table_on_load(open_page):
+    page = open_page('/statistics.html?rx=table')
+    card = page.locator('#card-chart-receptors')
+    card.scroll_into_view_if_needed()
+    expect(card.locator('.explorer-table tbody tr').first).to_be_visible(timeout=15000)
+    assert card.locator('.explorer-table tbody tr').count() == 283
+    assert card.locator('[data-view-text]').inner_text().strip() != ''
+    assert card.locator('.xmenu-list [data-export="svg"]').get_attribute('hidden') is not None
+    assert _errors(page) == []
+
+
+@needs_build
+def test_phone_png_of_the_matrix_downloads(open_page):
+    page = open_page(viewport=PHONE_390)
+    _settle(page, ['chart-cfr-atlas'])
+    card = page.locator('#card-chart-cfr-atlas')
+    card.locator('[data-export-toggle]').click()
+    with page.expect_download(timeout=15000) as dl:
+        card.locator('.xmenu-list [data-export="png"]').click()
+    assert dl.value.suggested_filename == 'gpcompare_cfr-atlas_groups.png'
+    assert _errors(page) == []
+
+
+def _matrix_point(page, col, y=None):
+    """Page coordinates of a column of the matrix canvas (y: CSS px from its top; default the header band)."""
+    return page.evaluate("""([col, y]) => { const cv = document.querySelector('#chart-cfr-atlas canvas'); const b = cv.getBoundingClientRect();
+        const W = parseFloat(cv.style.width), cw = (W - 150 - 56) / 50;
+        return [b.left + 150 + cw * col + cw / 2, b.top + (y === null ? 40 : y)]; }""", [col, y])
+
+
+@needs_build
+def test_a_matrix_header_click_selects_while_a_profile_is_open(open_page):
+    page = open_page('/statistics.html?sel=pos:3.50x50')
+    expect(page.locator('.pos-profile')).to_be_visible(timeout=15000)
+    _settle(page, ['chart-cfr-atlas'])
+    page.locator('#chart-cfr-atlas canvas').scroll_into_view_if_needed()
+    x, y = _matrix_point(page, 1)
+    page.mouse.click(x, y)
+    gn = _rank_gn(2)
+    expect(page.locator('.pos-profile .pgn')).to_contain_text(gn, timeout=10000)
+    assert 'pos:' + gn in page.url
+    # hovering a cell shows its tooltip
+    x, y = _matrix_point(page, 0, 120)
+    page.mouse.move(x, y)
+    page.wait_for_timeout(150)
+    assert page.locator('.st-tip').is_visible()
+    assert ' at 3.50x50' in page.locator('.st-tip').inner_text()
+    assert _errors(page) == []
+
+
+@needs_build
+@needs_plotly
+def test_a_scatter_click_keeps_the_position(open_page):
+    page = open_page('/statistics.html?sel=pos:6.48x48')
+    _settle(page, ['chart-receptors'])
+    page.locator('#chart-receptors .scatterlayer .point').first.wait_for(timeout=15000)
+    page.locator('#chart-receptors .scatterlayer .point').nth(5).click(force=True)
+    page.wait_for_timeout(500)
+    assert 'pos:6.48x48' in page.url
+    assert '6.48x48: stronger in the active model' in page.locator('#card-chart-receptors [data-view-text]').inner_text()
+    assert _errors(page) == []
+
+
+@needs_build
+def test_escape_in_a_control_keeps_the_position(open_page):
+    page = open_page('/statistics.html?sel=pos:6.48x48')
+    expect(page.locator('.pos-profile')).to_be_visible(timeout=15000)
+    box = page.locator('#sel-input')
+    box.fill('ccr')
+    page.locator('#sel-list [role="option"]').first.wait_for()
+    box.press('Escape')
+    assert page.locator('#sel-list').is_hidden()
+    assert 'pos:6.48x48' in page.url and page.locator('.pos-profile').count() == 1
+    _settle(page, ['chart-segments'])
+    card = page.locator('#card-chart-segments')
+    card.locator('[data-export-toggle]').click()
+    page.keyboard.press('ArrowDown')
+    assert page.evaluate("document.activeElement.getAttribute('data-export')") == 'svg'
+    page.keyboard.press('Escape')
+    assert card.locator('.xmenu-list').is_hidden()
+    assert 'pos:6.48x48' in page.url and page.locator('.pos-profile').count() == 1
+
+
+@needs_build
+def test_back_returns_the_selection_of_the_entry(open_page):
+    page = open_page()
+    page.locator('a[href="#sec-c"]:visible').first.click()
+    page.wait_for_timeout(200)
+    box = page.locator('#sel-input')
+    box.fill('CCR5')
+    page.locator('#sel-list [role="option"]').first.wait_for()
+    box.press('Enter')
+    page.wait_for_timeout(300)
+    assert 'sel=rec:ccr5_human' in page.url
+    page.go_back()
+    page.wait_for_timeout(400)
+    assert 'sel=' not in page.url
+    assert 'Nothing selected' in page.locator('[data-sel-summary]').inner_text()
+
+
+@needs_build
+def test_profile_opens_in_view_takes_focus_and_gives_it_back(open_page):
+    page = open_page()
+    _settle(page, ['chart-ranking'])
+    bar = page.locator('#card-chart-ranking [data-strip368] rect[data-gn="%s"]' % _rank_gn(300))
+    bar.scroll_into_view_if_needed()
+    bar.click()
+    prof = page.locator('.pos-profile')
+    expect(prof).to_be_visible(timeout=10000)
+    page.wait_for_timeout(600)
+    box = prof.bounding_box()
+    vh = page.viewport_size['height']
+    assert box['y'] < vh and box['y'] + box['height'] > 0, box
+    page.keyboard.press('Escape')
+    expect(prof).to_have_count(0)
+    # keyboard: Enter on a ranking row moves focus into the profile, Escape gives it back to the row
+    row = page.locator('#chart-ranking [aria-label="Open the profile of 7.53x53"]')
+    row.focus()
+    page.keyboard.press('Enter')
+    expect(prof).to_be_visible(timeout=10000)
+    page.wait_for_timeout(200)
+    assert page.evaluate("document.activeElement.classList.contains('pos-profile')")
+    page.keyboard.press('Escape')
+    page.wait_for_timeout(200)
+    assert page.evaluate("document.activeElement.getAttribute('data-key')") == 'Open the profile of 7.53x53'
+    # one Tab stop for the ranking chart
+    stops = page.evaluate("Array.from(document.querySelectorAll('#chart-ranking [tabindex=\"0\"], #chart-ranking a:not([tabindex=\"-1\"])')).length")
+    assert stops == 1, stops
+
+
+@needs_build
+def test_recovery_and_scaffold_name_their_ranks_and_counts(open_page):
+    page = open_page('/statistics.html?sel=pos:3.51x51')
+    _settle(page, ['chart-recovery', 'chart-scaffold'])
+    rc = page.locator('#card-chart-recovery')
+    assert 'rank among the 262 positions' in rc.locator('#chart-recovery').inner_text()
+    note = rc.locator('[data-rec-note]').inner_text()
+    assert '113 of the 262' in note and 'rank 117 by CFR score' in note
+    tip = page.evaluate("document.querySelector('#chart-scaffold [data-gn=\"4.47x47\"]').getAttribute('data-tip')")
+    assert 'CFR in 1 of 283' in tip
+
+
+@needs_build
+def test_small_group_grid_and_the_numbered_receptor_table(open_page):
+    page = open_page()
+    _settle(page, ['chart-helix-pairs'])
+    card = page.locator('#card-chart-helix-pairs')
+    card.locator('[data-ctl="group"] button[data-value="Melatonin receptors"]').click()
+    card.locator('[data-ctl="mode"] [data-value="grid"]').click()
+    page.wait_for_timeout(300)
+    assert page.locator('#chart-helix-pairs rect[data-hit]').count() > 0
+    assert '2/2' in page.locator('#chart-helix-pairs').inner_text()
+    assert 'without a direction' in card.locator('[data-guide]').inner_text()
+    assert card.locator('[data-ledger] .group-chips-list button').count() == 2
+    # the per-position side table marks which receptors have a CFR there
+    page = open_page('/statistics.html?sel=pos:8.48x48')
+    prof = page.locator('.pos-profile')
+    expect(prof).to_be_visible(timeout=15000)
+    prof.get_by_role('button', name='Receptors numbered here, with their variants').click()
+    side = page.locator('#card-chart-cfr-variants .chart-card-side')
+    expect(side.locator('table')).to_be_visible(timeout=15000)
+    heads = side.locator('thead th').all_inner_texts()
+    assert 'CFR' in heads
+    k = heads.index('CFR')
+    yes = page.evaluate("k => Array.from(document.querySelectorAll('#card-chart-cfr-variants .chart-card-side tbody tr')).filter(r => r.children[k].textContent === 'yes').length", k)
+    assert 0 < yes <= 113
+    assert 'have a CFR here' in side.inner_text()

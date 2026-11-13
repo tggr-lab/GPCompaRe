@@ -41,7 +41,7 @@ LIGAND = {'LIGAND_DARK', 'ligandColors', 'scatterFigure', 'explorerTable', 'teas
 
 
 def _visible(html):
-    h = re.sub(r'<footer\b.*?</footer>', ' ', html, flags=re.S | re.I)
+    h = re.sub(r'<footer class="site-footer.*?</footer>', ' ', html, flags=re.S | re.I)   # site chrome only: card footers stay
     h = re.sub(r'<header class="topbar.*?</header>', ' ', h, flags=re.S)   # site chrome
     h = re.sub(r'<div[^>]*id="mobile-drawer".*?</nav>', ' ', h, flags=re.S)
     h = re.sub(r'<script\b.*?</script>', ' ', h, flags=re.S | re.I)

@@ -348,8 +348,8 @@ def test_computed_notes(payloads):
     assert n['segments'] == ('Mean |ΔRRCS| per contact endpoint, over all contacts with full GPCRdb residue maps. '
                              'Highest in the bundle: H8 1.21 and TM6 1.13; lowest: TM1 and TM4 0.74. Loops and '
                              'termini: 1.06 to 1.23.')
-    assert n['ranking_outlier'] == ('3.19x19 is a CFR in only 6 receptors and ranks 18 on the size of its contact '
-                                    'change (mean |ΔRRCS| 10.09, the largest of the 50).')
+    assert n['ranking_outlier'] == ('3.19x19 is a CFR in only 6 receptors and ranks 18 by CFR score because its mean '
+                                    '|ΔRRCS| (10.09) is the largest of the 50.')
     assert n['motifs_in_top'] == '9 of the 16 motif positions are in the top 50.'
     assert n['recovery_points'] == ['8 of the first 10 · 1.5 expected by chance',
                                     '20 of the first 50 · 7.4 expected by chance']
@@ -394,9 +394,82 @@ def test_built_atlas_map():
 @needs_build
 def test_built_page_carries_the_findings():
     html = (BUILD / 'statistics.html').read_text(encoding='utf-8')
-    if 'id="sec-scale"' not in html:
-        pytest.skip('the page does not render the class findings yet')
+    assert 'id="sec-scale"' in html, 'the page lost section 1 (sec-scale), which carries the first finding'
     html = re.sub(r'</?b>', '', html)   # the payload values are bold inside the sentence
     text = re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', html))
     for anchor, sentence in EXPECTED_FINDINGS.items():
         assert sentence in text, anchor
+
+
+# ------------------------------------------------------------------------------------- review round 1 (numbers)
+def test_scaffold_counts_every_generic_position(payloads, t):
+    """A scaffold residue at a non-recurrent position carries its true count (4.47x47, 4.51x51, 4.55x55: a CFR in 1
+    receptor each), not 0."""
+    sc = payloads['class_positions']['scaffold']
+    assert sc['columns'][-1] == 'n'
+    by = {r[3]: r[6] for r in sc['residues'] if r[3]}
+    assert by['4.47x47'] == by['4.51x51'] == by['4.55x55'] == 1
+    rare = dict(zip(t['positions_below_recurrence'].generic_number, t['positions_below_recurrence'].n_receptors))
+    rank = dict(zip(t['positions'].generic_number, t['positions'].n_receptors))
+    for gn, n in by.items():
+        assert n == rank.get(gn, rare.get(gn, 0)), gn
+    assert all(r[6] is None for r in sc['residues'] if not r[3])
+
+
+def test_mean_change_rounds_once(payloads, t):
+    """The ranking ships mean |ΔRRCS| at 6 decimals, so the page's 2-decimal values equal the table's."""
+    cols = payloads['class_positions']['ranking_columns']
+    k = cols.index('mean_abs_delta')
+    true = dict(zip(t['positions'].generic_number, t['positions'].mean_abs_delta))
+    for r in payloads['class_positions']['ranking']:
+        assert '%.2f' % r[k] == '%.2f' % true[r[cols.index('gn')]], r[cols.index('gn')]
+    row = {r[cols.index('gn')]: r for r in payloads['class_positions']['ranking']}['8.50x50']
+    assert '%.2f' % row[k] == '4.61'
+
+
+def test_atlas_signs_add_up(payloads):
+    """n_up + n_down = n_hit wherever no receptor's net is exactly zero (7.53x53: SSR4's net +0.00024 counts as up)."""
+    a = payloads['cfr_atlas']
+    for k, (p, c) in enumerate(zip(a['positions'], a['columns'])):
+        zero = sum(1 for r in a['receptors'] if r['state'][k] == '2' and r['net'][k] == 0)
+        assert c['n_up'] + c['n_down'] + zero == c['n_hit'], p['gn']
+    k = [p['gn'] for p in a['positions']].index('7.53x53')
+    assert (a['columns'][k]['n_hit'], a['columns'][k]['n_up'], a['columns'][k]['n_down']) == (254, 155, 99)
+
+
+def test_release_labels_of_the_class_tables(payloads):
+    """The ranked tables name the residue maps they were computed on; no dangling numbering sentence."""
+    num = payloads['class_positions']['meta']['sources']['numbering']
+    assert 'GPCRdb residue maps' in num and '2026-08-12' in num and 'GPR4' in num
+    assert '2026-08-12' in payloads['helix_pairs']['meta']['sources']['numbering_magnitude']
+    for name, p in payloads.items():
+        src = (p.get('meta') or {}).get('sources') or {}
+        assert 'With it' not in src.get('numbering', ''), name
+        assert 'class_A_all' not in json.dumps(p.get('meta') or {}), name
+        assert 'class-wide CFR set' not in json.dumps(p.get('meta') or {}), name
+    rec = payloads['class_positions']['recovery']
+    assert rec['rule'].startswith('The %d recurrent positions numbered in at least half' % rec['universe'])
+    assert 'H8 are not included' in payloads['helix_pairs']['magnitude_rule']['interfaces']
+
+
+@needs_build
+def test_built_scaffold_csv_and_coverage():
+    rows = list(csv_rows(STATS_DIR / 'scaffold.csv'))
+    by = {r['generic_number']: r for r in rows if r['generic_number']}
+    assert by['4.47x47']['receptors_with_cfr'] == '1' and by['4.47x47']['band'] == 'fewer than 3'
+    cov = list(csv_rows(STATS_DIR / 'coverage.csv'))
+    ranked = [r for r in cov if r['results'].startswith('Ranked positions')][0]
+    assert 'GPCRdb residue maps, fetched 2026-08-12' in ranked['data'] and 'GPR4' in ranked['data']
+    first = cov[0]
+    assert 'GPCRdb generic numbering, fetched 2026-10-18' in first['data'] and 'positions' not in first['results'].split(',')[0]
+    known = [r for r in cov if r['results'] == 'Known activation positions'][0]
+    assert known['receptors'].startswith('262 recurrent positions')
+    html = (BUILD / 'statistics.html').read_text(encoding='utf-8')
+    assert 'class_A_all' not in html
+    assert 'The list of 287 human Class A receptors also names' in re.sub(r'\s+', ' ', html)
+
+
+def csv_rows(path):
+    import csv as _csv
+    with open(path, newline='', encoding='utf-8') as fh:
+        yield from _csv.DictReader(fh)
