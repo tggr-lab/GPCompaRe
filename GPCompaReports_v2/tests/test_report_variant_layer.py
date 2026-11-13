@@ -124,7 +124,9 @@ def test_the_three_wrong_receptors_get_their_own_accession(store):
 
 
 def test_only_the_three_wrong_receptors_get_new_annotation(store):
-    """The batch annotation equals the pack at every row for the other 280 receptors, so the reports keep it."""
+    """The batch annotation equals the pack at every row for the other 280 receptors, so
+    get_report_annotation_map keeps it (the search index reads it; the report pages read every
+    residue's pack numbering, get_report_full_annotation_map, test_report_full_numbering.py)."""
     layer = store.report_layer
     assert set(layer.annotation) == set(pl.WRONG_RECEPTOR_ANNOTATION)
     for g in store.gpcr_ids:

@@ -113,10 +113,11 @@ def _stage_cfr_top():
 
 @needs_build
 def test_every_report_flags_cfr_residues_by_its_own_numbering_and_agrees_with_search():
-    """All reports of the stage: the table's flag equals the search index's CFR marks, and
-    the snake plot's marks are a subset of it (GPR3, GPR4 and XCR1 included since the refresh).
-    The snake plot marks only residues that have a row in the database annotation file, so
-    on the other receptors the table flags more, never fewer (reported, not hidden)."""
+    """All reports of the stage: the table's flag equals the search index's CFR marks, and the
+    snake plot (and the residue drawer, which reads it) marks the same residues by the same full
+    numbering: every residue whose generic number is a CFR position, so on the residues the table
+    lists the two agree exactly (2026-11-13: the snake plot used to mark only residues with a row
+    in the partial batch annotation, 17 of ADRB2's 48)."""
     top = _stage_cfr_top()
     if top is None:
         pytest.skip('no search2/meta.json in %s' % BUILD_DIR)
@@ -137,7 +138,9 @@ def test_every_report_flags_cfr_residues_by_its_own_numbering_and_agrees_with_se
         snake_cfr = {int(p) for p in snake['views']['cfr']['colors']}
         if gid in FIXED_LAYER:
             wrong_layer_seen.add(gid)
-        assert snake_cfr <= flags, (gid, sorted(snake_cfr - flags))
+        assert snake_cfr & set(positions) == flags, (gid, sorted(snake_cfr ^ flags))
+        numbered = {int(p) for p, (_seg, gn) in cfg['annotation'].items() if gn and gn in top}
+        assert snake_cfr == numbered, (gid, sorted(snake_cfr ^ numbered))
         # pages built with the fix carry the flag in the table data, and it is the same set
         extra = _json(html, 'rx-residue-extra')
         rows = (extra or {}).get('rows', {})

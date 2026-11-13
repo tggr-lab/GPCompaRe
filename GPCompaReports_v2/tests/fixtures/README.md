@@ -93,6 +93,15 @@ Refreshes so far:
   Changelog: `~/scratch/2026-11-05_reports_v3/C_REFRESH_CHANGELOG.tsv`. The
   gnomAD label in Methods and Understanding is handled by the approved-edit
   rule `gnomad-release-2026-11-05`, not by the refresh.
+* 2026-11-13, full numbering on the report pages: the TM table (`sec-tm`, all 283
+  receptors) and Largest changes (`sec-changes`, 272 receptors) read the receptor's full
+  GPCRdb numbering from its Studio pack (`get_report_full_annotation_map`) instead of the
+  batch annotation, which only lists the residues of pairs with |ΔRRCS| ≥ 3.0 (ADRB2: 53 of
+  413 residues, no TM1). Wrong data before: helix residues above the threshold missing from
+  the TM table, helix ranges cut short (ADRB2 TM4 "161-161"), generic numbers missing in
+  Largest changes. Old build: the release stage of 2026-11-12; new build:
+  `~/scratch/2026-11-13_site_clockwork/builds/reports/full`. Previous manifest:
+  `freeze_manifest.pre_full_numbering_2026-11-13.json`.
 
 ## Approved edits of 2026-11-05 (final pass, plan section A)
 
