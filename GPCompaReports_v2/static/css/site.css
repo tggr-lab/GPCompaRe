@@ -1213,6 +1213,9 @@ p  { margin: 0 0 var(--s-4); }
   .topbar-mobile-toggle { display: inline-flex; }
   .topbar-search { margin-left: auto; }
 }
+@media (min-width: 1080px) {
+  .mobile-drawer { display: none; }
+}
 
 @media (max-width: 600px) {
   .topbar-inner { gap: var(--s-3); }
