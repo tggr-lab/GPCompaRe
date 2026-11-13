@@ -27,9 +27,9 @@
 
 {% macro chart_body(id, cls='') -%}
 <div class="scard-body">
-  <div class="schart{% if cls %} {{ cls }}{% endif %}" id="{{ id }}" data-chart="{{ id }}" aria-labelledby="{{ id }}-title">{% if caller %}{{ caller() }}{% else %}<p class="nojs-note">Interactive chart (needs JavaScript).</p>{% endif %}</div>
+  <div class="schart{% if cls %} {{ cls }}{% endif %}" id="{{ id }}" data-chart="{{ id }}">{% if caller %}{{ caller() }}{% else %}<p class="nojs-note">Interactive chart (needs JavaScript).</p>{% endif %}</div>
   <div class="scard-table" hidden></div>
-  <aside class="chart-card-side" hidden aria-live="polite"></aside>
+  <aside class="chart-card-side" hidden></aside>
 </div>
 <div class="legend" data-legend></div>
 {%- endmacro %}

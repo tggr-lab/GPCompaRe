@@ -44,7 +44,8 @@
       <h1>Database statistics</h1>
       <p class="stats-lede">What changes when a Class A GPCR activates, where in the receptor it happens, how
         consistently it recurs across the class, and what that means for variants. Each of {{ total_gpcrs }} human
-        receptors is compared between its active and inactive predicted models from GPCRdb.</p>
+        receptors is compared between its active and inactive predicted models from GPCRdb. Contact change is ΔRRCS,
+        the change in the residue-residue contact score (RRCS) of a residue pair between the two models.</p>
       <p class="stats-census">{% for v, l, h in census %}<a href="{{ h }}"><b>{{ v }}</b> {{ l }}</a>{% if not loop.last %}<span class="sep" aria-hidden="true"> · </span>{% endif %}{% endfor %}</p>
 
       <ul class="glance" aria-label="At a glance">
@@ -118,7 +119,7 @@
           <div class="scard-body">
             <div class="schart" id="chart-helix-pairs" data-chart="chart-helix-pairs"><p class="nojs-note">Interactive chart (needs JavaScript).</p></div>
             <div class="scard-table" hidden></div>
-            <aside class="chart-card-side" hidden aria-live="polite"></aside>
+            <aside class="chart-card-side" hidden></aside>
           </div>
           <div class="ledger" data-ledger></div>
         </div>
@@ -173,7 +174,7 @@
               </tbody>
             </table>
           </div>
-          <aside class="chart-card-side" hidden aria-live="polite"></aside>
+          <aside class="chart-card-side" hidden></aside>
         </div>
         <p class="small-note">{{ notes.get('ranking_outlier', '') }}</p>
         <h4 class="sub-head">All {{ cfr_total_positions }} recurrent positions, in CFR score order</h4>
@@ -187,9 +188,9 @@
         {% endcall %}
 
         {% call story_card(cards['chart-partners'], static_prefix, 'has-server-table') %}
-          <div class="tabs" role="tablist" aria-label="View" data-ctl="tab">
-            <button type="button" role="tab" data-value="partners" aria-selected="true">Positions and partners</button>
-            <button type="button" role="tab" data-value="pairs" aria-selected="false">Most recurrent pairs</button>
+          <div class="tabs" role="group" aria-label="View" data-ctl="tab">
+            <button type="button" data-value="partners" aria-pressed="true">Positions and partners</button>
+            <button type="button" data-value="pairs" aria-pressed="false">Most recurrent pairs</button>
           </div>
           <p class="scard-guide tab-guide" data-tab-guide="pairs" hidden>The 20 exact contact pairs (both residues CFRs) that recur in the most receptors, of {{ "{:,}".format(cfr_network_total) }} distinct pairs. All {{ cfr_network|length }} join two top-ranked positions.</p>
           <div class="scard-body">
@@ -205,7 +206,7 @@
                 </tbody>
               </table>
             </div>
-            <aside class="chart-card-side" hidden aria-live="polite"></aside>
+            <aside class="chart-card-side" hidden></aside>
           </div>
           <div class="legend" data-legend></div>
         {% endcall %}
@@ -278,10 +279,10 @@
         <p class="finding">{{ findings['sec-e'] | safe }}</p></div>
 
       {% call story_card(cards['chart-receptors'], static_prefix) %}
-        <div class="tabs" role="tablist" aria-label="View" data-ctl="tab">
-          <button type="button" role="tab" data-value="scatter" aria-selected="true">Scatter</button>
-          <button type="button" role="tab" data-value="table" aria-selected="false">Table</button>
-          <button type="button" role="tab" data-value="families" aria-selected="false">Families</button>
+        <div class="tabs" role="group" aria-label="View" data-ctl="tab">
+          <button type="button" data-value="scatter" aria-pressed="true">Scatter</button>
+          <button type="button" data-value="table" aria-pressed="false">Table</button>
+          <button type="button" data-value="families" aria-pressed="false">Families</button>
         </div>
         <div class="chips axis-chips" role="group" aria-label="Axes" data-ctl="axes"></div>
         <p class="view-text" data-view-text aria-live="polite"></p>
@@ -333,10 +334,11 @@
           Cross-receptor recurrence analyses are limited to residues assigned GPCRdb generic numbers. Residues without
           one, largely in loops and terminal regions, cannot be aligned to a shared position across receptors and take
           no part in these statistics. Recurrence is counted on the full GPCRdb residue maps of all {{ total_gpcrs }}
-          receptors. class_A_all.csv lists 287 human Class A receptors; GPR26, LGR5, OPSX and RXFP1 lack a complete
-          active and inactive model pair and are not in the database.</p>
+          receptors.{% if exclusions %} The list of {{ exclusions.listed }} human Class A receptors also names
+          {{ exclusions.names }}, which lack a complete active and inactive model pair and are not in the
+          database.{% endif %}</p>
         <dl class="defs-list">
-          <dt>ΔRRCS</dt><dd>RRCS of a residue contact pair in the active model minus that in the inactive model. Positive: stronger in the active model.</dd>
+          <dt>ΔRRCS</dt><dd>RRCS (residue-residue contact score) of a residue contact pair in the active model minus that in the inactive model. Positive: stronger in the active model.</dd>
           <dt>Threshold</dt><dd>Per receptor: the mean plus one standard deviation of its |ΔRRCS| values. A pair at or above it is above threshold.</dd>
           <dt>CFR</dt><dd>Core Functional Residue: a residue in at least one above-threshold contact of its receptor.</dd>
           <dt>Decisive call</dt><dd>An AlphaMissense prediction of predicted pathogenic or predicted benign (not ambiguous).</dd>
