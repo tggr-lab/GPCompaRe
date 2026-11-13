@@ -504,7 +504,10 @@ def generate_all_reports(env: Environment, store, output_dir, analysis_results=N
         # The report's variant and annotation layer (Studio packs, analysis/pack_layer.py); the
         # store's batch layer stays the source of the family-wide analyses.
         var_df = store.report_variants(gid)
-        annot_map = store.get_report_annotation_map(gid)
+        # Every residue's segment and generic number (the pack numbering rx-config shows), so the
+        # TM chart and table, Largest changes, the residue summary and the CFR view cover whole
+        # helices; get_report_annotation_map only has the residues of pairs with |dRRCS| >= 3.0.
+        annot_map = store.get_report_full_annotation_map(gid)
         cons_layer = store.report_conservation(gid)
         am_layer = store.report_am_mean(gid)
         if cons_layer is None:

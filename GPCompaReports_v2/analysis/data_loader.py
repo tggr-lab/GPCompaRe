@@ -253,6 +253,35 @@ class GPCRDataStore:
             return _annotation_map(layer.annotation[gpcr_id])
         return self.get_annotation_map(gpcr_id)
 
+    def get_report_full_annotation_map(self, gpcr_id):
+        """Position -> annotation for EVERY residue of the receptor, for the report pages' own views
+        (Largest changes, TM table and chart, residue summary, the snake plot's CFR view).
+
+        get_report_annotation_map only holds the residues of pairs with |dRRCS| >= 3.0 (what the batch
+        wrote), so a view built on it drops whole helices (ADRB2: 53 of 413 residues, no TM1). This is the
+        receptor's pack numbering (GPCRdb segment and number, model positions), the numbering the page's
+        rx-config, snake plot, residue table and drawer already show; a residue the pack lacks keeps its
+        get_report_annotation_map entry. Without packs it is get_report_annotation_map. The family-wide
+        analyses (statistics page, CFR ranking) keep get_annotation_map."""
+        cache = self.__dict__.setdefault('_full_annotation', {})
+        if gpcr_id in cache:
+            return cache[gpcr_id]
+        result = dict(self.get_report_annotation_map(gpcr_id))
+        layer = self._layer()
+        if layer is not None:
+            from .pack_layer import load_pack
+            pack = load_pack(gpcr_id, layer.folder)
+            for row in (pack or {}).get('residues', []):
+                pos, aa, seg, gn = int(row[0]), row[1], row[2], row[3]
+                result[pos] = {
+                    'amino_acid': _safe_str(aa),
+                    'generic_number': '',  # GPCRdb's own generic_number field is not in the pack
+                    'display_number': _safe_str(gn),
+                    'protein_segment': _safe_str(seg),
+                }
+        cache[gpcr_id] = result
+        return result
+
     def report_variants_note(self, gpcr_id):
         """pack_layer.no_variants_reason for a receptor whose report variant table is empty (the line the
         report shows in its place); None when the table has rows, and without packs."""
