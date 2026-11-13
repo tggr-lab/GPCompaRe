@@ -17,6 +17,8 @@ def generate_downloads_page(env, store, output_dir):
         nav_downloads_url='downloads.html',
         nav_contact_url='contact.html',
         page_title='Downloads · GPCompaRe',
+        page_description='Download the statistics tables behind the GPCompaRe database charts as one archive; '
+                         'a downloadable version of the full database is being prepared.',
         page_path='downloads.html',
         total_gpcrs=len(store.gpcr_ids),
     )

@@ -59,6 +59,10 @@ def test_robots_and_sitemap():
     assert all(loc.startswith(SITE_URL) for loc in locs)
     for loc in locs:
         rel = loc[len(SITE_URL):] or 'index.html'
+        if rel == 'studio/' and not (BUILD_DIR / 'studio').exists():
+            continue  # the Studio build is copied in after the site is generated
+        if rel.endswith('/'):
+            rel += 'index.html'
         assert (BUILD_DIR / rel).is_file(), loc
     reports = report_pages(BUILD_DIR / 'reports')
     assert {'%sreports/%s' % (SITE_URL, p.name) for p in reports} <= set(locs)

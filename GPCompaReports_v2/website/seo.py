@@ -12,7 +12,7 @@ from html import escape
 SITE_URL = 'https://tggr-lab.github.io/GPCompaRe/'
 
 #: Site pages other than the receptor reports, in sitemap order.
-STATIC_PAGES = ['', 'browse/index.html', 'statistics.html', 'atlas.html', 'glossary.html',
+STATIC_PAGES = ['', 'browse/index.html', 'statistics.html', 'atlas.html', 'studio/', 'glossary.html',
                 'downloads.html', 'contact.html', 'privacy.html']
 
 
