@@ -9,22 +9,21 @@ Statistics page (templates/statistics.html, static/js/stats-page.js):
     cfr_atlas.json     the 50 class-wide CFR positions x 283 receptors
     receptors.json     the receptor explorer: one row per receptor, families, pattern similarity
 
-plus one CSV per payload (the card's table and download) and figures/fig_*.json (Plotly figure JSON from
-the fig_* factories below, for Plotly.newPlot). manifest.json lists every file with its size.
+plus helix_receptor_cells.json, class_scale.json, class_positions.json and class_variants.json
+(analysis/class_results.py), one CSV per table (the card's table and download) and manifest.json, which lists
+every file with its size.
 
-Sources. Every structural number comes from the batch RRCS run (batch_analysis_20260202_151051), the
-same run as the paper: per receptor, the contact pairs with |dRRCS| at or above the receptor's own
-threshold (the report rule: mean + SD of |dRRCS|, at least 0.2; 23,025 pairs over 283 receptors).
-Residues are placed on segments and generic positions with the Studio packs' full GPCRdb numbering
-(GPCRdb API fetched 2026-10-18), not with the batch annotation files, which number only residues of
-high-magnitude contacts. With the full numbering the class-wide position counts reproduce the
-manuscript's: 274 receptors at 3.50x50, and 49 of the 50 positions match S3 n_receptors exactly. The
-one difference is 8.48x48 (113 here, 112 in S3): the extra receptor is GPR4, which the packs number
-with its own GPCRdb entry, while its batch annotation belonged to GPR42 (no 8.48x48 there). The
-published S3, S4, S5 and S7 values are still shown as
-submitted and are never replaced by these. The CFR set is manuscript_stats.class_cfr_set() (the 50
-top-ranked positions by CFR score). Segment order is report_extras.HELICES_FIRST_ORDER (helices, then
-loops including ICL4, then termini). Ligand type and family are the site's (class_A_all.csv).
+Sources. Every structural number comes from the batch RRCS run (batch_analysis_20260202_151051): per
+receptor, the contact pairs with |dRRCS| at or above the receptor's own threshold (the report rule: mean +
+SD of |dRRCS|, at least 0.2; 23,025 pairs over 283 receptors). Residues are placed on segments and generic
+positions with the Studio packs' full GPCRdb numbering (GPCRdb API fetched 2026-10-18), not with the batch
+annotation files, which number only residues of high-magnitude contacts. The ranked class tables (positions,
+pairs, partners, activation recovery) are read from data/class_tables_2026-11-13/ through
+analysis/class_results.py; with the pack numbering the CFR atlas columns equal their receptor counts at all 50
+positions (8.48x48: 113, GPR4 numbered with its own GPCRdb entry in both). The CFR set is
+manuscript_stats.class_cfr_set() (the 50 top-ranked positions by CFR score). Segment order is
+report_extras.HELICES_FIRST_ORDER (helices, then loops including ICL4, then termini). Ligand type and family
+are the site's (class_A_all.csv).
 
 Sign: dRRCS = active minus inactive. Positive = stronger in the active model (red), negative =
 stronger in the inactive model (blue).
@@ -78,7 +77,8 @@ cfr_atlas.json
 receptors.json
     metrics       [{key, label, description}] for the explorer chips
     columns       the row fields, in order
-    rows          283 rows, each a list in `columns` order: gid, symbol, name, family, ligand, ligand_group (8 groups: the three smallest
+    rows          283 rows, each a list in `columns` order: gid, symbol, name (UniProt entry name),
+                  protein_name (HGNC approved name, null without the search sources), family, ligand, ligand_group (8 groups: the three smallest
                   ligand types fold into Other), threshold, n_pairs, n_above, above_per_100, sum_abs,
                   sum_abs_above, share_active (share of above-threshold pairs stronger in the active
                   model), cfr_numbered, cfr_hits, report (reports/<gid>.html), rank_<metric> (1 = largest)
@@ -86,8 +86,8 @@ receptors.json
                   fingerprint (atlas net, 0 where not hit); receptors with fewer than 32 numbered CFR
                   positions are left out. A browsing aid, not a classification.
     families      [{family, ligand, n, plotted (n >= 4), median_<metric>}]
-    kruskal       {metric: {families: {H, p, k, n}, ligand_types: {H, p, k, n}}}: families with at least
-                  4 receptors, ligand types with at least 4
+    kruskal       {sum_abs: {families: {H, p, k, n}, ligand_types: {H, p, k, n}}}: total |dRRCS| per receptor
+                  across all ligand types and across families with at least FAMILY_MIN_KW (5) receptors
     ligand_groups [{key, n, color}] (light-mode hues, validated for color-vision deficiency)
 
 Hook for the page generator (statistics_page.py):
@@ -107,15 +107,11 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 from scipy import stats as sstats
 
-from . import pack_layer
-from .manuscript_stats import class_cfr_ranks, class_cfr_set, load_am_comparison, TOP50_CSV
-from .tm_domain_analysis import (
-    DIVERGING, helix_pair_atlas,
-    fig_helix_pair_coverage, fig_helix_pair_signed,
-)
+from . import class_results, pack_layer
+from .manuscript_stats import class_cfr_ranks, class_cfr_set, load_am_comparison
+from .tm_domain_analysis import helix_pair_atlas
 
 SCHEMA = 'gpcompare-stats/%s@1'
 LAYER_LABEL = 'GPCompaRe database statistics'
@@ -127,6 +123,8 @@ SIMILARITY_MIN_NUMBERED = 32
 SIMILARITY_TOP = 5
 #: Families with fewer receptors are listed in the strip's note, not plotted.
 FAMILY_MIN = 4
+#: Kruskal-Wallis on total |dRRCS|: every ligand type; families with at least this many receptors.
+FAMILY_MIN_KW = 5
 
 #: The explorer's ligand-type colors (eight hues; the three smallest types fold into Other).
 LIGAND_GROUP_ORDER = ['Peptide receptors', 'Orphan receptors', 'Aminergic receptors', 'Lipid receptors',
@@ -288,11 +286,11 @@ def cfr_positions():
     """[{gn, segment, rank, table_n_receptors}] of the class-wide CFR set, helices first."""
     ranks = class_cfr_ranks()
     cfr = class_cfr_set(ranks)
-    s3 = pd.read_csv(TOP50_CSV)
-    seg = dict(zip(s3['generic_number'].astype(str), s3['segment']))
-    s3n = dict(zip(s3['generic_number'].astype(str), s3['n_receptors'].astype(int)))
+    table = class_results.class_ranking()
+    seg = dict(zip(table['generic_number'].astype(str), table['segment']))
+    n_of = dict(zip(table['generic_number'].astype(str), table['n_receptors'].astype(int)))
     seg_index = {s: k for k, s in enumerate(_segment_order())}
-    rows = [{'gn': g, 'segment': seg.get(g, ''), 'rank': ranks[g], 'table_n_receptors': s3n.get(g)} for g in cfr]
+    rows = [{'gn': g, 'segment': seg.get(g, ''), 'rank': ranks[g], 'table_n_receptors': int(n_of[g])} for g in cfr]
     return sorted(rows, key=lambda r: _gn_sort_key(r['gn'], r['segment'], seg_index))
 
 
@@ -353,7 +351,8 @@ def build_cfr_atlas(inputs):
                       net=('Signed sum of the above-threshold ΔRRCS of the contacts touching the residue; '
                            'a sum can hide opposing changes.'),
                       table_note=('table_n_receptors is the receptor count of the ranked CFR table (full GPCRdb '
-                                  'residue maps); columns[].n_hit is the count with each receptor\'s own numbering.')),
+                                  'residue maps); columns[].n_hit is the count with each receptor\'s own numbering. '
+                                  'The two agree at every position.')),
         'positions': positions,
         'rank_order': rank_order,
         'receptors': rows,
@@ -386,12 +385,14 @@ def _cosine_top(vectors, eligible, k=SIMILARITY_TOP):
 
 def build_receptors(inputs, atlas):
     by_gid = {row['gid']: row for row in atlas['receptors']}
+    protein = class_results.hgnc_names([i.gid for i in inputs])
     rows = []
     for inp in inputs:
         a = by_gid[inp.gid]
         n_above = int(len(inp.sig_delta))
         rows.append({
-            'gid': inp.gid, 'symbol': inp.symbol, 'name': inp.name, 'family': inp.family,
+            'gid': inp.gid, 'symbol': inp.symbol, 'name': inp.name, 'protein_name': protein.get(inp.gid),
+            'family': inp.family,
             'ligand': inp.ligand, 'ligand_group': ligand_group(inp.ligand),
             'threshold': round(inp.threshold, 3), 'n_pairs': inp.n_pairs, 'n_above': n_above,
             'above_per_100': round(100.0 * n_above / inp.n_pairs, 2) if inp.n_pairs else None,
@@ -422,15 +423,14 @@ def build_receptors(inputs, atlas):
             f['median_' + key] = None if sub[key].isna().all() else round(float(sub[key].median()), 4)
         families.append(f)
 
-    kruskal = {}
-    for key, _l, _d in EXPLORER_METRICS:
-        kruskal[key] = {}
-        for label, col in (('families', 'family'), ('ligand_types', 'ligand')):
-            groups = [g[key].dropna().to_numpy() for _, g in df.groupby(col) if g[key].notna().sum() >= FAMILY_MIN]
-            if len(groups) >= 2:
-                h, p = sstats.kruskal(*groups)
-                kruskal[key][label] = {'H': round(float(h), 3), 'p': float('%.3g' % p), 'k': len(groups),
-                                       'n': int(sum(len(g) for g in groups))}
+    # Kruskal-Wallis on total |dRRCS| only: every ligand type; families with at least FAMILY_MIN_KW receptors
+    kruskal = {'sum_abs': {}}
+    for label, col, min_n in (('families', 'family', FAMILY_MIN_KW), ('ligand_types', 'ligand', 1)):
+        groups = [g['sum_abs'].dropna().to_numpy() for _, g in df.groupby(col) if g['sum_abs'].notna().sum() >= min_n]
+        if len(groups) >= 2:
+            h, p = sstats.kruskal(*groups)
+            kruskal['sum_abs'][label] = {'H': round(float(h), 3), 'p': float('%.3g' % p), 'k': len(groups),
+                                         'n': int(sum(len(g) for g in groups))}
     counts = df['ligand_group'].value_counts()
     return {
         'meta': _meta('receptors', inputs,
@@ -438,9 +438,9 @@ def build_receptors(inputs, atlas):
                                   '(net ΔRRCS at each CFR position, 0 where there is no above-threshold '
                                   'contact). Receptors with fewer than %d numbered CFR positions are left out. '
                                   'A browsing aid, not a classification.' % SIMILARITY_MIN_NUMBERED),
-                      kruskal_scope=('Kruskal-Wallis across families (or ligand types) with at least %d '
-                                     'receptors; a test of difference in distribution, not of any single '
-                                     'family.' % FAMILY_MIN)),
+                      kruskal_scope=('Kruskal-Wallis on total |ΔRRCS| per receptor, across all ligand types and '
+                                     'across families with at least %d receptors; a test of spread across groups, '
+                                     'not between two chosen groups.' % FAMILY_MIN_KW)),
         'metrics': [{'key': k, 'label': l, 'description': d} for k, l, d in EXPLORER_METRICS],
         'columns': columns,
         'rows': [[r[c] for c in columns] for r in rows],
@@ -463,6 +463,7 @@ def build_overview(inputs, manuscript=None, am=None):
     n_pairs = int(sum(i.n_pairs for i in inputs))
     n_above = int(sum(len(i.sig_delta) for i in inputs))
     med = float(np.median([i.threshold for i in inputs]))
+    lo, hi = min(i.threshold for i in inputs), max(i.threshold for i in inputs)
     n_recurrent = manuscript.get('n_recurrent_positions') or len(class_cfr_ranks())
     n_cfr = len(class_cfr_set())
     site = LAYER_LABEL
@@ -477,6 +478,10 @@ def build_overview(inputs, manuscript=None, am=None):
          'label': 'pairs at or above their receptor threshold', 'source': 'database', 'source_label': site},
         {'key': 'median_threshold', 'value': round(med, 4), 'display': '%.2f' % med,
          'label': 'median receptor threshold on |ΔRRCS|', 'source': 'database', 'source_label': site},
+        {'key': 'share_above', 'value': round(100.0 * n_above / n_pairs, 2), 'display': '%.1f%%' % (100.0 * n_above / n_pairs),
+         'label': 'of contact pairs at or above their receptor threshold', 'source': 'database', 'source_label': site},
+        {'key': 'threshold_range', 'value': [round(lo, 4), round(hi, 4)], 'display': '%.2f to %.2f' % (lo, hi),
+         'label': 'range of receptor thresholds on |ΔRRCS|', 'source': 'database', 'source_label': site},
         {'key': 'recurrent_positions', 'value': int(n_recurrent), 'display': '{:,}'.format(int(n_recurrent)),
          'label': 'recurrent positions (above-threshold in at least 3 receptors)', 'source': 'ranking',
          'source_label': ranking},
@@ -505,99 +510,12 @@ def build_overview(inputs, manuscript=None, am=None):
     }
 
 
-# --------------------------------------------------------------------------- figures
-
-def fig_cfr_atlas(atlas, mode='direction', order='helices'):
-    """The 50 x 283 matrix. mode 'direction': net dRRCS at hit cells (red/blue), gray where the receptor has
-    no residue at the position; mode 'state': the three states. order: 'helices' or 'rank'."""
-    cols = list(range(len(atlas['positions']))) if order == 'helices' else atlas['rank_order']
-    x = [atlas['positions'][k]['gn'] for k in cols]
-    rows = atlas['receptors']
-    y = ['%s (%s)' % (r['symbol'], r['family']) for r in rows]
-    fig = go.Figure()
-    if mode == 'state':
-        z = [[int(r['state'][k]) for k in cols] for r in rows]
-        fig.add_trace(go.Heatmap(
-            z=z, x=x, y=y, zmin=0, zmax=2, showscale=False,
-            colorscale=[[0, '#E2E8F0'], [0.333, '#E2E8F0'], [0.334, '#FFFFFF'], [0.666, '#FFFFFF'],
-                        [0.667, '#0D9488'], [1, '#0D9488']],
-            hovertemplate='%{y}<br>%{x}<br>state %{z}<extra></extra>'))
-    else:
-        missing = [[1 if r['state'][k] == '0' else None for k in cols] for r in rows]
-        z = [[(r['net'][k] if r['state'][k] == '2' else (0 if r['state'][k] == '1' else None)) for k in cols]
-             for r in rows]
-        vals = [abs(v) for row in z for v in row if v]
-        lim = float(np.percentile(vals, 95)) if vals else 1.0
-        fig.add_trace(go.Heatmap(z=missing, x=x, y=y, showscale=False, hoverinfo='skip',
-                                 colorscale=[[0, '#E2E8F0'], [1, '#E2E8F0']]))
-        fig.add_trace(go.Heatmap(
-            z=z, x=x, y=y, zmin=-lim, zmax=lim, zmid=0, colorscale=DIVERGING, hoverongaps=False,
-            colorbar=dict(title=dict(text='Net ΔRRCS'), thickness=12),
-            hovertemplate='%{y}<br>%{x}<br>Net ΔRRCS of above-threshold contacts: %{z:+.2f}<extra></extra>'))
-    fig.update_layout(
-        title='The %d CFR positions across %d receptors' % (len(x), len(rows)),
-        height=max(600, 4 * len(rows)), xaxis=dict(side='top', tickangle=-90, tickfont=dict(size=9)),
-        yaxis=dict(autorange='reversed', showticklabels=False), margin=dict(l=20, r=20, t=110, b=20))
-    return fig
-
+# --------------------------------------------------------------------------- helpers
 
 def explorer_rows(receptors):
     """receptors.json rows as dicts keyed by `columns`."""
     cols = receptors['columns']
     return [dict(zip(cols, r)) for r in receptors['rows']]
-
-
-def fig_explorer_scatter(receptors, x='n_above', y='share_active', size='cfr_hits'):
-    """Every receptor as a point, colored by ligand group; x on a log axis for counts and sums."""
-    label = {m['key']: m['label'] for m in receptors['metrics']}
-    rows = explorer_rows(receptors)
-    fig = go.Figure()
-    for g in receptors['ligand_groups']:
-        sub = [r for r in rows if r['ligand_group'] == g['key'] and r[x] is not None
-               and r[y] is not None]
-        if not sub:
-            continue
-        sz = [r[size] or 0 for r in sub]
-        fig.add_trace(go.Scatter(
-            x=[r[x] for r in sub], y=[r[y] for r in sub], mode='markers', name='%s (%d)' % (g['key'], len(sub)),
-            marker=dict(color=g['color'], size=[5 + 0.35 * s for s in sz], opacity=0.85,
-                        line=dict(width=0.5, color='#FFFFFF')),
-            text=[r['symbol'] for r in sub], customdata=[[r['family'], r['report']] for r in sub],
-            hovertemplate='%{text} (%{customdata[0]})<br>' + label.get(x, x) + ': %{x}<br>'
-                          + label.get(y, y) + ': %{y}<extra></extra>'))
-    fig.update_layout(
-        title='%s and %s, %d receptors' % (label.get(x, x), label.get(y, y).lower(), len(receptors['rows'])),
-        xaxis=dict(title=label.get(x, x), type='log' if x in ('n_above', 'sum_abs', 'n_pairs') else 'linear'),
-        yaxis=dict(title=label.get(y, y), tickformat='.0%' if y == 'share_active' else None),
-        height=520, legend=dict(orientation='h', y=-0.2))
-    return fig
-
-
-def fig_family_strip(receptors, metric='n_above'):
-    """One row per family with at least FAMILY_MIN receptors: each receptor a dot, a median tick."""
-    label = {m['key']: m['label'] for m in receptors['metrics']}
-    fams = sorted((f for f in receptors['families'] if f['plotted'] and f['median_' + metric] is not None),
-                  key=lambda f: f['median_' + metric])
-    names = ['%s (%d)' % (f['family'], f['n']) for f in fams]
-    color = {g['key']: g['color'] for g in receptors['ligand_groups']}
-    rows = explorer_rows(receptors)
-    fig = go.Figure()
-    for f, nm in zip(fams, names):
-        sub = [r for r in rows if r['family'] == f['family'] and r[metric] is not None]
-        fig.add_trace(go.Scatter(
-            x=[r[metric] for r in sub], y=[nm] * len(sub), mode='markers', showlegend=False,
-            marker=dict(size=7, color=color.get(ligand_group(f['ligand']), '#475569'), opacity=0.8),
-            text=[r['symbol'] for r in sub], customdata=[r['report'] for r in sub],
-            hovertemplate='%{text}: %{x}<extra></extra>'))
-    fig.add_trace(go.Scatter(
-        x=[f['median_' + metric] for f in fams], y=names, mode='markers', name='median',
-        marker=dict(symbol='line-ns-open', size=16, line=dict(width=2, color='#0F172A')),
-        hovertemplate='median %{x}<extra></extra>'))
-    fig.update_layout(
-        title='%s by family (families with at least %d receptors)' % (label.get(metric, metric), FAMILY_MIN),
-        xaxis=dict(title=label.get(metric, metric), tickformat='.0%' if metric == 'share_active' else None),
-        height=max(400, 22 * len(fams) + 120), margin=dict(l=220))
-    return fig
 
 
 # --------------------------------------------------------------------------- CSV tables
@@ -611,43 +529,49 @@ def _csv(rows, header):
 
 
 def csv_tables(payloads):
-    """{filename: CSV text} for the cards' table views and downloads."""
-    hp, atlas, rec, ov = (payloads[k] for k in ('helix_pairs', 'cfr_atlas', 'receptors', 'overview'))
-    segs = hp['segments']
-    cols = hp['summary_columns']
-    hp_rows = [[g['key'], g['n'], segs[c[0]], segs[c[1]]] + c[2:] for g in hp['groups'] for c in g['cells']]
+    """{filename: CSV text} for the cards' table views and downloads (the class_results tables included).
+    coverage.csv is written by the page generator from the Methods rows."""
+    atlas, rec = payloads['cfr_atlas'], payloads['receptors']
     pos = atlas['positions']
     at_rows = [[r['gid'], r['symbol'], r['ligand'], r['family'], p['gn'], p['segment'], p['rank'],
                 int(r['state'][k]), r['net'][k]] for r in atlas['receptors'] for k, p in enumerate(pos)]
     rc = rec['columns']
-    return {
-        'helix_pairs.csv': _csv(hp_rows, ['group', 'group_n', 'segment_a', 'segment_b'] + cols[2:]),
+    out = {
         'cfr_atlas.csv': _csv(at_rows, ['gid', 'symbol', 'ligand_type', 'family', 'generic_number',
                                         'segment', 'cfr_score_rank', 'state', 'net_delta_rrcs']),
         'receptors.csv': _csv(rec['rows'], rc),
-        'coverage.csv': _csv([[c['view'], c['receptors'], c['source'], c['note']] for c in ov['coverage']],
-                             ['view', 'receptors', 'source', 'note']),
     }
+    out.update(class_results.csv_tables(payloads))
+    return out
 
 
 # --------------------------------------------------------------------------- build + hook
 
 def build_class_atlas(store, manuscript=None, folder=None):
-    """All four payloads and the figure factories' default figures."""
+    """Every class payload of the Statistics page (see the module docstring and analysis/class_results.py)."""
+    folder = Path(folder) if folder else (
+        store.report_layer.folder if getattr(store, 'report_layer', None) is not None else pack_layer.pack_dir())
     inputs = receptor_inputs(store, folder)
     payloads = {}
     payloads['helix_pairs'], payloads['helix_pair_cells'] = build_helix_pairs(inputs)
+    class_results.add_segments_interfaces(payloads['helix_pairs'])
+    hrc = class_results.build_helix_receptor_cells(payloads['helix_pair_cells'], payloads['helix_pairs'])
+    payloads['helix_receptor_cells'] = dict(hrc, meta=_meta('helix_receptor_cells', inputs))
     payloads['cfr_atlas'] = build_cfr_atlas(inputs)
     payloads['receptors'] = build_receptors(inputs, payloads['cfr_atlas'])
     payloads['overview'] = build_overview(inputs, manuscript)
-    figures = {
-        'fig_helix_pair_signed': fig_helix_pair_signed(payloads['helix_pairs']),
-        'fig_helix_pair_coverage': fig_helix_pair_coverage(payloads['helix_pairs']),
-        'fig_cfr_atlas': fig_cfr_atlas(payloads['cfr_atlas']),
-        'fig_explorer_scatter': fig_explorer_scatter(payloads['receptors']),
-        'fig_family_strip': fig_family_strip(payloads['receptors']),
-    }
-    return {'payloads': payloads, 'figures': figures, 'n_receptors': len(inputs)}
+    payloads['class_scale'] = dict(class_results.build_class_scale(inputs, store.delta_data),
+                                   meta=_meta('class_scale', inputs))
+    payloads['class_positions'] = dict(
+        class_results.build_class_positions(pack_layer.load_pack(class_results.SCAFFOLD_GID, folder)),
+        meta=_meta('class_positions', inputs))
+    payloads['class_variants'] = dict(
+        class_results.build_class_variants((manuscript or {}).get('am_comparison')),
+        meta=_meta('class_variants', inputs,
+                   scope=('Unique missense substitutions of the gnomAD v4.1.0 query of the RRCS batch run at '
+                          'residues in contacts with |ΔRRCS| of 3.0 or more, generic-numbered positions; the '
+                          'receptors field is the receptor count of that allele set.')))
+    return {'payloads': payloads, 'n_receptors': len(inputs)}
 
 
 def _dump(obj):
@@ -655,10 +579,9 @@ def _dump(obj):
 
 
 def write_stats_data(atlas, output_dir):
-    """Write data/stats/{name}.json, the CSVs, figures/fig_*.json and manifest.json under output_dir.
-    Returns {relative path: bytes}."""
+    """Write data/stats/{name}.json, the CSVs and manifest.json under output_dir. Returns {relative path: bytes}."""
     root = Path(output_dir) / STATS_SUBDIR
-    (root / 'figures').mkdir(parents=True, exist_ok=True)
+    root.mkdir(parents=True, exist_ok=True)
     files = {}
 
     def put(rel, text):
@@ -670,8 +593,6 @@ def write_stats_data(atlas, output_dir):
         put('%s.json' % name, _dump(payload))
     for fname, text in csv_tables(atlas['payloads']).items():
         put(fname, text)
-    for name, fig in atlas['figures'].items():
-        put('figures/%s.json' % name, fig.to_json())
     manifest = {'schema': SCHEMA % 'manifest', 'label': LAYER_LABEL,
                 'files': [{'path': p, 'bytes': b} for p, b in sorted(files.items())]}
     put('manifest.json', _dump(manifest))
@@ -680,12 +601,11 @@ def write_stats_data(atlas, output_dir):
 
 def stats_data_for_page(store, analysis_results, output_dir):
     """The Statistics page hook: build once (cached in analysis_results['class_atlas']), write the files,
-    return {'payloads', 'figures', 'files', 'urls'}; urls are relative to the site root."""
+    return {'payloads', 'files', 'urls'}; urls are relative to the site root."""
     atlas = analysis_results.get('class_atlas')
     if atlas is None:
         atlas = build_class_atlas(store, analysis_results.get('manuscript'))
         analysis_results['class_atlas'] = atlas
     files = write_stats_data(atlas, output_dir)
     urls = {name: str(STATS_SUBDIR / ('%s.json' % name)) for name in atlas['payloads']}
-    urls.update({name: str(STATS_SUBDIR / 'figures' / ('%s.json' % name)) for name in atlas['figures']})
-    return {'payloads': atlas['payloads'], 'figures': atlas['figures'], 'files': files, 'urls': urls}
+    return {'payloads': atlas['payloads'], 'files': files, 'urls': urls}

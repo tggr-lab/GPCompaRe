@@ -151,22 +151,75 @@ def test_figures(hp):
 def test_written_files(data, tmp_path):
     files = ca.write_stats_data(data[1], tmp_path)
     root = tmp_path / 'data' / 'stats'
-    for name in ('overview', 'helix_pairs', 'helix_pair_cells', 'cfr_atlas', 'receptors', 'manifest'):
+    for name in ('overview', 'helix_pairs', 'helix_pair_cells', 'helix_receptor_cells', 'cfr_atlas', 'receptors',
+                 'class_scale', 'class_positions', 'class_variants', 'manifest'):
         assert (root / ('%s.json' % name)).is_file()
-    for name in ('fig_helix_pair_signed', 'fig_helix_pair_coverage', 'fig_cfr_atlas',
-                 'fig_explorer_scatter', 'fig_family_strip'):
-        assert (root / 'figures' / ('%s.json' % name)).is_file()
+    assert not (root / 'figures').exists(), 'figures/*.json are no longer written'
     manifest = json.loads((root / 'manifest.json').read_text())
     assert {f['path'] for f in manifest['files']} | {'data/stats/manifest.json'} == set(files)
+    assert not any('figures/' in p for p in files)
     for p, b in files.items():
         assert (tmp_path / p).stat().st_size == b
     csv = pd.read_csv(root / 'helix_pairs.csv')
-    assert csv[csv['group'] == 'all']['n_pairs'].sum() == N_ABOVE
+    assert csv[csv['group'] == 'all']['above_threshold_pairs'].sum() == N_ABOVE
 
 
 def test_hook_caches_and_returns_urls(data, tmp_path):
     results = {'class_atlas': data[1]}
     out = ca.stats_data_for_page(data[0], results, tmp_path)
     assert out['urls']['helix_pairs'] == 'data/stats/helix_pairs.json'
-    assert out['urls']['fig_cfr_atlas'] == 'data/stats/figures/fig_cfr_atlas.json'
+    assert out['urls']['helix_receptor_cells'] == 'data/stats/helix_receptor_cells.json'
+    assert not any('figures' in u for u in out['urls'].values())
     assert out['payloads'] is data[1]['payloads']
+
+
+def test_interfaces_magnitude(hp):
+    """Mean |ΔRRCS| per contact between two helices, all contacts: TM3-TM6 and TM5-TM6 1.42, TM3-TM7 1.31."""
+    by = {(x['seg_i'], x['seg_j']): x for x in hp['interfaces']}
+    assert len(by) == 21
+    assert (by[('TM3', 'TM6')]['mean_abs_delta'], by[('TM3', 'TM6')]['n_contacts']) == (1.4184, 4921)
+    assert (by[('TM5', 'TM6')]['mean_abs_delta'], by[('TM5', 'TM6')]['n_contacts']) == (1.416, 11850)
+    assert (by[('TM3', 'TM7')]['mean_abs_delta'], by[('TM3', 'TM7')]['n_contacts']) == (1.3069, 2452)
+    sup = [x for x in hp['interfaces'] if x['supported']]
+    assert len(sup) == 14 and all(x['n_contacts'] >= 50 for x in sup)
+    assert all(x['n_contacts'] < 50 for x in hp['interfaces'] if not x['supported'])
+    lead = sorted(sup, key=lambda x: -x['mean_abs_delta'])[:3]
+    assert [(x['seg_i'], x['seg_j'], round(x['mean_abs_delta'], 2)) for x in lead] == [
+        ('TM3', 'TM6', 1.42), ('TM5', 'TM6', 1.42), ('TM3', 'TM7', 1.31)]
+
+
+def test_segments_magnitude(hp):
+    """Mean |ΔRRCS| per contact endpoint by segment: TM1 0.745 to H8 1.213; loops and termini 1.06 to 1.23."""
+    by = {x['segment']: x for x in hp['segments_magnitude']}
+    want = {'TM1': 0.745, 'TM2': 0.797, 'TM3': 0.921, 'TM4': 0.739, 'TM5': 0.979, 'TM6': 1.126, 'TM7': 1.075,
+            'H8': 1.213}
+    assert {k: round(by[k]['mean_abs_delta'], 3) for k in want} == want
+    assert all(by[k]['block'] == 'Helices' for k in want)
+    loops = [x['mean_abs_delta'] for x in hp['segments_magnitude'] if x['block'] == 'Loops and termini']
+    assert len(loops) == 8 and (round(min(loops), 2), round(max(loops), 2)) == (1.06, 1.23)
+    assert sum(x['endpoints'] for x in hp['segments_magnitude']) == 426877
+
+
+def test_direction_pins(hp):
+    """TM3-TM6 weaker in the active model (mean net −5.90, 79.5% agree), TM3-TM7 stronger (+4.667, 93.7%)."""
+    allg = next(g for g in hp['groups'] if g['key'] == 'all')
+    c36 = _cell(allg, 'TM3', 'TM6', hp)
+    c37 = _cell(allg, 'TM3', 'TM7', hp)
+    assert (round(c36['mean_net'], 2), round(100 * c36['agree'], 1), c36['n_down'], c36['n_present']) == (-5.9, 79.5, 210, 264)
+    assert (round(c37['mean_net'], 3), round(100 * c37['agree'], 1), c37['n_up'], c37['n_present']) == (4.667, 93.7, 208, 222)
+
+
+def test_helix_receptor_cells(data, hp, cells):
+    """283 rows x 36 helix cells; each value is the receptor's net of helix_pair_cells.json."""
+    hrc = data[1]['payloads']['helix_receptor_cells']
+    assert len(hrc['pairs']) == 36 and all(i <= j < 8 for i, j in hrc['pairs'])
+    assert len(hrc['net']) == N_RECEPTORS and all(len(r) == 36 for r in hrc['net'])
+    assert hrc['receptors'] == [r['gid'] for r in hp['receptors']]
+    rc = cells['receptor_columns']
+    k36 = hrc['pairs'].index([2, 5])
+    cell = next(c for c in cells['cells'] if (c['i'], c['j']) == (2, 5))
+    by = {row[rc.index('receptor')]: row[rc.index('net')] for row in cell['receptors']}
+    hrh1 = hrc['receptors'].index('hrh1_human')
+    assert hrc['net'][hrh1][k36] == pytest.approx(by[hrh1], abs=1e-3)
+    for r, v in enumerate(hrc['net']):
+        assert (v[k36] is None) == (r not in by)

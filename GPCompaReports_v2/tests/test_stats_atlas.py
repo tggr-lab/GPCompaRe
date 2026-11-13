@@ -7,7 +7,8 @@ import pandas as pd
 import pytest
 
 from GPCompaReports_v2.analysis import class_atlas as ca
-from GPCompaReports_v2.analysis.manuscript_stats import class_cfr_set, load_am_comparison, TOP50_CSV
+from GPCompaReports_v2.analysis.class_results import class_ranking
+from GPCompaReports_v2.analysis.manuscript_stats import class_cfr_set, TOP50_CSV
 from GPCompaReports_v2.website.page_generators.report_extras import HELICES_FIRST_ORDER
 
 from .spelling import british_hits
@@ -59,19 +60,18 @@ def test_positions_helices_first_and_rank_order(atlas):
     assert ranks == sorted(ranks) and ranks[0] == 1 and ranks[-1] == 50
 
 
-def test_counts_reproduce_the_manuscript(atlas):
-    """Pack numbering reproduces S3: 274 at 3.50x50 and 49 of 50 positions exactly. 8.48x48 has one more,
-    GPR4, numbered with its own GPCRdb entry in the packs (its batch annotation was GPR42's)."""
+def test_counts_equal_the_ranking(atlas):
+    """Pack numbering gives each column the receptor count of the ranking (positions.tsv) at all 50 positions,
+    8.48x48 included: 113, GPR4 numbered with its own GPCRdb entry in both. S3 has 112 there."""
+    table = class_ranking().set_index('generic_number')['n_receptors'].to_dict()
     s3 = pd.read_csv(TOP50_CSV).set_index('generic_number')['n_receptors'].to_dict()
     by_gn = {p['gn']: (p, c) for p, c in zip(atlas['positions'], atlas['columns'])}
     assert by_gn['3.50x50'][1]['n_hit'] == 274
-    diff = {g: (c['n_hit'], s3[g]) for g, (p, c) in by_gn.items() if c['n_hit'] != s3[g]}
-    assert diff == {'8.48x48': (113, 112)}
+    assert all(c['n_hit'] == p['table_n_receptors'] == table[g] for g, (p, c) in by_gn.items())
+    assert {g: (table[g], s3[g]) for g in by_gn if table[g] != s3[g]} == {'8.48x48': (113, 112)}
     k = [p['gn'] for p in atlas['positions']].index('8.48x48')
     hits = [r['gid'] for r in atlas['receptors'] if r['state'][k] == '2']
     assert 'gpr4_human' in hits and len(hits) == 113
-    # table_n_receptors is the ranked table's value, unchanged
-    assert all(p['table_n_receptors'] == s3[p['gn']] for p in atlas['positions'])
 
 
 def test_column_and_group_totals(atlas):
@@ -104,13 +104,6 @@ def test_atlas_net_equals_the_batch_rows(data, atlas):
             assert row['net'][k] == pytest.approx(m['delta_rrcs'].sum(), abs=1e-3)
         else:
             assert m.empty
-
-
-def test_atlas_figure(atlas):
-    f = ca.fig_cfr_atlas(atlas)
-    assert len(f.data[-1].x) == 50 and len(f.data[-1].y) == N_RECEPTORS
-    f = ca.fig_cfr_atlas(atlas, mode='state', order='rank')
-    assert list(f.data[0].x)[0] == '3.50x50'
 
 
 # ------------------------------------------------------------------------------- explorer
@@ -165,8 +158,22 @@ def test_ligand_groups_and_families(rec):
     assert other == {'Alicarboxylic acid receptors', 'Melatonin receptors', 'Steroid receptors'}
     assert sum(f['n'] for f in rec['families']) == N_RECEPTORS
     assert all(f['plotted'] == (f['n'] >= ca.FAMILY_MIN) for f in rec['families'])
-    kw = rec['kruskal']['n_above']['families']
-    assert kw['n'] == sum(f['n'] for f in rec['families'] if f['plotted'])
+
+
+def test_kruskal_wallis_on_total_change_only(rec):
+    """One metric (total |ΔRRCS|), regrouped: every ligand type; families with at least 5 receptors."""
+    assert set(rec['kruskal']) == {'sum_abs'}
+    kw = rec['kruskal']['sum_abs']
+    assert kw['ligand_types'] == {'H': 27.866, 'p': 0.001, 'k': 10, 'n': 283}
+    assert kw['families'] == {'H': 27.36, 'p': 0.0259, 'k': 16, 'n': 192}
+    assert kw['families']['n'] == sum(f['n'] for f in rec['families'] if f['n'] >= ca.FAMILY_MIN_KW)
+
+
+def test_protein_names_for_the_finder(rec):
+    rows = {r['gid']: r for r in ca.explorer_rows(rec)}
+    assert 'protein_name' in rec['columns']
+    assert rows['adrb2_human']['protein_name'] == 'adrenoceptor beta 2'
+    assert sum(1 for r in rows.values() if r['protein_name']) == N_RECEPTORS
 
 
 def test_similarity(rec):
@@ -181,21 +188,15 @@ def test_similarity(rec):
         assert sims == sorted(sims, reverse=True) and all(-1 <= s <= 1 for s in sims)
 
 
-def test_explorer_figures(rec):
-    f = ca.fig_explorer_scatter(rec)
-    assert sum(len(t.x) for t in f.data) == N_RECEPTORS
-    assert f.layout.xaxis.type == 'log'
-    f = ca.fig_family_strip(rec, 'share_active')
-    plotted = [x for x in rec['families'] if x['plotted']]
-    assert sum(len(t.x) for t in f.data[:-1]) == sum(x['n'] for x in plotted)
-
-
 # ------------------------------------------------------------------------------- overview
 
 def test_overview_tiles(overview):
     t = {x['key']: x for x in overview['tiles']}
     assert [x['key'] for x in overview['tiles']] == ['receptors', 'contact_pairs', 'above_threshold',
-                                                    'median_threshold', 'recurrent_positions', 'cfr_set']
+                                                    'median_threshold', 'share_above', 'threshold_range',
+                                                    'recurrent_positions', 'cfr_set']
+    assert t['share_above']['value'] == 10.79 and t['share_above']['display'] == '10.8%'
+    assert t['threshold_range']['display'] == '1.23 to 3.78'
     assert t['receptors']['value'] == 283 and t['receptors']['source'] == 'database'
     assert t['contact_pairs']['display'] == '213,456'
     assert t['above_threshold']['display'] == '23,025'
