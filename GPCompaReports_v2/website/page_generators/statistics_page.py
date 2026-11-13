@@ -35,11 +35,11 @@ import numpy as np
 import plotly.graph_objects as go
 from jinja2 import Environment
 
+from ...analysis import class_results
 from ...analysis.cfr_analysis import CFR_TOP_N
 from ...analysis.class_atlas import stats_data_for_page
 from ...analysis.cfr_variants import write_cfr_variants
 from ...analysis.manuscript_stats import write_am_comparison
-from ...analysis.variant_correlation import write_conservation_residues_csv
 from .. import data_versions
 from ..plotly_theming import theme_overrides
 
@@ -51,8 +51,9 @@ NETWORK_ROWS_SHOWN = 20
 STATS_DIR = 'data/stats'
 ZIP_NAME = 'gpcompare_statistics_tables.zip'
 
-#: The four receptors without site variant data: two causes, stated separately
-#: (tests/test_variant_coverage_note.py).
+#: The batch variant layer of the old conservation card (279 receptors). Read only by the cards the page
+#: rewrite removes (chart-conservation and the old coverage table); the new Methods rows take their counts
+#: from cfr_variants.json and the AlphaMissense summary (coverage_rows below).
 VARIANT_LAYER_RECEPTORS = 279
 
 #: The class atlas files the browser renders (written by other analysis modules).
@@ -244,6 +245,55 @@ def _am_method(am):
     return ''.join(out)
 
 
+# ---------------------------------------------------------------------------- Methods coverage
+
+#: The class payloads the new cards fetch (written by class_atlas.write_stats_data; atlas_map.json by the
+#: GPCRome Atlas step).
+CLASS_PAYLOADS = ('class_scale', 'helix_pairs', 'helix_pair_cells', 'helix_receptor_cells', 'class_positions',
+                  'cfr_atlas', 'class_variants', 'cfr_variants', 'receptors', 'atlas_map')
+
+
+def _coverage_rows(store, payloads, am, cfr_var, src, total, rrcs_label, numbering_label):
+    """The Methods rows: every count from a payload or the AlphaMissense summary, every label from
+    data_versions.json, every name from the store (receptor_labels)."""
+    pos = payloads.get('class_positions') or {}
+    if not pos or not am:
+        return []
+    gids = list(store.gpcr_ids)
+    labels = class_results.receptor_labels(gids)
+    dropped = [g for g in gids if g in set(am.get('dropped') or [])]
+    vdir = Path(getattr(store, 'variant_dir', ''))
+    no_records = [g for g in gids if not (vdir / ('%s_variants.csv' % g)).is_file()]
+    if am.get('query_receptors') is not None and len(gids) - len(no_records) != am['query_receptors']:
+        raise ValueError('allele query: %d receptors with records, the summary says %d'
+                         % (len(gids) - len(no_records), am['query_receptors']))
+    layer = getattr(store, 'report_layer', None)
+    v_none = [g for g in gids if layer is not None and len(layer.variants.get(g, ())) == 0]
+    v_n = ((cfr_var or {}).get('summary', {}).get('coverage') or {}).get('receptors_with_alleles')
+    if v_n is not None and v_n != len(gids) - len(v_none):
+        raise ValueError('cfr_variants covers %d receptors, the report layer %d' % (v_n, len(gids) - len(v_none)))
+    lab = lambda k, d: src.get(k, {}).get('label', d)  # noqa: E731
+    return class_results.coverage_rows(
+        total=total, rrcs_label=rrcs_label, numbering_label=numbering_label,
+        recovery=pos['recovery'], conservation=pos['conservation'], am_receptors=am['receptors'],
+        am_dropped=[labels[g] for g in dropped], am_no_records=[labels[g] for g in no_records],
+        batch_gnomad='%s (%s)' % (lab('gnomad_batch', 'gnomAD (batch)'), _month(src.get('gnomad_batch', {}))),
+        site_gnomad=lab('gnomad', 'gnomAD'), clinvar=lab('clinvar', 'ClinVar'),
+        alphamissense='AlphaMissense', conservation_label=lab('conservation', 'conservation'),
+        variants_receptors=v_n if v_n is not None else len(gids) - len(v_none),
+        variants_none=[labels[g] for g in v_none])
+
+
+def _month(source):
+    """'February 2026' from a data_versions fetched date ('2026-02-02/2026-02-03')."""
+    import datetime
+    f = str(source.get('fetched') or '').split('/')[0]
+    try:
+        return datetime.date.fromisoformat(f).strftime('%B %Y')
+    except ValueError:
+        return f
+
+
 # ---------------------------------------------------------------------------- site numbers
 
 def _median(values):
@@ -363,7 +413,6 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
     if getattr(store, 'report_layer', None) is not None:
         cfr_var = write_cfr_variants(output_dir, store.gpcr_ids)
     write_am_comparison(output_dir, am or None)
-    per_residue = variant.get('conservation_residues')
 
     numbers = site_numbers(store)
     if overview.get('tiles'):
@@ -527,8 +576,7 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
               'family, not a prediction of effect. A residue with several variants is counted once per variant.',
               height=440, height_phone=380),
         fig=variant.get('fig_conservation_scatter'))
-    if per_residue is not None and not per_residue.empty:
-        write_conservation_residues_csv(per_residue, stats_dir / 'conservation_by_residue.csv')
+    # conservation_by_residue.csv (2.9 MB, never drawn) is no longer written.
 
     # the paper tables as CSVs (table views read the same files)
     if cfr_table_data:
@@ -554,6 +602,13 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
                     c['csv'] = '%s/%s' % (STATS_DIR, csv_name)
                 if key == 'cfr_variants' and cfr_var is not None:
                     c['source'] = (cfr_var['summary'].get('label') or c['source']).rstrip('. ')
+
+    # the Methods table "What each result covers" and coverage.csv, from the same rows
+    payloads = atlas.get('payloads') or {}
+    coverage_rows = _coverage_rows(store, payloads, am, cfr_var, src, total, rrcs_label, numbering_label)
+    (stats_dir / 'coverage.csv').write_text(class_results.coverage_csv(coverage_rows), encoding='utf-8')
+    story = class_results.finding_sentences(payloads) if payloads.get('class_scale') else {'findings': {}, 'glance': []}
+    notes = class_results.computed_notes(payloads) if payloads.get('class_scale') else {}
 
     # one zip of every table
     zip_path = stats_dir / ZIP_NAME
@@ -632,6 +687,14 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
         zip_href='%s/%s' % (STATS_DIR, ZIP_NAME),
         n_tables=n_tables,
         variant_layer_receptors=VARIANT_LAYER_RECEPTORS,
+        # class-wide results (analysis/class_results.py): section findings, glance facts, computed guide
+        # lines, the Methods coverage rows and the payload URLs the new cards fetch
+        findings=story['findings'],
+        glance=story['glance'],
+        notes=notes,
+        coverage_rows=coverage_rows,
+        class_urls={k: '%s/%s.json' % (STATS_DIR, k) for k in CLASS_PAYLOADS},
+        kruskal=((payloads.get('receptors') or {}).get('kruskal') or {}).get('sum_abs'),
         layout_light_json=json.dumps(light, separators=(',', ':')),
         layout_dark_json=json.dumps(dark, separators=(',', ':')),
     )

@@ -117,10 +117,36 @@ def test_section_d_carries_no_retired_value():
 
 
 @needs_build
+def test_class_variants_payload_equals_the_summary():
+    """data/stats/class_variants.json (the payload of the new section D cards): the summary's counts, decisive
+    shares rounded once at display, and no odds ratio, interval or Mantel-Haenszel field."""
+    path = BUILD_DIR / 'data' / 'stats' / 'class_variants.json'
+    cv = json.loads(path.read_text(encoding='utf-8'))
+    top, rest = cv['groups']
+    assert [top['predicted_pathogenic'], top['predicted_benign'], rest['predicted_pathogenic'],
+            rest['predicted_benign']] == [4117, 2038, 4085, 5284]
+    assert (top['ambiguous'], rest['ambiguous'], top['scored'], rest['scored']) == (1113, 1671, 7268, 11040)
+    assert ('%.1f' % top['pct_predicted_pathogenic_of_decisive'],
+            '%.1f' % rest['pct_predicted_pathogenic_of_decisive']) == ('66.9', '43.6')
+    assert (top['label'], rest['label']) == AM_GROUP_LABELS
+    text = path.read_text(encoding='utf-8')
+    for key in ('"or"', '"odds', '"ci"', '"mh', 'conservation_adjusted'):
+        assert key not in text, key
+    for name in ('class_variants.json', 'am_bands.csv', 'am_conservation_fifths.csv'):
+        body = (BUILD_DIR / 'data' / 'stats' / name).read_text(encoding='utf-8')
+        for bad in RETIRED + ('2.63', '67.6%'):
+            assert bad not in body, (name, bad)
+        low = body.lower()
+        for bad in ('odds ratio', '95% ci', 'mantel', 'paper', 'supplementary', 'manuscript', 'corrected', 'layer'):
+            assert bad not in low, (name, bad)
+
+
+@needs_build
 def test_the_chart_data_equal_the_summary():
     html = STATS.read_text(encoding='utf-8')
     j = re.search(r"\['chart-pathogenicity'\] = (\{.*?\});\n", html, re.S)
-    assert j, 'chart-pathogenicity data not found'
+    if not j:
+        pytest.skip('no inline chart-pathogenicity payload (the page draws section D from class_variants.json)')
     fig = json.loads(j.group(1))
     am = load_am_comparison()
     by = {t['name']: t for t in fig['data']}
