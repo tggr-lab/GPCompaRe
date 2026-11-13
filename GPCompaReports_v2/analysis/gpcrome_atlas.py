@@ -13,6 +13,9 @@ GPCRdb model pairs, and writes under OUT/atlas/ (OUT defaults to STAGE):
   r/<gid>.json    one receptor: C-alpha traces of both models (inactive
                   superposed on active) and its above-threshold contacts
 
+and OUT/data/stats/atlas_map.json (class_results.build_atlas_map: gid, sim_xy and ligand group per
+receptor, for the Statistics page's Atlas teaser).
+
 Everything is deterministic: same inputs, same bytes.
 """
 import argparse
@@ -599,6 +602,9 @@ def build(stage, batch, models, out):
                        'Browsing aids, not classifications.',
     }
     (out / 'atlas' / 'index.json').write_text(json.dumps(index, separators=(',', ':')), encoding='utf-8')
+    # the Statistics page's Atlas teaser reads a small extract of the map (data/stats/atlas_map.json)
+    from .class_results import write_atlas_map
+    write_atlas_map(index, out)
     return index
 
 
