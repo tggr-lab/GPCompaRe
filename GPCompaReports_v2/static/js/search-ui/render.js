@@ -169,12 +169,21 @@ function typedChange(i) {
  */
 export function readAsText(answer, query) {
   const i = answer.interpretation;
-  if (!i || i.kind === 'unrecognised') return null;
+  // a query read only in part ("ADRB2 R131C R131H") is not understood: no reading that the message contradicts
+  if (!i || i.kind === 'unrecognised' || answer.expect === 'unrecognised') return null;
   const rs = answer.results ?? [];
   const first = rs[0];
   const sameRec = first?.receptor && rs.every((r) => r.gid === first.gid);
   const rec = sameRec ? recShort(first.receptor) : null;
-  const where = !rec && rs.length > 1 ? `${rs.length} receptors` : null;
+  const nRec = new Set(rs.map((r) => r.gid)).size;
+  const where = !rec && rs.length > 1 ? `${nRec} receptors` : null;
+  // the change of each result when they differ (one rsID, two changes at a codon); null when one change fits all
+  const changes = [...new Set(rs.filter((r) => r.pos && r.alt && r.kind === 'missense').map((r) => `${three(r.ref)}${r.pos}${three(r.alt)}`))];
+  const changeText = (r) => {
+    if (changes.length > 1) return sameRec ? `protein changes ${changes.slice(0, -1).join(', ')} and ${changes[changes.length - 1]}` : null;
+    if (r?.alt && r.kind === 'missense') return `protein change ${three(r.ref)}${r.pos}${three(r.alt)}`;
+    return null;
+  };
   const parts = [];
   const asm = answer.assembly ? ` on ${answer.assembly}` : '';
   switch (i.kind) {
@@ -194,28 +203,36 @@ export function readAsText(answer, query) {
       break;
     }
     case 'cdna': {
-      parts.push(rec ?? where ?? 'a receptor');
-      if (first?.alt && first.kind === 'missense') parts.push(`protein change ${three(first.ref)}${first.pos}${three(first.alt)}`);
+      // in several receptors one c. change is a different protein change in each: name none of them here
+      if (!rec) return rs.length > 1 ? `${cdnaText(i.cdna)}${asm} in ${where}` : `${cdnaText(i.cdna)}${asm}`;
+      parts.push(rec);
+      const ch = changeText(first);
+      if (ch) parts.push(ch);
       else if (first?.pos) parts.push(`residue ${three(first.ref)}${first.pos}`);
       parts.push(`from ${cdnaText(i.cdna)}${asm}`);
       return parts.join(', ');
     }
     case 'genomic': {
       const g = i.genomic;
-      parts.push(rec ?? where ?? 'a receptor');
-      if (first?.alt && first.kind === 'missense') parts.push(`protein change ${three(first.ref)}${first.pos}${three(first.alt)}`);
-      else if (first?.alts?.length) parts.push(`residue ${three(first.ref)}${first.pos}`);
-      else if (first?.pos) parts.push(`residue ${three(first.ref)}${first.pos}`);
       const spot = i.ids?.gnomad ?? `chromosome ${g.chrom}, position ${g.pos}`;
+      if (!rs.length) return `${spot}${asm}`;
+      parts.push(rec ?? where);
+      const ch = changeText(first);
+      if (ch) parts.push(ch);
+      else if (first?.pos) parts.push(`residue ${three(first.ref)}${first.pos}`);
       parts.push(`from ${spot}${asm}`);
       return parts.join(', ');
     }
     case 'rsid':
     case 'clinvar': {
-      parts.push(rec ?? where ?? 'a receptor');
-      if (first?.alt && first.kind === 'missense') parts.push(`protein change ${three(first.ref)}${first.pos}${three(first.alt)}`);
+      const id = i.kind === 'rsid' ? i.ids.rsid : `ClinVar record ${i.ids.vcv ?? i.ids.rcv ?? i.ids.variationId}`;
+      // nothing matched: name the identifier only, never "a receptor"
+      if (!rs.length) return i.kind === 'rsid' ? `the rsID ${id}` : `the ${id}`;
+      parts.push(rec ?? where);
+      const ch = changeText(first);
+      if (ch) parts.push(ch);
       else if (first?.pos) parts.push(`${first.kind === 'residue' ? 'residue' : kindLabel(first.kind).toLowerCase()} ${three(first.ref)}${first.pos}`);
-      parts.push(i.kind === 'rsid' ? `from ${i.ids.rsid}` : `from ClinVar record ${i.ids.vcv ?? i.ids.variationId}`);
+      parts.push(`from ${id}`);
       return parts.join(', ');
     }
     case 'generic': {
