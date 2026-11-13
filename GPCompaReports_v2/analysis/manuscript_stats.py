@@ -27,8 +27,6 @@ DATA_DIR = pathlib.Path(__file__).resolve().parent.parent / 'data' / 'manuscript
 #: data/class_tables_2026-11-13/); tests compare the class tables with them.
 TOP50_CSV = DATA_DIR / 'S3_top50_recurrent_cfr_positions.csv'
 ALL_CSV = DATA_DIR / 'S4_all_recurrent_positions.csv'
-PAIRS_CSV = DATA_DIR / 'S5_top20_recurrent_cfr_pairs.csv'
-FIG3_JSON = DATA_DIR / 'figure3_enrichment.json'   # retired; no longer read by the build
 
 #: Section D (AlphaMissense comparison): the corrected supplement summary, a byte copy of
 #: 02_supplement/source_tables/FigS4_S7_summary_modelnum_2026-11-05b.json (see its PROVENANCE.md).

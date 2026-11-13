@@ -7,9 +7,11 @@ folder's PROVENANCE.md):
     positions.tsv              368 recurrent positions ranked by CFR score (class_ranking())
     pairs.tsv                  2,231 distinct pairs of generic positions, both residues CFRs
     partner_diversity.tsv      per position: distinct partners, most frequent exact partner
+    positions_below_recurrence.tsv  generic positions that are CFRs in 1 or 2 receptors (scaffold counts)
     activation_reference.tsv   39 known activation positions
     activation_motifs.json     the five named motifs (16 positions)
-    activation_recovery.tsv    262 positions numbered in at least half of the receptors, in CFR score order
+    activation_recovery.tsv    the 262 recurrent positions numbered in at least half of the receptors, in CFR
+                               score order
     segments.tsv, interfaces.tsv, conservation_positions.tsv
     ../supplement_2026-11-05b/FigS4b_recurrence_bands.tsv, ed14_a_conservation_strata_plotdata.tsv
 
@@ -49,6 +51,7 @@ PINS = {
     'positions.tsv': '0993b72f402e3c086d9c611f13074fec251d91982613c21d30c5ef9fcf058173',
     'pairs.tsv': '65632b35398a178711d2983b2d07eba8f0a6fb4636a75a60573ba4a54d7f18b2',
     'partner_diversity.tsv': 'a377a11b89831d969a2f4227b6447d2e8ed4367f01ccf23d4c3b28600f339b56',
+    'positions_below_recurrence.tsv': 'faee673c66ca0c26c2891d717e5eb9f76115a7f1bc9d0c5bd1be1527caca9c1b',
     'activation_reference.tsv': 'ec18984c0588cecb820a5e29d833b8a8db8be7db9497716bc2cc452a9b7fbaa5',
     'activation_motifs.json': '4362387eca0c737accdbc3da37a28c2c982c49a137ab4f362bb78276c933bc81',
     'activation_recovery.tsv': 'f4f5e00c968f16dc7d5542b56fdc97cb11ea15de39afd467b9754f8511013715',
@@ -72,7 +75,6 @@ HIST_DRAWN = 20
 SCAFFOLD_GID = 'adrb2_human'
 SCAFFOLD_BEFORE, SCAFFOLD_AFTER = 6, 8
 SEGMENT_BLOCKS = {'bundle': 'Helices', 'outside': 'Loops and termini'}
-AM_GROUP_LABELS = ('Top 50 positions by CFR score', 'Other generic-numbered positions')
 NUMBER_WORDS = {2: 'two', 3: 'three', 4: 'four', 5: 'five', 6: 'six', 7: 'seven', 8: 'eight', 9: 'nine',
                 10: 'ten'}
 MINUS = '−'
@@ -181,7 +183,7 @@ def band_index(n, bands):
 
 
 # --------------------------------------------------------------------------- class_scale
-def build_class_scale(inputs, deltas, receptors_payload=None):
+def build_class_scale(inputs, deltas):
     """census, receptors [gid, symbol, threshold, above_per_100] and the ΔRRCS histogram.
 
     inputs: class_atlas.ReceptorInput list; deltas: {gid: delta DataFrame} (store.delta_data)."""
@@ -219,8 +221,10 @@ def build_class_scale(inputs, deltas, receptors_payload=None):
 
 # --------------------------------------------------------------------------- helix pairs
 def add_segments_interfaces(helix_payload):
-    """helix_pairs.json: `interfaces` (helix pairs, all contacts) and `segments` (per contact endpoint)."""
+    """helix_pairs.json: `interfaces` (pairs of TM1 to TM7, all contacts) and `segments_magnitude` (per contact
+    endpoint, TM1 to TM7, H8, loops and termini)."""
     t = load_class_tables()
+    n_rec = len(helix_payload.get('receptors') or []) or None
     helix_payload['interfaces'] = [
         {'seg_i': r.seg_i, 'seg_j': r.seg_j, 'n_contacts': int(r.n_contacts),
          'mean_abs_delta': _r(r.mean_abs_delta, 4), 'supported': str(r.supported) == 'True'}
@@ -230,8 +234,9 @@ def add_segments_interfaces(helix_payload):
          'median_abs_delta': _r(r.median_abs_delta, 4), 'endpoints': int(r.endpoints)}
         for r in t['segments'].itertuples()]
     helix_payload['magnitude_rule'] = {
-        'interfaces': 'Mean |ΔRRCS| per contact over all contacts between two helices, all 283 receptors; '
-                      'supported = at least 50 contacts.',
+        'interfaces': ('Mean |ΔRRCS| per contact over all contacts between two of TM1 to TM7, %s; supported = '
+                       'at least 50 contacts. Pairs with H8 are not included.' % ('all %d receptors' % n_rec if n_rec else
+                                                                     'all receptors')),
         'segments': 'Mean |ΔRRCS| per contact endpoint on the segment, over all contacts with full GPCRdb '
                     'residue maps.',
         'min_contacts': 50}
@@ -269,15 +274,20 @@ def _scaffold(pack):
     return [[int(r[0]), r[1], r[2], r[3] or '', _r(xy[str(r[0])][0], 1), _r(xy[str(r[0])][1], 1)] for r in keep]
 
 
-def build_class_positions(adrb2_pack=None):
+def build_class_positions(adrb2_pack=None, n_receptors=None):
     """ranking (368), bands, motifs, reference (39), partners (368), pairs (top 20 + totals), recovery (262),
-    scaffold (ADRB2 snake, trimmed) and conservation (352)."""
+    scaffold (ADRB2 snake, trimmed, with the receptor count of each residue's generic position) and
+    conservation (352). n_receptors: the receptor count of the class tables (the build passes its own)."""
     t = load_class_tables()
     rank = class_ranking()
-    n_rec = 283
-    scaffold = _scaffold(adrb2_pack) if adrb2_pack else []
+    n_rec = int(n_receptors) if n_receptors else int(round(float(
+        (rank['n_receptors'] / rank['pct_receptors'] * 100.0).median())))
+    count = {g: int(n) for g, n in zip(t['positions_below_recurrence']['generic_number'],
+                                       t['positions_below_recurrence']['n_receptors'])}
+    count.update({g: int(n) for g, n in zip(rank['generic_number'], rank['n_receptors'])})
+    scaffold = [r + [count.get(r[3], 0) if r[3] else None] for r in _scaffold(adrb2_pack)] if adrb2_pack else []
     adrb2 = {}
-    for num, aa, _seg, gn, _x, _y in scaffold:
+    for num, aa, _seg, gn, _x, _y, _n in scaffold:
         if gn and gn not in adrb2:
             adrb2[gn] = '%s%d' % (aa, num)
     ref = t['activation_reference']
@@ -294,7 +304,7 @@ def build_class_positions(adrb2_pack=None):
     ranking_cols = ['rank', 'recurrence_rank', 'gn', 'segment', 'n', 'pct', 'mean_abs_delta', 'cfr_score',
                     'motif', 'known', 'adrb2']
     ranking = [[int(r.cfr_score_rank), int(r.recurrence_rank), r.generic_number, r.segment, int(r.n_receptors),
-                _r(r.pct_receptors, 4), _r(r.mean_abs_delta, 3), _r(r.cfr_score, 5), r.motif,
+                _r(r.pct_receptors, 4), _r(r.mean_abs_delta, 6), _r(r.cfr_score, 5), r.motif,
                 int(r.generic_number in known), adrb2.get(r.generic_number, '')] for r in rank.itertuples()]
 
     top = set(rank['generic_number'].head(TOP_N))
@@ -335,8 +345,8 @@ def build_class_positions(adrb2_pack=None):
         'ranking': ranking,
         'top_n': TOP_N,
         'bands': bands,
-        'band_rule': 'Receptors (of 283) in which the generic position is a CFR; positions = how many of the 368 '
-                     'recurrent positions fall in the band.',
+        'band_rule': ('Receptors (of %d) in which the generic position is a CFR; positions = how many of the %d '
+                      'recurrent positions fall in the band.' % (n_rec, len(rank))),
         'motifs': motifs,
         'motif_counts': {'positions': n_motif, 'in_top': n_motif_top},
         'reference_columns': ['gn', 'struct_number', 'motif', 'group', 'zhou2019', 'class_a_motif'],
@@ -355,10 +365,12 @@ def build_class_positions(adrb2_pack=None):
                      'columns': ['rank_in_universe', 'cfr_score_rank', 'gn', 'known', 'motif', 'known_found',
                                  'expected'],
                      'rows': recovery_rows, 'cuts': cuts,
-                     'rule': 'Positions numbered in at least half of the 283 receptors, in CFR score order; '
-                             'expected = rank x known / universe.'},
+                     'rule': ('The %d recurrent positions numbered in at least half of the %d receptors, in CFR '
+                              'score order; expected = rank x known / universe.' % (M, n_rec))},
         'scaffold': {'gid': SCAFFOLD_GID, 'gene': (adrb2_pack or {}).get('meta', {}).get('gene', ''),
-                     'columns': ['num', 'aa', 'segment', 'gn', 'x', 'y'], 'residues': scaffold,
+                     'columns': ['num', 'aa', 'segment', 'gn', 'x', 'y', 'n'], 'residues': scaffold,
+                     'n_rule': ('n: receptors with a CFR at the generic position (null: no generic number), from the '
+                                'ranked positions and the positions below recurrence.'),
                      'source': 'ADRB2 snake plot layout from GPCRdb'},
         'conservation': {'columns': ['gn', 'mean', 'n_residues', 'top50'], 'rows': cons_rows,
                          'median_top': _r(ct.median(), 4), 'median_other': _r(co.median(), 4),
@@ -568,11 +580,12 @@ def finding_sentences(payloads):
          'cells': [{'pair': d['pair'], 'mean_net': d['mean_net'], 'value': _signed(d['mean_net'])},
                    {'pair': u['pair'], 'mean_net': u['mean_net'], 'value': _signed(u['mean_net'])}]},
         {'key': 'positions', 'href': '#sec-c', 'big': '%d of %d' % (p['n'], p['of']),
-         'line': 'receptors have a CFR at %s%s' % (p['gn'], (', %s' % p['motif']) if p['motif'] else ''),
+         'line': ('receptors have a CFR (core functional residue) at %s%s'
+                  % (p['gn'], (', %s' % p['motif']) if p['motif'] else '')),
          'bar': round(p['n'] / float(p['of']), 4)},
         {'key': 'variants', 'href': '#sec-d', 'big': '%.1f%% vs %.1f%%' % (va['top'], va['other']),
-         'line': ('of decisive AlphaMissense calls are predicted pathogenic, at the %d top-ranked positions against '
-                  'other generic-numbered positions' % TOP_N),
+         'line': ('of decisive AlphaMissense calls (predicted pathogenic or predicted benign) are predicted '
+                  'pathogenic, at the %d top-ranked positions against other generic-numbered positions' % TOP_N),
          'bars': [round(va['top'] / 100.0, 4), round(va['other'] / 100.0, 4)]},
     ]
     return {'findings': findings, 'glance': glance}
@@ -605,9 +618,9 @@ def computed_notes(payloads):
                      % (hs[0]['segment'], hs[0]['mean_abs_delta'], hs[1]['segment'], hs[1]['mean_abs_delta'],
                         ' and '.join(lows), low, min(s['mean_abs_delta'] for s in loops),
                         max(s['mean_abs_delta'] for s in loops))),
-        'ranking_outlier': ('%s is a CFR in only %d receptors and ranks %d on the size of its contact change (mean '
-                            '|ΔRRCS| %.2f, the largest of the %d).' % (outlier['gn'], outlier['n'], outlier['rank'],
-                                                                        outlier['mean_abs_delta'], TOP_N)),
+        'ranking_outlier': ('%s is a CFR in only %d receptors and ranks %d by CFR score because its mean |ΔRRCS| '
+                            '(%.2f) is the largest of the %d.' % (outlier['gn'], outlier['n'], outlier['rank'],
+                                                                  outlier['mean_abs_delta'], TOP_N)),
         'motifs_in_top': '%d of the %d motif positions are in the top %d.' % (
             pos['motif_counts']['in_top'], pos['motif_counts']['positions'], TOP_N),
         'recovery_points': ['%d of the first %s · %.1f expected by chance' % (v['known_found'], n, v['expected'])
@@ -629,21 +642,30 @@ def computed_notes(payloads):
 # --------------------------------------------------------------------------- coverage rows (Methods)
 def coverage_rows(total, rrcs_label, numbering_label, recovery, conservation, am_receptors, am_dropped,
                   am_no_records, batch_gnomad, site_gnomad, clinvar, alphamissense, conservation_label,
-                  variants_receptors, variants_none):
+                  variants_receptors, variants_none, maps_label=None, maps_exception=None):
     """The "What each result covers" rows; coverage.csv is written from the same rows. Name lists are labels
-    (receptor_labels), in gid order."""
+    (receptor_labels), in gid order. numbering_label: the per-receptor GPCRdb numbering (packs); maps_label: the
+    GPCRdb residue maps of the class tables, maps_exception the receptor numbered otherwise in the ranked ones."""
     names = names_list
+    maps = maps_label or numbering_label
+    ranked_maps = '%s (%s)' % (maps, maps_exception) if maps_exception else maps
     return [
-        {'results': 'Scale, helix bundle, positions, every receptor, receptor explorer', 'receptors': str(total),
-         'data': '%s; %s' % (rrcs_label, numbering_label), 'not_included': ''},
+        {'results': 'Scale, helix bundle, every receptor at the top-ranked positions, receptor explorer',
+         'receptors': str(total), 'data': '%s; %s' % (rrcs_label, numbering_label), 'not_included': ''},
+        {'results': 'Ranked positions, scaffold, partners and pairs', 'receptors': str(total),
+         'data': '%s; %s' % (rrcs_label, ranked_maps), 'not_included': ''},
+        {'results': 'Change per contact by segment and helix pair (Magnitude)', 'receptors': str(total),
+         'data': '%s; %s' % (rrcs_label, maps), 'not_included': ''},
         {'results': 'Known activation positions',
-         'receptors': '%d positions numbered in at least half of the receptors; %d known'
+         'receptors': '%d recurrent positions numbered in at least half of the receptors; %d known'
                       % (recovery['universe'], recovery['known']),
-         'data': 'as above', 'not_included': ''},
+         'data': 'as the ranked positions', 'not_included': ''},
         {'results': 'Conservation at top-ranked and other positions',
          'receptors': '%d positions with at least %d scored residues'
                       % (conservation['n_top'] + conservation['n_other'], conservation['min_residues']),
-         'data': conservation_label, 'not_included': 'positions with fewer scored residues'},
+         'data': ('%s; generic numbers from its own residue mapping (a position can count one residue more or '
+                  'fewer)' % conservation_label),
+         'not_included': 'positions with fewer scored residues'},
         {'results': 'AlphaMissense comparison, recurrence groups, conservation groups', 'receptors': str(am_receptors),
          'data': '%s, %s' % (batch_gnomad, alphamissense),
          'not_included': '%s. %s: no records in that query.' % (names(am_dropped), names(am_no_records))},

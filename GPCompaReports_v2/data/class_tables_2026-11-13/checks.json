@@ -21,6 +21,14 @@
    "ok": true,
    "detail": 368
   },
+  "positions below recurrence: CFRs in 1 or 2 receptors, none of them recurrent": {
+   "ok": true,
+   "detail": {
+    "rows": 52,
+    "one": 34,
+    "two": 18
+   }
+  },
   "8.48x48 = 113 / 39.9293% / 5.2107 / 0.46452 / rank 36": {
    "ok": true,
    "detail": {
@@ -288,6 +296,7 @@
   "positions.tsv": "0993b72f402e3c086d9c611f13074fec251d91982613c21d30c5ef9fcf058173",
   "pairs.tsv": "65632b35398a178711d2983b2d07eba8f0a6fb4636a75a60573ba4a54d7f18b2",
   "partner_diversity.tsv": "a377a11b89831d969a2f4227b6447d2e8ed4367f01ccf23d4c3b28600f339b56",
+  "positions_below_recurrence.tsv": "faee673c66ca0c26c2891d717e5eb9f76115a7f1bc9d0c5bd1be1527caca9c1b",
   "activation_reference.tsv": "ec18984c0588cecb820a5e29d833b8a8db8be7db9497716bc2cc452a9b7fbaa5",
   "activation_motifs.json": "4362387eca0c737accdbc3da37a28c2c982c49a137ab4f362bb78276c933bc81",
   "activation_recovery.tsv": "f4f5e00c968f16dc7d5542b56fdc97cb11ea15de39afd467b9754f8511013715",

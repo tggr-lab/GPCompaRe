@@ -3,7 +3,7 @@
 Written by `scripts/build_class_tables.py` (run by hand; the site build never runs it). The build reads
 these files through `analysis/class_results.py`, which asserts each sha256 below (`PINS`), and
 `tests/test_statistics_class_results.py` checks the pins, this table and, where the sources exist on the
-machine, that each copy equals its source byte for byte. `checks.json` holds all 27 checks the script
+machine, that each copy equals its source byte for byte. `checks.json` holds all 28 checks the script
 passed before writing, with the sha256 of every input.
 
 | File | sha256 | How | Source or rule |
@@ -11,9 +11,10 @@ passed before writing, with the sha256 of every input.
 | `positions.tsv` | `0993b72f402e3c086d9c611f13074fec251d91982613c21d30c5ef9fcf058173` | recomputed | 368 recurrent positions (CFR in 3 or more receptors), canonical rule, GPCRdb residue maps with GPR4 on its own GPCRdb entry; sorted by CFR score |
 | `pairs.tsv` | `65632b35398a178711d2983b2d07eba8f0a6fb4636a75a60573ba4a54d7f18b2` | recomputed | 2,231 distinct pairs of generic positions joined by an above-threshold contact (both residues CFRs), receptors per pair, both ends in the top 50 or not; same run |
 | `partner_diversity.tsv` | `a377a11b89831d969a2f4227b6447d2e8ed4367f01ccf23d4c3b28600f339b56` | recomputed | per recurrent position: distinct partner positions and the most frequent exact partner; same run |
+| `positions_below_recurrence.tsv` | `faee673c66ca0c26c2891d717e5eb9f76115a7f1bc9d0c5bd1be1527caca9c1b` | recomputed | generic positions that are CFRs in 1 or 2 receptors (below the recurrence rule); same run |
 | `activation_reference.tsv` | `ec18984c0588cecb820a5e29d833b8a8db8be7db9497716bc2cc452a9b7fbaa5` | derived | 39 known activation positions: the Zhou et al. 2019 common activation pathway (34 residue pairs) plus the class A motifs (D2.50, DRY, PIF, CWxP, NPxxY, the sodium pocket, 6.30); ordered by rank in the recovery universe |
 | `activation_motifs.json` | `4362387eca0c737accdbc3da37a28c2c982c49a137ab4f362bb78276c933bc81` | derived | the five named motifs and their 16 positions |
-| `activation_recovery.tsv` | `f4f5e00c968f16dc7d5542b56fdc97cb11ea15de39afd467b9754f8511013715` | derived | 262 positions numbered in at least half of the receptors, in CFR score order, with the cumulative count of reference positions and the count expected by chance (rank x 39 / 262) |
+| `activation_recovery.tsv` | `f4f5e00c968f16dc7d5542b56fdc97cb11ea15de39afd467b9754f8511013715` | derived | the 262 recurrent positions numbered in at least half of the receptors, in CFR score order, with the cumulative count of reference positions and the count expected by chance (rank x 39 / 262) |
 | `segments.tsv` | `99a2aceaabc61a9fd064cb80e19ee351ce9ce39a8e055656208b1776b2f1dc60` | byte copy | `~/research/tggr_gpcr_ready_for_the final_draft/figures_overhaul/_analysis/ed1_full_segments.tsv` |
 | `interfaces.tsv` | `8236ee1009e20a2d2523fd17302aa9b09c881e90655061bd84f86528dfe6a63e` | byte copy | `~/research/tggr_gpcr_ready_for_the final_draft/figures_overhaul/_analysis/ed1_full_interfaces.tsv` |
 | `conservation_positions.tsv` | `0061d9502a360e5cb6e3dbcbc46b89754a30783c3b0f90e963f90bc53fb3068a` | byte copy | `~/Documents/gpcr_synth/NEW_manuscript/GPCompaRe_Finishing_2026-10-31/deliverables/03_main_figures/source_tables/F3a_conservation_by_generic_position.tsv` |

@@ -23,6 +23,7 @@ import io
 import json
 import math
 import re
+import shutil
 import zipfile
 from pathlib import Path
 
@@ -229,6 +230,7 @@ def _coverage_rows(store, payloads, am, cfr_var, src, total, rrcs_label, numberi
     if v_n is not None and v_n != len(gids) - len(v_none):
         raise ValueError('cfr_variants covers %d receptors, the report layer %d' % (v_n, len(gids) - len(v_none)))
     lab = lambda k, d: src.get(k, {}).get('label', d)  # noqa: E731
+    maps = src.get('gpcrdb_residue_maps') or {}
     rows = class_results.coverage_rows(
         total=total, rrcs_label=rrcs_label, numbering_label=numbering_label,
         recovery=pos['recovery'], conservation=pos['conservation'], am_receptors=am['receptors'],
@@ -237,7 +239,9 @@ def _coverage_rows(store, payloads, am, cfr_var, src, total, rrcs_label, numberi
         site_gnomad=lab('gnomad', 'gnomAD'), clinvar=lab('clinvar', 'ClinVar'),
         alphamissense='AlphaMissense', conservation_label=lab('conservation', 'conservation'),
         variants_receptors=v_n if v_n is not None else len(gids) - len(v_none),
-        variants_none=[labels[g] for g in v_none])
+        variants_none=[labels[g] for g in v_none],
+        maps_label=('%s, fetched %s' % (maps['label'], maps['fetched'])) if maps.get('fetched') else maps.get('label'),
+        maps_exception=maps.get('exception'))
     return rows, [(g, labels[g]) for g in v_none]
 
 
@@ -278,7 +282,12 @@ def scaffold_csv(pos):
     w.writerow(['residue', 'aa', 'generic_number', 'receptors_with_cfr', 'band', 'motif'])
     for r in sc['residues']:
         gn = r[C['gn']]
-        n = rk[gn][rc['n']] if gn in rk else (0 if gn else '')
+        if not gn:
+            n = ''
+        elif 'n' in C and r[C['n']] is not None:
+            n = r[C['n']]   # every generic position, recurrent or not (class_results.build_class_positions)
+        else:
+            n = rk[gn][rc['n']] if gn in rk else 0
         band = ''
         if gn:
             band = class_results.band_label(*next((b['lo'], b['hi']) for b in bands
@@ -324,10 +333,11 @@ def _cards(ctx):
               'of its two residues (GPCRdb segment annotation). Net ΔRRCS per receptor and helix pair is the '
               'sum of signed ΔRRCS over those pairs. The line color is the mean of that net over all receptors '
               'in the group (receptors without the pair count as 0); the share in agreement is over receptors '
-              'with the pair. Magnitude mode: mean |ΔRRCS| per contact over all contacts between two helices, '
-              'above-threshold or not, for helix pairs with at least %d contacts.</p>' % c['min_contacts']),
+              'with the pair. Magnitude mode: mean |ΔRRCS| per contact over all contacts between two of TM1 to TM7, '
+              'above-threshold or not, for pairs with at least %d contacts (H8 pairs not included), on the %s.</p>'
+              % (c['min_contacts'], c['maps'])),
         _card('chart-segments', 'Change per contact, by segment', c['notes'].get('segments', ''),
-              '%d receptors.' % n, 'Full GPCRdb residue maps.', 'Follows position and helix pair', 'segments.csv',
+              '%d receptors.' % n, '%s.' % c['maps'], 'Follows position and helix pair', 'segments.csv',
               '<p>Every contact endpoint counts once for the segment of its residue. Unsigned: how much contacts '
               'change, not in which direction.</p>'),
         _card('chart-scaffold', 'Recurrence on the receptor scaffold',
@@ -343,17 +353,18 @@ def _cards(ctx):
               'Ranked by CFR score, which weighs how many receptors have a CFR at the position together with the '
               'mean |ΔRRCS| of those contacts. Bar: receptors with a CFR there, of %d. Last column: mean '
               '|ΔRRCS|. Tags: activation motifs.' % n,
-              '%d receptors, %d positions.' % (n, c['recurrent']), '', 'Follows position', 'ranking_368.csv',
+              '%d receptors, %d positions.' % (n, c['recurrent']), '%s.' % c['maps'], 'Follows position',
+              'ranking_368.csv',
               '<p>CFR score: the mean of normalized recurrence (receptors in which the position is a CFR) and '
               'normalized mean |ΔRRCS| of those contacts. %d generic positions are CFRs in three or more '
               'receptors; the %d with the highest score are marked across the site. Recurrence is counted on the '
               'full GPCRdb residue maps.</p>' % (c['recurrent'], CFR_TOP_N)),
         _card('chart-recovery', 'Known activation positions down the ranking', c['recovery_guide'],
               '%d positions, %d known.' % (c['universe'], c['known']),
-              'Positions numbered in at least half of the %d receptors.' % n, 'Follows position',
+              'Recurrent positions numbered in at least half of the %d receptors.' % n, 'Follows position',
               'activation_recovery.csv',
               '<p>%s</p><p>Known positions: %s.</p>' % (_esc(c['recovery_rule']), _esc(c['reference_source']))),
-        _card('chart-partners', 'Positions recur more than exact contacts', c['partners_guide'],
+        _card('chart-partners', 'Positions recur in more receptors than their exact contacts do', c['partners_guide'],
               '%d receptors, %d positions, %s distinct pairs.' % (n, c['recurrent'], format(c['n_pairs'], ',')), '',
               'Follows position', 'partners.csv',
               '<p>Partners are generic positions joined to the position by an above-threshold contact in which both '
@@ -414,6 +425,7 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
         p = stats_dir / name
         if p.is_file():
             p.unlink()
+    shutil.rmtree(stats_dir / 'figures', ignore_errors=True)   # retired: data/stats/figures/*.json
 
     paper = analysis_results.get('manuscript', {})
     dv = data_versions.load()
@@ -469,9 +481,11 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
     month = _month(src.get('gnomad_batch', {}))
     am_receptors = cv.get('receptors') or am.get('receptors') or 0
     numbering_short = 'GPCRdb numbering fetched %s' % numbering['fetched'] if numbering.get('fetched') else 'GPCRdb numbering'
+    maps_src = src.get('gpcrdb_residue_maps') or {}
+    maps_short = ('GPCRdb residue maps fetched %s' % maps_src['fetched']) if maps_src.get('fetched') else 'GPCRdb residue maps'
 
     ctx = {
-        'total': total, 'rrcs': _short(rrcs_label), 'numbering': numbering_short,
+        'total': total, 'rrcs': _short(rrcs_label), 'numbering': numbering_short, 'maps': maps_short,
         'pairs': census.get('pairs', 0), 'recurrent': census.get('recurrent_positions', 0),
         'min_receptors': hp.get('min_receptors', 10),
         'min_contacts': (hp.get('magnitude_rule') or {}).get('min_contacts', 50),
@@ -481,9 +495,9 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
         'recovery_rule': rec.get('rule', ''), 'reference_source': pos.get('reference_source', ''),
         'recovery_guide': (
             'Reference: %d known activation positions (the common activation pathway of Zhou et al. 2019, plus '
-            'D2.50, DRY, PIF, CWxP, NPxxY, the sodium pocket and 6.30). The curve walks down the %d positions '
-            'numbered in at least half of the receptors, in CFR score order, and counts the known positions among '
-            'the first N. Dashed line: the count expected if the order ignored activation.'
+            'D2.50, DRY, PIF, CWxP, NPxxY, the sodium pocket and 6.30). The curve walks down the %d recurrent '
+            'positions numbered in at least half of the receptors, in CFR score order, and counts the known positions '
+            'among the first N. Dashed line: the count expected if the order ignored activation.'
             % (rec.get('known', 0), rec.get('universe', 0))),
         'n_pairs': (pos.get('pairs') or {}).get('n_distinct', 0),
         'partners_guide': ('Filled dot: receptors with a CFR at the position. Open dot: receptors in which it '
@@ -562,7 +576,8 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
         'cards': {cid: {'title': cd['title'], 'export': cd['export'], 'csv': cd['csv']} for cid, cd in cards.items()},
         'csv_extra': {'helix_interfaces': '%s/helix_interfaces.csv' % STATS_DIR,
                       'pairs': '%s/pairs.csv' % STATS_DIR},
-        'labels': {'site_gnomad': site_gnomad, 'variants_none_gids': [g for g, _ in variants_none]},
+        'labels': {'site_gnomad': site_gnomad, 'variants_none_gids': [g for g, _ in variants_none],
+                   'scope_maps': '%s; %s.' % (_short(rrcs_label), maps_short)},
     }
 
     # one zip of every table
@@ -580,6 +595,10 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
         {'href': '#sec-e', 'n': '5', 'label': 'Receptors and families'},
         {'href': '#sec-methods', 'n': '•', 'label': 'Methods and downloads'},
     ]
+
+    exc = (payloads.get('overview') or {}).get('exclusions') or {}
+    exclusions = ({'listed': exc['listed'], 'names': class_results.names_list(exc['not_modeled'])}
+                  if exc.get('listed') and exc.get('not_modeled') else None)
 
     template = env.get_template('statistics.html')
     html = template.render(
@@ -618,6 +637,7 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
         reference=[dict(zip(pos.get('reference_columns', []), r)) for r in pos.get('reference', [])],
         reference_source=pos.get('reference_source', ''),
         families_text=families_text,
+        exclusions=exclusions,
         kruskal=kruskal,
         stats_dir=STATS_DIR,
         zip_href='%s/%s' % (STATS_DIR, ZIP_NAME),

@@ -12,7 +12,8 @@ What it does, in order:
    normalized mean |dRRCS|) and asserts that the canonical numbering (the figures_overhaul GPCRdb residue
    maps) reproduces full_cfr_positions.tsv, full_cfr_pairs.tsv and partner_diversity.tsv.
 2. Reruns it with GPR4 on its own GPCRdb entry (the Studio pack; its residue map in the canonical set was
-   GPR42's) and writes positions.tsv, pairs.tsv and partner_diversity.tsv from that run.
+   GPR42's) and writes positions.tsv, pairs.tsv, partner_diversity.tsv and positions_below_recurrence.tsv
+   (positions that are CFRs in 1 or 2 receptors) from that run.
 3. Writes the activation reference (39 positions: the Zhou et al. 2019 common activation pathway plus the
    class A motifs, the e19 known set), the five named motifs, and the recovery curve of the reference down
    the corrected ranking over the e19 universe (positions numbered in at least half of the receptors).
@@ -133,7 +134,8 @@ def pack_map(packs, g):
 
 
 def run(deltas, numbering):
-    """(positions, pairs, partner diversity) under the canonical rule; numbering(gid) -> (map, segments)."""
+    """(positions, pairs, partner diversity, rare positions) under the canonical rule; numbering(gid) -> (map,
+    segments). Rare positions: generic positions that are CFRs in 1 or 2 receptors (not recurrent)."""
     pos_count, pos_d, pos_seg = Counter(), defaultdict(list), {}
     pair_rec = defaultdict(set)
     partners, pcount = defaultdict(set), defaultdict(Counter)
@@ -180,7 +182,10 @@ def run(deltas, numbering):
                     'pct_receptors': float(r.pct_receptors), 'n_distinct_partners': len(partners[r.generic_number]),
                     'top_partner': best, 'top_partner_n_receptors': int(bn),
                     'top_partner_pct': round(bn / N_REC * 100, 4), 'wiring_ratio': round(bn / r.n_receptors, 4)})
-    return p, prs, pd.DataFrame(div)
+    rare = pd.DataFrame([{'generic_number': k, 'segment': pos_seg.get(k, ''), 'n_receptors': c}
+                         for k, c in pos_count.items() if c < 3], columns=['generic_number', 'segment', 'n_receptors'])
+    rare = rare.sort_values(['n_receptors', 'generic_number'], ascending=[False, True]).reset_index(drop=True)
+    return p, prs, pd.DataFrame(div), rare
 
 
 # ------------------------------------------------------------------ reference set
@@ -232,7 +237,7 @@ def main():
     check('283 receptors in the batch run', len(deltas) == N_REC, len(deltas))
 
     # 1. canonical numbering reproduces the class tables
-    L_pos, L_pairs, L_div = run(deltas, lambda g: legacy_map(an, g))
+    L_pos, L_pairs, L_div, _ = run(deltas, lambda g: legacy_map(an, g))
     canon_pos = pd.read_csv(an / 'full_cfr_positions.tsv', sep='\t')
     canon_pairs = pd.read_csv(an / 'full_cfr_pairs.tsv', sep='\t')
     canon_div = pd.read_csv(an / 'partner_diversity.tsv', sep='\t')
@@ -249,7 +254,7 @@ def main():
           and (m.top_partner_n_receptors_c == m.top_partner_n_receptors_r).all(), len(m))
 
     # 2. GPR4 on its own GPCRdb entry
-    N_pos, N_pairs, N_div = run(deltas, lambda g: pack_map(P['packs'], g) if g == 'gpr4_human' else legacy_map(an, g))
+    N_pos, N_pairs, N_div, N_rare = run(deltas, lambda g: pack_map(P['packs'], g) if g == 'gpr4_human' else legacy_map(an, g))
     if P['kit'].is_file():
         kit = pd.read_csv(P['kit'], sep='\t')
         mk = kit.merge(N_pos, on='generic_number', suffixes=('_k', '_n'))
@@ -257,6 +262,9 @@ def main():
               len(mk) == 368 and (mk.n_receptors_k == mk.n_receptors_n).all()
               and (mk.cfr_score_rank_k == mk.cfr_score_rank_n).all()
               and np.allclose(mk.cfr_score_k, mk.cfr_score_n), len(mk))
+    check('positions below recurrence: CFRs in 1 or 2 receptors, none of them recurrent',
+          len(N_rare) > 0 and set(N_rare.n_receptors) <= {1, 2} and not set(N_rare.generic_number) & set(N_pos.generic_number),
+          dict(rows=len(N_rare), one=int((N_rare.n_receptors == 1).sum()), two=int((N_rare.n_receptors == 2).sum())))
     r848 = N_pos[N_pos.generic_number == '8.48x48'].iloc[0]
     check('8.48x48 = 113 / 39.9293% / 5.2107 / 0.46452 / rank 36',
           r848.n_receptors == 113 and r848.pct_receptors == 39.9293 and round(r848.mean_abs_delta, 4) == 5.2107
@@ -276,7 +284,7 @@ def main():
     s3 = pd.read_csv(P['s3'])
     check('top 50 order equals S3', list(N_pos.head(50).generic_number) == list(s3.generic_number))
 
-    P_pos, P_pairs, _ = run(deltas, lambda g: pack_map(P['packs'], g))
+    P_pos, P_pairs, _, _ = run(deltas, lambda g: pack_map(P['packs'], g))
     check('top 50 identical under all-pack numbering',
           list(N_pos.head(50).generic_number) == list(P_pos.head(50).generic_number)
           and list(N_pos.head(50).n_receptors) == list(P_pos.head(50).n_receptors))
@@ -391,6 +399,7 @@ def main():
     N_pos.to_csv(out / 'positions.tsv', sep='\t', index=False)
     N_pairs.drop(columns=['receptors']).to_csv(out / 'pairs.tsv', sep='\t', index=False)
     N_div.to_csv(out / 'partner_diversity.tsv', sep='\t', index=False)
+    N_rare.to_csv(out / 'positions_below_recurrence.tsv', sep='\t', index=False)
     ref.to_csv(out / 'activation_reference.tsv', sep='\t', index=False)
     (out / 'activation_motifs.json').write_text(json.dumps(motif_doc, indent=1) + '\n', encoding='utf-8')
     recovery.to_csv(out / 'activation_recovery.tsv', sep='\t', index=False)
@@ -424,7 +433,8 @@ def main():
     if P['receptors_csv'].is_file():
         inputs['receptors.csv (built site)'] = P['receptors_csv']
     in_sha = {k: (sha(v) if v.is_file() else None) for k, v in inputs.items()}
-    outputs = ['positions.tsv', 'pairs.tsv', 'partner_diversity.tsv', 'activation_reference.tsv',
+    outputs = ['positions.tsv', 'pairs.tsv', 'partner_diversity.tsv', 'positions_below_recurrence.tsv',
+               'activation_reference.tsv',
                'activation_motifs.json', 'activation_recovery.tsv', 'segments.tsv', 'interfaces.tsv',
                'conservation_positions.tsv']
     out_sha = {n: sha(out / n) for n in outputs}
@@ -448,11 +458,13 @@ RULES = {
                   'CFRs), receptors per pair, both ends in the top 50 or not; same run', 'recomputed'),
     'partner_diversity.tsv': ('per recurrent position: distinct partner positions and the most frequent exact '
                               'partner; same run', 'recomputed'),
+    'positions_below_recurrence.tsv': ('generic positions that are CFRs in 1 or 2 receptors (below the recurrence '
+                                       'rule); same run', 'recomputed'),
     'activation_reference.tsv': ('39 known activation positions: the Zhou et al. 2019 common activation pathway '
                                  '(34 residue pairs) plus the class A motifs (D2.50, DRY, PIF, CWxP, NPxxY, the '
                                  'sodium pocket, 6.30); ordered by rank in the recovery universe', 'derived'),
     'activation_motifs.json': ('the five named motifs and their 16 positions', 'derived'),
-    'activation_recovery.tsv': ('262 positions numbered in at least half of the receptors, in CFR score order, '
+    'activation_recovery.tsv': ('the 262 recurrent positions numbered in at least half of the receptors, in CFR score order, '
                                 'with the cumulative count of reference positions and the count expected by '
                                 'chance (rank x 39 / 262)', 'derived'),
     'segments.tsv': ('mean |dRRCS| per contact endpoint by segment, all contacts with full GPCRdb residue maps',

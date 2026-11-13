@@ -85,7 +85,6 @@ receptors.json
     similar       {gid: [[gid, cosine], ...]} top 5 by pattern similarity: cosine over the signed CFR
                   fingerprint (atlas net, 0 where not hit); receptors with fewer than 32 numbered CFR
                   positions are left out. A browsing aid, not a classification.
-    families      [{family, ligand, n, plotted (n >= 4), median_<metric>}]
     kruskal       {sum_abs: {families: {H, p, k, n}, ligand_types: {H, p, k, n}}}: total |dRRCS| per receptor
                   across all ligand types and across families with at least FAMILY_MIN_KW (5) receptors
     ligand_groups [{key, n, color}] (light-mode hues, validated for color-vision deficiency)
@@ -121,16 +120,15 @@ THRESHOLD_FLOOR = 0.2
 #: Receptors with fewer numbered CFR positions get no similarity list.
 SIMILARITY_MIN_NUMBERED = 32
 SIMILARITY_TOP = 5
-#: Families with fewer receptors are listed in the strip's note, not plotted.
-FAMILY_MIN = 4
 #: Kruskal-Wallis on total |dRRCS|: every ligand type; families with at least this many receptors.
 FAMILY_MIN_KW = 5
 
 #: The explorer's ligand-type colors (eight hues; the three smallest types fold into Other).
 LIGAND_GROUP_ORDER = ['Peptide receptors', 'Orphan receptors', 'Aminergic receptors', 'Lipid receptors',
                       'Protein receptors', 'Nucleotide receptors', 'Sensory receptors', 'Other']
-LIGAND_GROUP_COLORS = dict(zip(LIGAND_GROUP_ORDER, ['#0D9488', '#D97706', '#7C3AED', '#DB2777', '#2563EB',
-                                                    '#65A30D', '#92400E', '#4338CA']))
+#: No blue or red (the signed ΔRRCS colors) and no crimson (predicted pathogenic); Other is a neutral gray.
+LIGAND_GROUP_COLORS = dict(zip(LIGAND_GROUP_ORDER, ['#0D9488', '#D97706', '#7C3AED', '#A21CAF', '#15803D',
+                                                    '#65A30D', '#92400E', '#6B7280']))
 
 EXPLORER_METRICS = [
     ('n_above', 'Above-threshold pairs',
@@ -141,8 +139,8 @@ EXPLORER_METRICS = [
      'Sum of |ΔRRCS| over all contact pairs; grows with receptor size and contact count'),
     ('share_active', 'Share stronger in the active model',
      'Share of above-threshold pairs whose RRCS is higher in the active model; depends on the threshold'),
-    ('cfr_hits', 'CFR positions with an above-threshold contact',
-     'Of the 50 class-wide CFR positions, how many carry an above-threshold contact in this receptor'),
+    ('cfr_hits', 'Top-ranked positions with a CFR',
+     'Of the 50 top-ranked positions, how many are CFRs in this receptor (a residue in an above-threshold contact)'),
 ]
 
 
@@ -229,7 +227,18 @@ def ligand_group(ligand):
     return ligand if ligand in LIGAND_GROUP_COLORS else 'Other'
 
 
-def _meta(name, inputs, **extra):
+#: Numbering sentence of the payloads built on the class tables (data/class_tables_2026-11-13), whose residue
+#: maps are older than the per-receptor numbering (data_versions.json gpcrdb_residue_maps).
+def maps_numbering(magnitude=False):
+    from ..website import data_versions as dv
+    m = dv.load()['sources'].get('gpcrdb_residue_maps') or {}
+    when = 'GPCRdb API fetched %s' % m.get('fetched', 'unknown')
+    if not magnitude and m.get('exception'):
+        when += '; %s' % m['exception']
+    return 'Residue segments and generic numbers: GPCRdb residue maps (%s).' % when
+
+
+def _meta(name, inputs, numbering=None, **extra):
     fetched = sorted({i.gpcrdb_fetched for i in inputs if i.gpcrdb_fetched})
     meta = {
         'schema': SCHEMA % name,
@@ -237,11 +246,11 @@ def _meta(name, inputs, **extra):
         'n_receptors': len(inputs),
         'sources': {
             'rrcs': 'GPCompaRe RRCS batch 2026-02-02 (batch_analysis_20260202_151051).',
-            'numbering': ('Residue segments and generic numbers: the full GPCRdb numbering (GPCRdb API '
-                          'fetched %s). With it, 274 receptors carry an above-threshold contact at '
-                          '3.50x50.' % ', '.join(fetched or ['unknown'])),
-            'cfr_set': 'The class-wide CFR set: the 50 top-ranked positions by CFR score.',
-            'metadata': 'Ligand type and family from class_A_all.csv, as on the browse page.',
+            'numbering': numbering or ('Residue segments and generic numbers: the full GPCRdb numbering of each '
+                                       'receptor (GPCRdb API fetched %s).' % ', '.join(fetched or ['unknown'])),
+            'cfr_set': 'The 50 top-ranked positions by CFR score.',
+            'metadata': ('Ligand type and family from the list of %d human Class A receptors, as on the browse page.'
+                         % (len(inputs) + len(NOT_MODELED))),
         },
         'threshold_rule': ('Per receptor, contact pairs with |ΔRRCS| at or above mean + SD of |ΔRRCS| '
                            '(at least 0.2), the threshold each report uses.'),
@@ -294,6 +303,12 @@ def cfr_positions():
     return sorted(rows, key=lambda r: _gn_sort_key(r['gn'], r['segment'], seg_index))
 
 
+def _net(v):
+    """A net ΔRRCS to 3 decimals; a nonzero net under 0.0005 keeps two significant digits, so its sign survives."""
+    r = round(v, 3)
+    return float('%.2g' % v) if r == 0 and v != 0 else r
+
+
 def receptor_cfr_profile(inp, gns):
     """(state string, net list, n_contacts list) of one receptor over the positions `gns`."""
     state, net, ncont = [], [], []
@@ -305,7 +320,7 @@ def receptor_cfr_profile(inp, gns):
         m = (inp.sig_res1 == p) | (inp.sig_res2 == p)
         k = int(m.sum())
         if k:
-            state.append('2'); net.append(round(float(inp.sig_delta[m].sum()), 3)); ncont.append(k)
+            state.append('2'); net.append(_net(float(inp.sig_delta[m].sum()))); ncont.append(k)
         else:
             state.append('1'); net.append(None); ncont.append(0)
     return ''.join(state), net, ncont
@@ -415,14 +430,6 @@ def build_receptors(inputs, atlas):
     eligible = {r['gid'] for r in rows if r['cfr_numbered'] >= SIMILARITY_MIN_NUMBERED}
     similar = _cosine_top(vectors, eligible)
 
-    families = []
-    for fam, sub in df.groupby('family', sort=True):
-        f = {'family': fam, 'ligand': sub['ligand'].mode().iat[0], 'n': int(len(sub)),
-             'plotted': bool(len(sub) >= FAMILY_MIN)}
-        for key, _l, _d in EXPLORER_METRICS:
-            f['median_' + key] = None if sub[key].isna().all() else round(float(sub[key].median()), 4)
-        families.append(f)
-
     # Kruskal-Wallis on total |dRRCS| only: every ligand type; families with at least FAMILY_MIN_KW receptors
     kruskal = {'sum_abs': {}}
     for label, col, min_n in (('families', 'family', FAMILY_MIN_KW), ('ligand_types', 'ligand', 1)):
@@ -445,7 +452,6 @@ def build_receptors(inputs, atlas):
         'columns': columns,
         'rows': [[r[c] for c in columns] for r in rows],
         'similar': similar,
-        'families': families,
         'kruskal': kruskal,
         'ligand_groups': [{'key': k, 'n': int(counts.get(k, 0)), 'color': LIGAND_GROUP_COLORS[k]}
                           for k in LIGAND_GROUP_ORDER],
@@ -504,8 +510,10 @@ def build_overview(inputs, manuscript=None, am=None):
         'coverage': coverage,
         'exclusions': {
             'not_modeled': NOT_MODELED,
-            'not_modeled_note': ('class_A_all.csv lists 287 receptors; these 4 lack a complete active and '
-                                 'inactive model pair and are not in the database.'),
+            'listed': len(inputs) + len(NOT_MODELED),
+            'not_modeled_note': ('The list of %d human Class A receptors also names these %d; they lack a complete '
+                                 'active and inactive model pair and are not in the database.'
+                                 % (len(inputs) + len(NOT_MODELED), len(NOT_MODELED))),
         },
     }
 
@@ -555,6 +563,8 @@ def build_class_atlas(store, manuscript=None, folder=None):
     payloads = {}
     payloads['helix_pairs'], payloads['helix_pair_cells'] = build_helix_pairs(inputs)
     class_results.add_segments_interfaces(payloads['helix_pairs'])
+    payloads['helix_pairs']['meta']['sources']['numbering_magnitude'] = (
+        'interfaces and segments_magnitude: ' + maps_numbering(magnitude=True))
     hrc = class_results.build_helix_receptor_cells(payloads['helix_pair_cells'], payloads['helix_pairs'])
     payloads['helix_receptor_cells'] = dict(hrc, meta=_meta('helix_receptor_cells', inputs))
     payloads['cfr_atlas'] = build_cfr_atlas(inputs)
@@ -563,8 +573,8 @@ def build_class_atlas(store, manuscript=None, folder=None):
     payloads['class_scale'] = dict(class_results.build_class_scale(inputs, store.delta_data),
                                    meta=_meta('class_scale', inputs))
     payloads['class_positions'] = dict(
-        class_results.build_class_positions(pack_layer.load_pack(class_results.SCAFFOLD_GID, folder)),
-        meta=_meta('class_positions', inputs))
+        class_results.build_class_positions(pack_layer.load_pack(class_results.SCAFFOLD_GID, folder), len(inputs)),
+        meta=_meta('class_positions', inputs, numbering=maps_numbering()))
     payloads['class_variants'] = dict(
         class_results.build_class_variants((manuscript or {}).get('am_comparison')),
         meta=_meta('class_variants', inputs,
