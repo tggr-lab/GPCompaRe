@@ -103,6 +103,8 @@
   }
 
   window.addEventListener('load', function () {
+    // a page that loads Plotly for one card only (the Statistics explorer) opts out of the idle preload
+    if (document.querySelector('[data-plotly-on-demand]')) return;
     var c = navigator.connection;
     if (c && c.saveData) return;
     setTimeout(function () {
