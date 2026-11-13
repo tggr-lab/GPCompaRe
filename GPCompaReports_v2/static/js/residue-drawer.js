@@ -356,6 +356,30 @@
     drawer.classList.toggle('rx-drawer--left', left);
   }
 
+  // On a phone the drawer is a bottom sheet over the lower half of the screen, with the
+  // selection bar under it. A residue tapped on the snake plot is scrolled into the space left
+  // above the sheet, so it and its arcs stay in sight.
+  function keepInView(pos) {
+    if (window.innerWidth > 600) return;
+    var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var later = window.requestAnimationFrame || function (f) { return setTimeout(f, 16); };
+    later(function () { later(function () {
+      if (drawer.hidden || current !== pos) return;
+      var c = document.querySelector('#snake-plot-container circle[id="' + pos + '"]');
+      var r = c && c.getBoundingClientRect();
+      if (!r || !r.height) return;
+      var top = 0;
+      ['.topbar', '.v3-secnav'].forEach(function (sel) {
+        var n = document.querySelector(sel);
+        if (n && getComputedStyle(n).position === 'sticky') top = Math.max(top, n.getBoundingClientRect().bottom);
+      });
+      var bottom = drawer.getBoundingClientRect().top;
+      if (bottom - top < r.height + 24) return;
+      if (r.top >= top + 8 && r.bottom <= bottom - 8) return;
+      window.scrollBy({ top: (r.top + r.height / 2) - (top + bottom) / 2, behavior: reduce ? 'auto' : 'smooth' });
+    }); });
+  }
+
   function open(pos, opts) {
     opts = opts || {};
     current = pos;
@@ -416,6 +440,7 @@
     if (d.residue === current && !drawer.hidden) return;
     if (d.user || !drawer.hidden) open(d.residue);
     emit(d.residue, 'snake');
+    if (d.user) keepInView(d.residue);
   });
 
   // Report tables: the cells that name a residue. A fourth entry 'row' reads the residue from
