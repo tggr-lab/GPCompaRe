@@ -31,3 +31,22 @@ odds ratio 2.58, adjusted 1.52, 7,445 and 11,150) and is kept only for
 `tests/test_statistics_am_section.py` checks that the copy matches the
 supplement file when that is present, and that the built page shows exactly
 these values and none of the retired ones.
+
+## Two band tables for the Statistics page (added 2026-11-13)
+
+Byte copies, written by `scripts/build_class_tables.py`; `analysis/class_results.py` asserts the sha256
+and `tests/test_statistics_class_results.py` checks the pins and, where the sources exist, byte equality.
+Same 276-receptor allele set as the summary above.
+
+| File | Source | sha256 |
+|---|---|---|
+| `FigS4b_recurrence_bands.tsv` | `deliverables/02_supplement/source_tables/FigS4b_recurrence_bands.tsv` | `9f385757cb416e88d7553ea47ee2b07f4a666929581cc708881d629edb9651cb` |
+| `ed14_a_conservation_strata_plotdata.tsv` | `deliverables/02_supplement/code/panels/ed14_a_conservation_strata_plotdata.tsv` | `0bc8d101b4e3fdb7c9a4c607ba11c6f1d1df9706af0eb9f5967b815a6c38bedd` |
+
+`FigS4b_recurrence_bands.tsv`: AlphaMissense classes (pathogenic, ambiguous, benign) of the unique
+substitutions by recurrence band (receptors in which the position is a CFR: fewer than 3, 3 to 28, 29 to
+70, 71 to 141, 142 to 212, 213 or more); 402 positions, 15,519 decisive calls (5 fewer than the summary:
+calls on generic-numbered residues without a modeled contact). `ed14_a_conservation_strata_plotdata.tsv`:
+predicted pathogenic share of decisive calls by conservation fifth, top 50 (`lead_*`) against other
+positions (`rest_*`); 15,507 decisive calls (12 without a conservation score fall outside). The sibling
+meta JSON of the second file quotes superseded values and is not copied.

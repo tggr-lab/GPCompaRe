@@ -1,0 +1,300 @@
+{
+ "generator": "scripts/build_class_tables.py",
+ "checks": {
+  "283 receptors in the batch run": {
+   "ok": true,
+   "detail": 283
+  },
+  "canonical run reproduces full_cfr_positions.tsv (gn, n, cfr_score; 368 rows)": {
+   "ok": true,
+   "detail": 368
+  },
+  "canonical run reproduces full_cfr_pairs.tsv (2,234 pairs)": {
+   "ok": true,
+   "detail": 2234
+  },
+  "canonical run reproduces partner_diversity.tsv": {
+   "ok": true,
+   "detail": 368
+  },
+  "GPR4-own run equals positions_pack_gpr4.tsv (n, rank, score)": {
+   "ok": true,
+   "detail": 368
+  },
+  "8.48x48 = 113 / 39.9293% / 5.2107 / 0.46452 / rank 36": {
+   "ok": true,
+   "detail": {
+    "n": 113,
+    "pct": 39.9293,
+    "mean": 5.210695479419222,
+    "score": 0.46451632000665066,
+    "rank": 36
+   }
+  },
+  "pair universe 2,231 with 181 both ends in the top 50": {
+   "ok": true,
+   "detail": {
+    "pairs": 2231,
+    "both_top50": 181
+   }
+  },
+  "top 20 pairs equal S5 (pairs and receptor counts; order of ties aside)": {
+   "ok": true,
+   "detail": ""
+  },
+  "top 50 order equals S3": {
+   "ok": true,
+   "detail": ""
+  },
+  "top 50 identical under all-pack numbering": {
+   "ok": true,
+   "detail": ""
+  },
+  "positions that differ under all-pack numbering (outside the top 50)": {
+   "ok": true,
+   "detail": [
+    {
+     "generic_number": "2.58x57",
+     "n_receptors_n": 34,
+     "n_receptors_p": 35
+    },
+    {
+     "generic_number": "2.58x58",
+     "n_receptors_n": 11,
+     "n_receptors_p": 10
+    },
+    {
+     "generic_number": "2.61x60",
+     "n_receptors_n": 48,
+     "n_receptors_p": 50
+    },
+    {
+     "generic_number": "2.61x61",
+     "n_receptors_n": 39,
+     "n_receptors_p": 37
+    },
+    {
+     "generic_number": "6.27x27",
+     "n_receptors_n": 96,
+     "n_receptors_p": 95
+    },
+    {
+     "generic_number": "8.59x59",
+     "n_receptors_n": 30,
+     "n_receptors_p": 31
+    }
+   ]
+  },
+  "39 reference positions = Zhou 2019 pathway residues + class A motifs (e19 known set)": {
+   "ok": true,
+   "detail": {
+    "zhou": 32,
+    "motifs": 20,
+    "union": 39
+   }
+  },
+  "16 named motif positions are in the reference set": {
+   "ok": true,
+   "detail": ""
+  },
+  "the other motif positions are the sodium pocket and 6.30": {
+   "ok": true,
+   "detail": ""
+  },
+  "recovery on the canonical ranking reproduces e19 (262 positions, 9 cut points)": {
+   "ok": true,
+   "detail": 262
+  },
+  "corrected ranking gives the same cut points": {
+   "ok": true,
+   "detail": {
+    "10": 8,
+    "20": 14,
+    "30": 16,
+    "40": 18,
+    "50": 20,
+    "60": 21,
+    "80": 23,
+    "100": 27,
+    "120": 28
+   }
+  },
+  "49 of the 50 top-ranked positions are in the recovery universe": {
+   "ok": true,
+   "detail": ""
+  },
+  "every reference position is in the universe": {
+   "ok": true,
+   "detail": []
+  },
+  "9 of the 16 named motif positions are in the top 50": {
+   "ok": true,
+   "detail": 9
+  },
+  "segments: TM6 1.13, H8 1.21, TM1 and TM4 0.74": {
+   "ok": true,
+   "detail": {
+    "TM1": 0.745,
+    "TM2": 0.797,
+    "TM3": 0.921,
+    "TM4": 0.739,
+    "TM5": 0.979,
+    "TM6": 1.126,
+    "TM7": 1.075,
+    "H8": 1.213,
+    "ICL1": 1.104,
+    "ICL2": 1.112,
+    "ICL3": 1.211,
+    "ECL1": 1.084,
+    "ECL2": 1.234,
+    "ECL3": 1.153,
+    "N-term": 1.061,
+    "C-term": 1.188
+   }
+  },
+  "interfaces lead TM3-TM6 and TM5-TM6 1.42, TM3-TM7 1.31": {
+   "ok": true,
+   "detail": [
+    [
+     "TM3",
+     "TM6"
+    ],
+    [
+     "TM5",
+     "TM6"
+    ],
+    [
+     "TM3",
+     "TM7"
+    ]
+   ]
+  },
+  "conservation medians 0.80 vs 0.67, n 50 vs 302": {
+   "ok": true,
+   "detail": [
+    0.80381788,
+    0.672617665
+   ]
+  },
+  "conservation top-50 set equals the corrected top 50": {
+   "ok": true,
+   "detail": ""
+  },
+  "bands: 6 rows, 402 positions, 15,519 decisive calls": {
+   "ok": true,
+   "detail": ""
+  },
+  "fifths: 5 rows, 6,149 + 9,358 = 15,507 decisive calls": {
+   "ok": true,
+   "detail": ""
+  },
+  "Kruskal-Wallis ligand types H 27.87 (k 10, n 283)": {
+   "ok": true,
+   "detail": [
+    27.865860986340294,
+    0.001004352999102854,
+    10
+   ]
+  },
+  "Kruskal-Wallis families with at least 5 receptors H 27.36 (k 16, n 192)": {
+   "ok": true,
+   "detail": [
+    27.359597506000455,
+    0.025939432129478832,
+    16,
+    192
+   ]
+  }
+ },
+ "inputs": {
+  "batch csv_data (283 *_rrcs_delta.csv)": {
+   "path": "~/Documents/gpcr_synth/The Ultimate RRCS database project/alphafold_multistate_gpcr/The_batch_RRCS_analyzer/batch_analysis_full/batch_analysis_20260202_151051/csv_data",
+   "sha256": null
+  },
+  "full_cfr_positions.tsv": {
+   "path": "~/research/tggr_gpcr_ready_for_the final_draft/figures_overhaul/_analysis/full_cfr_positions.tsv",
+   "sha256": "7c846bda57e1a7aa8ac667ea305217d2d8a8ed213a5800353edfa613fcd5a4cb"
+  },
+  "full_cfr_pairs.tsv": {
+   "path": "~/research/tggr_gpcr_ready_for_the final_draft/figures_overhaul/_analysis/full_cfr_pairs.tsv",
+   "sha256": "d3d28efdb7ad1a7a1a712b10d762b8285fc4e56ace4f9e4b481057e022d5927d"
+  },
+  "partner_diversity.tsv": {
+   "path": "~/research/tggr_gpcr_ready_for_the final_draft/figures_overhaul/_analysis/partner_diversity.tsv",
+   "sha256": "dea06d63ca48cc68491341a636e234174056a4a130ec1e97e09a02c03bf47a0d"
+  },
+  "gpr4_human pack": {
+   "path": "~/Documents/gpcr_synth/gpcompare_studio_web/.claude/worktrees/main-merge/public/pack/gpr4_human.json",
+   "sha256": "b65e1c78cbd47659b8c9f2dafc3f4a34e3041b837f53295a1c08def30245c888"
+  },
+  "zhou2019.ts": {
+   "path": "~/Documents/gpcr_synth/gpcompare_studio_web/.claude/worktrees/main-merge/src/engine/state/zhou2019.ts",
+   "sha256": "5ea9e6e799cbc9c5b9f47918452889b2eaeae5f87a853ed6fb1d32586918b2b3"
+  },
+  "novel_cfrs.py (MOTIFS)": {
+   "path": "~/Documents/gpcr_synth/side_quests/clinvar_cfr_2026-10-20/novel_cfrs.py",
+   "sha256": "59acd40be6925f1d45756fa71d8ae61cddb651347ef0ef70e4786d112ae80f3a"
+  },
+  "e19_results.json": {
+   "path": "~/Documents/gpcr_synth/cfr_main_quest/exploration/e18/out/e19_results.json",
+   "sha256": "64d32d7204249c6167af4b91c1eac17b5f5f05ada67382445690e5f6adc74578"
+  },
+  "e19_cutoff_free.json": {
+   "path": "~/Documents/gpcr_synth/cfr_main_quest/exploration/e18/out/e19_cutoff_free.json",
+   "sha256": "d2dddbc9cd2ae7546f7f6950994f81a95b93a45527d0a4d7a35ca8837d1b57ed"
+  },
+  "residue_features.tsv.gz": {
+   "path": "~/Documents/gpcr_synth/cfr_main_quest/wp0/residue_features.tsv.gz",
+   "sha256": "580584e1cb92b7b9ebb4f224d62c565b30a0136fa44bfcb5c6896ac678502c2c"
+  },
+  "ed1_full_segments.tsv": {
+   "path": "~/research/tggr_gpcr_ready_for_the final_draft/figures_overhaul/_analysis/ed1_full_segments.tsv",
+   "sha256": "99a2aceaabc61a9fd064cb80e19ee351ce9ce39a8e055656208b1776b2f1dc60"
+  },
+  "ed1_full_interfaces.tsv": {
+   "path": "~/research/tggr_gpcr_ready_for_the final_draft/figures_overhaul/_analysis/ed1_full_interfaces.tsv",
+   "sha256": "8236ee1009e20a2d2523fd17302aa9b09c881e90655061bd84f86528dfe6a63e"
+  },
+  "F3a_conservation_by_generic_position.tsv": {
+   "path": "~/Documents/gpcr_synth/NEW_manuscript/GPCompaRe_Finishing_2026-10-31/deliverables/03_main_figures/source_tables/F3a_conservation_by_generic_position.tsv",
+   "sha256": "0061d9502a360e5cb6e3dbcbc46b89754a30783c3b0f90e963f90bc53fb3068a"
+  },
+  "FigS4b_recurrence_bands.tsv": {
+   "path": "~/Documents/gpcr_synth/NEW_manuscript/GPCompaRe_Finishing_2026-10-31/deliverables/02_supplement/source_tables/FigS4b_recurrence_bands.tsv",
+   "sha256": "9f385757cb416e88d7553ea47ee2b07f4a666929581cc708881d629edb9651cb"
+  },
+  "ed14_a_conservation_strata_plotdata.tsv": {
+   "path": "~/Documents/gpcr_synth/NEW_manuscript/GPCompaRe_Finishing_2026-10-31/deliverables/02_supplement/code/panels/ed14_a_conservation_strata_plotdata.tsv",
+   "sha256": "0bc8d101b4e3fdb7c9a4c607ba11c6f1d1df9706af0eb9f5967b815a6c38bedd"
+  },
+  "S3_top50_recurrent_cfr_positions.csv": {
+   "path": "~/Documents/gpcr_synth/.worktrees/db-next/GPCompaReports_v2/data/manuscript_2026-08-24/S3_top50_recurrent_cfr_positions.csv",
+   "sha256": "25008309f595d1b5d1ae1f3c82f65f8deeba4490a72925940745e58f0a182352"
+  },
+  "S5_top20_recurrent_cfr_pairs.csv": {
+   "path": "~/Documents/gpcr_synth/.worktrees/db-next/GPCompaReports_v2/data/manuscript_2026-08-24/S5_top20_recurrent_cfr_pairs.csv",
+   "sha256": "df12bbb63c5e7b133d81b7733b853d71af46d69c753cab7531bbbbfe47282123"
+  },
+  "positions_pack_gpr4.tsv": {
+   "path": "~/scratch/2026-11-07_draft_kit/03_numbers/evidence/recurrence/positions_pack_gpr4.tsv",
+   "sha256": "234184dc8a34fe9a2c93fd8f0a544ebbc0ce26a61d99d18c1d2b757903bda754"
+  },
+  "receptors.csv (built site)": {
+   "path": "~/scratch/2026-11-12_gpcrome_atlas/release/stage/data/stats/receptors.csv",
+   "sha256": "8894433311bfcd1b8fbff8b34d2f8c380308804b9c7d71efd7c4d9859eaf1647"
+  }
+ },
+ "outputs": {
+  "positions.tsv": "0993b72f402e3c086d9c611f13074fec251d91982613c21d30c5ef9fcf058173",
+  "pairs.tsv": "65632b35398a178711d2983b2d07eba8f0a6fb4636a75a60573ba4a54d7f18b2",
+  "partner_diversity.tsv": "a377a11b89831d969a2f4227b6447d2e8ed4367f01ccf23d4c3b28600f339b56",
+  "activation_reference.tsv": "ec18984c0588cecb820a5e29d833b8a8db8be7db9497716bc2cc452a9b7fbaa5",
+  "activation_motifs.json": "4362387eca0c737accdbc3da37a28c2c982c49a137ab4f362bb78276c933bc81",
+  "activation_recovery.tsv": "f4f5e00c968f16dc7d5542b56fdc97cb11ea15de39afd467b9754f8511013715",
+  "segments.tsv": "99a2aceaabc61a9fd064cb80e19ee351ce9ce39a8e055656208b1776b2f1dc60",
+  "interfaces.tsv": "8236ee1009e20a2d2523fd17302aa9b09c881e90655061bd84f86528dfe6a63e",
+  "conservation_positions.tsv": "0061d9502a360e5cb6e3dbcbc46b89754a30783c3b0f90e963f90bc53fb3068a",
+  "../supplement_2026-11-05b/FigS4b_recurrence_bands.tsv": "9f385757cb416e88d7553ea47ee2b07f4a666929581cc708881d629edb9651cb",
+  "../supplement_2026-11-05b/ed14_a_conservation_strata_plotdata.tsv": "0bc8d101b4e3fdb7c9a4c607ba11c6f1d1df9706af0eb9f5967b815a6c38bedd"
+ }
+}
