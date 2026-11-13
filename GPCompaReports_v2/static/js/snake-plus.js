@@ -1489,6 +1489,49 @@
     applyView();
   }
 
+  // A link that lands on a residue or a pair: a zoomed plot (a phone opens zoomed on TM3 to TM6)
+  // pans to put them in the middle, zooming out only as far as it takes to show both clear of
+  // the plot's edges, the minimap and the zoom buttons (a residue at the far end of a loop or
+  // terminus cannot be panned to the middle, so the plot zooms out a step at a time instead).
+  // Reads the drawn circles, so it follows a loop or terminus that was just opened.
+  function centerOn(ids) {
+    if (!fitBox || S.zoom <= 1) return false;
+    var cs = (ids || []).map(function (pos) { return circles[pos]; })
+      .filter(function (c) { return c && c.getClientRects().length; });
+    if (!cs.length) return false;
+    function rects() { return cs.map(function (c) { return c.getBoundingClientRect(); }); }
+    function hit(a, b, m) { return a.left < b.right + m && a.right > b.left - m && a.top < b.bottom + m && a.bottom > b.top - m; }
+    function clear() {
+      var plot = svg.getBoundingClientRect();
+      var over = [ui.minimap, document.getElementById('sp-zoom')]
+        .filter(function (n) { return n && n.getClientRects().length; })
+        .map(function (n) { return n.getBoundingClientRect(); });
+      return rects().every(function (r) {
+        if (r.left < plot.left + 4 || r.right > plot.right - 4 || r.top < plot.top + 4 || r.bottom > plot.bottom - 4) return false;
+        return !over.some(function (o) { return hit(r, o, 4); });
+      });
+    }
+    function aim() {
+      var pts = rects().map(function (r) { return clientToSvg(r.left + r.width / 2, r.top + r.height / 2); });
+      var xs = pts.map(function (p) { return p.x; }), ys = pts.map(function (p) { return p.y; });
+      var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+      var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+      var pad = 48;
+      var need = Math.max((x1 - x0 + 2 * pad) / fitBox.w, (y1 - y0 + 2 * pad) / fitBox.h);
+      if (need > 0 && S.zoom > 1 / need) S.zoom = Math.max(1, 1 / need);
+      if (S.zoom < 1.15) S.zoom = 1;   // barely zoomed: show the whole plot, without the minimap
+      S.cx = (x0 + x1) / 2;
+      S.cy = (y0 + y1) / 2;
+      applyView();
+    }
+    aim();
+    for (var i = 0; i < 8 && S.zoom > 1 && !clear(); i++) {
+      S.zoom = Math.max(1, S.zoom / 1.25);
+      aim();
+    }
+    return true;
+  }
+
   // ------------------------------------------------------------------ public
   var PUBLIC = {
     state: function () { return { arcs: S.arcs, mode: S.mode, t: S.t, shown: shown.length, passing: passing.length, zoom: S.zoom, labels: S.labels, ring: S.ring, segFilter: S.segFilter, top: S.top, inited: S.inited }; },
@@ -1498,6 +1541,7 @@
     play: play,
     zoomBy: zoomBy,
     fit: function () { S.zoom = 1; applyView(); },
+    centerOn: centerOn,
     step: tourStep,
     setRing: function (v) { S.ring = views[v] ? v : 'none'; if (ui.ring) ui.ring.value = S.ring; drawRings(); ringLegend(); },
     toggleMotif: function (id) { S.motifs[id] = !S.motifs[id]; var c = ui.motifs && ui.motifs.querySelector('[data-motif="' + id + '"]'); if (c) { c.classList.toggle('is-on', !!S.motifs[id]); c.setAttribute('aria-pressed', String(!!S.motifs[id])); } drawMotifs(); },

@@ -116,10 +116,66 @@
     }
     return c;
   }
+  // The part of the window the page can be read in: under the sticky bars, above the selection
+  // bar, and on a phone above the residue sheet (a sheet spans the width; on a wide screen the
+  // drawer floats beside the plot and leaves it free).
+  function openBand() {
+    var top = 0, bottom = window.innerHeight;
+    ['.topbar', '.v3-secnav'].forEach(function (sel) {
+      // a sticky bar counts only while it is stuck (before that it is in the page's flow)
+      var n = document.querySelector(sel), cs = n && getComputedStyle(n);
+      if (!cs || cs.position !== 'sticky') return;
+      var r = n.getBoundingClientRect();
+      if (Math.abs(r.top - (parseFloat(cs.top) || 0)) < 2) top = Math.max(top, r.bottom);
+    });
+    [document.getElementById('rx-drawer'), document.getElementById('gpc-selbar')].forEach(function (n, i) {
+      if (!n || n.hidden || !n.getClientRects().length) return;
+      var r = n.getBoundingClientRect();
+      if (i === 0 && r.width < window.innerWidth * 0.9) return;
+      if (r.top > top) bottom = Math.min(bottom, r.top);
+    });
+    return { top: top, bottom: bottom };
+  }
+  // A link that lands on a residue or a pair (#res=, #pair=): open its loop or terminus, bring
+  // it into the plot when the plot is zoomed (a phone), and scroll the page so it sits in the
+  // open band. It aims again once the page has settled (the sheet and the charts take their
+  // final size a little later), only if the residue has left the band by then.
+  function landOn(ids) {
+    var cs = ids.map(revealOnPlot);
+    if (!cs[0]) return false;
+    function aim(force) {
+      if (window.SnakePlus && window.SnakePlus.centerOn) window.SnakePlus.centerOn(ids);
+      var rs = cs.filter(function (c) { return c && c.getClientRects().length; })
+        .map(function (c) { return c.getBoundingClientRect(); });
+      if (!rs.length) {
+        if (force) { var s = document.getElementById('sec-snake'); if (s) s.scrollIntoView(); }
+        return;
+      }
+      var b = openBand(), pad = 12;
+      var top = Math.min.apply(null, rs.map(function (r) { return r.top; }));
+      var bottom = Math.max.apply(null, rs.map(function (r) { return r.bottom; }));
+      if (bottom - top > b.bottom - b.top - 2 * pad) { top = rs[0].top; bottom = rs[0].bottom; }
+      if (!force && top >= b.top + pad && bottom <= b.bottom - pad) return;
+      window.scrollBy({ top: (top + bottom) / 2 - (b.top + b.bottom) / 2, behavior: 'auto' });
+    }
+    // the plot lays an opened loop out on the next tick
+    setTimeout(function () { aim(true); setTimeout(function () { aim(false); }, 500); }, 60);
+    return true;
+  }
   // Scroll to a residue on the plot, or to the plot when the residue cannot be shown there.
-  function scrollToPlot(pos) {
+  // A zoomed plot (a phone) first pans to the residue, and to its partner for a pair, once an
+  // opened loop is laid out.
+  function scrollToPlot(pos, other) {
     var c = revealOnPlot(pos);
-    scrollTo(c && c.getClientRects().length ? c : document.getElementById('sec-snake'));
+    if (other !== undefined && other !== null) revealOnPlot(other);
+    var go = function () {
+      if (c && window.SnakePlus && window.SnakePlus.centerOn) {
+        window.SnakePlus.centerOn(other !== undefined && other !== null ? [pos, other] : [pos]);
+      }
+      scrollTo(c && c.getClientRects().length ? c : document.getElementById('sec-snake'));
+    };
+    if (c && window.SnakePlus && window.SnakePlus.state && window.SnakePlus.state().zoom > 1) setTimeout(go, 60);
+    else go();
   }
 
   // ------------------------------------------------------------------ charts
@@ -685,8 +741,7 @@
       }));
     }
     actions.appendChild(button('Plot', 'Show on the snake plot', function () {
-      if (pair) revealOnPlot(pair.b);
-      scrollToPlot(res);
+      scrollToPlot(res, pair ? pair.b : null);
     }));
     actions.appendChild(button('Table', 'Show in the largest-changes table', function () { showInTable(res); }));
     if (gn && !pair) {
@@ -810,7 +865,8 @@
     hideBar: dismissBar,
     repaint: paintTables,
     hover: function (pos, source) { hoverResidue(pos, source || 'page'); },
-    revealOnPlot: revealOnPlot
+    revealOnPlot: revealOnPlot,
+    landOn: landOn
   };
 
   // ------------------------------------------------------------------ start
@@ -829,10 +885,7 @@
       if (landing) {
         window.addEventListener('load', function () {
           if (/sec=/.test(window.location.hash)) return;
-          revealOnPlot(p.b);
-          var c = revealOnPlot(p.a);
-          var target = c && c.getClientRects().length ? c : (c ? document.getElementById('sec-snake') : null);
-          if (target) target.scrollIntoView({ block: target === c ? 'center' : 'start' });
+          landOn([p.a, p.b]);
         });
       }
       return;

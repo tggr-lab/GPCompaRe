@@ -141,12 +141,15 @@
 
   // Charts above the target can still change height while the page finishes
   // loading; a search landing re-aims once at the end so it stays on target.
-  // A residue landing on the snake plot centres the residue itself.
+  // A residue landing on the snake plot centers the residue itself.
   // A residue in a collapsed loop or terminus is opened first (report-select.js), so the link
   // lands on a residue that can be seen.
   if (focused || parseHash().res) {
     window.addEventListener('load', function () {
       var h = parseHash();
+      // the selection hub lands the residue in the open band (above the sheet on a phone)
+      if (h.res && /^\d+$/.test(h.res) && (!h.sec || h.sec === 'sec-snake') && window.GPCSelect &&
+          window.GPCSelect.landOn && window.GPCSelect.landOn([parseInt(h.res, 10)])) return;
       var c = h.res && /^\d+$/.test(h.res) && (window.GPCSelect && window.GPCSelect.revealOnPlot
         ? window.GPCSelect.revealOnPlot(parseInt(h.res, 10))
         : document.querySelector('#snake-plot-container circle[id="' + h.res + '"]'));

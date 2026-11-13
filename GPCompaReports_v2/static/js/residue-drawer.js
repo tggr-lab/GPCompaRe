@@ -371,7 +371,9 @@
       var top = 0;
       ['.topbar', '.v3-secnav'].forEach(function (sel) {
         var n = document.querySelector(sel);
-        if (n && getComputedStyle(n).position === 'sticky') top = Math.max(top, n.getBoundingClientRect().bottom);
+        var cs = n && getComputedStyle(n), nr = n && n.getBoundingClientRect();
+        // only while stuck: before that the bar is in the page's flow
+        if (cs && cs.position === 'sticky' && Math.abs(nr.top - (parseFloat(cs.top) || 0)) < 2) top = Math.max(top, nr.bottom);
       });
       var bottom = drawer.getBoundingClientRect().top;
       if (bottom - top < r.height + 24) return;
