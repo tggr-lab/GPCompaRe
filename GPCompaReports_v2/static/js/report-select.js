@@ -104,6 +104,23 @@
     var c = document.getElementById('snake-plot-container');
     return c ? c.querySelector('circle[id="' + pos + '"]') : null;
   }
+  // The residue's circle, with its loop or terminus opened when the plot shows that segment
+  // collapsed (the circle is drawn but hidden until then); null when the plot has no circle.
+  function revealOnPlot(pos) {
+    var c = snakeCircle(pos);
+    if (!c || c.getClientRects().length) return c;
+    var cls = (c.getAttribute('class') || '').split(/\s+/);
+    var seg = cls.filter(function (k) { return k && !/^(long|short|rcircle|sp-.*|gpc-.*)$/.test(k); })[0];
+    if (seg && cls.indexOf('long') >= 0 && typeof window.toggleLoop === 'function') {
+      window.toggleLoop('.' + seg, 'short', false, null);
+    }
+    return c;
+  }
+  // Scroll to a residue on the plot, or to the plot when the residue cannot be shown there.
+  function scrollToPlot(pos) {
+    var c = revealOnPlot(pos);
+    scrollTo(c && c.getClientRects().length ? c : document.getElementById('sec-snake'));
+  }
 
   // ------------------------------------------------------------------ charts
   // The scatter (one point per contact pair) and the residue chart (one point per residue,
@@ -653,7 +670,10 @@
         else document.dispatchEvent(new CustomEvent('rx:show3d', { detail: { pos: res } }));
       }));
     }
-    actions.appendChild(button('Plot', 'Show on the snake plot', function () { scrollTo(snakeCircle(res) || document.getElementById('sec-snake')); }));
+    actions.appendChild(button('Plot', 'Show on the snake plot', function () {
+      if (pair) revealOnPlot(pair.b);
+      scrollToPlot(res);
+    }));
     actions.appendChild(button('Table', 'Show in the largest-changes table', function () { showInTable(res); }));
     if (gn && !pair) {
       var a = el('a', 'gpc-selbar-btn', 'All receptors');
@@ -775,7 +795,8 @@
     showBar: function () { dismissed = false; paintBar(); },
     hideBar: dismissBar,
     repaint: paintTables,
-    hover: function (pos, source) { hoverResidue(pos, source || 'page'); }
+    hover: function (pos, source) { hoverResidue(pos, source || 'page'); },
+    revealOnPlot: revealOnPlot
   };
 
   // ------------------------------------------------------------------ start
@@ -793,8 +814,11 @@
       selectPair(p.a, p.b, undefined, 'hash');
       if (landing) {
         window.addEventListener('load', function () {
-          var c = snakeCircle(p.a);
-          if (c && !/sec=/.test(window.location.hash)) c.scrollIntoView({ block: 'center' });
+          if (/sec=/.test(window.location.hash)) return;
+          revealOnPlot(p.b);
+          var c = revealOnPlot(p.a);
+          var target = c && c.getClientRects().length ? c : (c ? document.getElementById('sec-snake') : null);
+          if (target) target.scrollIntoView({ block: target === c ? 'center' : 'start' });
         });
       }
       return;
