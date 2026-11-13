@@ -602,11 +602,25 @@
     var r = panel.getBoundingClientRect();
     return r.height ? r : null;
   }
+  // Where the docked bar's top edge sits (.gpc-selbar--top in report-v3.css: under the top bar
+  // and the section nav).
+  function dockTop() {
+    var tb = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--topbar-height')) || 68;
+    return tb + (window.innerWidth <= 720 ? 48 : 56);
+  }
   function dock() {
     if (!bar || bar.hidden) return;
     var r = threeDRect();
     var h = bar.offsetHeight + 24;
     var top = !!r && r.bottom > window.innerHeight - h && r.top < window.innerHeight;
+    // ...but never over the 3D view's own controls: while they are in the band the docked bar
+    // would cover, the bar stays at the bottom (over the lower part of the view, which scrolls)
+    if (top) {
+      var tools = document.querySelector('#rx-3d-panel .rx-3d-tools');
+      var t = tools ? tools.getBoundingClientRect() : null;
+      var y0 = dockTop(), y1 = y0 + bar.offsetHeight + 8;
+      if (t && t.height && t.bottom > y0 && t.top < y1) top = false;
+    }
     if (top !== bar.classList.contains('gpc-selbar--top')) {
       bar.classList.toggle('gpc-selbar--top', top);
       syncBarHeight();

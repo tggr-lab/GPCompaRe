@@ -663,18 +663,25 @@ def test_bar_docks_at_the_top_while_the_3d_view_is_under_it_and_hiding_it_keeps_
     assert not page.evaluate("document.getElementById('gpc-selbar').classList.contains('gpc-selbar--top')")
     page.click('#rx-3d-toggle')
     page.wait_for_function("document.getElementById('rx-3d-pane').getAttribute('data-state') === 'ready'", timeout=60000)
-    # scrolled so the legend under the pane reaches the bottom of the screen, where the bar
-    # sits: the bar moves to the top and overlaps neither the pane nor the legend
-    page.evaluate("window.scrollBy(0, document.getElementById('rx-3d-panel').getBoundingClientRect().bottom - window.innerHeight + 40)")
+    # scrolled so the view starts low on the screen and runs under the bar's place at the
+    # bottom: the bar moves to the top and overlaps neither the pane, the legend nor the controls
+    page.evaluate("window.scrollBy(0, document.getElementById('rx-3d-panel').getBoundingClientRect().top - 330)")
     page.wait_for_timeout(400)
     assert page.evaluate("document.getElementById('gpc-selbar').classList.contains('gpc-selbar--top')")
     b = bar.bounding_box()
-    for sel in ('#rx-3d-pane', '#rx-3d-legend'):
+    for sel in ('#rx-3d-pane', '#rx-3d-legend', '#rx-3d-panel .rx-3d-tools'):
         r = page.locator(sel).bounding_box()
         if r is None:
             continue
         overlap = not (b['y'] + b['height'] <= r['y'] or b['y'] >= r['y'] + r['height'])
         assert not overlap, (sel, b, r)
+    # scrolled so the legend reaches the bottom of the screen: the bar would cover the view's
+    # controls at the top, so it stays at the bottom (2026-11-13)
+    page.evaluate("window.scrollBy(0, document.getElementById('rx-3d-panel').getBoundingClientRect().bottom - window.innerHeight + 40)")
+    page.wait_for_timeout(400)
+    b = bar.bounding_box()
+    r = page.locator('#rx-3d-panel .rx-3d-tools').bounding_box()
+    assert b['y'] + b['height'] <= r['y'] or b['y'] >= r['y'] + r['height'], (b, r)
     # back to the bottom once the view has scrolled away
     page.evaluate("document.getElementById('sec-rrcs').scrollIntoView()")
     page.wait_for_timeout(400)
