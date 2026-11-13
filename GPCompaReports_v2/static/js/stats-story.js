@@ -214,14 +214,17 @@
     if (t && STATS.contains(t)) showTip(e.clientX, e.clientY, t.getAttribute('data-tip')); else if (!TIP.hidden) hideTip();
   }, { passive: true });
   document.addEventListener('scroll', hideTip, { passive: true });
-  // keyboard: SVG marks that act take tabindex and role=button
-  function hit(node, tip, fn, label) {
+  // keyboard: SVG marks that act take tabindex and role=button; dense marks (one dot per receptor or residue)
+  // stay out of the Tab order, the selection box reaches the same receptors and positions
+  function hit(node, tip, fn, label, dense) {
     if (tip) node.setAttribute('data-tip', tip);
     if (fn) {
       node.setAttribute('data-hit', '1');
-      node.setAttribute('tabindex', '0');
-      node.setAttribute('role', 'button');
-      if (label || tip) node.setAttribute('aria-label', label || tip);
+      if (!dense) {
+        node.setAttribute('tabindex', '0');
+        node.setAttribute('role', 'button');
+        if (label || tip) node.setAttribute('aria-label', label || tip);
+      }
       node.addEventListener('click', function (e) { e.stopPropagation(); hideTip(); fn(e); });
       node.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(e); } });
     }
@@ -773,7 +776,7 @@
           var x = R[q[2]], f = x.gid === rec;
           if (f) fi = q;
           var c = el('circle', { cx: q[0], cy: cy + q[1] * p.L.step, r: r, fill: C.ink, 'fill-opacity': f ? 0 : 0.55 }, g);
-          if (!o.exporting) hit(c, x.symbol + ': ' + p.f(x[p.key]), function () { StatsSel.set({ rec: x.gid }); }, x.symbol + ', ' + p.title + ' ' + p.f(x[p.key]));
+          if (!o.exporting) hit(c, x.symbol + ': ' + p.f(x[p.key]), function () { StatsSel.set({ rec: x.gid }); }, null, true);
         });
         el('line', { x1: xs(med), x2: xs(med), y1: top - 4, y2: cy + half + 2, stroke: C.rule, 'stroke-width': 2 }, g);
         el('line', { x1: 8, x2: pw - 8, y1: axisY, y2: axisY, stroke: C.line }, g);
@@ -1194,7 +1197,7 @@
         el('circle', { cx: r.x, cy: r.y, r: 8.4, fill: bi < 0 ? C.surface : band(bi), stroke: bi < 0 || bi < 3 ? C.line : 'none', 'stroke-width': 1 }, g);
         el('text', { x: r.x, y: r.y + 3.5, 'text-anchor': 'middle', 'font-size': 9.5, 'font-weight': 600, fill: bi >= 3 ? (C.dark && bi >= 4 ? '#0d1117' : '#ffffff') : C.muted, 'pointer-events': 'none' }, g, r.aa);
         var tip = r.aa + r.num + (r.gn ? ' · ' + r.gn + ' · CFR in ' + n + ' of ' + NREC + ' receptors' + (x ? ' · CFR score rank ' + x.rank : '') : ' · no generic number');
-        if (!o.exporting) hit(g, tip, r.gn && x ? function () { selectPos(r.gn, card); } : null);
+        if (!o.exporting) hit(g, tip, r.gn && x ? function () { selectPos(r.gn, card); } : null, null, true);
         var m = r.gn && PI.motif[r.gn];
         if (m) { (groups[m + '|' + r.segment] = groups[m + '|' + r.segment] || []).push([r.x, r.y]); el('circle', { cx: r.x, cy: r.y, r: 11, fill: 'none', stroke: C.fg, 'stroke-width': 1.8, 'pointer-events': 'none' }, s); }
         if (sel && r.gn === sel) selP = r;
@@ -1244,7 +1247,7 @@
       row.forEach(function (r, j) {
         var x = r.gn && PI.by[r.gn], bi = r.gn ? bandOf(x ? x.n : 0, cp.bands) : -1, xx = lab + j * cw;
         var rect = el('rect', { x: xx, y: y, width: cw - 1, height: 14, rx: 2, fill: bi < 0 ? C.surface : band(bi), stroke: bi < 0 ? C.line : 'none', 'data-gn': r.gn || null }, s);
-        if (!o.exporting) hit(rect, r.aa + r.num + (r.gn ? ' · ' + r.gn + ' · CFR in ' + (x ? x.n : 0) + ' of ' + NREC : ''), x ? function () { selectPos(r.gn, card); } : null);
+        if (!o.exporting) hit(rect, r.aa + r.num + (r.gn ? ' · ' + r.gn + ' · CFR in ' + (x ? x.n : 0) + ' of ' + NREC : ''), x ? function () { selectPos(r.gn, card); } : null, null, true);
         var m = r.gn && PI.motif[r.gn];
         if (m) { el('rect', { x: xx - 0.5, y: y - 1.5, width: cw, height: 17, rx: 2.5, fill: 'none', stroke: C.fg, 'stroke-width': 1.4 }, s); (marks[m] = marks[m] || []).push(xx); }
         if (sel && r.gn === sel) el('rect', { x: xx - 2, y: y - 3, width: cw + 3, height: 20, rx: 3, fill: 'none', stroke: C.fg, 'stroke-width': 2.4 }, s);
@@ -1346,7 +1349,7 @@
     A.forEach(function (p, i) {
       var y = top + hh - p.n / NREC * hh;
       var r = el('rect', { x: x(i), y: y, width: Math.max(0.6, bw - 0.4), height: top + hh - y, fill: i < cp.top_n ? C.b4 : C.b2, 'data-gn': p.gn }, s);
-      if (!o.exporting) hit(r, p.gn + ' · rank ' + p.rank + ' · CFR in ' + p.n + ' of ' + NREC, function () { selectPos(p.gn, card); });
+      if (!o.exporting) hit(r, p.gn + ' · rank ' + p.rank + ' · CFR in ' + p.n + ' of ' + NREC, function () { selectPos(p.gn, card); }, null, true);
     });
     if (sel && PI.by[sel]) {
       var i = PI.by[sel].rank - 1, xx = x(i) + bw / 2;
@@ -1824,7 +1827,7 @@
         L.L.pts.forEach(function (q) {
           var p = g[1][q[2]], m = PI.motif[p.gn], on = p.gn === sel;
           var c = el('circle', { cx: q[0], cy: cy + q[1] * L.L.step, r: on ? r + 3 : r, fill: m ? 'none' : (i ? C.ink : C.b4), stroke: m || on ? C.fg : 'none', 'stroke-width': on ? 2 : 1.3, 'fill-opacity': i ? 0.55 : 0.9, 'data-gn': p.gn }, s);
-          if (!o.exporting) hit(c, p.gn + ': mean conservation ' + f2(p.mean) + ' over ' + p.n_residues + ' residues' + (m ? ' (' + m + ')' : ''), PI.by[p.gn] ? function () { selectPos(p.gn, card); } : null);
+          if (!o.exporting) hit(c, p.gn + ': mean conservation ' + f2(p.mean) + ' over ' + p.n_residues + ' residues' + (m ? ' (' + m + ')' : ''), PI.by[p.gn] ? function () { selectPos(p.gn, card); } : null, null, true);
           if (on) el('text', { x: q[0], y: cy + q[1] * L.L.step - r - 8, 'text-anchor': 'middle', 'font-size': 12, 'font-weight': 700, fill: C.fg, stroke: C.surface, 'stroke-width': 3, 'paint-order': 'stroke' }, s, p.gn + ' ' + f2(p.mean));
         });
         el('line', { x1: x(g[2]), x2: x(g[2]), y1: cy - L.half, y2: cy + L.half, stroke: C.fg, 'stroke-width': 2 }, s);
@@ -2137,7 +2140,7 @@
       el('line', { x1: lab + 6, x2: w - 10, y1: y, y2: y, stroke: C.lineSoft }, s);
       l.rs.forEach(function (r) {
         var f = r.gid === rec, c = el('circle', { cx: x(r.sum_abs), cy: y, r: f ? 6 : 3.4, fill: f ? C.fg : C.ink, 'fill-opacity': f ? 1 : 0.5, stroke: f ? C.surface : 'none', 'stroke-width': 1.5 }, s);
-        if (!o.exporting) hit(c, r.symbol + ': ' + fmt(Math.round(r.sum_abs)), function () { receptorPanel(card, r.gid); });
+        if (!o.exporting) hit(c, r.symbol + ': ' + fmt(Math.round(r.sum_abs)), function () { receptorPanel(card, r.gid); }, null, true);
         if (f) el('text', { x: x(r.sum_abs), y: y - 9, 'text-anchor': 'middle', 'font-size': 11, 'font-weight': 700, fill: C.fg }, s, r.symbol);
       });
       el('line', { x1: x(l.m), x2: x(l.m), y1: y - 8, y2: y + 8, stroke: C.fg, 'stroke-width': 2.4 }, s);

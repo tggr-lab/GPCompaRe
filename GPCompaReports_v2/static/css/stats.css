@@ -247,7 +247,7 @@ details.more[open] > summary { margin-bottom: 8px; }
 .btn-follow { margin: 4px 6px 8px 0; }
 
 /* position profile */
-.pos-profile { position: absolute; top: 64px; right: 16px; width: 360px; max-width: calc(100% - 32px); background: var(--st-surface); border: 1px solid var(--st-line); border-radius: 14px; box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18); padding: 16px 18px; font-size: 0.86rem; z-index: 20; }
+.pos-profile { position: absolute; top: 104px; right: 16px; width: 360px; max-width: calc(100% - 32px); background: var(--st-surface); border: 1px solid var(--st-line); border-radius: 14px; box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18); padding: 16px 18px; font-size: 0.86rem; z-index: 20; }
 .pos-profile .x { position: absolute; right: 8px; top: 6px; border: 0; background: none; font-size: 1.35rem; color: var(--st-muted); cursor: pointer; line-height: 1; padding: 4px 8px; }
 .pos-profile .handle { display: none; }
 .pos-profile .pgn { font-family: var(--st-mono); font-size: 1.25rem; font-weight: 600; }
@@ -336,5 +336,6 @@ details.more[open] > summary { margin-bottom: 8px; }
 .st-tip { position: fixed; z-index: 80; pointer-events: none; background: var(--st-fg); color: var(--st-surface); font-size: 0.78rem; line-height: 1.35; padding: 5px 8px; border-radius: 6px; max-width: 280px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18); }
 .st-tip[hidden] { display: none; }
 [data-hit] { cursor: pointer; }
+.schart [data-hit]:focus-visible { outline: 2px solid var(--st-brand); outline-offset: 1px; }
 .schart circle.is-hover, .schart rect.is-hover, .schart g.is-hover > circle, .schart-sub rect.is-hover { stroke: var(--st-fg); stroke-width: 2px; }
 .show-all { margin-top: 10px; }
