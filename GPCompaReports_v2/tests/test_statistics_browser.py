@@ -1,19 +1,23 @@
-"""The Statistics page in a browser: chart cards, exports, table views, lazy charts, phone and dark.
+"""The Statistics page in a browser: every card, the shared selection, exports, phone and dark.
 
-Drives a built site (SEARCH_BUILD_DIR, SMOKE_BUILD_DIR or output_v3_demo, the same as
-test_search_browser.py) in headless Chromium, desktop (1280 px) and phone (390 px), light and dark:
+Drives a built site (SEARCH_BUILD_DIR, SMOKE_BUILD_DIR or output_v3_demo, the same as test_search_browser.py)
+in headless Chromium, desktop (1280 px) and phone (390 px), light and dark:
 
-  * every chart card draws its Plotly chart exactly once, with no console error and no sideways scroll;
-  * no card title or toolbar runs past the viewport;
-  * PNG and SVG export produce a file (Plotly.downloadImage, light background);
-  * the table view of a card shows the numbers the chart draws (the AlphaMissense comparison);
-  * the helix-pair grid lists the receptors behind a clicked cell with report links;
-  * the explorer's find box highlights a receptor and lists similar ones;
-  * the copied caption names the view, the scope and the source.
+  * every card draws once (data-chart-rendered="1"), with no console error and no sideways scroll;
+  * exports are named gpcompare_<card>*, the CSVs carry plain column names;
+  * the helix bundle lists the receptors behind a line or a ledger row with report links;
+  * a small ligand group (Melatonin) shows the carried-by state and one chip per receptor;
+  * the selection box follows a receptor (?sel=rec:), the explorer table marks it;
+  * a ranking row opens the position profile, Esc closes it and clears the position;
+  * ?sel=pos:6.48x48, ?sel=pair:TM3-TM6 and ?sel=bogus:1 on load;
+  * a theme change while the histogram is folded redraws it in the new theme when it is opened;
+  * with reduced motion nothing animates;
+  * the copied caption names the title, the scope and the source.
 
     SEARCH_BUILD_DIR=<build> .venv-test/bin/python -m pytest GPCompaReports_v2/tests/test_statistics_browser.py
 """
-import json
+import csv
+import io
 import os
 import pathlib
 import re
@@ -30,9 +34,7 @@ from GPCompaReports_v2.tests.test_search_browser import (  # noqa: E402,F401  (f
 STATS = BUILD_DIR / 'statistics.html'
 needs_build = pytest.mark.skipif(not STATS.is_file(), reason='no built statistics page in %s' % BUILD_DIR)
 
-# The page loads Plotly from cdn.plot.ly, which the suite blocks; the charts here need the library, so
-# the request is answered from a local copy (PLOTLY_LOCAL_JS, else a known checkout) and the tests skip
-# without one.
+# Plotly (explorer scatter only) comes from cdn.plot.ly, which the suite blocks; it is answered from a local copy
 _HOME = pathlib.Path.home()
 PLOTLY_CANDIDATES = [pathlib.Path(p) for p in filter(None, [os.environ.get('PLOTLY_LOCAL_JS')])] + [
     _HOME / 'scratch' / '2026-11-04_ux_round2' / 'plotly-3.3.1.min.js',
@@ -41,16 +43,21 @@ PLOTLY_CANDIDATES = [pathlib.Path(p) for p in filter(None, [os.environ.get('PLOT
 PLOTLY_LOCAL = next((p for p in PLOTLY_CANDIDATES if p.is_file()), None)
 needs_plotly = pytest.mark.skipif(PLOTLY_LOCAL is None, reason='no local Plotly copy (set PLOTLY_LOCAL_JS)')
 
+CARDS = ['chart-thresholds', 'chart-histogram', 'chart-helix-pairs', 'chart-segments', 'chart-scaffold', 'chart-ranking',
+         'chart-recovery', 'chart-partners', 'chart-cfr-atlas', 'chart-pathogenicity', 'chart-am-bands',
+         'chart-position-conservation', 'chart-am-quintiles', 'chart-cfr-variants', 'chart-receptors']
+
 
 @pytest.fixture
 def open_page(browser, server):
-    """open(path, viewport=DESKTOP, scheme='light') -> the page, Plotly served from the local copy."""
+    """open(path, viewport=DESKTOP, scheme='light', reduced_motion=None) -> the page."""
     contexts = []
     body = PLOTLY_LOCAL.read_bytes() if PLOTLY_LOCAL else b''
 
-    def _open(path, viewport=DESKTOP, scheme='light'):
+    def _open(path='/statistics.html', viewport=DESKTOP, scheme='light', reduced_motion=None):
+        kw = {'reduced_motion': reduced_motion} if reduced_motion else {}
         ctx = browser.new_context(viewport=viewport, color_scheme=scheme, accept_downloads=True,
-                                  is_mobile=viewport is PHONE_390, has_touch=viewport is PHONE_390)
+                                  is_mobile=viewport is PHONE_390, has_touch=viewport is PHONE_390, **kw)
         contexts.append(ctx)
         page = ctx.new_page()
         page.errors = []
@@ -61,30 +68,31 @@ def open_page(browser, server):
             page.route(pattern, lambda route: route.abort())
         page.route('**cdn.plot.ly/**', lambda route: route.fulfill(status=200, content_type='application/javascript', body=body))
         page.goto(server + path, wait_until='load')
+        page.wait_for_timeout(200)
         return page
 
     yield _open
     for c in contexts:
         c.close()
 
-CARDS = ['chart-helix-pairs', 'chart-cfr-atlas', 'chart-cfr-dotplot', 'chart-pathogenicity',
-         'chart-cfr-variants', 'chart-receptors']
-FOLDED = ['chart-histogram', 'chart-tm-bar', 'chart-cv-scatter', 'chart-conservation']
-
 
 def _settle(page, ids, timeout=30000):
-    """Scroll every card into view (they load lazily) and wait until each has a Plotly chart or a note."""
+    """Scroll each card into view (they load when within 600 px) and wait until each one has drawn."""
+    page.evaluate("document.querySelectorAll('details.more').forEach(d => d.open = true)")
     for cid in ids:
-        page.locator('#' + cid).scroll_into_view_if_needed()
-        page.wait_for_timeout(120)
-    page.wait_for_function(
-        """ids => ids.every(id => { const e = document.getElementById(id); return e && (e.querySelector('.plotly') || e.querySelector('.chart-card-note')); })""",
-        arg=ids, timeout=timeout)
-    page.wait_for_timeout(400)
+        page.locator('#card-' + cid).scroll_into_view_if_needed()
+        page.wait_for_timeout(100)
+    page.wait_for_function("""ids => ids.every(id => { const e = document.getElementById(id);
+        return e && (e.dataset.chartRendered === '1' || e.querySelector('.load-note')); })""", arg=ids, timeout=timeout)
+    page.wait_for_timeout(300)
 
 
 def _no_horizontal_scroll(page):
     return page.evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth') <= 1
+
+
+def _errors(page):
+    return [e for e in page.errors if 'ERR_FAILED' not in e]
 
 
 @needs_build
@@ -92,117 +100,243 @@ def _no_horizontal_scroll(page):
 @pytest.mark.parametrize('scheme', ['light', 'dark'])
 @pytest.mark.parametrize('viewport', ['desktop', 'phone'])
 def test_every_card_draws_once_without_errors_or_sideways_scroll(open_page, scheme, viewport):
-    page = open_page('/statistics.html', scheme=scheme, **({'viewport': PHONE_390} if viewport == 'phone' else {}))
-    page.evaluate("document.querySelectorAll('details.stats-folded').forEach(d => d.open = true)")
-    _settle(page, CARDS + FOLDED)
-    for cid in CARDS + FOLDED:
-        plots = page.locator('#%s .plot-container' % cid)
-        assert plots.count() == 1, '%s drew %d charts' % (cid, plots.count())
-        assert page.locator('#' + cid).get_attribute('data-chart-rendered') == '1'
-    errors = [e for e in page.errors if 'plot' not in e.lower()]
-    assert errors == [], errors
+    page = open_page(scheme=scheme, viewport=PHONE_390 if viewport == 'phone' else DESKTOP)
+    _settle(page, CARDS)
+    for cid in CARDS:
+        assert page.locator('#' + cid).get_attribute('data-chart-rendered') == '1', cid
+        assert page.locator('#%s .load-note' % cid).count() == 0, cid
+    assert page.locator('#chart-receptors .plot-container').count() == 1
+    assert _errors(page) == []
     assert _no_horizontal_scroll(page)
-    # titles and toolbars stay inside the viewport
-    over = page.evaluate("""() => Array.from(document.querySelectorAll('.chart-card-title, .chart-card-tools, .chips'))
-        .filter(e => e.getBoundingClientRect().right > document.documentElement.clientWidth + 1).map(e => e.className)""")
+    over = page.evaluate("""() => Array.from(document.querySelectorAll('.scard-title, .scard-foot, .chips, .seg, .glance-fact'))
+        .filter(e => e.getClientRects().length && e.getBoundingClientRect().right > document.documentElement.clientWidth + 1)
+        .map(e => e.className)""")
     assert over == [], over
 
 
 @needs_build
-@needs_plotly
-def test_png_and_svg_export_produce_files(open_page):
-    page = open_page('/statistics.html')
-    _settle(page, ['chart-pathogenicity'])
+def test_no_selection_on_load_and_nothing_par_specific(open_page):
+    page = open_page()
+    assert 'sel=' not in page.url
+    assert page.locator('.pos-profile').count() == 0
+    assert page.locator('#sel-input').input_value() == ''
+    assert 'Nothing selected' in page.locator('[data-sel-summary]').inner_text()
+    html = STATS.read_text(encoding='utf-8')
+    for bad in ('par1_human', 'par2_human', 'par3_human', 'par4_human', 'f2r_human', 'Met159'):
+        assert bad not in html, bad
+
+
+@needs_build
+def test_exports_are_named_and_the_csv_is_plain(open_page):
+    page = open_page()
+    _settle(page, ['chart-pathogenicity', 'chart-ranking'])
     card = page.locator('#card-chart-pathogenicity')
     for fmt, ext in (('png', '.png'), ('svg', '.svg')):
+        card.locator('[data-export-toggle]').click()
         with page.expect_download(timeout=20000) as dl:
             card.locator('[data-export="%s"]' % fmt).click()
         name = dl.value.suggested_filename
         assert name.startswith('gpcompare_pathogenicity') and name.endswith(ext), name
         path = pathlib.Path(dl.value.path())
         assert path.stat().st_size > 1000
-    # the page is back on its own theme after the export (the file is drawn on a light background)
-    assert page.locator('#chart-pathogenicity').get_attribute('data-chart-rendered') == '1'
-    assert [e for e in page.errors if 'plot' not in e.lower()] == []
+        if ext == '.svg':
+            text = path.read_text(encoding='utf-8')
+            assert 'Predicted class of the substitutions seen in people' in text and '#ffffff' in text
+    card.locator('[data-export-toggle]').click()
+    with page.expect_download(timeout=20000) as dl:
+        card.locator('[data-export="csv"]').click()
+    assert dl.value.suggested_filename == 'gpcompare_pathogenicity.csv'
+    header = next(csv.reader(io.StringIO(pathlib.Path(dl.value.path()).read_text(encoding='utf-8'))))
+    assert header[:3] == ['group', 'scored', 'decisive'] and 'series' not in header
+    # the matrix (canvas) exports a PNG too
+    _settle(page, ['chart-cfr-atlas'])
+    m = page.locator('#card-chart-cfr-atlas')
+    m.locator('[data-export-toggle]').click()
+    with page.expect_download(timeout=20000) as dl:
+        m.locator('[data-export="png"]').click()
+    assert dl.value.suggested_filename.startswith('gpcompare_cfr-atlas') and dl.value.suggested_filename.endswith('.png')
+    assert _errors(page) == []
 
 
 @needs_build
-@needs_plotly
-def test_table_view_shows_the_chart_data(open_page):
-    page = open_page('/statistics.html')
-    _settle(page, ['chart-pathogenicity'])
-    html = STATS.read_text(encoding='utf-8')
-    payload = json.loads(re.search(r"\['chart-pathogenicity'\] = (\{.*?\});\n", html, re.S).group(1))
-    card = page.locator('#card-chart-pathogenicity')
-    card.locator('[data-table-toggle]').click()
-    expect(card.locator('.chart-card-table table')).to_be_visible()
-    assert page.locator('#chart-pathogenicity').is_hidden()
-    rows = card.locator('.chart-card-table tbody tr').evaluate_all(
-        'trs => trs.map(tr => Array.from(tr.cells).map(td => td.textContent.trim()))')
-    header = card.locator('.chart-card-table thead th').evaluate_all('ths => ths.map(th => th.textContent.trim())')
-    assert header[:3] == ['series', 'x', 'y']
-    by_series = {}
-    for r in rows:
-        by_series.setdefault(r[0], []).append(float(r[2]))
-    for tr in payload['data']:
-        assert by_series[tr['name']] == pytest.approx(tr['y'], abs=1e-6), tr['name']
-    card.locator('[data-table-toggle]').click()
-    expect(page.locator('#chart-pathogenicity')).to_be_visible()
+def test_every_card_csv_has_plain_headers():
+    stats = BUILD_DIR / 'data' / 'stats'
+    for path in stats.glob('*.csv'):
+        lines = [l for l in path.read_text(encoding='utf-8').splitlines() if not l.startswith('#')]
+        header = next(csv.reader(io.StringIO(lines[0])))
+        assert not {'series', 'x', 'y'} & set(header), path.name
+        assert not any('<' in h for h in header), path.name
 
 
 @needs_build
-@needs_plotly
-def test_helix_pair_cell_lists_the_receptors_behind_it(open_page):
-    page = open_page('/statistics.html')
+def test_table_view_swaps_with_the_chart(open_page):
+    page = open_page()
+    _settle(page, ['chart-am-bands', 'chart-ranking'])
+    card = page.locator('#card-chart-am-bands')
+    card.locator('[data-table-toggle]').click()
+    expect(card.locator('.scard-table table')).to_be_visible()
+    assert page.locator('#chart-am-bands').is_hidden()
+    assert card.locator('.scard-table tbody tr').count() == 6
+    card.locator('[data-table-toggle]').click()
+    expect(page.locator('#chart-am-bands')).to_be_visible()
+    # the ranking's Table view is the server table
+    rk = page.locator('#card-chart-ranking')
+    rk.locator('[data-table-toggle]').click()
+    expect(rk.locator('#cfr-table')).to_be_visible()
+    assert rk.locator('#cfr-table tbody tr').count() == 50
+
+
+@needs_build
+def test_helix_line_and_ledger_row_list_the_receptors_behind_them(open_page):
+    page = open_page()
     _settle(page, ['chart-helix-pairs'])
-    plot = page.locator('#chart-helix-pairs')
-    # the TM3 to TM6 cell: row 3, column 6 of an 8 x 8 grid drawn in the plot area
-    box = plot.locator('.heatmaplayer').bounding_box()
-    page.mouse.click(box['x'] + box['width'] * (5 + 0.5) / 8, box['y'] + box['height'] * (2 + 0.5) / 8)
-    side = page.locator('#card-chart-helix-pairs .chart-card-side')
-    expect(side.locator('h4')).to_contain_text('TM3 to TM6', timeout=15000)
-    expect(side.locator('table tbody tr').first).to_be_visible()
+    card = page.locator('#card-chart-helix-pairs')
+    card.locator('.lrow[data-pair="TM3-TM6"]').click()
+    side = card.locator('.chart-card-side')
+    expect(side.locator('h4')).to_contain_text('TM3-TM6', timeout=15000)
+    assert side.locator('table tbody tr').count() > 100
     href = side.locator('table tbody tr a').first.get_attribute('href')
     assert href.startswith('reports/') and href.endswith('.html')
-    assert side.locator('table tbody tr').count() > 100
-    # a ligand-type chip refilters the grid and the caption says so
-    page.locator('#card-chart-helix-pairs [data-chips="group"] .chip').nth(1).click()
-    page.wait_for_timeout(600)
-    assert 'View:' in page.locator('#card-chart-helix-pairs [data-view-text]').inner_text()
-    assert page.locator('#chart-helix-pairs .plot-container').count() == 1
-    assert [e for e in page.errors if 'plot' not in e.lower()] == []
+    assert 'pair:TM3-TM6' in page.url
+    # a line of the bundle opens it too
+    card.locator('.chart-card-side .side-close').click()
+    page.locator('#chart-helix-pairs path[data-hit]').first.click()
+    expect(side.locator('h4')).to_be_visible(timeout=15000)
+    # a mode change closes the panel in Magnitude
+    card.locator('[data-ctl="mode"] [data-value="magnitude"]').click()
+    expect(side).to_be_hidden()
+    assert 'bm=magnitude' in page.url
+    card.locator('[data-ctl="mode"] [data-value="grid"]').click()
+    page.wait_for_timeout(300)
+    assert page.locator('#chart-helix-pairs rect[data-hit]').count() >= 15
+    assert _errors(page) == []
+
+
+@needs_build
+def test_a_small_group_shows_the_carried_by_state(open_page):
+    page = open_page()
+    _settle(page, ['chart-helix-pairs'])
+    card = page.locator('#card-chart-helix-pairs')
+    card.locator('[data-ctl="group"] button[data-value="Melatonin receptors"]').click()
+    page.wait_for_timeout(300)
+    assert 'carried by 2 of 2' in card.locator('[data-ledger]').inner_text()
+    assert card.locator('[data-ledger] .group-chips-list button').count() == 2
+    assert 'fewer than the 10 a class direction needs' in card.locator('[data-guide]').inner_text()
+    assert '2 receptors (melatonin).' in card.locator('[data-scope]').inner_text()
+    card.locator('[data-ledger] .group-chips-list button').first.click()
+    assert 'sel=rec:' in page.url
 
 
 @needs_build
 @needs_plotly
-def test_explorer_find_highlights_a_receptor_and_lists_similar_ones(open_page):
-    page = open_page('/statistics.html')
-    _settle(page, ['chart-receptors'])
-    box = page.locator('#receptors-find')
+def test_the_selection_box_follows_a_receptor(open_page):
+    page = open_page()
+    box = page.locator('#sel-input')
     box.fill('ADRB2')
-    page.locator('#card-chart-receptors .find-list li').first.click()
-    side = page.locator('#card-chart-receptors .chart-card-side')
-    expect(side.locator('h4').first).to_contain_text('ADRB2', timeout=15000)
-    expect(side.locator('table tbody tr').first).to_be_visible(timeout=15000)
-    assert side.locator('table tbody tr').count() >= 2
-    assert 'not a classification' in side.inner_text()
-    # the table tab lists every receptor and marks the found one
-    page.locator('#card-chart-receptors [data-value="table"]').click()
+    page.locator('#sel-list [role="option"]').first.wait_for()
+    box.press('Enter')
+    page.wait_for_timeout(300)
+    assert 'sel=rec:adrb2_human' in page.url
+    assert 'ADRB2' in page.locator('[data-sel-summary]').inner_text()
+    assert page.locator('.sel-chip').count() == 1
+    _settle(page, ['chart-receptors', 'chart-thresholds'])
+    page.locator('#card-chart-receptors [data-ctl="tab"] [data-value="table"]').click()
     expect(page.locator('#card-chart-receptors .explorer-table tbody tr').first).to_be_visible()
     assert page.locator('#card-chart-receptors .explorer-table tbody tr').count() == 283
     assert page.locator('#card-chart-receptors .explorer-table tr.is-found').count() == 1
+    # the table header sorts from the keyboard
+    th = page.locator('#card-chart-receptors .explorer-table thead').get_by_role('button', name='Threshold', exact=True)
+    th.focus()
+    page.keyboard.press('Enter')
+    assert page.locator('#card-chart-receptors .explorer-table th[aria-sort="descending"]').count() == 1
+    # the threshold strips label the followed receptor
+    assert 'ADRB2' in page.locator('#chart-thresholds').inner_text()
+    page.locator('.sel-chip button').click()
+    assert 'sel=' not in page.url
+    assert _errors(page) == []
+
+
+@needs_build
+def test_a_ranking_row_opens_the_profile_and_esc_clears_it(open_page):
+    page = open_page()
+    _settle(page, ['chart-ranking'])
+    page.locator('#chart-ranking g[data-gn="7.53x53"] rect[data-hit]').click()
+    prof = page.locator('.pos-profile')
+    expect(prof).to_be_visible(timeout=10000)
+    expect(prof.locator('.pgn')).to_contain_text('7.53x53')
+    assert 'sel=pos:7.53x53' in page.url
+    assert 'of 283 receptors have a CFR here' in prof.inner_text()
+    page.keyboard.press('Escape')
+    expect(prof).to_have_count(0)
+    assert 'sel=' not in page.url
+    assert _errors(page) == []
+
+
+@needs_build
+def test_url_selection_on_load(open_page):
+    page = open_page('/statistics.html?sel=pos:6.48x48')
+    prof = page.locator('.pos-profile')
+    expect(prof).to_be_visible(timeout=15000)
+    expect(prof.locator('.pgn')).to_contain_text('6.48x48')
+    assert '245 of 283' in prof.inner_text()
+    page = open_page('/statistics.html?sel=pair:TM3-TM6')
+    _settle(page, ['chart-helix-pairs'])
+    expect(page.locator('#card-chart-helix-pairs .lrow.is-sel[data-pair="TM3-TM6"]')).to_have_count(1)
+    assert 'TM3-TM6: weaker in the active model in 210 of 264' in page.locator('[data-sel-summary]').inner_text()
+    page = open_page('/statistics.html?sel=bogus:1')
+    _settle(page, ['chart-thresholds'])
+    assert _errors(page) == []
+    assert 'Nothing selected' in page.locator('[data-sel-summary]').inner_text()
+
+
+@needs_build
+def test_a_folded_chart_redraws_in_the_new_theme_when_opened(open_page):
+    page = open_page()
+    _settle(page, ['chart-histogram'])
+    light = page.evaluate("document.querySelector('#chart-histogram rect[data-tip]').getAttribute('fill')")
+    page.evaluate("document.getElementById('more-histogram').open = false")
+    page.locator('#theme-toggle, .theme-toggle').first.click()
+    page.wait_for_timeout(300)
+    page.evaluate("document.getElementById('more-histogram').open = true")
+    page.wait_for_timeout(500)
+    dark = page.evaluate("document.querySelector('#chart-histogram rect[data-tip]').getAttribute('fill')")
+    assert light != dark
 
 
 @needs_build
 @needs_plotly
-def test_copied_caption_names_view_scope_and_source(open_page):
-    page = open_page('/statistics.html')
+def test_reduced_motion_runs_no_animation(open_page):
+    page = open_page(reduced_motion='reduce')
+    _settle(page, ['chart-thresholds', 'chart-helix-pairs', 'chart-recovery', 'chart-am-bands'])
+    assert page.evaluate("document.getAnimations().filter(a => a.playState === 'running').length") == 0
+
+
+@needs_build
+def test_copied_caption_names_title_scope_and_source(open_page):
+    page = open_page()
     _settle(page, ['chart-pathogenicity'])
     page.evaluate("""() => { window.__copied = null; navigator.clipboard.writeText = t => { window.__copied = t; return Promise.resolve(); }; }""")
-    page.locator('#card-chart-pathogenicity [data-copy-caption]').click()
+    card = page.locator('#card-chart-pathogenicity')
+    card.locator('[data-export-toggle]').click()
+    card.locator('[data-copy-caption]').click()
     page.wait_for_timeout(200)
     text = page.evaluate('window.__copied')
-    assert text and 'AlphaMissense predicted class at CFR positions' in text
+    assert text and text.startswith('Predicted class of the substitutions seen in people.')
     assert 'Scope: 276 receptors' in text and 'gnomAD v4.1.0' in text
     assert 'paper' not in text.lower() and 'layer' not in text.lower() and 'Supplementary' not in text
     assert 'statistics.html#card-chart-pathogenicity' in text
+
+
+@needs_build
+def test_without_javascript_the_server_parts_render(browser, server):
+    ctx = browser.new_context(java_script_enabled=False, viewport=DESKTOP)
+    page = ctx.new_page()
+    page.goto(server + '/statistics.html', wait_until='load')
+    assert page.locator('.glance-fact').count() == 4
+    assert page.locator('.finding').count() == 5
+    assert page.locator('#chart-thresholds svg path.s-dots').count() == 2
+    assert page.locator('#cfr-table tbody tr').count() == 50
+    assert page.locator('#cfr-pairs-table tbody tr').count() == 20
+    assert page.locator('.nojs-note').count() >= 10
+    assert page.locator('.foot-tools button').count() == 0
+    ctx.close()
