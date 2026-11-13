@@ -1,17 +1,15 @@
-"""The four receptors without variant data are not one story, and the page
-must not tell them as one.
+"""Which receptors each variant result covers, and why the others are missing.
 
-Two of them, NPY6R and TAAR3, are annotated pseudogene loci: gnomAD carries
-variants at those loci but none with a protein-coding missense consequence, so
-there is nothing to place on a residue. Zero is the correct answer.
+The Statistics page has two allele sets (2026-11-13 page rewrite):
 
-The other two, GP182 and P2RY8, are a data-collection limitation. gnomAD does
-hold missense variants for both. They are absent from this release's variant
-dataset because their identifiers were not resolved when it was collected, and
-that is recorded for a later manuscript revision rather than patched here.
+  * the AlphaMissense comparison, recurrence groups and conservation groups use the February batch query
+    (276 receptors): GPR3, GPR4 and XCR1 are left out, and ACKR5 (GP182), NPY6R, P2RY8 and TAAR3 had no
+    records in that query. The Methods row "What each result covers" names all seven, in two sentences;
+  * the per-position variants use the report variant layer (281 receptors): NPY6R and TAAR3 have no
+    protein-coding missense records (pseudogene loci), which the card guide says.
 
-Collapsing all four into one "no data available" line would state something
-false about GP182 and P2RY8. These tests fail if that happens.
+GP182 and P2RY8 appear only in the Methods row, and never as lacking gnomAD variants. The old 279-receptor
+variant layer (conservation scatter) is gone from the page.
 """
 import os
 import pathlib
@@ -58,41 +56,33 @@ def _text():
 
 
 @needs_build
-def test_the_variant_coverage_note_is_present_verbatim():
+def test_the_per_position_card_names_its_281_receptors_and_the_two_without_records():
     text = _text()
-    for sentence in (
-        "The conservation chart uses the variant data, which covers 279 receptors.",
-        'NPY6R and TAAR3 lack protein-coding missense annotations because they '
-        'are annotated as pseudogene loci.',
-        'GP182 and P2RY8 are excluded from the current variant dataset because '
-        'their identifiers were not successfully resolved during data collection.',
-    ):
-        assert sentence in text, 'missing from the variant methods note: %r' % sentence
+    assert '281 receptors (NPY6R and TAAR3 have none)' in text
 
 
 @needs_build
-def test_the_two_causes_are_stated_separately():
-    """The failure this guards against is one sentence covering all four."""
-    text = _text()
-    sentences = re.split(r'(?<=\.)\s+', text)
-    for s in sentences:
-        named = [g for g in PSEUDOGENE + UNRESOLVED if g in s]
-        assert len(named) < 4, (
-            'one sentence describes all four receptors together, which states '
-            'the wrong cause for GP182 and P2RY8: %r' % s.strip()[:200])
+def test_the_methods_row_names_the_seven_receptors_in_two_sentences():
+    html = STATS.read_text(encoding='utf-8')
+    rows = re.findall(r'<tr>(.*?)</tr>', html[html.index('cov-table'):], re.S)
+    am = [r for r in rows if 'AlphaMissense comparison' in r]
+    assert len(am) == 1, 'no Methods row for the AlphaMissense comparison'
+    cells = [re.sub(r'<[^>]+>', '', c).strip() for c in re.findall(r'<td[^>]*>(.*?)</td>', am[0], re.S)]
+    assert cells[1] == '276'
+    assert 'GPR3, GPR4 and XCR1.' in cells[3]
+    assert 'ACKR5 (GP182), NPY6R, P2RY8 and TAAR3: no records in that query.' in cells[3]
+    v = [r for r in rows if 'Variants at each top-ranked position' in r]
+    assert len(v) == 1 and 'NPY6R and TAAR3: no protein-coding missense records' in v[0]
 
-    pseudo = [s for s in sentences if all(g in s for g in PSEUDOGENE)]
-    unres = [s for s in sentences if all(g in s for g in UNRESOLVED)]
-    assert pseudo, 'no sentence attributes NPY6R and TAAR3 to pseudogene loci'
-    assert unres, 'no sentence attributes GP182 and P2RY8 to identifier resolution'
-    assert 'pseudogene' in pseudo[0], (
-        'the NPY6R/TAAR3 sentence does not give the pseudogene reason')
-    assert not any(g in pseudo[0] for g in UNRESOLVED), (
-        'the pseudogene sentence also names GP182 or P2RY8')
-    assert 'identifiers were not successfully resolved' in unres[0], (
-        'the GP182/P2RY8 sentence does not give the identifier reason')
-    assert not any(g in unres[0] for g in PSEUDOGENE), (
-        'the identifier sentence also names NPY6R or TAAR3')
+
+@needs_build
+def test_gp182_and_p2ry8_appear_only_in_the_methods_row():
+    html = STATS.read_text(encoding='utf-8')
+    text = _text()
+    for name in UNRESOLVED:
+        assert text.count(name) == 1, (name, text.count(name))
+    row = re.search(r'<tr><td>AlphaMissense comparison.*?</tr>', html, re.S).group(0)
+    assert all(n in row for n in UNRESOLVED)
 
 
 @needs_build
@@ -104,18 +94,11 @@ def test_gp182_and_p2ry8_are_not_described_as_lacking_gnomad_variants():
         if not any(g in s for g in UNRESOLVED):
             continue
         low = s.lower()
-        for claim in ('no gnomad', 'lack gnomad', 'lacks gnomad',
-                      'no variant data were available',
-                      'no gnomad variant data'):
-            assert claim not in low, (
-                'a sentence naming GP182 or P2RY8 claims %r, but gnomAD does '
-                'hold missense variants for both: %r' % (claim, s.strip()[:200]))
+        for claim in ('no gnomad', 'lack gnomad', 'lacks gnomad', 'no variant data were available',
+                      'no gnomad variant data', 'pseudogene'):
+            assert claim not in low, (claim, s.strip()[:200])
 
 
 @needs_build
-def test_the_receptor_count_and_dataset_are_unchanged():
-    text = _text()
-    assert "variant data, which covers 279 receptors" in text
-    assert '281' not in text, (
-        'the page reports 281 receptors, so the variant dataset was changed. '
-        'This release keeps the submitted 279-receptor dataset.')
+def test_the_retired_279_receptor_layer_is_gone():
+    assert '279' not in _text()

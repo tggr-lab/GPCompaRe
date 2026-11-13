@@ -396,6 +396,7 @@ def test_built_page_carries_the_findings():
     html = (BUILD / 'statistics.html').read_text(encoding='utf-8')
     if 'id="sec-scale"' not in html:
         pytest.skip('the page does not render the class findings yet')
+    html = re.sub(r'</?b>', '', html)   # the payload values are bold inside the sentence
     text = re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', html))
     for anchor, sentence in EXPECTED_FINDINGS.items():
         assert sentence in text, anchor

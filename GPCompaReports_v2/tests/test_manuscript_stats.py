@@ -108,9 +108,7 @@ def test_the_superseded_site_computed_count_is_gone():
 def test_the_top50_table_matches_the_class_ranking_and_the_submitted_order():
     import pandas as pd
     html = STATS.read_text(encoding='utf-8')
-    idx = html.find('Core Functional Residue Positions')
-    if idx == -1:
-        idx = html.find('The 50 top-ranked positions')
+    idx = html.find('The %d top-ranked positions' % CFR_TOP_N)
     assert idx != -1, 'ranked table heading not found'
     body = re.search(r'<tbody>(.*?)</tbody>', html[idx:], re.S).group(1)
     rendered = re.findall(

@@ -244,41 +244,54 @@ def test_the_residue_table_sorts_by_segment_in_the_chosen_order_and_other_sorts_
     assert _errors(page) == []
 
 
+def _stats_draw(page, card_id):
+    page.locator('#card-' + card_id).scroll_into_view_if_needed()
+    page.wait_for_function("id => document.getElementById(id).dataset.chartRendered === '1'", arg=card_id, timeout=15000)
+    page.wait_for_timeout(200)
+
+
+def _svg_labels(page, chart_id):
+    """Segment names drawn in a chart, in document order (each name once)."""
+    names = page.evaluate("id => [].map.call(document.querySelectorAll('#' + id + ' svg text'), t => t.textContent.trim())", chart_id)
+    out = []
+    for n in names:
+        if n in SEQUENCE and n not in out:
+            out.append(n)
+    return out
+
+
 @needs_build
-@needs_plotly
 @needs_stats
-def test_statistics_page_default_is_helices_first_and_the_switch_flips_the_legend(open_page):
-    page = open_page('statistics.html', init=COUNT_DRAWS)
+def test_statistics_page_default_is_helices_first_and_the_switch_reorders_the_charts(open_page):
+    page = open_page('statistics.html')
     assert page.locator('.seg-order').count() == 1
-    _draw(page, 'chart-cfr-dotplot')
-    names = _legend(page, 'chart-cfr-dotplot')
-    segs = [n for n in names if n in SEQUENCE]
-    assert segs and segs == _in(HELICES_FIRST, segs)
-    if any(s not in HELIX for s in segs) and any(s in HELIX for s in segs):
-        first_rest = next(s for s in segs if s not in HELIX)
-        assert names[0] == 'Helices'
-        assert names[names.index(first_rest) - 1] == 'Loops and termini'
-        assert [n for n in names if n not in SEQUENCE] == ['Helices', 'Loops and termini']
-        # a click on an entry still hides only that entry
-        assert page.evaluate("document.getElementById('chart-cfr-dotplot')._fullLayout.legend.groupclick") == 'toggleitem'
-    # 2026-11-06: the helix-pair atlas (site layer, all segments view) replaced the unsigned heatmap
-    page.locator('#card-chart-helix-pairs [data-chips="segments"] [data-value="all"]').click()
-    _draw(page, 'chart-helix-pairs')
-    hx = _xcats(page, 'chart-helix-pairs')
-    hy = _xcats(page, 'chart-helix-pairs', 'yaxis')
-    assert hx['arr'] == _in(HELICES_FIRST, hx['arr']) and hy['arr'] == _in(HELICES_FIRST, hy['arr'])
+    _stats_draw(page, 'chart-segments')
+    segs = _svg_labels(page, 'chart-segments')
+    assert len(segs) >= 16 and segs == _in(HELICES_FIRST, segs)
+    # the helix-pair Grid, all segments
+    _stats_draw(page, 'chart-helix-pairs')
+    card = page.locator('#card-chart-helix-pairs')
+    card.locator('[data-ctl="mode"] [data-value="grid"]').click()
+    card.locator('[data-ctl="segments"] [data-value="all"]').click()
+    page.wait_for_timeout(300)
+    grid = _svg_labels(page, 'chart-helix-pairs')
+    assert len(grid) >= 16 and grid == _in(HELICES_FIRST, grid)
+    # the ranking sorted by segment
+    _stats_draw(page, 'chart-ranking')
+    page.locator('#card-chart-ranking [data-ctl="sort"] [data-value="segment"]').click()
+    page.wait_for_timeout(300)
+    rk = page.evaluate("[].map.call(document.querySelectorAll('#chart-ranking g[data-gn] text.rk-seg'), t => t.textContent)")
+    assert rk and rk == sorted(rk, key=HELICES_FIRST.index)
 
     _flip(page, 'sequence')
-    names2 = _legend(page, 'chart-cfr-dotplot')
-    assert names2 == _in(SEQUENCE, segs), 'sequence order, no group titles'
-    draws = page.evaluate("window.__draws")
-    hx2 = _xcats(page, 'chart-helix-pairs')
-    assert hx2['arr'] == _in(SEQUENCE, hx2['arr'])
-    assert draws.get('chart-cfr-dotplot') == 1 and draws.get('chart-helix-pairs') == 1, draws
+    assert _svg_labels(page, 'chart-segments') == _in(SEQUENCE, segs)
+    assert _svg_labels(page, 'chart-helix-pairs') == _in(SEQUENCE, grid)
+    rk2 = page.evaluate("[].map.call(document.querySelectorAll('#chart-ranking g[data-gn] text.rk-seg'), t => t.textContent)")
+    assert rk2 == sorted(rk2, key=SEQUENCE.index)
     # the choice made on the statistics page holds on a report too (one switch, site-wide)
     gid = _pick('class="seg-order-label', prefer='adrb2_human')
     if gid:
-        page.goto(page.url.replace('statistics.html', 'reports/%s.html' % gid), wait_until='load')
+        page.goto(page.url.split('statistics.html')[0] + 'reports/%s.html' % gid, wait_until='load')
         page.wait_for_timeout(300)
         segs_r = _page_summary(page)
         assert segs_r == _in(SEQUENCE, segs_r)

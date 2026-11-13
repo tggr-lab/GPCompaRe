@@ -113,18 +113,18 @@ def test_no_google_fonts_and_privacy_lists_the_third_parties():
 
 @needs_build
 def test_statistics_histogram_ships_bins_not_raw_values():
-    # 2026-11-06: the histogram is fetched when its card scrolls near (data/stats/chart-histogram.json),
-    # no longer inline; the page itself carries no raw values
+    # 2026-11-13: the histogram is drawn from the bins in data/stats/class_scale.json; the page carries no
+    # inline chart data and stays small
     html = (BUILD_DIR / 'statistics.html').read_text(encoding='utf-8')
-    assert "['chart-histogram'] = " not in html
-    payload = (BUILD_DIR / 'data' / 'stats' / 'chart-histogram.json').read_bytes()
-    trace = json.loads(payload)['data'][0]
-    xs = trace['x']
-    if isinstance(xs, dict):      # Plotly's typed-array encoding: {dtype, bdata}
-        import base64
-        xs = base64.b64decode(xs['bdata'])
-        assert len(xs) < 500 * 8
-    else:
-        assert len(xs) < 500
-    assert trace['histfunc'] == 'sum'
+    assert "['chart-histogram'] = " not in html and 'STATS_CHART_DATA' not in html
+    payload = (BUILD_DIR / 'data' / 'stats' / 'class_scale.json').read_bytes()
+    bins = json.loads(payload)['histogram']
+    assert sum(n for _, n in bins) == 213456
+    assert len(bins) < 500
     assert len(payload) < 20000
+    assert not (BUILD_DIR / 'data' / 'stats' / 'chart-histogram.json').exists()
+
+
+@needs_build
+def test_statistics_page_is_under_80_kb():
+    assert (BUILD_DIR / 'statistics.html').stat().st_size < 80 * 1024

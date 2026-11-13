@@ -127,7 +127,7 @@ def test_no_hardcoded_ranked_cutoff_survives_in_the_analysis_layer():
 @needs_build
 def test_the_ranked_table_shows_exactly_the_analytical_cutoff():
     html = STATS.read_text(encoding='utf-8')
-    body = _table_after(html, 'Core Functional Residue Positions')
+    body = _table_after(html, 'The %d top-ranked positions' % CFR_TOP_N)
     rows = len(re.findall(r'<tr>', body))
     assert rows == CFR_TOP_N, (
         'the ranked CFR table displays %d positions but the analysis uses the '
@@ -137,8 +137,9 @@ def test_the_ranked_table_shows_exactly_the_analytical_cutoff():
 @needs_build
 def test_the_heading_states_the_analytical_cutoff():
     html = STATS.read_text(encoding='utf-8')
-    assert 'Top %d Core Functional Residue Positions' % CFR_TOP_N in html, (
-        'the ranked table heading does not state Top %d' % CFR_TOP_N)
+    assert 'The %d top-ranked positions' % CFR_TOP_N in html, (
+        'the ranked table heading does not state the %d top-ranked positions' % CFR_TOP_N)
+    assert not re.search(r'Top \d+ Core Functional', html), 'an old "Top N Core Functional" heading is back'
 
 
 @needs_build
@@ -176,10 +177,6 @@ def test_positions_below_the_cutoff_are_not_called_non_cfrs():
 @needs_build
 def test_the_network_table_says_what_it_contains_and_how_much_it_shows():
     html = STATS.read_text(encoding='utf-8')
-    assert 'both residues are among the %d highest-ranked' % CFR_TOP_N in html, (
-        'the contact-pair table does not state that both residues come from '
-        'the top %d' % CFR_TOP_N)
-    assert re.search(r'Showing the \d+ highest-ranked pairs,\s+ranked across '
-                     r'[\d,]+ unique contact pairs', html), (
-        'the contact-pair table does not say how many pairs it shows, out of '
-        'how large a pair universe')
+    assert re.search(r'The 20 exact contact pairs \(both residues CFRs\) that recur in the most receptors, of '
+                     r'2,231 distinct pairs\. All 20 join two top-ranked positions\.', html), (
+        'the pair card does not say what the pairs are, how many it shows and out of how large a pair universe')

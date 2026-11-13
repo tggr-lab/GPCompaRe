@@ -112,10 +112,11 @@ def test_site_js_traps_focus_and_follows_the_breakpoint():
 
 
 def test_stats_scroll_respects_reduced_motion():
-    js = (BASE / 'static' / 'js' / 'stats-page.js').read_text(encoding='utf-8')
+    js = (BASE / 'static' / 'js' / 'stats-story.js').read_text(encoding='utf-8')
     assert "behavior: 'smooth'" not in js
-    assert js.count('behavior: SCROLL()') == 2
-    assert "plotEl.setAttribute('role', 'img')" in js
+    assert "var SCROLL = function () { return REDUCE.matches ? 'auto' : 'smooth'; };" in js
+    assert js.count('behavior: SCROLL()') >= 2
+    assert "role: 'img'" in js
 
 
 def test_breakpoint_in_site_js_matches_the_stylesheet():

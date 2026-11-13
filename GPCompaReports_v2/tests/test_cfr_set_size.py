@@ -109,7 +109,7 @@ def test_statistics_landing_and_glossary_pages_state_the_same_size():
         html = (BUILD / name).read_text(encoding='utf-8')
         assert _sizes(html) == {CFR_TOP_N}, (name, _sizes(html))
     stats = (BUILD / 'statistics.html').read_text(encoding='utf-8')
-    body = stats[stats.index('Core Functional Residue Positions'):]
+    body = stats[stats.index('The %d top-ranked positions' % CFR_TOP_N):]
     shown = re.findall(r'<td class="num">\d+</td>\s*<td><strong>([^<]+)</strong></td>', body.split('</tbody>')[0])
     assert set(shown) == class_cfr_set(), 'the Statistics table and the marked set differ'
 
@@ -126,6 +126,8 @@ def test_class_payloads_state_the_same_size():
     from GPCompaReports_v2.analysis.class_results import computed_notes, finding_sentences
     stats = BUILD / 'data' / 'stats'
     payloads = {}
+    js = (BASE / 'static' / 'js' / 'stats-story.js').read_text(encoding='utf-8')
+    assert not _sizes(js), 'stats-story.js types a set size'
     for name in ('class_scale', 'class_positions', 'class_variants', 'helix_pairs', 'receptors'):
         path = stats / ('%s.json' % name)
         if not path.is_file():

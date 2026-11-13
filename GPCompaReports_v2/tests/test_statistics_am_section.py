@@ -30,19 +30,18 @@ SUPPLEMENT_COPY = pathlib.Path(
     '/home/yamir/Documents/gpcr_synth/NEW_manuscript/GPCompaRe_Finishing_2026-10-31/deliverables/'
     '02_supplement/source_tables/FigS4_S7_summary_modelnum_2026-11-05b.json')
 
-INTRO = ('AlphaMissense predicted class of the missense substitutions seen in gnomAD, at the 50 CFR positions '
-         'and at other generic-numbered positions. Predictions, not clinical evidence.')
+INTRO = 'AlphaMissense predicted classes. Predictions, not clinical evidence. Conservation is an observation across species.'
+GUIDE_4A = ('Unique missense substitutions observed in gnomAD v4.1.0 (accessed February 2026) at residues in contacts with '
+            '|\u0394RRCS| of 3.0 or more, at generic-numbered positions of 276 receptors. Bars: decisive calls (predicted '
+            'pathogenic or predicted benign); ambiguous calls are counted beside them and left out of the share.')
 RETIRED = ('2.58', '1.52', '7,445', '11,150', '6,312', '9,461', '67.0%', '44.1%', '2.42 to 2.76',
            '1.41 to 1.65', 'most recurrent', '279 receptors')
 
 
 def _section_d(html):
-    """Section D up to the conservation chart: the AlphaMissense part (the conservation chart below it uses the
-    site's own 279-receptor variant layer and says so in its own fine print)."""
+    """Section 4 (#sec-d), every card in it."""
     start = html.index('id="sec-d"')
-    end = html.index('</section>', start)
-    cons = html.find('id="chart-conservation"', start, end)
-    return html[start:cons if cons != -1 else end]
+    return html[start:html.index('</section>', start)]
 
 
 def _text(fragment):
@@ -90,10 +89,13 @@ def test_section_d_shows_the_class_counts_and_no_test_statistic():
     am = load_am_comparison()
     d = _text(_section_d(STATS.read_text(encoding='utf-8')))
     assert INTRO in d
-    assert ('Among decisive calls (pathogenic or benign), %.1f%% at the top positions and %.1f%% at other '
-            'generic-numbered positions are predicted pathogenic.'
-            % (am['decisive_pct']['top'], am['decisive_pct']['other'])) in d
-    assert '66.9% at the top positions' in d and '43.6% at other' in d
+    assert GUIDE_4A in d
+    assert ('At the 50 top-ranked positions, 66.9% of decisive AlphaMissense calls are predicted pathogenic, against '
+            '43.6% at other generic-numbered positions.') in re.sub(r'\s+', ' ', re.sub(r'</?b>', '', _section_d(
+                STATS.read_text(encoding='utf-8'))))
+    for label in ('Top 50 positions by CFR score', 'Other generic-numbered positions'):
+        assert label in d
+    assert 'predicted pathogenic' in d and 'are pathogenic' not in d
     for g in am['groups']:
         line = ('%s: %s scored substitutions, %s decisive (%s predicted pathogenic, %s predicted benign) and %s '
                 'ambiguous.' % (g['label'], format(g['n'], ','), format(g['decisive'], ','),
@@ -102,7 +104,7 @@ def test_section_d_shows_the_class_counts_and_no_test_statistic():
         assert line in d, line
     low = d.lower()
     for bad in ('odds ratio', '95% ci', 'mantel', 'paper', 'supplementary', 'manuscript', 'corrected',
-                'mismatched', 'site layer'):
+                'mismatched', 'site layer', ' layer'):
         assert bad not in low, bad
     assert 'id="am-comparison"' not in STATS.read_text(encoding='utf-8')
 

@@ -44,7 +44,8 @@ STATS_FILES = ('class_scale.json', 'class_positions.json', 'class_variants.json'
                'helix_receptor_cells.json', 'atlas_map.json', 'receptors.json', 'thresholds.csv', 'histogram.csv',
                'helix_pairs.csv', 'helix_interfaces.csv', 'segments.csv', 'ranking_368.csv',
                'activation_recovery.csv', 'partners.csv', 'pairs.csv', 'am_comparison.csv', 'am_bands.csv',
-               'am_conservation_fifths.csv', 'position_conservation.csv', 'coverage.csv')
+               'am_conservation_fifths.csv', 'position_conservation.csv', 'coverage.csv', 'scaffold.csv',
+               'cfr_atlas.json', 'cfr_variants.json')
 
 needs_build = pytest.mark.skipif(
     not (CONTACT.exists() and DOWNLOADS.exists()),
@@ -96,7 +97,7 @@ def test_no_page_mentions_the_manuscript():
     (owner, 2026-11-07)."""
     for name in ('index.html', 'statistics.html', 'downloads.html', 'glossary.html', 'contact.html',
                  'privacy.html', 'browse/index.html', 'search/index.html', 'data_versions.json', 'motifs.json',
-                 'static/js/glossary-data.js', 'static/js/stats-page.js', 'static/js/stats-story.js') + tuple(
+                 'static/js/glossary-data.js', 'static/js/stats-story.js') + tuple(
                      'data/stats/%s' % f for f in STATS_FILES):
         path = BUILD_DIR / name
         if not path.is_file():

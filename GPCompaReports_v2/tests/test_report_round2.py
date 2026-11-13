@@ -132,7 +132,8 @@ def test_plotly_is_not_a_blocking_script_tag_and_the_shim_covers_every_call():
     shim = (BASE / 'templates' / '_partials' / 'plotly-lazy.html').read_text(encoding='utf-8')
     used = set()
     for src in [(BASE / 'templates' / 'gpcr_report.html'), (BASE / 'templates' / 'statistics.html'),
-                BASE / 'static' / 'js' / 'site.js', BASE / 'static' / 'js' / 'rrcs-tetris.js']:
+                BASE / 'static' / 'js' / 'site.js', BASE / 'static' / 'js' / 'rrcs-tetris.js',
+                BASE / 'static' / 'js' / 'stats-story.js']:
         used |= set(re.findall(r'\bPlotly\.(?:Plots\.)?(\w+)\(', src.read_text(encoding='utf-8')))
     assert used, 'no Plotly calls found'
     for name in used:
@@ -802,7 +803,7 @@ def test_statistics_page_charts_still_render(open_report):
     if not (BUILD_DIR / 'statistics.html').is_file():
         pytest.skip('no statistics page in this build')
     page = open_report(None, path='statistics.html', wait=300)
-    page.wait_for_function("[].some.call(document.querySelectorAll('.v2-chart'), e => e.dataset.chartRendered)", timeout=30000)
+    page.wait_for_function("[].some.call(document.querySelectorAll('[data-chart-rendered]'), e => e.dataset.chartRendered === '1')", timeout=30000)
     assert page.errors == []
 
 

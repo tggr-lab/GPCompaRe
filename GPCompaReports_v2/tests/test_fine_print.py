@@ -447,5 +447,6 @@ def test_the_help_examples_vary_across_receptors(open_page, scheme):
 def test_statistics_methodology_reads_as_fine_print_without_losing_text(open_page):
     page = open_page('/statistics.html')
     assert page.locator('#chart-pathogenicity-method').evaluate('e => e.classList.contains("fine-print")')   # counts recede
-    assert page.locator('.stats-refs').evaluate('e => e.classList.contains("fine-print")')
-    assert 'Kruskal-Wallis' in page.locator('#sec-e').evaluate('e => e.closest("section").innerText')
+    assert page.locator('#sec-methods .stats-refs').evaluate('e => e.classList.contains("fine-print")')
+    # the Kruskal-Wallis lines sit in the Families tab of the explorer (#sec-e), shown with that tab
+    assert 'Kruskal-Wallis' in page.locator('#sec-e').evaluate('e => e.textContent')
