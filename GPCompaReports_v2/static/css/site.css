@@ -1212,10 +1212,11 @@ p  { margin: 0 0 var(--s-4); }
   .contact-grid { grid-template-columns: 1fr; }
 }
 
-/* the full bar needs about 1060 px with the search box folded, 1215 px with it open */
+/* the drawer belongs to the phone layout: never shown once the full bar is */
 @media (min-width: 1080px) {
   .mobile-drawer { display: none; }
 }
+/* the full bar needs about 1060 px with the search box folded, 1215 px with it open */
 @media (max-width: 1079px) {
   .topnav { display: none; }
   .topbar-mobile-toggle { display: inline-flex; }
