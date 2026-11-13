@@ -1215,3 +1215,65 @@ test('example residue falls back to the best-ranked CFR position without 3.50x50
   assert.equal(exampleResidue(null), null);
   assert.equal(exampleResidue({ length: 2, findGeneric: () => [], residue: (p) => ({ pos: p, aa: 'G', cfrRank: null }) }), null);
 });
+
+// ------------------------------------------------- review 2026-11-13: search findings 01 to 06
+
+test('a multi-allelic rsID: the reading names each change and no tile mixes alleles (search-01)', { skip }, async () => {
+  const a = await search('rs33973603', loader);
+  const out = renderAnswer(a, 'rs33973603', OPTS);
+  assert.match(out.ctx.reading, /protein changes Asn15Ile and Asn15Ser, from rs33973603/);
+  assert.ok(!out.html.includes('give this change'));
+  assert.ok(!/missense change Asn15,/.test(out.ctx.reading));
+});
+
+test('a c. change in many receptors names no single protein change; rows carry their own (search-02)', { skip }, async () => {
+  const a = await search('c.391C>T', loader);
+  const out = renderAnswer(a, 'c.391C>T', OPTS);
+  assert.equal(out.ctx.reading, `c.391C>T in ${new Set(a.results.map((r) => r.gid)).size} receptors`);
+  const col = out.compare.cols.find((c) => c.key === 'chg');
+  assert.ok(col, 'a Protein change column');
+  const changes = new Set(out.compare.rows.map((row) => row.change));
+  assert.ok(changes.size > 1 && changes.has('Arg131Cys'));
+  assert.ok(out.compare.rows.every((row) => row.clinvar !== null), 'ClinVar counts are known (0, not n/a)');
+  assert.match(compareCsv(out.compare, compareDefaults()).split('\n')[0], /protein_change/);
+  // one change everywhere: no extra column
+  const p = renderAnswer(await search('p.R131C', loader), 'p.R131C', OPTS);
+  assert.ok(!p.compare.cols.some((c) => c.key === 'chg'));
+});
+
+test('a motif table counts residues and receptors apart (search-03)', { skip }, async () => {
+  const out = renderAnswer(await search('DRY', loader), 'DRY', OPTS);
+  const k = new Set(out.compare.rows.map((row) => row.gid)).size;
+  assert.ok(out.compare.rows.length > k);
+  assert.equal(out.status, `${out.compare.rows.length} residues in ${k} receptors`);
+  assert.equal(out.compare.receptorCount, k);
+  for (const [, n] of out.compare.families) assert.ok(n <= k);
+  assert.equal(renderAnswer(await search('R3.50', loader), 'R3.50', OPTS).status.split(',')[0], `${k} receptors`);
+});
+
+test('readings with no match name the identifier; a part-read query has none (search-04)', { skip }, async () => {
+  for (const [q, want] of [['RCV000014312', 'the ClinVar record RCV000014312'], ['rs999999999999', 'the rsID rs999999999999'], ['VCV999999999', 'the ClinVar record VCV999999999'], ['1-12345-A-G', '1-12345-A-G on GRCh38']]) {
+    const out = renderAnswer(await search(q, loader), q, OPTS);
+    assert.equal(out.ctx.reading, want, q);
+    assert.ok(!out.html.includes('undefined'), q);
+  }
+  const out = renderAnswer(await search('ADRB2 R131C R131H', loader), 'ADRB2 R131C R131H', OPTS);
+  assert.equal(out.ctx.reading, null);
+  assert.ok(!out.html.includes('sr-read-line'));
+});
+
+test('a residue card\'s ClinVar tile and id line skip non-missense records (search-06)', { skip }, async () => {
+  const a = await search('ADRB2 3.50', loader);
+  const r = a.results[0];
+  assert.ok(r.clinvar.some((c) => c.kind === 'synonymous'), 'the fixture has a synonymous record at Arg131');
+  const out = renderAnswer(a, 'ADRB2 3.50', OPTS).html;
+  const tile = out.match(/<li class="sr-tile sr-tile--clinical">[\s\S]*?<\/li>/)[0];
+  assert.match(tile, /no missense record/);
+  assert.match(tile, /1 synonymous record/);
+  assert.ok(!/Likely benign/.test(tile));
+  const idline = out.match(/<p class="sr-idline">[\s\S]*?<\/p>/)[0];
+  assert.ok(!idline.includes('VCV004972436'));
+  // a missense card keeps its record in the tile
+  const m = renderAnswer(await search('OPRM1 N40D', loader), 'OPRM1 N40D', OPTS).html;
+  assert.match(m.match(/<li class="sr-tile sr-tile--clinical">[\s\S]*?<\/li>/)[0], /Uncertain significance; drug response/);
+});

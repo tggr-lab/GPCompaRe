@@ -1762,3 +1762,123 @@ def test_autocomplete_offers_the_cfr_list(open_page):
     box.fill('ADRB2 cf')
     expect(page.locator('#search-form .sg-list')).to_be_visible()
     assert 'ADRB2 CFR variants' in page.locator('#search-form .sg-list').inner_text()
+
+
+# ------------------------------------------------- review 2026-11-13: search findings 01 to 09
+
+def test_multi_allelic_rsid_gives_one_card_per_protein_change(open_page):
+    # search-01: rs33973603 is ADRB2 c.44A>T (Asn15Ile) and c.44A>G (Asn15Ser); one card must never mix them
+    page = search_page(open_page, 'rs33973603')
+    assert 'Asn15Ile and Asn15Ser' in read_line(page)
+    cards = page.locator('.sr-card')
+    assert cards.count() == 2
+    texts = [cards.nth(k).inner_text() for k in range(2)]
+    ile = next(t for t in texts if '(N15I)' in t)
+    ser = next(t for t in texts if '(N15S)' in t)
+    assert 'c.44A>T' in ile and '5-148826875-A-T' in ile and '5-148826875-A-G' not in ile.split('Summary')[0]
+    assert '1 of 152,252 alleles' in ile and '0.135' in ile
+    assert '121 of 1,461,302 alleles' in ser and '0.061' in ser
+    for t in texts:
+        assert 'give this change' not in t
+    # alleles that give the same change stay on one card
+    page = search_page(open_page, 'rs115885685')
+    assert page.locator('.sr-card').count() == 1
+    assert '2 alleles give this change' in page.locator('.sr-tile--population').inner_text()
+    assert page.errors == []
+
+
+def test_cdna_in_many_receptors_names_no_single_protein_change(open_page):
+    # search-02: c.391C>T is Arg131Cys in ADRB2 but Leu131Phe in GPR132; each row carries its own change
+    page = search_page(open_page, 'c.391C>T')
+    line = read_line(page)
+    assert 'c.391C>T in 24 receptors' in line and 'Arg131Cys' not in line
+    heads = page.locator('.sr-table--cmp thead th').all_inner_texts()
+    assert 'Protein change' in heads
+    changes = set(page.locator('.sr-table--cmp tbody td.sr-c-chg').all_inner_texts())
+    assert 'Arg131Cys' in changes and len(changes) > 1
+    # an empty ClinVar cell reads like the protein-change table's
+    cv = page.locator('.sr-table--cmp tbody td.sr-c-clinvar').all_inner_texts()
+    assert cv and not any('n/a' in c for c in cv)
+
+
+def test_motif_table_counts_residues_and_receptors(open_page):
+    # search-03: DRY has three positions in each of 283 receptors
+    page = search_page(open_page, 'DRY')
+    assert page.locator('.sr-results .sr-h2').inner_text() == '849 residues in 283 receptors'
+    assert '849 residues in 283 receptors' in page.locator('#search-status').inner_text()
+    options = page.locator('[data-cmp-family] option').all_inner_texts()
+    assert options[0] == 'All families (283)'
+    page = search_page(open_page, 'R3.50')
+    assert page.locator('.sr-results .sr-h2').inner_text() == '283 receptors'
+
+
+@pytest.mark.parametrize('q, want', [
+    ('RCV000014312', 'the ClinVar record RCV000014312'),
+    ('rs999999999999', 'the rsID rs999999999999'),
+    ('VCV999999999', 'the ClinVar record VCV999999999'),
+    ('1-12345-A-G', '1-12345-A-G on GRCh38'),
+])
+def test_no_match_reading_names_the_identifier_not_a_receptor(open_page, q, want):
+    # search-04
+    page = search_page(open_page, q)
+    line = read_line(page)
+    assert want in line and 'a receptor' not in line and 'undefined' not in results_text(page)
+
+
+def test_a_query_read_only_in_part_has_no_reading_line(open_page):
+    # search-04: the reading line must not contradict "Could not read"
+    page = search_page(open_page, 'ADRB2 R131C R131H')
+    assert page.locator('.sr-read-line').count() == 0
+    assert 'Could not read' in results_text(page)
+
+
+@pytest.mark.parametrize('q', ['3.50x50', 'DRY'])
+def test_phone_compare_cards_keep_labels_and_badges_in_their_cells(open_page, q):
+    # search-05
+    page = search_page(open_page, q, viewport=PHONE_390, mobile=True)
+    bad = page.evaluate("""() => {
+        const out = [];
+        for (const td of document.querySelectorAll('.sr-table--cmp tbody td')) {
+          if (td.scrollWidth > td.clientWidth + 1) out.push(td.dataset.label + ' ' + td.scrollWidth + '>' + td.clientWidth);
+          const r = td.getBoundingClientRect();
+          for (const b of td.querySelectorAll('.sr-badge')) if (b.getBoundingClientRect().right > r.right + 1) out.push('badge past ' + td.dataset.label);
+        }
+        return out.slice(0, 5);
+      }""")
+    assert bad == []
+    assert page.evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth') <= 1
+
+
+def test_residue_clinvar_tile_ignores_a_synonymous_record(open_page):
+    # search-06: ADRB2 Arg131 has one ClinVar record, p.Arg131= (likely benign); it is not the residue's status
+    page = search_page(open_page, 'ADRB2 3.50')
+    tile = page.locator('.sr-tile--clinical').inner_text()
+    assert 'no missense record' in tile and '1 synonymous record' in tile and 'Likely benign' not in tile
+    assert 'VCV004972436' not in page.locator('.sr-idline').inner_text()
+    assert 'VCV004972436' in page.locator('details[data-sec="clinical"]').inner_text()
+
+
+@pytest.mark.parametrize('viewport', [DESKTOP, PHONE_390])
+def test_a_long_clinvar_class_wraps_inside_its_tile(open_page, viewport):
+    # search-07
+    page = search_page(open_page, 'OPRM1 N40D', viewport=viewport)
+    over = page.evaluate("""() => { const c = document.querySelector('.sr-tile--clinical .sr-path-chip');
+        return c.getBoundingClientRect().right - c.closest('.sr-tile').getBoundingClientRect().right; }""")
+    assert over <= 1
+    assert 'Uncertain significance; drug response' in page.locator('.sr-tile--clinical').inner_text()
+
+
+@pytest.mark.parametrize('width', [1024, 1280])
+def test_contact_direction_words_are_not_cut_by_the_card(open_page, width):
+    # search-08
+    page = search_page(open_page, 'ADRB2 3.50', viewport={'width': width, 'height': 900})
+    card = page.locator('.sr-card').first
+    assert card.evaluate('c => c.scrollWidth - c.clientWidth') <= 1
+    assert 'present only in the inactive model' in card.locator('.sr-dbs').inner_text()
+
+
+@pytest.mark.parametrize('viewport', [DESKTOP, PHONE_390])
+def test_a_long_unbroken_query_does_not_scroll_the_page_sideways(open_page, viewport):
+    # search-09
+    page = search_page(open_page, 'A' * 400, viewport=viewport)
+    assert page.evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth') <= 1
