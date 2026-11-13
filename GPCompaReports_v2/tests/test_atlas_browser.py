@@ -92,3 +92,70 @@ def test_preview_pill_and_controls_fit_a_phone(atlas):
     assert width <= 390
     assert page.locator('#atlas-k').is_visible()
     assert page.errors == []
+
+
+def _help_fully_on_top(page):
+    return page.evaluate("""() => {
+      const h = document.getElementById('atlas-help').getBoundingClientRect();
+      return [[.05, .05], [.5, .5], [.95, .5], [.5, .95], [.95, .95]].every(([a, b]) => {
+        const e = document.elementFromPoint(h.left + h.width * a, h.top + h.height * b);
+        return !!(e && e.closest('#atlas-help'));
+      });
+    }""")
+
+
+@needs_build
+@pytest.mark.parametrize('viewport,scheme', [(DESKTOP, 'light'), ({'width': 768, 'height': 900}, 'dark'), (PHONE_390, 'dark')])
+def test_help_card_sits_above_an_open_receptor_panel(atlas, viewport, scheme):
+    page = atlas('#receptor=drd2_human', viewport=viewport, scheme=scheme)
+    page.wait_for_function('window.__atlas.sel >= 0')
+    page.wait_for_timeout(300)
+    page.click('#atlas-help-btn')
+    assert page.locator('#atlas-help').is_visible()
+    assert _help_fully_on_top(page)
+    page.keyboard.press('Escape')
+    assert not page.locator('#atlas-help').is_visible()
+    assert page.errors == []
+
+
+@needs_build
+def test_panel_family_line_is_not_faded_until_the_body_scrolls(atlas):
+    page = atlas('#receptor=drd2_human')
+    page.wait_for_function('window.__atlas.sel >= 0')
+    mask = 'getComputedStyle(document.getElementById("atlas-panel-body")).maskImage'
+    assert page.evaluate(mask) == 'none'
+    page.evaluate('document.getElementById("atlas-panel-body").scrollTop = 80')
+    page.wait_for_function('document.getElementById("atlas-panel").classList.contains("is-scrolled")')
+    assert page.evaluate(mask) != 'none'
+
+
+@needs_build
+@pytest.mark.parametrize('query,symbol', [
+    ('dopamine d2', 'DRD2'), ('d2 dopamine', 'DRD2'), ('mu opioid', 'OPRM1'), ('melanocortin 4', 'MC4R'),
+    ('serotonin', 'HTR1A'), ('P07550', 'ADRB2'), ('adrenoceptor beta', 'ADRB1'),
+    ('drd2', 'DRD2'), ('mu-type', 'OPRM1'), ('beta 2', 'ADRB2')])
+def test_find_box_matches_each_word_on_its_own(atlas, query, symbol):
+    page = atlas()
+    page.wait_for_function("window.__atlas.data.byGid['drd2_human'] && window.__atlas.data.byGid['drd2_human'].uniprot", timeout=20000)
+    page.fill('#atlas-search-input', query)
+    rows = page.locator('#atlas-suggest li .sg-sym').all_inner_texts()
+    assert symbol in rows, (query, rows)
+    assert rows[0] == symbol or query in ('serotonin', 'adrenoceptor beta'), (query, rows)
+    page.fill('#atlas-search-input', 'zzzz qq')
+    assert page.locator('#atlas-suggest .sg-empty').count() == 1
+
+
+@needs_build
+def test_phone_lens_row_cues_the_chips_and_shows_the_whole_readout(atlas):
+    page = atlas('', viewport=PHONE_390, scheme='dark')
+    page.wait_for_function("document.querySelector('.atlas-chips').classList.contains('has-more-right')")
+    assert page.evaluate('document.documentElement.scrollWidth') <= 390
+    page.click('.atlas-chip[data-gn="6.48x48"]')
+    page.wait_for_function("document.getElementById('atlas-lens').classList.contains('has-lens')")
+    box = page.evaluate("""() => { const e = document.getElementById('atlas-lens-readout');
+      return {clipped: e.scrollHeight > e.clientHeight + 1, text: e.textContent, title: e.title}; }""")
+    assert not box['clipped'], box
+    assert 'stronger active' in box['text'] and 'stronger inactive' in box['text']
+    assert box['title'] == box['text']
+    assert page.evaluate('document.documentElement.scrollWidth') <= 390
+    assert page.errors == []

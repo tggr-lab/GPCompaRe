@@ -1468,9 +1468,19 @@
       ': <span class="is-act">' + p.n_up + ' stronger active</span>, <span class="is-ina">' + p.n_down + ' stronger inactive</span>';
   }
 
+  // A soft fade on the chip row's clipped side(s), so a phone user can tell the row scrolls.
+  function chipCue() {
+    var el = root.querySelector('.atlas-chips');
+    if (!el) return;
+    var more = el.scrollWidth - el.clientWidth > 2;
+    el.classList.toggle('has-more-right', more && el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+    el.classList.toggle('has-more-left', more && el.scrollLeft > 2);
+  }
+
   function lensChanged() {
     var j = lens(), out = $('atlas-lens-readout');
     out.innerHTML = j >= 0 ? lensReadout(j) : (st.color === 'cons' || st.color === 'am' ? 'Choose a position' : 'Hover the bars, or type a generic number');
+    out.title = out.textContent;
     $('atlas-lens').classList.toggle('has-lens', j >= 0);
     $('atlas-lens-clear').hidden = st.lensPin < 0;
     rulerCv.setAttribute('aria-valuenow', String((st.lensPin >= 0 ? st.lensPin : 0) + 1));
@@ -1478,6 +1488,7 @@
     Array.prototype.forEach.call(root.querySelectorAll('.atlas-chip'), function(b) {
       b.setAttribute('aria-pressed', st.lensPin >= 0 && b.getAttribute('data-gn') === st.data.positions[st.lensPin].gn ? 'true' : 'false');
     });
+    chipCue();
     drawRuler();
     if (st.hover >= 0) st.tipKey = '';
     st.legendKey = '';
@@ -1560,6 +1571,9 @@
       });
     });
     $('atlas-lens-clear').addEventListener('click', function() { pinLens(-1); });
+    var chipRow = root.querySelector('.atlas-chips');
+    if (chipRow) chipRow.addEventListener('scroll', chipCue, { passive: true });
+    chipCue();
   }
 
   // ================================================================== canvas interaction
@@ -2006,6 +2020,33 @@
   function initSearch() {
     var inp = $('atlas-search-input'), list = $('atlas-suggest'), items = [], active = -1;
     function norm(s) { return String(s || '').toLowerCase().replace(/[\s\-_]+/g, ''); }
+    // Several words: every word must hit the symbol, an accession, a name or the family, in any order.
+    // Short words (1 to 2 characters, such as "d2" or "mu") must start a word, so they do not match inside others.
+    function hayFrom(str) {
+      var parts = String(str || '').toLowerCase();
+      return { text: norm(parts), words: parts.split(/[^a-z0-9]+/).filter(Boolean) };
+    }
+    function hayOf(r) { return hayFrom([r.symbol, r.gid, r.name, r.fullName, r.family, r.uniprot, r.entry].join(' ')); }
+    function hasWord(h, t) {
+      if (t.length > 2 && h.text.indexOf(t) >= 0) return true;
+      for (var i = 0; i < h.words.length; i++) if (h.words[i].indexOf(t) === 0) return true;
+      return false;
+    }
+    function findWords(q) {
+      var toks = String(q || '').toLowerCase().split(/\s+/).map(norm).filter(Boolean);
+      if (toks.length < 2) return [];
+      var out = [];
+      st.data.receptors.forEach(function(r) {
+        var h = r._hay || (r._hay = hayOf(r)), ok = true, alt = false;
+        for (var i = 0; i < toks.length && ok; i++) {
+          if (hasWord(h, toks[i])) continue;
+          var x = r._alias ? (r._aliasHay || (r._aliasHay = hayFrom(r._alias))) : null;
+          if (x && hasWord(x, toks[i])) alt = true; else ok = false;
+        }
+        if (ok) out.push([alt ? 7 : 6, r]);
+      });
+      return out;
+    }
     function find(q) {
       var k = norm(q);
       if (!k) return [];
@@ -2018,8 +2059,13 @@
         else if (s.indexOf(k) > 0) sc = 3;
         else if (k.length > 2 && norm(r.fullName).indexOf(k) >= 0) sc = 4;
         else if (k.length > 2 && norm(r.family).indexOf(k) >= 0) sc = 5;
+        else if (k.length > 2 && (norm(r.uniprot).indexOf(k) === 0 || norm(r.entry).indexOf(k) === 0)) sc = 2;
+        else if (k.length > 2 && r._alias && norm(r._alias).indexOf(k) >= 0) sc = 7;
         if (sc >= 0) out.push([sc, r]);
       });
+      var seen = {};
+      out.forEach(function(x) { seen[x[1].gid] = 1; });
+      findWords(q).forEach(function(x) { if (!seen[x[1].gid]) out.push(x); });
       out.sort(function(a, b) { return a[0] - b[0] || (a[1].symbol < b[1].symbol ? -1 : 1); });
       return out.slice(0, 8).map(function(x) { return x[1]; });
     }
@@ -2239,6 +2285,7 @@
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
     st.insCache = null; st.treeCache = null;
     positionOverlays();
+    chipCue();
     if (st.data && st.P) {
       if (oldW && !st.userMoved && !st.fly && st.sel < 0) {
         var f = fitView(st.layouts[st.view]); st.cam.x = f.x; st.cam.y = f.y; st.cam.k = f.k;
@@ -2321,7 +2368,27 @@
         if (!meta || !meta.receptors) return;
         var fi = (meta.receptorFields || []).indexOf('name');
         if (fi < 0) return;
-        meta.receptors.forEach(function(row) { var r = D.byGid[row[0]]; if (r && row[fi]) r.fullName = row[fi]; });
+        var ui = meta.receptorFields.indexOf('uniprot'), ei = meta.receptorFields.indexOf('entry');
+        meta.receptors.forEach(function(row) {
+          var r = D.byGid[row[0]];
+          if (!r) return;
+          if (row[fi]) r.fullName = row[fi];
+          if (ui >= 0 && row[ui]) r.uniprot = row[ui];
+          if (ei >= 0 && row[ei]) r.entry = row[ei];
+          r._hay = null;
+        });
+        // curated common names and synonyms (for example "serotonin"), searched after the primary fields
+        var ai = (meta.aliasFields || []).indexOf('display'), ri = (meta.aliasFields || []).indexOf('receptor'), ci = (meta.aliasFields || []).indexOf('collision'); var ti = (meta.aliasFields || []).indexOf('tier');
+        if (ai >= 0 && ri >= 0 && meta.aliases) {
+          var acc = {};
+          meta.aliases.forEach(function(a) {
+            if (ci >= 0 && a[ci]) return;
+            if (ti >= 0 && a[ti] === 0) return;             // tier 0 is identifiers (accessions, gene and Ensembl ids)
+            var row = meta.receptors[a[ri]];
+            if (row) (acc[row[0]] = acc[row[0]] || []).push(a[ai]);
+          });
+          Object.keys(acc).forEach(function(g) { var r = D.byGid[g]; if (r) { r._alias = acc[g].join(' '); r._aliasHay = null; } });
+        }
         if (st.sel >= 0) $('atlas-panel-name').textContent = D.receptors[st.sel].fullName;
         st.tipKey = '';
       }).catch(function() { /* names stay as the entry names */ });

@@ -273,7 +273,7 @@
 /* ---------- help ---------- */
 
 .atlas-help {
-  z-index: 6;
+  z-index: 9;                       /* above the receptor panel (7) and the tooltip (8) */
   right: var(--atlas-gap);
   top: 112px;
   width: min(440px, calc(100% - 2 * var(--atlas-gap)));
@@ -284,6 +284,13 @@
   line-height: 1.5;
 }
 .atlas-help[hidden] { display: none; }
+/* on wide screens the help card yields to an open panel: it sits to the left of it, never behind it */
+@media (min-width: 701px) {
+  .atlas-stage:has(.atlas-panel:not([hidden]):not(.is-closed)) .atlas-help {
+    right: calc(2 * var(--atlas-gap) + 384px);
+    width: min(440px, calc(100% - 3 * var(--atlas-gap) - 384px));
+  }
+}
 .atlas-help-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
 .atlas-help h2 { font-family: var(--font-serif); font-size: 1.05rem; margin: 0; }
 .atlas-help p { margin: 0 0 8px; }
@@ -419,6 +426,10 @@
 .atlas-pos-input { width: 118px; min-height: 28px; padding: 3px 8px; font-size: 0.82rem; flex: none; }
 .atlas-chips { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; flex: none; }
 .atlas-chips::-webkit-scrollbar { display: none; }
+/* scroll cue: a soft fade on the side that still has chips beyond it (set by atlas.js) */
+.atlas-chips.has-more-right { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
+.atlas-chips.has-more-left { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent); }
+.atlas-chips.has-more-left.has-more-right { -webkit-mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); }
 .atlas-chip {
   border: 1px solid transparent;
   background: var(--atlas-chip-bg);
@@ -488,6 +499,9 @@
 .atlas-panel-name { margin: 2px 0 0; font-size: 0.85rem; color: var(--fgColor-default); }
 .atlas-panel-body {
   overflow-y: auto; overflow-x: hidden; padding: 4px 16px 16px; overscroll-behavior: contain;
+}
+/* the top fade only appears once the body has scrolled, so the family line is fully legible at rest */
+.atlas-panel.is-scrolled .atlas-panel-body {
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, transparent 10px, #000 34px);
   mask-image: linear-gradient(to bottom, transparent 0, transparent 10px, #000 34px);
 }
@@ -626,7 +640,9 @@
   .atlas-chips { flex: 1 1 auto; min-width: 0; }
   .atlas-lens-readout { display: none; }
   .atlas-lens.has-lens .atlas-chips { display: none; }
-  .atlas-lens.has-lens .atlas-lens-readout { display: block; }
+  .atlas-lens.has-lens .atlas-lens-readout { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; font-size: 0.72rem; line-height: 1.25; }
+  /* with a position set, the readout takes the row so the counts can be read in full */
+  .atlas-lens.has-lens .atlas-pos-input { display: none; }
 
   .atlas-panel {
     left: 0; right: 0; bottom: 0; top: auto;
