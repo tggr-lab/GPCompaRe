@@ -36,8 +36,8 @@
   var MOTIF_ORDER = ['D2.50', 'DRY', 'PIF', 'CWxP', 'NPxxY'];
   var LIGAND_DARK = {
     'Peptide receptors': '#5EEAD4', 'Orphan receptors': '#FCD34D', 'Aminergic receptors': '#C4B5FD',
-    'Lipid receptors': '#F9A8D4', 'Protein receptors': '#93C5FD', 'Nucleotide receptors': '#BEF264',
-    'Sensory receptors': '#D4A373', 'Other': '#A5B4FC'
+    'Lipid receptors': '#F0ABFC', 'Protein receptors': '#4ADE80', 'Nucleotide receptors': '#BEF264',
+    'Sensory receptors': '#D4A373', 'Other': '#9CA3AF'
   };
   var NF = new Intl.NumberFormat('en-US');
 
@@ -104,6 +104,20 @@
     var s = el('svg', { viewBox: '0 0 ' + w + ' ' + hgt, width: w, height: hgt, role: 'img', 'aria-label': label || null,
       style: 'max-width:100%;height:auto' }, node);
     return s;
+  }
+  // text width at a font size (the page's sans stack), to fit captions and clamp labels
+  var MEASURE = document.createElement('canvas').getContext('2d');
+  function textW(str, size, weight) {
+    MEASURE.font = (weight || 400) + ' ' + (size || 11) + 'px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+    return MEASURE.measureText(String(str)).width;
+  }
+  function fit(list, maxW, size, weight) {   // the first text of the list that fits, else the last
+    for (var i = 0; i < list.length; i++) if (textW(list[i], size, weight) <= maxW) return list[i];
+    return list[list.length - 1];
+  }
+  function clampX(cx, str, size, weight, lo, hi) {   // a middle-anchored label kept inside [lo, hi]
+    var half = textW(str, size, weight) / 2 + 2;
+    return Math.max(lo + half, Math.min(hi - half, cx));
   }
   function width(node) { return Math.max(260, Math.floor(node.clientWidth || node.getBoundingClientRect().width || 600)); }
   function hexRGB(c) {
@@ -210,6 +224,7 @@
   }
   function hideTip() { TIP.hidden = true; }
   document.addEventListener('pointermove', function (e) {
+    if (e.target && e.target.hasAttribute && e.target.hasAttribute('data-own-tip')) return;   // the matrix canvas
     var t = e.target && e.target.closest ? e.target.closest('[data-tip]') : null;
     if (t && STATS.contains(t)) showTip(e.clientX, e.clientY, t.getAttribute('data-tip')); else if (!TIP.hidden) hideTip();
   }, { passive: true });
@@ -223,12 +238,46 @@
       if (!dense) {
         node.setAttribute('tabindex', '0');
         node.setAttribute('role', 'button');
-        if (label || tip) node.setAttribute('aria-label', label || tip);
+        if (label || tip) { node.setAttribute('aria-label', label || tip); node.setAttribute('data-key', label || tip); }
       }
-      node.addEventListener('click', function (e) { e.stopPropagation(); hideTip(); fn(e); });
-      node.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(e); } });
+      node.addEventListener('click', function (e) { e.stopPropagation(); hideTip(); fn(e, node); });
+      node.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(e, node); } });
     }
     return node;
+  }
+  // one Tab stop per chart: the marks of an SVG share a roving tabindex, arrow keys move between them
+  function roving(svg, prefer) {
+    var marks = Array.prototype.slice.call(svg.querySelectorAll('[role="button"][data-key]'));
+    if (marks.length < 2) return;
+    var cur = (prefer && marks.filter(function (m) { return m.getAttribute('data-key') === prefer; })[0]) || marks[0];
+    marks.forEach(function (m) { m.setAttribute('tabindex', m === cur ? '0' : '-1'); });
+    if (svg.__roving) return;
+    svg.__roving = true;
+    svg.addEventListener('keydown', function (e) {
+      var keys = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1, Home: 'first', End: 'last' };
+      if (!(e.key in keys)) return;
+      var all = Array.prototype.slice.call(svg.querySelectorAll('[role="button"][data-key]')), i = all.indexOf(e.target);
+      if (i < 0) return;
+      e.preventDefault();
+      var k = keys[e.key], j = k === 'first' ? 0 : k === 'last' ? all.length - 1 : Math.max(0, Math.min(all.length - 1, i + k));
+      all.forEach(function (m, n) { m.setAttribute('tabindex', n === j ? '0' : '-1'); });
+      all[j].focus();
+    });
+  }
+  // the focused mark of a card, by key, so a redraw can give focus back to its successor
+  function focusKey(root) {
+    var a = document.activeElement;
+    if (!a || !root || !root.contains(a)) return null;
+    return a.getAttribute('data-key') || null;
+  }
+  function refocus(root, key) {
+    if (!key || !root) return;
+    var n = root.querySelector('[data-key="' + key.replace(/["\\]/g, '\\$&') + '"]');
+    if (!n || document.activeElement === n) return;
+    var sv = n.closest && n.closest('svg');
+    if (sv && sv.__roving) sv.querySelectorAll('[role="button"][data-key]').forEach(function (m) { m.setAttribute('tabindex', '-1'); });
+    if (n.getAttribute('role') === 'button') n.setAttribute('tabindex', '0');
+    n.focus({ preventScroll: true });
   }
   // hovering a position marks it in every chart that draws it (data-gn)
   function hoverGn(gn, on) {
@@ -272,13 +321,19 @@
       if (next.rec === state.rec && next.pos === state.pos && samePairs && !(opts && opts.force)) return;
       state = next;
       writeURL();
-      document.dispatchEvent(new CustomEvent('gpc:stats-select', { detail: get() }));
+      document.dispatchEvent(new CustomEvent('gpc:stats-select', { detail: Object.assign(get(), { noProfile: !!(opts && opts.noProfile) }) }));
     }
     function clear(kind) { var p = {}; p[kind] = null; set(p); }
     // ?sel= on load, validated against the payloads; unknown kinds or values are dropped silently
     function fromURL() {
       var raw = new URLSearchParams(location.search).get('sel');
-      if (!raw) return Promise.resolve();
+      if (!raw) {
+        if (state.rec || state.pos || state.pair) {
+          state = { rec: null, pos: null, pair: null };
+          document.dispatchEvent(new CustomEvent('gpc:stats-select', { detail: Object.assign(get(), { fromURL: true }) }));
+        }
+        return Promise.resolve();
+      }
       var want = {};
       raw.split(',').forEach(function (part) {
         var i = part.indexOf(':'); if (i < 0) return;
@@ -293,12 +348,14 @@
         var patch = {}; list.forEach(function (o) { for (var k in o) patch[k] = o[k]; });
         state = { rec: patch.rec || null, pos: patch.pos || null, pair: patch.pair || null };
         writeURL();
-        document.dispatchEvent(new CustomEvent('gpc:stats-select', { detail: get() }));
+        document.dispatchEvent(new CustomEvent('gpc:stats-select', { detail: Object.assign(get(), { fromURL: true }) }));
       });
     }
     return { get: get, set: set, clear: clear, fromURL: fromURL, parsePair: parsePair };
   })();
   window.StatsSel = StatsSel;
+  // Back and Forward: the page follows the ?sel of the history entry
+  window.addEventListener('popstate', function () { StatsSel.fromURL(); });
   function urlParam(k) { return new URLSearchParams(location.search).get(k); }
   function setUrlParam(k, v) {
     var params = new URLSearchParams(location.search);
@@ -373,7 +430,7 @@
     input.addEventListener('input', suggest);
     input.addEventListener('blur', function () { setTimeout(close, 120); });
     input.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') { close(); return; }
+      if (e.key === 'Escape') { if (!list.hidden) e.preventDefault(); close(); return; }
       if (e.key === 'ArrowDown') { e.preventDefault(); if (list.hidden) suggest(); active = Math.min(active + 1, shown.length - 1); mark(); }
       else if (e.key === 'ArrowUp') { e.preventDefault(); active = Math.max(active - 1, 0); mark(); }
       else if (e.key === 'Enter') {
@@ -464,9 +521,11 @@
   function draw(card, o) {
     if (!card.D || card.failed) return;
     o = o || {};
-    if (!visible(card.chart) && !o.force) { card.dirty = true; return; }
+    var shown = card.def.visibleNode ? card.def.visibleNode(card) : card.chart;
+    if (!visible(shown) && !o.force) { card.dirty = true; return; }
     card.dirty = false;
     card.lastW = width(card.chart);
+    var key = focusKey(card.el);
     if (!o.keepNode && !card.def.keepNode) clear(card.chart);
     var res = card.def.draw(card, card.chart, card.lastW, o);
     var done = function () {
@@ -475,6 +534,10 @@
       if (!o.first && !o.exporting && !REDUCE.matches && card.chart.firstElementChild && o.fade) {
         card.chart.firstElementChild.classList.add('fade-in');
       }
+      [card.chart, card.strip].forEach(function (root) {
+        if (root) root.querySelectorAll('svg').forEach(function (sv) { if (!sv.parentElement.closest('svg')) roving(sv, key); });
+      });
+      refocus(card.el, key);
     };
     if (res && res.then) res.then(done, function () {}); else done();
   }
@@ -533,7 +596,19 @@
         var open = xl.hidden; closeAllMenus(); xl.hidden = !open; xt.setAttribute('aria-expanded', open ? 'true' : 'false');
         if (open) { var f = xl.querySelector('button, a'); if (f) f.focus(); }
       });
-      xl.addEventListener('keydown', function (e) { if (e.key === 'Escape') { closeMenu(); xt.focus(); } });
+      xl.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeMenu(); xt.focus(); return; }
+        var items = Array.prototype.slice.call(xl.querySelectorAll('button, a')).filter(function (n) { return !n.hidden && n.offsetParent !== null; });
+        var i = items.indexOf(document.activeElement), j = -1;
+        if (e.key === 'ArrowDown') j = (i + 1) % items.length;
+        else if (e.key === 'ArrowUp') j = (i - 1 + items.length) % items.length;
+        else if (e.key === 'Home') j = 0;
+        else if (e.key === 'End') j = items.length - 1;
+        if (j >= 0) { e.preventDefault(); items[j].focus(); }
+      });
+      xt.parentNode.addEventListener('focusout', function () {
+        setTimeout(function () { if (!xt.parentNode.contains(document.activeElement)) closeMenu(); }, 0);
+      });
       xl.querySelectorAll('[data-export]').forEach(function (b) {
         b.addEventListener('click', function (e) {
           var kind = b.getAttribute('data-export');
@@ -556,7 +631,7 @@
   function csvURL(card) { return card.def.csv ? card.def.csv(card) : card.meta.csv; }
   function fileName(card, ext) {
     var parts = ['gpcompare', card.meta.export];
-    var sfx = card.def.suffix ? card.def.suffix(card) : '';
+    var sfx = card.def.suffix ? card.def.suffix(card, ext) : '';
     if (sfx) parts.push(sfx);
     return parts.join('_').replace(/[^\w.-]+/g, '_').toLowerCase() + '.' + ext;
   }
@@ -636,8 +711,7 @@
     var host = h('div', 'stats-offscreen');
     host.style.cssText = 'position:absolute;left:-20000px;top:0;width:' + w + 'px';
     STATS.appendChild(host);
-    var out;
-    try { card.def.draw(card, host, w, { exporting: true }); out = host; }
+    try { card.def.draw(card, host, w, { exporting: true }); }
     finally { C = saved; }
     return { host: host, w: w };
   }
@@ -675,7 +749,8 @@
   function exportCard(card, kind) {
     if (!card.D) return;
     if (card.def.exportCustom) { card.def.exportCustom(card, kind); return; }
-    if (card.def.canvasExport && kind === 'png') { card.def.canvasExport(card).toBlob(function (b) { download(b, fileName(card, 'png')); }); return; }
+    var cv = card.def.canvasExport && kind === 'png' ? card.def.canvasExport(card) : null;
+    if (cv) { cv.toBlob(function (b) { download(b, fileName(card, 'png')); }); return; }   // null: the SVG route below
     var svg = exportSVGString(card);
     if (kind === 'svg') { download(new Blob([svg.text], { type: 'image/svg+xml' }), fileName(card, 'svg')); return; }
     var img = new Image();
@@ -690,22 +765,35 @@
   // ---- side panel (helix cell, receptor, per-position variants)
   function openSide(card, title, build) {
     var side = card.side; if (!side) return;
+    var a = document.activeElement, inCard = a && card.el.contains(a) && !side.contains(a);
+    if (inCard) card.sideReturn = a.getAttribute('data-key') || a.getAttribute('data-pair') || null;
     clear(side);
     var x = h('button', 'side-close', side, '×'); x.type = 'button'; x.setAttribute('aria-label', 'Close');
-    x.addEventListener('click', function () { closeSide(card); });
-    h('h4', '', side, title);
+    x.addEventListener('click', function () { closeSide(card, true); });
+    var head = h('h4', '', side, title); head.tabIndex = -1;
     build(side);
     side.hidden = false;
     card.body.classList.add('has-side');
     card.sideOpen = true;
+    if (!side.__esc) {
+      side.__esc = true;
+      side.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeSide(card, true); } });
+    }
     if (card.lastW && width(card.chart) !== card.lastW) draw(card, {});
+    if (inCard) head.focus({ preventScroll: !isPhone() });
     if (isPhone()) side.scrollIntoView({ block: 'nearest', behavior: SCROLL() });
   }
-  function closeSide(card) {
+  function closeSide(card, back) {
     if (!card.side) return;
     card.side.hidden = true; clear(card.side); card.body.classList.remove('has-side'); card.sideOpen = false;
     card.sideKey = null;
     if (card.drawn && width(card.chart) !== card.lastW) draw(card, {});
+    if (back && card.sideReturn) {
+      var k = card.sideReturn.replace(/["\\]/g, '\\$&');
+      var n = card.el.querySelector('[data-key="' + k + '"], [data-pair="' + k + '"]');
+      if (n) n.focus({ preventScroll: true });
+    }
+    card.sideReturn = null;
   }
   function link(text, href, cls) { var a = h('a', cls || '', null, text); a.href = href; return a; }
   function sideTable(header, list) {
@@ -745,7 +833,7 @@
     csv: null,
     draw: function (card, node, w, o) {
       var sc = card.D.class_scale, cen = sc.census, R = rows(sc.receptor_columns, sc.receptors);
-      var phone = isPhone() || w < 640, r = phone ? 2.4 : 3, gap = 40, pw = phone ? w : (w - gap) / 2;
+      var phone = isPhone() || w < 800, r = phone ? 2.4 : 3, gap = 40, pw = phone ? w : (w - gap) / 2;
       if (!o.exporting && card.guide) {
         if (!card.guideBase) card.guideBase = card.guide.innerHTML;
         card.guide.innerHTML = phone ? card.guideBase.replace('Left:', 'Top:').replace('Right:', 'Bottom:') : card.guideBase;
@@ -770,7 +858,8 @@
         var g = el('g', { transform: phone ? 'translate(0 ' + (k * (ph + 16)) + ')' : 'translate(' + (k * (pw + gap)) + ' 0)' }, s);
         var xs = function (v) { return 8 + (v - p.lo) / (p.hi - p.lo) * (pw - 16); };
         el('text', { x: 0, y: 13, 'font-size': 12, 'font-weight': 600, fill: C.fg }, g, p.title);
-        el('text', { x: pw, y: 13, 'text-anchor': 'end', 'font-size': phone ? 10.5 : 11, fill: C.muted }, g, phone ? p.note.replace(' per receptor', '') : p.note);
+        var nfs = phone ? 10.5 : 11, room = pw - textW(p.title, 12, 600) - 14;
+        el('text', { x: pw, y: 13, 'text-anchor': 'end', 'font-size': nfs, fill: C.muted }, g, fit([p.note, p.note.replace(' per receptor', ''), ''], room, nfs));
         var med = median(p.vals), fi = null;
         p.L.pts.forEach(function (q) {
           var x = R[q[2]], f = x.gid === rec;
@@ -788,7 +877,8 @@
           var fx = fi[0], fy = cy + fi[1] * p.L.step, x = R[fi[2]];
           el('circle', { cx: fx, cy: fy, r: r + 2.5, fill: C.fg }, g);
           el('circle', { cx: fx, cy: fy, r: r + 5, fill: 'none', stroke: C.fg, 'stroke-width': 1.5 }, g);
-          el('text', { x: Math.max(30, Math.min(pw - 30, fx)), y: Math.min(fy, cy - half) - r - 9, 'text-anchor': 'middle', 'font-size': 12, 'font-weight': 700, fill: C.fg, stroke: C.surface, 'stroke-width': 3, 'paint-order': 'stroke' }, g, x.symbol + ' ' + p.f(x[p.key]));
+          var flab = x.symbol + ' ' + p.f(x[p.key]);
+          el('text', { x: clampX(fx, flab, 12, 700, 0, pw), y: Math.min(fy, cy - half) - r - 9, 'text-anchor': 'middle', 'font-size': 12, 'font-weight': 700, fill: C.fg, stroke: C.surface, 'stroke-width': 3, 'paint-order': 'stroke' }, g, flab);
         }
       });
     },
@@ -815,13 +905,14 @@
         if (!o.exporting) r.setAttribute('data-tip', fmt(b[1]) + ' pairs with ΔRRCS from ' + b[0] + ' to ' + (b[0] + 1));
       });
       [lo, lo / 2, 0, hi / 2, hi].forEach(function (t) { el('text', { x: x(t), y: hh + 16, 'text-anchor': 'middle', 'font-size': 11, fill: C.muted }, s, t < 0 ? '−' + Math.abs(t) : String(t)); });
-      el('text', { x: ml, y: hh + 31, 'font-size': 11, fill: C.muted }, s, 'ΔRRCS (active minus inactive); pairs per bin, log scale');
+      el('text', { x: ml, y: hh + 31, 'font-size': 11, fill: C.muted }, s, fit(['ΔRRCS (active minus inactive); pairs per bin, log scale', 'ΔRRCS; pairs per bin, log scale'], w - ml, 11));
       var rec = StatsSel.get().rec;
       if (rec) {
         var R = rows(sc.receptor_columns, sc.receptors).filter(function (r) { return r.gid === rec; })[0];
         if (R) [-R.threshold, R.threshold].forEach(function (t, i) {
           el('line', { x1: x(t), x2: x(t), y1: 6, y2: hh, stroke: C.fg, 'stroke-width': 1.5, 'stroke-dasharray': '4 3' }, s);
-          if (i) el('text', { x: x(t) + 5, y: 16, 'font-size': 12, 'font-weight': 600, fill: C.fg, stroke: C.surface, 'stroke-width': 3, 'paint-order': 'stroke' }, s, R.symbol + ' threshold ±' + f2(R.threshold));
+          var hl = R.symbol + ' threshold ±' + f2(R.threshold), right = x(t) + 5 + textW(hl, 12, 600) <= w;
+          if (i) el('text', { x: right ? x(t) + 5 : x(t) - 5, y: 16, 'text-anchor': right ? 'start' : 'end', 'font-size': 12, 'font-weight': 600, fill: C.fg, stroke: C.surface, 'stroke-width': 3, 'paint-order': 'stroke' }, s, hl);
         });
       }
     },
@@ -907,6 +998,15 @@
         segBox.hidden = st.mode !== 'grid';
         var scope = (st.group === 'all' || st.mode === 'magnitude') ? NREC + ' receptors.' : G.n + ' receptors (' + G.label.replace(/ receptors$/, '').toLowerCase() + ').';
         card.scope.querySelector('b').textContent = scope;
+        var rest = card.scope.querySelector('[data-scope-rest]');
+        if (!rest) {   // the text after the bold count, kept in one span so the mode can change it
+          rest = h('span', ''); rest.setAttribute('data-scope-rest', '');
+          var b0 = card.scope.querySelector('b'), nx = b0.nextSibling;
+          while (nx) { var nn = nx.nextSibling; rest.appendChild(nx); nx = nn; }
+          card.scope.appendChild(rest);
+          card.scopeRest = rest.textContent;
+        }
+        rest.textContent = st.mode === 'magnitude' && CFG.labels.scope_maps ? ' ' + CFG.labels.scope_maps : card.scopeRest;
         card.guide.innerHTML = guideFor(hp, G, st, small);
         ledger(card, hp, G, small);
         legendFor(card, st, small);
@@ -914,11 +1014,12 @@
       if (st.mode === 'grid') return gridView(card, node, w, hp, G, o);
       return bundle(card, node, w, hp, G, small, o);
     },
-    onSelect: function (card) { draw(card, {}); if (card.ledger) ledger(card, card.D.helix_pairs, null, null); }
+    onSelect: function (card) { draw(card, {}); }
   });
   function guideFor(hp, G, st, small) {
-    if (st.mode === 'magnitude') return 'Line width and label: mean |ΔRRCS| per contact over all contacts between two helices, for helix pairs with at least ' + hp.magnitude_rule.min_contacts + ' contacts. Disc size: mean |ΔRRCS| per contact endpoint on the helix. Unsigned, over all ' + NREC + ' receptors.';
-    if (st.mode === 'grid') return 'Each cell: the mean net ΔRRCS of the pair over all receptors in the group (receptors without the pair count as 0), and the share of receptors with the pair whose net has that sign. Loops and termini appear under All segments.';
+    if (st.mode === 'magnitude') return 'Line width and label: mean |ΔRRCS| per contact over all contacts between two of TM1 to TM7, for pairs with at least ' + hp.magnitude_rule.min_contacts + ' contacts; H8 pairs are not included. Disc size, and the width of the H8 bar: mean |ΔRRCS| per contact endpoint on the helix. Unsigned, over all ' + NREC + ' receptors.';
+    if (st.mode === 'grid' && small) return esc(G.label.replace(/ receptors$/, '')) + ': ' + G.n + ' receptors, fewer than the ' + hp.min_receptors + ' a class direction needs. Each cell: how many of them carry the pair, without a direction. Within-helix pairs are not shown.';
+    if (st.mode === 'grid') return 'Each cell: the mean net ΔRRCS of the pair over all receptors in the group (receptors without the pair count as 0), and the share of receptors with the pair whose net has that sign. Within-helix pairs are not shown. Loops and termini appear under All segments.';
     if (small) return esc(G.label.replace(/ receptors$/, '')) + ': ' + G.n + ' receptors, fewer than the ' + hp.min_receptors + ' a class direction needs. Lines join the helices these receptors pair, width by how many carry the pair. Each receptor’s own bundle is on its report.';
     return 'Each line joins two helices that share above-threshold contacts. Color: mean net ΔRRCS per receptor, <span class="t-up">red</span> stronger in the active model, <span class="t-down">blue</span> stronger in the inactive model. Width: receptors that change in the majority direction. Pairs carried by fewer than ' + hp.min_receptors + ' receptors are not drawn.';
   }
@@ -926,6 +1027,7 @@
     var L = card.legend; if (!L) return;
     if (st.mode === 'magnitude') { L.innerHTML = '<span><span class="sw" style="background:var(--st-ink-bar)"></span>mean |ΔRRCS| per contact (unsigned)</span>'; return; }
     if (small && st.mode === 'direction') { L.innerHTML = '<span><span class="sw" style="background:var(--st-faint)"></span>line width: receptors carrying the pair (no direction)</span>'; return; }
+    if (small) { L.innerHTML = '<span><span class="sw" style="background:var(--st-faint)"></span>cell: receptors of the group carrying the pair (no direction)</span>'; return; }
     L.innerHTML = '<span>stronger in the inactive model</span><span class="ramp" style="background:linear-gradient(90deg,' + C.inactive + ',' + C.neutral + ',' + C.active + ')"></span><span>stronger in the active model</span><span>scale ±6 |ΔRRCS| per receptor</span>';
   }
   function bundle(card, node, w, hp, G, small, o) {
@@ -973,7 +1075,7 @@
     hits.forEach(function (x) { if (x[4]) { var o2 = chord(lines, x[0], x[1], C.fg, 3, 1); o2.setAttribute('stroke-dasharray', '6 4'); o2.removeAttribute('class'); } });
     var c8 = P(7), Lh = sc * 0.2, dx = Math.cos(H8A) * Lh, dy = -Math.sin(H8A) * Lh;
     el('line', { x1: c8[0] - dx, y1: c8[1] - dy, x2: c8[0] + dx, y2: c8[1] + dy, stroke: C.fg, 'stroke-width': st.mode === 'magnitude' ? Math.min(18, discR[7] * 0.8) : 11, 'stroke-linecap': 'round', opacity: 0.85 }, s);
-    el('text', { x: c8[0] + 8, y: c8[1] - 16, 'font-size': 12, 'font-weight': 600, fill: C.muted }, s, 'H8');
+    el('text', { x: c8[0] + Math.abs(dx) + 10, y: c8[1] - Math.abs(dy) + 4, 'font-size': 12, 'font-weight': 600, fill: C.muted }, s, 'H8');   // past the bar's end
     for (var k = 0; k < 7; k++) {
       var p = P(k), mag = st.mode === 'magnitude';
       el('circle', { cx: p[0], cy: p[1], r: discR[k], fill: mag ? C.fg : C.surface, stroke: C.fg, 'stroke-width': 1.6, 'fill-opacity': mag ? 0.85 : 1 }, s);
@@ -1015,6 +1117,7 @@
     }
   }
   function gridView(card, node, w, hp, G, o) {
+    var small = G.n < hp.min_receptors;
     var st = card.state, segs = st.segments === 'helices' ? hp.segments.slice(0, hp.n_helices) : hp.segments.slice();
     var order = segs.map(function (s, i) { return i; }).sort(function (a, b) { return segRank(segs[a]) - segRank(segs[b]); });
     var n = segs.length, lab = isPhone() ? 40 : 52, cell = Math.min(st.segments === 'helices' ? 62 : 40, Math.floor((Math.min(w, 620) - lab) / n));
@@ -1027,9 +1130,15 @@
       order.forEach(function (sj, c) {
         if (c > r) return;
         var a = Math.min(si, sj), b = Math.max(si, sj), x = lab + c * cell, y = lab + r * cell, d = cells[a + ',' + b];
-        var ok = d && a !== b && d.n_present >= hp.min_receptors;
-        var rect = el('rect', { x: x + 1.5, y: y + 1.5, width: cell - 3, height: cell - 3, rx: 4, fill: ok ? divColor(d.mean_net, 6) : C.surface2 }, s);
+        var ok = d && a !== b && (small ? d.n_present > 0 : d.n_present >= hp.min_receptors);
+        var fill = !ok ? C.surface2 : small ? mix(C.surface2, C.faint, 0.35 + 0.65 * d.n_present / G.n) : divColor(d.mean_net, 6);
+        var rect = el('rect', { x: x + 1.5, y: y + 1.5, width: cell - 3, height: cell - 3, rx: 4, fill: fill }, s);
         if (!ok) return;
+        if (small) {
+          if (cell >= 30) el('text', { x: x + cell / 2, y: y + cell / 2 + 4, 'text-anchor': 'middle', 'font-size': cell >= 50 ? 12 : 10, 'font-weight': 700, fill: C.fg }, s, d.n_present + '/' + G.n);
+          if (!o.exporting) hit(rect, segs[a] + '-' + segs[b] + ': carried by ' + d.n_present + ' of ' + G.n, function () { if (a < 8 && b < 8) StatsSel.set({ pair: [a, b] }); openCell(card, a, b); });
+          return;
+        }
         var dark = Math.abs(d.mean_net) > 2.5, txt = dark ? C.onDark : C.fg;
         if (cell >= 34) {
           el('text', { x: x + cell / 2, y: y + cell / 2 + (cell >= 50 ? -1 : 4), 'text-anchor': 'middle', 'font-size': cell >= 50 ? 12 : 10, 'font-weight': 700, fill: txt }, s, signed(d.mean_net));
@@ -1049,7 +1158,7 @@
     clear(L);
     var sel = StatsSel.get().pair;
     if (st.mode === 'magnitude') {
-      h('h4', '', L, 'Helix pairs by change per contact');
+      h('h4', '', L, 'Pairs of TM helices by change per contact');
       var IF = hp.interfaces.filter(function (i) { return i.supported; }).sort(function (a, b) { return b.mean_abs_delta - a.mean_abs_delta; });
       var mx = IF[0].mean_abs_delta;
       IF.slice(0, isPhone() ? 6 : IF.length).forEach(function (i) {
@@ -1060,9 +1169,15 @@
       });
       return;
     }
-    if (st.mode === 'grid') {
+    if (st.mode === 'grid' && !small) {
       h('h4', '', L, 'How to read the grid');
-      h('p', 'small-note', L, 'Each cell: mean net ΔRRCS per receptor (bold) and the share of receptors carrying the pair whose net has that sign. Blank: fewer than ' + hp.min_receptors + ' receptors carry the pair. Click a cell for the receptors behind it.');
+      h('p', 'small-note', L, 'Each cell: mean net ΔRRCS per receptor (bold) and the share of receptors carrying the pair whose net has that sign. Blank: fewer than ' + hp.min_receptors + ' receptors carry the pair, and within-helix pairs (not shown). Click a cell for the receptors behind it.');
+      return;
+    }
+    if (st.mode === 'grid') {
+      h('h4', '', L, 'Receptors carrying each helix pair');
+      h('p', 'small-note', L, 'With fewer than ' + hp.min_receptors + ' receptors the grid shows how many of them carry each pair, not a class direction. Click a cell for the receptors behind it, or follow one of them:');
+      smallChips(L, hp, G);
       return;
     }
     h('h4', '', L, small ? 'Receptors carrying each helix pair' : 'How consistent is each helix pair?');
@@ -1073,7 +1188,7 @@
       if (extra && extra.n_present) cells.push(extra);
     }
     cells.forEach(function (c) {
-      var r = h('button', 'lrow', L); r.type = 'button'; r.setAttribute('data-pair', HELIX[c.i] + '-' + HELIX[c.j]);
+      var r = h('button', 'lrow', L); r.type = 'button'; r.setAttribute('data-pair', HELIX[c.i] + '-' + HELIX[c.j]); r.setAttribute('data-key', 'ledger ' + HELIX[c.i] + '-' + HELIX[c.j]);
       if (samePair(sel, [c.i, c.j])) r.classList.add('is-sel');
       h('span', 'lab', r, HELIX[c.i] + '-' + HELIX[c.j]);
       var bar = h('span', 'lbar', r), t = h('span', 'txt', r);
@@ -1093,14 +1208,18 @@
     });
     if (small) {
       h('p', 'small-note', L, 'With fewer than ' + hp.min_receptors + ' receptors the page shows which helix pairs they carry, not a class direction. Follow one of them:');
-      var list = h('div', 'group-chips-list chips', L);
-      hp.receptors.filter(function (r) { return r.ligand === G.key; }).forEach(function (r) {
-        var b = h('button', '', list, r.symbol); b.type = 'button'; b.setAttribute('aria-pressed', StatsSel.get().rec === r.gid ? 'true' : 'false');
-        b.addEventListener('click', function () { StatsSel.set({ rec: r.gid }); });
-      });
+      smallChips(L, hp, G);
     } else {
       h('p', 'small-note', L, 'Bars: receptors carrying the pair, split by the sign of their net change (blue weaker, red stronger in the active model). Click a line or a row for the receptors behind it.');
     }
+  }
+  function smallChips(L, hp, G) {
+    var list = h('div', 'group-chips-list chips', L);
+    hp.receptors.filter(function (r) { return r.ligand === G.key; }).forEach(function (r) {
+      var b = h('button', '', list, r.symbol); b.type = 'button'; b.setAttribute('aria-pressed', StatsSel.get().rec === r.gid ? 'true' : 'false');
+      b.setAttribute('data-key', 'follow ' + r.gid);
+      b.addEventListener('click', function () { StatsSel.set({ rec: r.gid }); });
+    });
   }
   function openCell(card, a, b) {
     var hp = card.D.helix_pairs, st = card.state;
@@ -1170,7 +1289,8 @@
   });
 
   // ================================================================== 3 positions
-  function selectPos(gn, card) { Profile.open(gn, card); StatsSel.set({ pos: gn }); }
+  // a position picked on a chart: the profile opens beside the mark (anchor) and takes the focus
+  function selectPos(gn, card, anchor) { Profile.open(gn, card, anchor, { focus: true }); StatsSel.set({ pos: gn }); }
 
   define('chart-scaffold', {
     needs: ['class_positions'],
@@ -1192,12 +1312,12 @@
       el('path', { d: path, fill: 'none', stroke: C.line, 'stroke-width': 1.2 }, s);
       var leaders = el('g', {}, s), groups = {}, selP = null;
       res.forEach(function (r) {
-        var x = r.gn && PI.by[r.gn], n = x ? x.n : 0, bi = r.gn ? bandOf(n, cp.bands) : -1;
+        var x = r.gn && PI.by[r.gn], n = r.gn ? (r.n === undefined ? (x ? x.n : 0) : r.n) : 0, bi = r.gn ? bandOf(n, cp.bands) : -1;
         var g = el('g', { 'data-gn': r.gn || null }, s);
         el('circle', { cx: r.x, cy: r.y, r: 8.4, fill: bi < 0 ? C.surface : band(bi), stroke: bi < 0 || bi < 3 ? C.line : 'none', 'stroke-width': 1 }, g);
         el('text', { x: r.x, y: r.y + 3.5, 'text-anchor': 'middle', 'font-size': 9.5, 'font-weight': 600, fill: bi >= 3 ? (C.dark && bi >= 4 ? '#0d1117' : '#ffffff') : C.muted, 'pointer-events': 'none' }, g, r.aa);
         var tip = r.aa + r.num + (r.gn ? ' · ' + r.gn + ' · CFR in ' + n + ' of ' + NREC + ' receptors' + (x ? ' · CFR score rank ' + x.rank : '') : ' · no generic number');
-        if (!o.exporting) hit(g, tip, r.gn && x ? function () { selectPos(r.gn, card); } : null, null, true);
+        if (!o.exporting) hit(g, tip, r.gn && x ? function (e, nd) { selectPos(r.gn, card, nd); } : null, null, true);
         var m = r.gn && PI.motif[r.gn];
         if (m) { (groups[m + '|' + r.segment] = groups[m + '|' + r.segment] || []).push([r.x, r.y]); el('circle', { cx: r.x, cy: r.y, r: 11, fill: 'none', stroke: C.fg, 'stroke-width': 1.8, 'pointer-events': 'none' }, s); }
         if (sel && r.gn === sel) selP = r;
@@ -1245,9 +1365,9 @@
       var y = i * rh + 4, marks = {};
       el('text', { x: 0, y: y + 11, 'font-size': 12, 'font-weight': 600, fill: C.muted }, s, HELIX[i]);
       row.forEach(function (r, j) {
-        var x = r.gn && PI.by[r.gn], bi = r.gn ? bandOf(x ? x.n : 0, cp.bands) : -1, xx = lab + j * cw;
+        var x = r.gn && PI.by[r.gn], n = r.gn ? (r.n === undefined ? (x ? x.n : 0) : r.n) : 0, bi = r.gn ? bandOf(n, cp.bands) : -1, xx = lab + j * cw;
         var rect = el('rect', { x: xx, y: y, width: cw - 1, height: 14, rx: 2, fill: bi < 0 ? C.surface : band(bi), stroke: bi < 0 ? C.line : 'none', 'data-gn': r.gn || null }, s);
-        if (!o.exporting) hit(rect, r.aa + r.num + (r.gn ? ' · ' + r.gn + ' · CFR in ' + (x ? x.n : 0) + ' of ' + NREC : ''), x ? function () { selectPos(r.gn, card); } : null, null, true);
+        if (!o.exporting) hit(rect, r.aa + r.num + (r.gn ? ' · ' + r.gn + ' · CFR in ' + n + ' of ' + NREC : ''), x ? function (e, nd) { selectPos(r.gn, card, nd); } : null, null, true);
         var m = r.gn && PI.motif[r.gn];
         if (m) { el('rect', { x: xx - 0.5, y: y - 1.5, width: cw, height: 17, rx: 2.5, fill: 'none', stroke: C.fg, 'stroke-width': 1.4 }, s); (marks[m] = marks[m] || []).push(xx); }
         if (sel && r.gn === sel) el('rect', { x: xx - 2, y: y - 3, width: cw + 3, height: 20, rx: 3, fill: 'none', stroke: C.fg, 'stroke-width': 2.4 }, s);
@@ -1289,7 +1409,8 @@
         var ox = c * (cw + gap), col = list.slice(c * per, (c + 1) * per);
         var bx = ox + 24 + 8 + 74 + 8 + 38 + 8, bw = cw - (bx - ox) - 48;
         var bs = Math.min(0.72, Math.max(0.3, (bw - 86) / bw));   // room for the count and a motif tag
-        [['#', ox + 24, 'end'], ['position', ox + 32, 'start'], ['seg.', ox + 114, 'start'], ['receptors, of ' + NREC, bx, 'start'], ['|Δ|', ox + cw, 'end']].forEach(function (t) {
+        var rlab = fit(['receptors, of ' + NREC, 'receptors'], ox + cw - 28 - bx, 11);
+        [['#', ox + 24, 'end'], ['position', ox + 32, 'start'], ['seg.', ox + 114, 'start'], [rlab, bx, 'start'], ['|Δ|', ox + cw, 'end']].forEach(function (t) {
           el('text', { x: t[1], y: 13, 'text-anchor': t[2], 'font-size': 11, fill: C.muted }, s, t[0]);
         });
         el('line', { x1: ox, x2: ox + cw, y1: head - 1, y2: head - 1, stroke: C.line }, s);
@@ -1299,7 +1420,7 @@
           if (isSel) el('rect', { x: ox + 0.75, y: y + 0.75, width: cw - 1.5, height: rh - 1.5, fill: 'none', stroke: C.fg, 'stroke-width': 1.5, rx: 3 }, g);
           el('line', { x1: ox, x2: ox + cw, y1: y + rh, y2: y + rh, stroke: C.lineSoft }, g);
           el('text', { x: ox + 24, y: y + 16, 'text-anchor': 'end', 'font-size': 12, fill: C.muted }, g, String(x.rank));
-          var a = o.exporting ? g : el('a', { href: SEARCH(x.gn) }, g);
+          var a = o.exporting ? g : el('a', { href: SEARCH(x.gn), tabindex: '-1' }, g);
           el('text', { x: ox + 32, y: y + 16, 'font-size': 12, 'font-family': 'ui-monospace, Menlo, Consolas, monospace', fill: C.brand }, a, x.gn);
           el('text', { x: ox + 114, y: y + 16, 'font-size': 11.5, fill: C.muted, class: 'rk-seg' }, g, x.segment);
           var bl = Math.max(2, bw * bs * x.n / NREC);
@@ -1320,7 +1441,7 @@
           el('text', { x: ox + cw, y: y + 16, 'text-anchor': 'end', 'font-size': 11.5, fill: C.muted }, g, f2(x.mean_abs_delta));
           if (!o.exporting) {
             var hitR = el('rect', { x: ox + 112, y: y, width: cw - 112, height: rh, fill: 'transparent' }, g);
-            hit(hitR, x.gn + ': CFR in ' + x.n + ' of ' + NREC + ' receptors, mean |ΔRRCS| ' + f2(x.mean_abs_delta) + ', CFR score ' + x.cfr_score.toFixed(3), function () { selectPos(x.gn, card); }, 'Open the profile of ' + x.gn);
+            hit(hitR, x.gn + ': CFR in ' + x.n + ' of ' + NREC + ' receptors, mean |ΔRRCS| ' + f2(x.mean_abs_delta) + ', CFR score ' + x.cfr_score.toFixed(3), function (e, nd) { selectPos(x.gn, card, nd); }, 'Open the profile of ' + x.gn);
           }
         });
       }
@@ -1349,7 +1470,7 @@
     A.forEach(function (p, i) {
       var y = top + hh - p.n / NREC * hh;
       var r = el('rect', { x: x(i), y: y, width: Math.max(0.6, bw - 0.4), height: top + hh - y, fill: i < cp.top_n ? C.b4 : C.b2, 'data-gn': p.gn }, s);
-      if (!o.exporting) hit(r, p.gn + ' · rank ' + p.rank + ' · CFR in ' + p.n + ' of ' + NREC, function () { selectPos(p.gn, card); }, null, true);
+      if (!o.exporting) hit(r, p.gn + ' · rank ' + p.rank + ' · CFR in ' + p.n + ' of ' + NREC, function (e, nd) { selectPos(p.gn, card, nd); }, null, true);
     });
     if (sel && PI.by[sel]) {
       var i = PI.by[sel].rank - 1, xx = x(i) + bw / 2;
@@ -1360,41 +1481,66 @@
     el('line', { x1: cut, x2: cut, y1: top - 4, y2: top + hh + 4, stroke: C.fg, 'stroke-dasharray': '3 3' }, s);
     el('text', { x: cut + 5, y: top + 22, 'font-size': 11, fill: C.fg }, s, 'top ' + cp.top_n);
     el('text', { x: isPhone() ? lab : w, y: top + hh + 18, 'text-anchor': isPhone() ? 'start' : 'end', 'font-size': 11, fill: C.muted }, s,
-      isPhone() ? 'height: receptors; lanes: motif positions by rank' : 'bar height: receptors with a CFR at the position; lanes: activation motif positions by rank (filled: top ' + cp.top_n + ')');
+      fit(['bar height: receptors with a CFR at the position; lanes: activation motif positions by rank (filled: top ' + cp.top_n + ')',
+           'height: receptors; lanes: motif positions by rank', 'height: receptors; lanes: motifs'], isPhone() ? w - lab : w, 11));
   }
 
   // ---- position profile: one shared drawer
   var Profile = (function () {
-    var panel = null, hostCard = null, current = null;
-    function close(clearSel) {
+    var panel = null, hostCard = null, current = null, back = null;
+    function close(clearSel, refocusTrigger) {
       if (panel) { panel.remove(); panel = null; }
       current = null;
       if (clearSel && StatsSel.get().pos) StatsSel.set({ pos: null });
+      if (refocusTrigger && back) { var k = back; back = null; refocus(STATS, k); }
     }
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && panel) close(true); });
+    // Escape closes the profile, unless another control used it (the selection box, an export menu, a side panel)
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape' || !panel || e.defaultPrevented) return;
+      var t = e.target;
+      if (t && t.closest && t.closest('.sel, .xmenu, .chart-card-side, input, select, textarea')) return;
+      close(true, true);
+    });
+    // a click outside closes it, but not a click on a chart, a control or a panel: those select or act
     document.addEventListener('click', function (e) {
       if (!panel || panel.contains(e.target)) return;
-      if (e.target.closest && e.target.closest('[data-hit], .sel, .lrow, button, a')) return;
+      if (e.target.closest && e.target.closest('[data-hit], [data-chart], [data-strip368], .ledger, .chart-card-side, .controls, .chips, .tabs, .legend, .scard-foot, .sel, .lrow, button, a, canvas, .js-plotly-plot')) return;
       close(true);
     });
-    function open(gn, card) {
+    function open(gn, card, anchor, opts) {
       card = card || CARDS['chart-ranking'];
       if (!card) return;
+      opts = opts || {};
+      // where the mark sits in the card now: the selection redraws the card before the profile is built
+      if (anchor && anchor.getBoundingClientRect && !isPhone()) {
+        var ar = anchor.getBoundingClientRect();
+        if (ar.height || ar.width) opts.anchorTop = ar.top - card.el.getBoundingClientRect().top;
+      }
+      if (opts.focus) back = focusKey(STATS) || (anchor && anchor.getAttribute && anchor.getAttribute('data-key')) || null;
       current = gn; hostCard = card;
       Promise.all([load('class_positions'), load('cfr_atlas').catch(function () { return null; }), load('cfr_variants').catch(function () { return null; })]).then(function (arr) {
         if (current !== gn) return;
-        build(gn, card, arr[0], arr[1], arr[2]);
+        build(gn, card, arr[0], arr[1], arr[2], anchor, opts);
       });
     }
-    function build(gn, card, cp, atlas, cv) {
+    // desktop: beside the mark that opened it (or near the top of the card), kept inside the card
+    function place(card, anchorTop) {
+      if (isPhone() || !panel) return;
+      var top = anchorTop === undefined ? 104 : anchorTop - 24;
+      var ph = panel.offsetHeight || 420;
+      top = Math.max(8, Math.min(top, card.el.offsetHeight - ph - 8));
+      panel.style.top = Math.round(top) + 'px';
+    }
+    function build(gn, card, cp, atlas, cv, anchor, opts) {
       var PI = positionIndex(cp), x = PI.by[gn];
       if (!x) return;
+      opts = opts || {};
       if (panel) panel.remove();
       panel = h('aside', 'pos-profile', card.el);
-      panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Position ' + gn);
+      panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Position ' + gn); panel.tabIndex = -1;
       h('span', 'handle', panel);
       var xb = h('button', 'x', panel, '×'); xb.type = 'button'; xb.setAttribute('aria-label', 'Close');
-      xb.addEventListener('click', function (e) { e.stopPropagation(); close(true); });
+      xb.addEventListener('click', function (e) { e.stopPropagation(); close(true, true); });
       var head = h('div', 'pgn', panel, gn);
       if (x.motif) h('span', 'tag', head, x.motif);
       h('div', 'psub', panel, x.segment + (x.adrb2 ? ' · ' + cp.scaffold.gene + ' ' + x.adrb2 : '') + ' · rank ' + x.rank + ' by CFR score');
@@ -1435,16 +1581,29 @@
       }
       var links = h('div', 'plinks', panel);
       if (vp) {
-        var b = h('button', 'cc-btn', links, 'Receptors with a CFR here'); b.type = 'button';
-        b.addEventListener('click', function (e) { e.stopPropagation(); var vc = CARDS['chart-cfr-variants']; if (vc) { loadCard(vc).then(function () { showVariantPosition(vc, vp); vc.el.scrollIntoView({ block: 'start', behavior: SCROLL() }); }); } });
+        var b = h('button', 'cc-btn', links, 'Receptors numbered here, with their variants'); b.type = 'button';
+        b.addEventListener('click', function (e) { e.stopPropagation(); var vc = CARDS['chart-cfr-variants']; if (vc) { loadCard(vc).then(function () { showVariantPosition(vc, vp, true); vc.el.scrollIntoView({ block: 'start', behavior: SCROLL() }); }); } });
       }
       links.appendChild(link('Search ' + gn, SEARCH(gn), 'cc-btn'));
+      place(card, opts.anchorTop);
+      if (opts.focus) panel.focus({ preventScroll: isPhone() });
+      if ((opts.focus || opts.scroll) && !isPhone()) {
+        var me = panel;
+        me.scrollIntoView({ block: 'nearest', behavior: SCROLL() });
+        // cards that load on the way can move it: look again once the scroll has settled
+        setTimeout(function () {
+          if (panel !== me) return;
+          var r = me.getBoundingClientRect();
+          if (r.bottom < 60 || r.top > window.innerHeight - 40) me.scrollIntoView({ block: 'nearest' });
+        }, 900);
+      }
     }
     document.addEventListener('gpc:stats-select', function (e) {
-      var p = e.detail.pos;
+      var p = e.detail.pos, o = { scroll: !e.detail.fromURL };
       if (!p) { if (panel) close(false); return; }
-      if (p !== current) open(p, hostCard && hostCard.el.isConnected ? hostCard : null);
-      else if (panel) open(p, hostCard);
+      if (e.detail.noProfile) { if (panel) close(false); return; }   // a view that shows the position itself
+      if (p !== current) open(p, hostCard && hostCard.el.isConnected ? hostCard : null, null, o);
+      else if (panel) open(p, hostCard, null, {});
     });
     return { open: open, close: close };
   })();
@@ -1464,7 +1623,8 @@
       var d = 'M' + x(0) + ',' + y(0), len = 0, px = x(0), py = y(0);
       list.forEach(function (r) { var nx = x(r.rank_in_universe), ny = y(r.known_found); len += Math.abs(nx - px) + Math.abs(ny - py); px = nx; py = ny; d += 'H' + nx.toFixed(1) + 'V' + ny.toFixed(1); });
       el('path', { d: d, fill: 'none', stroke: C.brand, 'stroke-width': 2.4, class: 'trace', style: '--len:' + Math.ceil(len) }, s);
-      list.forEach(function (r) { if (r.known) { var t = el('rect', { x: x(r.rank_in_universe) - 0.8, y: hh + 4, width: 1.6, height: 7, fill: C.fg }, s); if (!o.exporting) t.setAttribute('data-tip', r.gn + (r.motif ? ' (' + r.motif + ')' : '') + ', rank ' + r.rank_in_universe); } });
+      var rankText = function (r) { return 'rank ' + r.rank_in_universe + ' of ' + M + (r.cfr_score_rank !== r.rank_in_universe ? '; CFR score rank ' + r.cfr_score_rank : ''); };
+      list.forEach(function (r) { if (r.known) { var t = el('rect', { x: x(r.rank_in_universe) - 0.8, y: hh + 4, width: 1.6, height: 7, fill: C.fg }, s); if (!o.exporting) t.setAttribute('data-tip', r.gn + (r.motif ? ' (' + r.motif + ')' : '') + ', ' + rankText(r)); } });
       Object.keys(Rv.cuts).map(Number).sort(function (a, b) { return a - b; }).forEach(function (n, i) {
         var cut = Rv.cuts[n], kf = cut.known_found, px2 = x(n), py2 = y(kf);
         el('circle', { cx: px2, cy: py2, r: 4.5, fill: C.brand, stroke: C.surface, 'stroke-width': 2 }, s);
@@ -1473,8 +1633,9 @@
         el('text', { x: tx, y: ty, 'font-size': 12, 'font-weight': 600, fill: C.fg, stroke: C.surface, 'stroke-width': 4, 'paint-order': 'stroke' }, s, kf + ' of the first ' + n);
         el('text', { x: tx, y: ty + 15, 'font-size': 11, fill: C.muted, stroke: C.surface, 'stroke-width': 4, 'paint-order': 'stroke' }, s, f1(cut.expected) + ' expected by chance');
       });
-      [1, 50, 100, 150, 200, M].forEach(function (t) { el('text', { x: x(t), y: hh + 25, 'text-anchor': 'middle', 'font-size': 11, fill: C.muted }, s, String(t)); });
-      el('text', { x: ml, y: hh + 40, 'font-size': 11, fill: C.muted }, s, 'rank by CFR score; ticks: known activation positions');
+      [1, 50, 100, 150, 200, M].forEach(function (t) { el('text', { x: x(t), y: hh + 25, 'text-anchor': t === M ? 'end' : 'middle', 'font-size': 11, fill: C.muted }, s, String(t)); });
+      el('text', { x: ml, y: hh + 40, 'font-size': 11, fill: C.muted }, s, fit(['rank among the ' + M + ' positions, in CFR score order; ticks: known activation positions',
+        'rank among the ' + M + ' positions; ticks: known positions', 'rank among the ' + M + ' positions'], w - ml, 11));
       var sel = StatsSel.get().pos, note = card.el.querySelector('[data-rec-note]');
       if (!o.exporting) { if (!note) { note = h('p', 'small-note', null); note.setAttribute('data-rec-note', ''); card.chart.parentNode.insertBefore(note, card.chart.nextSibling); } note.textContent = ''; }
       if (sel) {
@@ -1482,8 +1643,10 @@
         if (r) {
           var rx = x(r.rank_in_universe);
           el('line', { x1: rx, x2: rx, y1: 4, y2: hh, stroke: C.fg, 'stroke-width': 1.5 }, s);
-          el('text', { x: rx + (rx > w - 160 ? -5 : 5), y: 16, 'text-anchor': rx > w - 160 ? 'end' : 'start', 'font-size': 12, 'font-weight': 700, fill: C.fg, stroke: C.surface, 'stroke-width': 3, 'paint-order': 'stroke' }, s, sel + ' at ' + r.rank_in_universe + (r.known ? ', a known position' : ''));
-        } else if (note) note.textContent = sel + ': numbered in fewer than half of the receptors, so not in this ranking.';
+          var sl = sel + ': ' + r.rank_in_universe + ' of ' + M + (r.known ? ', a known position' : ''), right = rx + 5 + textW(sl, 12, 700) <= w;
+          el('text', { x: right ? rx + 5 : rx - 5, y: 16, 'text-anchor': right ? 'start' : 'end', 'font-size': 12, 'font-weight': 700, fill: C.fg, stroke: C.surface, 'stroke-width': 3, 'paint-order': 'stroke' }, s, sl);
+          if (note) note.textContent = sel + ' is at ' + r.rank_in_universe + ' of the ' + M + ' positions of this curve' + (r.cfr_score_rank !== r.rank_in_universe ? ' (rank ' + r.cfr_score_rank + ' by CFR score among all ' + positionIndex(cp).ranking.length + ' recurrent positions).' : '.');
+        } else if (note) note.textContent = sel + ': numbered in fewer than half of the receptors, so it is not among the ' + M + ' positions of this ranking.';
       }
     },
     onSelect: function (card) { draw(card, {}); }
@@ -1499,7 +1662,7 @@
       tabs.querySelectorAll('button').forEach(function (b) {
         b.addEventListener('click', function () {
           card.state.tab = b.getAttribute('data-value');
-          tabs.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-selected', x === b ? 'true' : 'false'); });
+          tabs.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
           var pairs = card.state.tab === 'pairs';
           card.guide.hidden = pairs; card.pairsGuide.hidden = !pairs;
           if (card.tableOn) toggleTable(card);
@@ -1517,10 +1680,10 @@
         var s = svgIn(node, w, P.length * rh + 8, 'The most recurrent exact contact pairs');
         if (anim(o)) s.classList.add('draw-in');
         P.forEach(function (p, i) {
-          var y = i * rh + 4, bw = (w - lab - 80) * p.n_receptors / NREC;
+          var y = i * rh + 4, bw = (w - lab - 80) * p.n / NREC;
           el('text', { x: lab - 8, y: y + 12, 'text-anchor': 'end', 'font-size': 11.5, 'font-family': 'ui-monospace, Menlo, Consolas, monospace', fill: C.fg }, s, p.cfr_1 + ' · ' + p.cfr_2);
           el('rect', { x: lab, y: y + 3, width: bw, height: 11, rx: 2, fill: C.b3, class: 'grow' }, s);
-          el('text', { x: lab + bw + 6, y: y + 12, 'font-size': 11, fill: C.muted }, s, p.n_receptors + ' (' + Math.round(p.pct_receptors) + '%)');
+          el('text', { x: lab + bw + 6, y: y + 12, 'font-size': 11, fill: C.muted }, s, p.n + ' (' + Math.round(p.pct) + '%)');
         });
         if (!o.exporting && card.legend) card.legend.innerHTML = '';
         return;
@@ -1547,10 +1710,10 @@
         el('text', { x: w - right + 10, y: y + 4, 'font-size': 11, fill: C.muted }, g, phone ? String(p.distinct_partners) : p.distinct_partners + ' partners');
         if (!o.exporting) {
           var hr = el('rect', { x: 0, y: y - rh / 2, width: w, height: rh, fill: 'transparent' }, g);
-          hit(hr, p.gn + ': CFR in ' + p.n + ' receptors; with ' + (p.top_partner || 'no partner') + ' in ' + p.top_partner_n + '; ' + p.distinct_partners + ' distinct partners', function () { selectPos(p.gn, card); });
+          hit(hr, p.gn + ': CFR in ' + p.n + ' receptors; with ' + (p.top_partner || 'no partner') + ' in ' + p.top_partner_n + '; ' + p.distinct_partners + ' distinct partners', function (e, nd) { selectPos(p.gn, card, nd); });
         }
       });
-      el('text', { x: lab, y: n * rh + gapY + 28, 'font-size': 11, fill: C.muted }, s2, 'share of ' + NREC + ' receptors' + (phone ? '; right: partners' : ''));
+      el('text', { x: lab, y: n * rh + gapY + 28, 'font-size': 11, fill: C.muted }, s2, fit(['share of ' + NREC + ' receptors' + (phone ? '; right: partners' : ''), 'share of ' + NREC + ' receptors'], w - lab, 11));
       if (!o.exporting && card.legend) {
         card.legend.innerHTML = '<span><span class="sw" style="background:' + C.b4 + ';border-radius:50%"></span>receptors with a CFR at the position</span><span><span class="sw ring"></span>receptors with its most frequent partner</span>';
       }
@@ -1560,8 +1723,10 @@
 
   // ---- the matrix: a canvas (or an SVG for export) through one painter interface
   function canvasPainter(cv, W, H, scale) {
-    cv.width = Math.round(W * scale); cv.height = Math.round(H * scale); cv.style.width = W + 'px'; cv.style.height = H + 'px';
-    var g = cv.getContext('2d'); g.setTransform(scale, 0, 0, scale, 0, 0);
+    var bw = Math.round(W * scale), bh = Math.round(H * scale);
+    if (cv.width !== bw || cv.height !== bh) { cv.width = bw; cv.height = bh; }   // a new backing store only on a size change
+    cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    var g = cv.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, bw, bh); g.setTransform(scale, 0, 0, scale, 0, 0);
     return {
       rect: function (x, y, w, h, fill) { g.fillStyle = fill; g.fillRect(x, y, w, h); },
       stroke: function (x, y, w, h, col, lw) { g.strokeStyle = col; g.lineWidth = lw; g.strokeRect(x, y, w, h); },
@@ -1596,17 +1761,18 @@
     var M = matrixModel(card), A = M.A, view = card.state.view, st = StatsSel.get(), L = layout;
     var empty = tok.cellEmpty;
     P.rect(0, 0, W, L.H, tok.surface);
-    M.cols.forEach(function (ci, j) {
+    M.cols.forEach(function (ci, j) {   // narrow columns: every L.every-th label, and always the selected one
       var isSel = A.positions[ci].gn === st.pos;
+      if (j % L.every && !isSel) return;
       P.text(L.lw + j * L.cw + L.cw / 2 + 3, L.top - 6, A.positions[ci].gn, { size: 10, fill: isSel ? tok.fg : tok.muted, weight: isSel ? 700 : 400, rotate: -60, mono: true });
     });
-    var y = L.top, cur = null, rowY = {};
+    var y = L.top, cur = null, rowY = {}, start = 0;
     M.list.forEach(function (r) {
       if (r.ligand !== cur) {
-        if (cur !== null) y += L.gap;
-        cur = r.ligand;
+        if (cur !== null) y = Math.max(y, start + L.minGroup) + L.gap;   // small groups keep room for their label
+        cur = r.ligand; start = y;
         var n = M.list.filter(function (q) { return q.ligand === cur; }).length;
-        P.text(L.lw - 10, y + Math.min(n * L.rh, 30) / 2 + 4, cur.replace(/ receptors$/, '') + ' (' + n + ')', { size: 11, weight: 600, fill: tok.fg, align: 'right' });
+        P.text(L.lw - 10, y + Math.min(Math.max(n * L.rh, L.minGroup), 30) / 2 + 4, cur.replace(/ receptors$/, '') + ' (' + n + ')', { size: 11, weight: 600, fill: tok.fg, align: 'right' });
       }
       rowY[r.gid] = y;
       M.cols.forEach(function (ci, j) {
@@ -1633,9 +1799,10 @@
   }
   function matrixLayout(card, w) {
     var M = matrixModel(card), cw = Math.max(6, Math.min(17, Math.floor((w - 150 - 56) / M.cols.length)));
-    var rh = 2.4, top = 74, lw = 150, gap = 6;
-    var W = lw + cw * M.cols.length + 56, H = top + M.list.length * rh + M.groups.length * gap + 26;
-    return { cw: cw, rh: rh, top: top, lw: lw, gap: gap, W: W, H: H };
+    var rh = 2.4, top = 74, lw = 150, gap = 6, minGroup = 13;
+    var extra = M.groups.reduce(function (t, g) { var n = M.list.filter(function (r) { return r.ligand === g; }).length; return t + (n ? Math.max(0, minGroup - n * rh) : 0); }, 0);
+    var W = lw + cw * M.cols.length + 56, H = top + M.list.length * rh + extra + M.groups.length * gap + 26;
+    return { cw: cw, rh: rh, top: top, lw: lw, gap: gap, W: W, H: H, minGroup: minGroup, every: cw >= 12 ? 1 : cw >= 8 ? 2 : 5 };
   }
   define('chart-cfr-atlas', {
     needs: ['cfr_atlas'],
@@ -1650,7 +1817,7 @@
         });
       });
     },
-    suffix: function (card) { return isPhone() ? 'groups' : card.state.view; },
+    suffix: function (card, ext) { return ext === 'csv' ? '' : isPhone() ? 'groups' : card.state.view; },   // the CSV is the full grid
     draw: function (card, node, w, o) {
       var M = matrixModel(card), A = M.A, phone = isPhone() || w < 560, view = card.state.view;
       var ctl = card.el.querySelector('[data-ctl="view"]');
@@ -1660,16 +1827,23 @@
           card.guide.textContent = 'Share of receptors in each ligand type with a CFR at each top-ranked position (columns in rank order). The full receptor-by-position grid is in the Table view.';
           card.legend.innerHTML = '<span>0%</span><span class="ramp" style="background:linear-gradient(90deg,' + C.b0 + ',' + C.b5 + ')"></span><span>100% of the group</span>';
         }
-        var G = A.groups.ligand, lw = 112, cw = Math.max(4, Math.floor((w - lw) / M.cols.length)), rh = 22, H = 70 + G.length * rh + 4;
-        var s = svgIn(node, lw + cw * M.cols.length, H, 'Share of each ligand type with a CFR at each position');
-        M.cols.forEach(function (ci, j) { if (j % 5 === 0) el('text', { x: lw + j * cw + cw / 2, y: 62, 'font-size': 10, fill: C.muted, transform: 'rotate(-60 ' + (lw + j * cw + cw / 2) + ' 62)', 'font-family': 'ui-monospace, Menlo, monospace' }, s, A.positions[ci].gn); });
+        var G = A.groups.ligand, lw = 112, cw = Math.max(4, Math.floor((w - lw) / M.cols.length)), rh = 22, H = 70 + G.length * rh + 22;
+        var s = svgIn(node, lw + cw * M.cols.length + 24, H, 'Share of each ligand type with a CFR at each position');   // room for the last rotated label
+        var sel = StatsSel.get(), selJ = M.cols.map(function (ci) { return A.positions[ci].gn; }).indexOf(sel.pos);
+        var fr = sel.rec ? M.list.filter(function (r) { return r.gid === sel.rec; })[0] : null;
+        var selI = fr ? G.map(function (g) { return g.key; }).indexOf(fr.ligand) : -1;
+        M.cols.forEach(function (ci, j) { if (j % 5 === 0 || j === selJ) el('text', { x: lw + j * cw + cw / 2, y: 62, 'font-size': 10, 'font-weight': j === selJ ? 700 : 400, fill: j === selJ ? C.fg : C.muted, transform: 'rotate(-60 ' + (lw + j * cw + cw / 2) + ' 62)', 'font-family': 'ui-monospace, Menlo, monospace' }, s, A.positions[ci].gn); });
         G.forEach(function (g, i) {
-          el('text', { x: lw - 6, y: 70 + i * rh + 14, 'text-anchor': 'end', 'font-size': 11, fill: C.fg }, s, g.key.replace(/ receptors$/, '') + ' (' + g.n + ')');
+          el('text', { x: lw - 6, y: 70 + i * rh + 14, 'text-anchor': 'end', 'font-size': 11, 'font-weight': i === selI ? 700 : 400, fill: C.fg }, s, g.key.replace(/ receptors$/, '') + ' (' + g.n + ')');
           M.cols.forEach(function (ci, j) {
             var c = el('rect', { x: lw + j * cw, y: 70 + i * rh, width: cw - 1, height: rh - 2, fill: mix(C.b0, C.b5, g.hit[ci]) }, s);
-            if (!o.exporting) c.setAttribute('data-tip', g.key.replace(/ receptors$/, '') + ' at ' + A.positions[ci].gn + ': ' + Math.round(100 * g.hit[ci]) + '% with a CFR');
+            if (!o.exporting) hit(c, g.key.replace(/ receptors$/, '') + ' at ' + A.positions[ci].gn + ': ' + Math.round(100 * g.hit[ci]) + '% with a CFR', function (e, nd) { selectPos(A.positions[ci].gn, card, nd); }, null, true);
           });
         });
+        if (selI >= 0) el('rect', { x: lw - 2, y: 70 + selI * rh - 2, width: cw * M.cols.length + 3, height: rh + 2, rx: 3, fill: 'none', stroke: C.fg, 'stroke-width': 1.6 }, s);
+        if (selJ >= 0) el('rect', { x: lw + selJ * cw - 1.5, y: 68, width: cw + 2, height: G.length * rh + 2, rx: 2, fill: 'none', stroke: C.fg, 'stroke-width': 1.6 }, s);
+        if (fr || selJ >= 0) el('text', { x: lw, y: H - 4, 'font-size': 11, 'font-weight': 600, fill: C.fg }, s,
+          [fr ? fr.symbol + ': ' + fr.ligand.replace(/ receptors$/, '').toLowerCase() + ' row' : '', selJ >= 0 ? sel.pos + ': CFR in ' + A.columns[M.cols[selJ]].n_hit + ' of ' + NREC : ''].filter(Boolean).join('; '));
         return;
       }
       if (!o.exporting) {
@@ -1686,38 +1860,45 @@
         paintMatrix(card, svgPainter(sv), L.W, C, L);
         return;
       }
-      var cv = h('canvas', '', node); cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', 'Every receptor at the top-ranked positions');
-      var rowY = paintMatrix(card, canvasPainter(cv, L.W, L.H, Math.min(2, window.devicePixelRatio || 1) * 1.5), L.W, C, L);
-      var M2 = M;
-      function cellAt(e) {
-        var b = cv.getBoundingClientRect(), x = (e.clientX - b.left) * L.W / b.width, y = (e.clientY - b.top) * L.H / b.height;
-        var j = Math.floor((x - L.lw) / L.cw);
-        if (j < 0 || j >= M2.cols.length) return null;
-        if (y < L.top) return { head: true, j: j };
-        var gid = null; Object.keys(rowY).forEach(function (g) { if (y >= rowY[g] && y < rowY[g] + L.rh) gid = g; });
-        return gid ? { gid: gid, j: j } : null;
+      var cv = card.cv;
+      if (!cv) {
+        cv = card.cv = h('canvas', '');
+        cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', 'Every receptor at the top-ranked positions');
+        cv.setAttribute('data-own-tip', '');   // the document tooltip handler leaves this canvas alone
+        var cellAt = function (e) {
+          var L2 = card.mL, b = cv.getBoundingClientRect(), x = (e.clientX - b.left) * L2.W / b.width, y = (e.clientY - b.top) * L2.H / b.height;
+          var j = Math.floor((x - L2.lw) / L2.cw);
+          if (j < 0 || j >= M.cols.length) return null;
+          if (y < L2.top) return { head: true, j: j };
+          var gid = null; Object.keys(card.mRowY).forEach(function (g) { if (y >= card.mRowY[g] && y < card.mRowY[g] + L2.rh) gid = g; });
+          return gid ? { gid: gid, j: j } : null;
+        };
+        cv.addEventListener('pointermove', function (e) {
+          var c = cellAt(e);
+          if (!c) { hideTip(); cv.style.cursor = ''; return; }
+          var ci = M.cols[c.j], p = A.positions[ci];
+          cv.style.cursor = 'pointer';
+          if (c.head) { showTip(e.clientX, e.clientY, p.gn + ': CFR in ' + A.columns[ci].n_hit + ' of ' + NREC + ' receptors. Click to select.'); return; }
+          var r = M.list.filter(function (q) { return q.gid === c.gid; })[0], st2 = r.state.charAt(ci);
+          showTip(e.clientX, e.clientY, r.symbol + ' at ' + p.gn + ': ' + (st2 === '2' ? 'CFR, net ' + signed(r.net[ci], 1) : st2 === '1' ? 'numbered, no above-threshold contact' : 'not numbered'));
+        });
+        cv.addEventListener('pointerleave', hideTip);
+        cv.addEventListener('click', function (e) {
+          var c = cellAt(e); if (!c) return;
+          e.stopPropagation();
+          var ci = M.cols[c.j];
+          if (c.head) { selectPos(A.positions[ci].gn, card, cv); return; }
+          var r = M.list.filter(function (q) { return q.gid === c.gid; })[0];
+          receptorPanel(card, r.gid);
+        });
       }
-      cv.addEventListener('pointermove', function (e) {
-        var c = cellAt(e);
-        if (!c) { hideTip(); cv.style.cursor = ''; return; }
-        var ci = M2.cols[c.j], p = A.positions[ci];
-        cv.style.cursor = 'pointer';
-        if (c.head) { showTip(e.clientX, e.clientY, p.gn + ': CFR in ' + A.columns[ci].n_hit + ' of ' + NREC + ' receptors. Click to select.'); return; }
-        var r = M2.list.filter(function (q) { return q.gid === c.gid; })[0], s = r.state.charAt(ci);
-        showTip(e.clientX, e.clientY, r.symbol + ' at ' + p.gn + ': ' + (s === '2' ? 'CFR, net ' + signed(r.net[ci], 1) : s === '1' ? 'numbered, no above-threshold contact' : 'not numbered'));
-      });
-      cv.addEventListener('pointerleave', hideTip);
-      cv.addEventListener('click', function (e) {
-        var c = cellAt(e); if (!c) return;
-        var ci = M2.cols[c.j];
-        if (c.head) { selectPos(A.positions[ci].gn, card); return; }
-        var r = M2.list.filter(function (q) { return q.gid === c.gid; })[0];
-        receptorPanel(card, r.gid);
-      });
+      node.appendChild(cv);
+      card.mL = L;
+      card.mRowY = paintMatrix(card, canvasPainter(cv, L.W, L.H, Math.min(2, window.devicePixelRatio || 1)), L.W, C, L);
     },
-    canvasExport: function (card) {
-      var w = card.lastW || width(card.chart), L = matrixLayout(card, w), cv = document.createElement('canvas');
+    canvasExport: function (card) {   // null on phones: the export takes the SVG route of the group view
       if (isPhone()) return null;
+      var w = card.lastW || width(card.chart), L = matrixLayout(card, w), cv = document.createElement('canvas');
       paintMatrix(card, canvasPainter(cv, L.W, L.H, 2), L.W, lightTokens(), L);
       return cv;
     },
@@ -1751,17 +1932,18 @@
     init: function (card) { var d = card.el.querySelector('#am-classes'); if (d && !isPhone()) d.open = true; },
     draw: function (card, node, w, o) {
       var G = card.D.class_variants.groups, ph = isPhone() || w < 560, lab = ph ? 0 : 230, right = ph ? 0 : 110, rh = ph ? 86 : 64;
-      var s = svgIn(node, w, rh * 2 + 8, 'Predicted pathogenic share of decisive AlphaMissense calls'), sg = selGroup(card.D.class_positions, StatsSel.get().pos);
+      var s = svgIn(node, w, rh * 2 + (ph ? 12 : 8), 'Predicted pathogenic share of decisive AlphaMissense calls'), sg = selGroup(card.D.class_positions, StatsSel.get().pos);
       if (anim(o)) s.classList.add('draw-in');
       G.forEach(function (g, i) {
-        var y = i * rh + (ph ? 20 : 10), bw = w - lab - right, p = bw * g.predicted_pathogenic / g.decisive, by = ph ? y + 2 : y;
+        var y = i * rh + (ph ? 24 : 10), bw = w - lab - right, p = bw * g.predicted_pathogenic / g.decisive, by = ph ? y + 2 : y;
         el('text', { x: ph ? 0 : lab - 12, y: ph ? y - 5 : y + 17, 'text-anchor': ph ? 'start' : 'end', 'font-size': 12.5, 'font-weight': 600, fill: C.fg }, s, g.label);
         el('rect', { x: lab, y: by, width: p, height: 26, fill: C.path, rx: 3, class: 'grow' }, s);
         el('rect', { x: lab + p, y: by, width: bw - p, height: 26, fill: C.ben, rx: 3, class: 'grow' }, s);
         var tc = C.dark ? '#0d1117' : '#ffffff';
         el('text', { x: lab + 8, y: by + 17.5, 'font-size': 12, 'font-weight': 600, fill: tc }, s, fmt(g.predicted_pathogenic) + (ph ? '' : ' predicted pathogenic'));
         el('text', { x: lab + bw - 8, y: by + 17.5, 'text-anchor': 'end', 'font-size': 12, 'font-weight': 600, fill: tc }, s, fmt(g.predicted_benign) + (ph ? '' : ' predicted benign'));
-        el('text', { x: lab, y: by + 42, 'font-size': 11, fill: C.muted }, s, fmt(g.decisive) + ' decisive calls; ' + fmt(g.ambiguous) + ' ambiguous; ' + fmt(g.scored) + ' scored');
+        el('text', { x: lab, y: by + 42, 'font-size': 11, fill: C.muted }, s, fit([fmt(g.decisive) + ' decisive calls; ' + fmt(g.ambiguous) + ' ambiguous; ' + fmt(g.scored) + ' scored',
+          fmt(g.decisive) + ' decisive; ' + fmt(g.ambiguous) + ' ambiguous', fmt(g.decisive) + ' decisive calls'], w - lab - (ph ? 0 : right), 11));
         var share = f1(g.pct_predicted_pathogenic_of_decisive) + '%';
         if (!ph) el('text', { x: w - right + 14, y: by + 21, 'font-family': "'Source Serif 4', Georgia, serif", 'font-size': 26, 'font-weight': 600, fill: C.fg }, s, share);
         else el('text', { x: w, y: y - 5, 'text-anchor': 'end', 'font-family': "'Source Serif 4', Georgia, serif", 'font-size': 18, 'font-weight': 600, fill: C.fg }, s, share);
@@ -1805,7 +1987,8 @@
         el('text', { x: x + ww / 2, y: hh + 31, 'text-anchor': 'middle', 'font-size': 10.5, fill: C.muted }, s, b.positions + ' pos.');
         el('text', { x: x + ww / 2, y: hh + 44, 'text-anchor': 'middle', 'font-size': 10.5, fill: C.muted }, s, fmt(b.decisive) + ' calls');
       });
-      el('text', { x: ml, y: hh + 60, 'font-size': 11, fill: C.muted }, s, 'receptors in which the position is a CFR; bar: predicted pathogenic, % of decisive calls');
+      el('text', { x: ml, y: hh + 60, 'font-size': 11, fill: C.muted }, s, fit(['receptors in which the position is a CFR; bar: predicted pathogenic, % of decisive calls',
+        'receptors with a CFR there; bar: predicted pathogenic, % of decisive', 'receptors with a CFR there'], w - ml, 11));
     },
     onSelect: function (card) { draw(card, {}); }
   });
@@ -1839,7 +2022,7 @@
         y0 += L.half * 2 + (phone ? 32 : 20);
       });
       for (var t = lo; t <= 1.0001; t += 0.1) el('text', { x: x(t), y: hh - 16, 'text-anchor': 'middle', 'font-size': 11, fill: C.muted }, s, t.toFixed(1));
-      el('text', { x: ml, y: hh - 2, 'font-size': 11, fill: C.muted }, s, phone ? 'mean conservation per position' : 'mean conservation of the residues at the position; rings: activation motifs');
+      el('text', { x: ml, y: hh - 2, 'font-size': 11, fill: C.muted }, s, fit(['mean conservation of the residues at the position; rings: activation motifs', 'mean conservation per position'], w - ml, 11));
       if (sel && !selP) el('text', { x: w, y: 12, 'text-anchor': 'end', 'font-size': 12, 'font-weight': 600, fill: C.fg }, s, sel + ': fewer than ' + cp.conservation.min_residues + ' scored residues');
       if (!o.exporting && card.legend) card.legend.innerHTML = '<span><span class="sw" style="background:' + C.b4 + ';border-radius:50%"></span>top ' + cp.top_n + ' positions</span><span><span class="sw" style="background:' + C.ink + ';opacity:.6;border-radius:50%"></span>other positions</span><span><span class="sw ring"></span>activation motif position</span><span>Bar: median</span>';
     },
@@ -1848,7 +2031,7 @@
   define('chart-am-quintiles', {
     needs: ['class_variants'],
     draw: function (card, node, w, o) {
-      var Q = card.D.class_variants.fifths, phone = isPhone() || w < 560, hh = 210, mb = phone ? 46 : 58, ml = 34;
+      var Q = card.D.class_variants.fifths, phone = isPhone() || w < 560, hh = 210, mb = phone ? 56 : 58, ml = 34;
       var s = svgIn(node, w, hh + mb, 'Predicted pathogenic share within conservation groups');
       if (anim(o)) s.classList.add('draw-in');
       var gw = (w - ml) / Q.length, y = function (p) { return hh - p / 100 * (hh - 16); };
@@ -1862,7 +2045,12 @@
           el('text', { x: x + bw / 2, y: y(b[0]) - 5, 'text-anchor': 'middle', 'font-size': phone ? 10 : 11, 'font-weight': 600, fill: C.fg }, s, phone ? Math.round(b[0]) + '%' : f1(b[0]) + '%');
         });
         el('text', { x: x0 + bw + 2, y: hh + 16, 'text-anchor': 'middle', 'font-size': 11, 'font-weight': 600, fill: C.fg }, s, 'Q' + q.fifth);
-        el('text', { x: x0 + bw + 2, y: hh + 30, 'text-anchor': 'middle', 'font-size': phone ? 9.5 : 10.5, fill: C.muted }, s, f2(q.conservation_from) + (phone ? '–' : ' to ') + f2(q.conservation_to));
+        var rng = f2(q.conservation_from) + ' to ' + f2(q.conservation_to);
+        if (!phone || textW(rng, 9.5) <= gw - 2) el('text', { x: x0 + bw + 2, y: hh + 30, 'text-anchor': 'middle', 'font-size': phone ? 9.5 : 10.5, fill: C.muted }, s, rng);
+        else {   // narrow: the range on two lines
+          el('text', { x: x0 + bw + 2, y: hh + 30, 'text-anchor': 'middle', 'font-size': 9.5, fill: C.muted }, s, f2(q.conservation_from));
+          el('text', { x: x0 + bw + 2, y: hh + 42, 'text-anchor': 'middle', 'font-size': 9.5, fill: C.muted }, s, 'to ' + f2(q.conservation_to));
+        }
         if (!phone) el('text', { x: x0 + bw + 2, y: hh + 44, 'text-anchor': 'middle', 'font-size': 10.5, fill: C.muted }, s, fmt(q.top50_decisive) + ' / ' + fmt(q.other_decisive) + ' calls');
       });
       if (!o.exporting && card.legend) card.legend.innerHTML = '<span><span class="sw c-path"></span>top ' + TOP + ' positions: predicted pathogenic, % of decisive calls</span><span><span class="sw" style="background:var(--path-soft);border:1px solid var(--path)"></span>other generic-numbered positions</span>';
@@ -1911,7 +2099,7 @@
           el('line', { x1: ox, x2: ox + cw, y1: y + rh, y2: y + rh, stroke: C.lineSoft }, g);
           el('text', { x: ox + 22, y: y + 16, 'text-anchor': 'end', 'font-size': 12, fill: C.muted }, g, String(p.cfr_rank));
           el('text', { x: ox + 30, y: y + 16, 'font-size': 12, 'font-family': 'ui-monospace, Menlo, Consolas, monospace', fill: C.fg }, g, p.generic);
-          var bx = ox + 110, bw = cw - 110 - 96, xx = bx;
+          var right = phone ? 112 : 136, bx = ox + 110, bw = cw - 110 - right, xx = bx, dec = a.pathogenic + a.benign;
           [['pathogenic', C.path], ['ambiguous', C.amb], ['benign', C.ben]].forEach(function (k) {
             var ww = sc ? bw * a[k[0]] / sc : 0;
             if (ww > 0) el('rect', { x: xx, y: y + 7, width: ww, height: 11, fill: k[1], class: 'grow' }, g);
@@ -1919,11 +2107,11 @@
           });
           var t = el('text', { x: ox + cw, y: y + 16, 'text-anchor': 'end', 'font-size': 11.5, fill: C.muted }, g);
           el('tspan', { 'font-weight': 700, fill: C.fg }, t, p.pathogenic_pct_decisive === null ? '' : Math.round(p.pathogenic_pct_decisive) + '%');
-          el('tspan', {}, t, ' of ' + fmt(p.substitutions));
+          el('tspan', {}, t, ' of ' + fmt(dec) + ' decisive');
           if (!o.exporting) {
             var hr = el('rect', { x: ox, y: y, width: cw, height: rh, fill: 'transparent' }, g);
-            hit(hr, p.generic + ': ' + fmt(p.substitutions) + ' substitutions; ' + fmt(a.pathogenic) + ' predicted pathogenic, ' + fmt(a.ambiguous) + ' ambiguous, ' + fmt(a.benign) + ' predicted benign', function () {
-              Profile.open(p.generic, card); StatsSel.set({ pos: p.generic }); showVariantPosition(card, p);
+            hit(hr, p.generic + ': ' + fmt(p.substitutions) + ' substitutions; ' + fmt(a.pathogenic) + ' predicted pathogenic, ' + fmt(a.ambiguous) + ' ambiguous, ' + fmt(a.benign) + ' predicted benign; ' + (p.pathogenic_pct_decisive === null ? '' : Math.round(p.pathogenic_pct_decisive) + '% of ' + fmt(dec) + ' decisive calls predicted pathogenic'), function (e, nd) {
+              StatsSel.set({ pos: p.generic }, { noProfile: true }); showVariantPosition(card, p);
             });
           }
         });
@@ -1938,27 +2126,34 @@
   });
   function showVariantPosition(card, pos) {
     var V = card.D.cfr_variants, url = (pos.links && pos.links.detail) || (CFG.stats_dir + '/cfr_variants/' + pos.generic + '.json');
-    load(url).then(function (d) {
+    Promise.all([load(url), load('cfr_atlas').catch(function () { return null; })]).then(function (arr) {
+      var d = arr[0], A = arr[1];
       var F = {}; d.fields.forEach(function (f, i) { F[f] = i; });
       var recs = V.receptors.rows, RF = {}; V.receptors.fields.forEach(function (f, i) { RF[f] = i; });
-      openSide(card, pos.generic + ' (' + pos.segment + ', rank ' + pos.cfr_rank + '): the receptors behind it', function (side) {
+      // which receptors have a CFR at the position (cfr_atlas state '2'), from each receptor's own numbering
+      var k = A ? A.positions.map(function (q) { return q.gn; }).indexOf(pos.generic) : -1, cfr = {};
+      if (k >= 0) A.receptors.forEach(function (r) { if (r.state.charAt(k) === '2') cfr[r.gid] = true; });
+      var nCfr = Object.keys(cfr).length;
+      openSide(card, pos.generic + ' (' + pos.segment + ', rank ' + pos.cfr_rank + '): the receptors numbered here', function (side) {
         var a = pos.am_substitutions;
-        h('p', '', side, fmt(pos.substitutions) + ' unique substitutions (' + fmt(pos.alleles) + ' alleles) in ' + pos.receptors_with_alleles + ' of ' + pos.receptors_numbered + ' receptors numbered here. AlphaMissense: ' + fmt(a.pathogenic) + ' predicted pathogenic, ' + fmt(a.ambiguous) + ' ambiguous, ' + fmt(a.benign) + ' predicted benign.');
+        h('p', '', side, fmt(pos.substitutions) + ' unique substitutions (' + fmt(pos.alleles) + ' alleles) in ' + pos.receptors_with_alleles + ' of ' + pos.receptors_numbered + ' receptors numbered here' + (k >= 0 ? '; ' + nCfr + ' of the ' + pos.receptors_numbered + ' have a CFR here' : '') + '. AlphaMissense: ' + fmt(a.pathogenic) + ' predicted pathogenic, ' + fmt(a.ambiguous) + ' ambiguous, ' + fmt(a.benign) + ' predicted benign.');
         side.appendChild(link('Search ' + pos.generic, SEARCH(pos.generic), 'cc-btn'));
         var list = d.rows.slice().sort(function (x, y) { return y[F.pathogenic] - x[F.pathogenic] || y[F.substitutions] - x[F.substitutions]; });
+        var head = [{ label: 'Receptor' }, { label: 'Residue' }];
+        if (k >= 0) head.push({ label: 'CFR' });
         side.appendChild(sideTable(
-          [{ label: 'Receptor' }, { label: 'Residue' }, { label: 'Subst.', num: true }, { label: 'Path.', num: true }, { label: 'Amb.', num: true }, { label: 'Ben.', num: true }, { label: 'AC', num: true }, { label: 'ClinVar P/LP', num: true }],
+          head.concat([{ label: 'Subst.', num: true }, { label: 'Path.', num: true }, { label: 'Amb.', num: true }, { label: 'Ben.', num: true }, { label: 'AC', num: true }, { label: 'ClinVar P/LP', num: true }]),
           list.map(function (r) {
-            var rec = recs[r[F.receptor]];
-            return [link(rec[RF.gene], rec[RF.report_url] || REPORT(rec[RF.gid])), (r[F.aa] || '') + r[F.residue], r[F.substitutions], r[F.pathogenic], r[F.ambiguous], r[F.benign], r[F.allele_count], r[F.clinvar_plp_db] || ''];
+            var rec = recs[r[F.receptor]], row = [link(rec[RF.gene], rec[RF.report_url] || REPORT(rec[RF.gid])), (r[F.aa] || '') + r[F.residue]];
+            if (k >= 0) row.push(cfr[rec[RF.gid]] ? 'yes' : '');
+            return row.concat([r[F.substitutions], r[F.pathogenic], r[F.ambiguous], r[F.benign], r[F.allele_count], r[F.clinvar_plp_db] || '']);
           })));
-        h('p', 'side-note', side, 'Path., Amb., Ben.: AlphaMissense predicted classes of the unique substitutions. AC: gnomAD allele count. ClinVar P/LP: pathogenic or likely pathogenic missense records, per receptor.');
+        h('p', 'side-note', side, (k >= 0 ? 'CFR: yes when the residue is in an above-threshold contact of its receptor. ' : '') + 'Path., Amb., Ben.: AlphaMissense predicted classes of the unique substitutions. AC: gnomAD allele count. ClinVar P/LP: pathogenic or likely pathogenic missense records, per receptor.');
       });
     }, function () { openSide(card, pos.generic, function (side) { h('p', 'side-note', side, 'The receptor list could not load.'); }); });
   }
 
   // ================================================================== 5 receptors
-  var METRIC_SHORT = { n_above: 'Above-threshold pairs', above_per_100: 'Per 100 pairs', sum_abs: 'Sum |ΔRRCS|', share_active: 'Share active', cfr_hits: 'CFR positions' };
   define('chart-receptors', {
     needs: ['receptors'],
     keepNode: true,
@@ -1973,11 +2168,13 @@
       card.axes = card.el.querySelector('[data-ctl="axes"]');
       var tabs = card.el.querySelector('[data-ctl="tab"]');
       function showTab() {
-        tabs.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-selected', b.getAttribute('data-value') === st.tab ? 'true' : 'false'); });
+        tabs.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-value') === st.tab ? 'true' : 'false'); });
         card.axes.hidden = st.tab !== 'scatter';
         card.chart.hidden = st.tab === 'table';
         card.explorer.hidden = st.tab !== 'table';
         card.families.hidden = st.tab !== 'families';
+        // the Table tab exports as CSV only (an image of a 283-row table is not useful)
+        card.el.querySelectorAll('.xmenu-list [data-export="png"], .xmenu-list [data-export="svg"]').forEach(function (b) { b.hidden = st.tab === 'table'; });
         setUrlParam('rx', st.tab === 'scatter' ? null : st.tab);
       }
       tabs.querySelectorAll('button').forEach(function (b) {
@@ -1989,6 +2186,7 @@
       showTab();
     },
     csv: function (card) { return card.meta.csv; },
+    visibleNode: function (card) { return card.state.tab === 'table' ? card.explorer : card.chart; },
     suffix: function (card) { return card.state.tab === 'scatter' ? card.state.x + '_' + card.state.y : card.state.tab; },
     draw: function (card, node, w, o) {
       var st = card.state;
@@ -2033,7 +2231,7 @@
       var grp = h('span', 'chips', box); grp.setAttribute('role', 'group'); grp.setAttribute('aria-label', ax + ' axis');
       h('span', 'ctl-note', grp, ax);
       rj.metrics.forEach(function (m) {
-        var b = h('button', '', grp, METRIC_SHORT[m.key] || m.label); b.type = 'button'; b.title = m.description;
+        var b = h('button', '', grp, m.label); b.type = 'button'; b.title = m.description;
         b.setAttribute('data-value', m.key); b.setAttribute('aria-pressed', st[ax] === m.key ? 'true' : 'false');
         b.addEventListener('click', function () { st[ax] = m.key; grp.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); draw(card, { force: true }); });
       });
@@ -2093,10 +2291,11 @@
       data.push({ type: 'scatter', mode: 'markers+text', x: [f[st.x]], y: [f[st.y]], text: [f.symbol], textposition: 'top center', textfont: { color: C.fg, size: 12 }, showlegend: false, hoverinfo: 'skip',
         marker: { size: 18, color: 'rgba(0,0,0,0)', line: { width: 2, color: C.fg } } });
     }
-    var axis = function (k) { return { title: { text: lab[k], font: { size: 12 } }, range: range(k), tickformat: k === 'share_active' ? '.0%' : undefined, gridcolor: C.lineSoft, zeroline: false, linecolor: C.line, tickfont: { size: 11 } }; };
+    var narrow = w < 400;
+    var axis = function (k) { return { title: { text: lab[k], font: { size: narrow ? 10.5 : 12 }, standoff: 6 }, range: range(k), tickformat: k === 'share_active' ? '.0%' : undefined, gridcolor: C.lineSoft, zeroline: false, linecolor: C.line, tickfont: { size: narrow ? 10 : 11 }, automargin: true }; };
     var layout = { paper_bgcolor: light ? '#ffffff' : C.surface, plot_bgcolor: light ? '#ffffff' : C.surface, font: { family: 'system-ui, sans-serif', color: C.fg, size: 12 },
-      xaxis: axis(st.x), yaxis: axis(st.y), margin: { l: 56, r: 12, t: 10, b: isPhone() ? 110 : 80 }, showlegend: true,
-      legend: { orientation: 'h', y: -0.2, x: 0, font: { size: isPhone() ? 10 : 11.5 } }, hoverlabel: { font: { size: 12 } } };
+      xaxis: axis(st.x), yaxis: axis(st.y), margin: { l: narrow ? 50 : 56, r: 12, t: narrow ? 16 : 10, b: isPhone() ? 130 : 80 }, showlegend: true,
+      legend: { orientation: 'h', yanchor: 'top', y: isPhone() ? -0.3 : -0.2, x: 0, font: { size: isPhone() ? 10 : 11.5 } }, hoverlabel: { font: { size: 12 } } };
     return { data: data, layout: layout, rc: rc };
   }
   function scatter(card, node, w, o) {
@@ -2109,11 +2308,12 @@
       var lab = {}; rj.metrics.forEach(function (m) { lab[m.key] = m.label; });
       card.view.textContent = fig.rc ? fig.rc.text || fig.rc.note : 'Scatter: x ' + lab[st.x].toLowerCase() + ', y ' + lab[st.y].toLowerCase() + '; color by ligand group; dot size by top-ranked positions with a CFR.';
       var back = card.el.querySelector('[data-back]');
-      if (fig.rc && !back) {
+      var recolored = !!(fig.rc && fig.rc.by);   // a note alone (a position outside the top 50) changes no color
+      if (recolored && !back) {
         back = h('button', 'cc-btn', null, 'Back to ligand colors'); back.type = 'button'; back.setAttribute('data-back', '');
         back.addEventListener('click', function () { StatsSel.set({ pos: null, pair: null }); });
         card.view.parentNode.insertBefore(back, card.view.nextSibling);
-      } else if (!fig.rc && back) back.remove();
+      } else if (!recolored && back) back.remove();
       node.classList.add('plotly-host');
       if (!card.plotDiv || !node.contains(card.plotDiv)) { clear(node); card.plotDiv = h('div', 'plot', node); card.plotDiv.style.height = '100%'; card.plotDiv.id = 'chart-receptors-plot'; card.plotDiv.setAttribute('role', 'img'); card.plotDiv.setAttribute('aria-label', 'Receptor explorer scatter'); }
       if (!window.Plotly) { clear(node); h('p', 'load-note', node, 'This chart could not load.'); return; }
@@ -2150,8 +2350,8 @@
   }
   var TCOLS = [
     { key: 'symbol', label: 'Receptor' }, { key: 'name', label: 'UniProt name' }, { key: 'family', label: 'Family' }, { key: 'ligand', label: 'Ligand type' },
-    { key: 'n_pairs', label: 'Contact pairs', num: true }, { key: 'n_above', label: 'Above threshold', num: true }, { key: 'above_per_100', label: 'Per 100 pairs', num: true },
-    { key: 'sum_abs', label: 'Sum |ΔRRCS|', num: true }, { key: 'share_active', label: 'Share active', num: true, pct: true }, { key: 'cfr_hits', label: 'CFR positions', num: true },
+    { key: 'n_pairs', label: 'Contact pairs', num: true }, { key: 'n_above', label: 'Above threshold', num: true }, { key: 'above_per_100', label: 'Above threshold per 100 pairs', num: true },
+    { key: 'sum_abs', label: 'Sum |ΔRRCS|', num: true }, { key: 'share_active', label: 'Share stronger in the active model', num: true, pct: true }, { key: 'cfr_hits', label: 'Top-ranked positions with a CFR', num: true },
     { key: 'threshold', label: 'Threshold', num: true }
   ];
   function explorerTable(card) {
