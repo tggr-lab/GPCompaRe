@@ -177,9 +177,10 @@ def test_interfaces_magnitude(hp):
     """Mean |ΔRRCS| per contact between two helices, all contacts: TM3-TM6 and TM5-TM6 1.42, TM3-TM7 1.31."""
     by = {(x['seg_i'], x['seg_j']): x for x in hp['interfaces']}
     assert len(by) == 21
-    assert (by[('TM3', 'TM6')]['mean_abs_delta'], by[('TM3', 'TM6')]['n_contacts']) == (1.4184, 4921)
-    assert (by[('TM5', 'TM6')]['mean_abs_delta'], by[('TM5', 'TM6')]['n_contacts']) == (1.416, 11850)
-    assert (by[('TM3', 'TM7')]['mean_abs_delta'], by[('TM3', 'TM7')]['n_contacts']) == (1.3069, 2452)
+    got = lambda a, b: (round(by[(a, b)]['mean_abs_delta'], 4), by[(a, b)]['n_contacts'])  # noqa: E731
+    assert got('TM3', 'TM6') == (1.4184, 4921)
+    assert got('TM5', 'TM6') == (1.416, 11851)
+    assert got('TM3', 'TM7') == (1.3069, 2452)
     sup = [x for x in hp['interfaces'] if x['supported']]
     assert len(sup) == 14 and all(x['n_contacts'] >= 50 for x in sup)
     assert all(x['n_contacts'] < 50 for x in hp['interfaces'] if not x['supported'])
@@ -189,15 +190,21 @@ def test_interfaces_magnitude(hp):
 
 
 def test_segments_magnitude(hp):
-    """Mean |ΔRRCS| per contact endpoint by segment: TM1 0.745 to H8 1.213; loops and termini 1.06 to 1.23."""
+    """Mean |ΔRRCS| per contact endpoint by segment, GPR4 on its own GPCRdb entry: TM1 0.745 to H8 1.214; drawn
+    loops and termini 1.06 to 1.23; ICL4 (35 endpoints) in the payload, under the drawing floor."""
     by = {x['segment']: x for x in hp['segments_magnitude']}
     want = {'TM1': 0.745, 'TM2': 0.797, 'TM3': 0.921, 'TM4': 0.739, 'TM5': 0.979, 'TM6': 1.126, 'TM7': 1.075,
-            'H8': 1.213}
+            'H8': 1.214}
     assert {k: round(by[k]['mean_abs_delta'], 3) for k in want} == want
+    # no double rounding: TM1 (0.745035) shows 0.75, TM7 (1.074721) shows 1.07
+    assert ('%.2f' % by['TM1']['mean_abs_delta'], '%.2f' % by['TM7']['mean_abs_delta']) == ('0.75', '1.07')
     assert all(by[k]['block'] == 'Helices' for k in want)
-    loops = [x['mean_abs_delta'] for x in hp['segments_magnitude'] if x['block'] == 'Loops and termini']
+    floor = hp['magnitude_rule']['min_endpoints']
+    assert floor == 50 and by['ICL4']['endpoints'] == 35 and by['ICL4']['block'] == 'Loops and termini'
+    loops = [x['mean_abs_delta'] for x in hp['segments_magnitude']
+             if x['block'] == 'Loops and termini' and x['endpoints'] >= floor]
     assert len(loops) == 8 and (round(min(loops), 2), round(max(loops), 2)) == (1.06, 1.23)
-    assert sum(x['endpoints'] for x in hp['segments_magnitude']) == 426877
+    assert sum(x['endpoints'] for x in hp['segments_magnitude']) == 2 * 213456
 
 
 def test_direction_pins(hp):

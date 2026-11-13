@@ -10,7 +10,7 @@ folder's PROVENANCE.md):
     positions_below_recurrence.tsv  generic positions that are CFRs in 1 or 2 receptors (scaffold counts)
     activation_reference.tsv   39 known activation positions
     activation_motifs.json     the five named motifs (16 positions)
-    activation_recovery.tsv    the 262 recurrent positions numbered in at least half of the receptors, in CFR
+    activation_recovery.tsv    the 262 structure positions numbered in at least half of the receptors, in CFR
                                score order
     segments.tsv, interfaces.tsv, conservation_positions.tsv
     ../supplement_2026-11-05b/FigS4b_recurrence_bands.tsv, ed14_a_conservation_strata_plotdata.tsv
@@ -55,8 +55,8 @@ PINS = {
     'activation_reference.tsv': 'ec18984c0588cecb820a5e29d833b8a8db8be7db9497716bc2cc452a9b7fbaa5',
     'activation_motifs.json': '4362387eca0c737accdbc3da37a28c2c982c49a137ab4f362bb78276c933bc81',
     'activation_recovery.tsv': 'f4f5e00c968f16dc7d5542b56fdc97cb11ea15de39afd467b9754f8511013715',
-    'segments.tsv': '99a2aceaabc61a9fd064cb80e19ee351ce9ce39a8e055656208b1776b2f1dc60',
-    'interfaces.tsv': '8236ee1009e20a2d2523fd17302aa9b09c881e90655061bd84f86528dfe6a63e',
+    'segments.tsv': 'abfa05d52739230f890b2551f8d2d73fe2a1b3a99508f36e40c868b1aa2c0f60',
+    'interfaces.tsv': '1c812964181c628778c678014ca3500111027a4b26eeac21c75715c9f67d9303',
     'conservation_positions.tsv': '0061d9502a360e5cb6e3dbcbc46b89754a30783c3b0f90e963f90bc53fb3068a',
     '../supplement_2026-11-05b/FigS4b_recurrence_bands.tsv':
         '9f385757cb416e88d7553ea47ee2b07f4a666929581cc708881d629edb9651cb',
@@ -75,6 +75,8 @@ HIST_DRAWN = 20
 SCAFFOLD_GID = 'adrb2_human'
 SCAFFOLD_BEFORE, SCAFFOLD_AFTER = 6, 8
 SEGMENT_BLOCKS = {'bundle': 'Helices', 'outside': 'Loops and termini'}
+#: Segments with fewer contact endpoints than this are kept in the payload and CSV but not drawn (ICL4: 35).
+MIN_ENDPOINTS = 50
 NUMBER_WORDS = {2: 'two', 3: 'three', 4: 'four', 5: 'five', 6: 'six', 7: 'seven', 8: 'eight', 9: 'nine',
                 10: 'ten'}
 MINUS = '−'
@@ -227,19 +229,19 @@ def add_segments_interfaces(helix_payload):
     n_rec = len(helix_payload.get('receptors') or []) or None
     helix_payload['interfaces'] = [
         {'seg_i': r.seg_i, 'seg_j': r.seg_j, 'n_contacts': int(r.n_contacts),
-         'mean_abs_delta': _r(r.mean_abs_delta, 4), 'supported': str(r.supported) == 'True'}
+         'mean_abs_delta': _r(r.mean_abs_delta, 6), 'supported': str(r.supported) == 'True'}
         for r in t['interfaces'].itertuples()]
     helix_payload['segments_magnitude'] = [
-        {'segment': r.segment, 'block': SEGMENT_BLOCKS.get(r.block, r.block), 'mean_abs_delta': _r(r.mean_abs_delta, 4),
-         'median_abs_delta': _r(r.median_abs_delta, 4), 'endpoints': int(r.endpoints)}
+        {'segment': r.segment, 'block': SEGMENT_BLOCKS.get(r.block, r.block), 'mean_abs_delta': _r(r.mean_abs_delta, 6),
+         'median_abs_delta': _r(r.median_abs_delta, 6), 'endpoints': int(r.endpoints)}
         for r in t['segments'].itertuples()]
     helix_payload['magnitude_rule'] = {
         'interfaces': ('Mean |ΔRRCS| per contact over all contacts between two of TM1 to TM7, %s; supported = '
                        'at least 50 contacts. Pairs with H8 are not included.' % ('all %d receptors' % n_rec if n_rec else
                                                                      'all receptors')),
-        'segments': 'Mean |ΔRRCS| per contact endpoint on the segment, over all contacts with full GPCRdb '
-                    'residue maps.',
-        'min_contacts': 50}
+        'segments': ('Mean |ΔRRCS| per contact endpoint on the segment, over all contacts with full GPCRdb '
+                     'residue maps; segments with fewer than %d endpoints are listed but not drawn.' % MIN_ENDPOINTS),
+        'min_contacts': 50, 'min_endpoints': MIN_ENDPOINTS}
     return helix_payload
 
 
@@ -325,8 +327,8 @@ def build_class_positions(adrb2_pack=None, n_receptors=None):
 
     rc = t['activation_recovery']
     M, K = len(rc), int(rc['known'].sum())
-    recovery_rows = [[int(r.rank_in_universe), int(r.cfr_score_rank), r.generic_number, int(r.known),
-                      _s(r.motif), int(r.known_found), _r(r.expected, 4)]
+    recovery_rows = [[int(r.rank_in_universe), int(r.cfr_score_rank), r.struct_number, r.generic_number,
+                      int(r.known), _s(r.motif), int(r.known_found), _r(r.expected, 4)]
                      for r in rc.itertuples()]
     cuts = {}
     for n in (10, 50):
@@ -362,15 +364,17 @@ def build_class_positions(adrb2_pack=None, n_receptors=None):
                   'top_all_both_top50': bool(pr.head(20)['both_ends_top50'].all())},
         'recovery': {'universe': M, 'known': K,
                      'top_in_universe': int(len(top & set(rc['generic_number']))),
-                     'columns': ['rank_in_universe', 'cfr_score_rank', 'gn', 'known', 'motif', 'known_found',
-                                 'expected'],
+                     'columns': ['rank_in_universe', 'cfr_score_rank', 'struct', 'gn', 'known', 'motif',
+                                 'known_found', 'expected'],
                      'rows': recovery_rows, 'cuts': cuts,
-                     'rule': ('The %d recurrent positions numbered in at least half of the %d receptors, in CFR '
-                              'score order; expected = rank x known / universe.' % (M, n_rec))},
+                     'rule': ('The %d structure positions (GPCRdb structure-based numbers) numbered in at least half '
+                              'of the %d receptors that hold a recurrent position, in CFR score order. A structure '
+                              'position takes the highest CFR score among its generic numbers (gn = that one); '
+                              'expected = rank x known / universe.' % (M, n_rec))},
         'scaffold': {'gid': SCAFFOLD_GID, 'gene': (adrb2_pack or {}).get('meta', {}).get('gene', ''),
                      'columns': ['num', 'aa', 'segment', 'gn', 'x', 'y', 'n'], 'residues': scaffold,
                      'n_rule': ('n: receptors with a CFR at the generic position (null: no generic number), from the '
-                                'ranked positions and the positions below recurrence.'),
+                                '368 recurrent positions and the positions that are a CFR in 1 or 2 receptors.'),
                      'source': 'ADRB2 snake plot layout from GPCRdb'},
         'conservation': {'columns': ['gn', 'mean', 'n_residues', 'top50'], 'rows': cons_rows,
                          'median_top': _r(ct.median(), 4), 'median_other': _r(co.median(), 4),
@@ -598,7 +602,9 @@ def computed_notes(payloads):
     hp = payloads['helix_pairs']
     pos = payloads['class_positions']
     cv = payloads['class_variants']
-    seg = [s for s in hp['segments_magnitude']]
+    floor = hp.get('magnitude_rule', {}).get('min_endpoints', MIN_ENDPOINTS)
+    seg = [s for s in hp['segments_magnitude'] if s['endpoints'] >= floor]
+    few = [s for s in hp['segments_magnitude'] if s['endpoints'] < floor]
     helices = [s for s in seg if s['block'] == 'Helices']
     loops = [s for s in seg if s['block'] != 'Helices']
     hs = sorted(helices, key=lambda s: -s['mean_abs_delta'])
@@ -617,7 +623,9 @@ def computed_notes(payloads):
                      'in the bundle: %s %.2f and %s %.2f; lowest: %s %.2f. Loops and termini: %.2f to %.2f.'
                      % (hs[0]['segment'], hs[0]['mean_abs_delta'], hs[1]['segment'], hs[1]['mean_abs_delta'],
                         ' and '.join(lows), low, min(s['mean_abs_delta'] for s in loops),
-                        max(s['mean_abs_delta'] for s in loops))),
+                        max(s['mean_abs_delta'] for s in loops))
+                     + ''.join(' %s (%s endpoints) is not drawn: fewer than %d.' % (s['segment'], _int(s['endpoints']),
+                                                                                    floor) for s in few)),
         'ranking_outlier': ('%s is a CFR in only %d receptors and ranks %d by CFR score because its mean |ΔRRCS| '
                             '(%.2f) is the largest of the %d.' % (outlier['gn'], outlier['n'], outlier['rank'],
                                                                   outlier['mean_abs_delta'], TOP_N)),
@@ -655,9 +663,9 @@ def coverage_rows(total, rrcs_label, numbering_label, recovery, conservation, am
         {'results': 'Ranked positions, scaffold, partners and pairs', 'receptors': str(total),
          'data': '%s; %s' % (rrcs_label, ranked_maps), 'not_included': ''},
         {'results': 'Change per contact by segment and helix pair (Magnitude)', 'receptors': str(total),
-         'data': '%s; %s' % (rrcs_label, maps), 'not_included': ''},
+         'data': '%s; %s' % (rrcs_label, ranked_maps), 'not_included': ''},
         {'results': 'Known activation positions',
-         'receptors': '%d recurrent positions numbered in at least half of the receptors; %d known'
+         'receptors': '%d structure positions numbered in at least half of the receptors; %d known'
                       % (recovery['universe'], recovery['known']),
          'data': 'as the ranked positions', 'not_included': ''},
         {'results': 'Conservation at top-ranked and other positions',

@@ -139,24 +139,45 @@
    "ok": true,
    "detail": 9
   },
-  "segments: TM6 1.13, H8 1.21, TM1 and TM4 0.74": {
+  "canonical maps reproduce ed1_full_segments.tsv (16 segments: mean, median, endpoints)": {
+   "ok": true,
+   "detail": 16
+  },
+  "the one segment the ed1 table leaves out is ICL4, and with it the endpoints close on 2 x pairs": {
+   "ok": true,
+   "detail": {
+    "extra": [
+     {
+      "segment": "ICL4",
+      "endpoints": 35
+     }
+    ],
+    "endpoints": 426912
+   }
+  },
+  "canonical maps reproduce ed1_full_interfaces.tsv (21 pairs of TM1 to TM7)": {
+   "ok": true,
+   "detail": 21
+  },
+  "segments with GPR4 on its own entry: TM6 1.13, H8 1.21, TM4 0.74, TM1 0.75": {
    "ok": true,
    "detail": {
     "TM1": 0.745,
-    "TM2": 0.797,
-    "TM3": 0.921,
-    "TM4": 0.739,
-    "TM5": 0.979,
+    "TM2": 0.7967,
+    "TM3": 0.9213,
+    "TM4": 0.7386,
+    "TM5": 0.9792,
     "TM6": 1.126,
-    "TM7": 1.075,
-    "H8": 1.213,
-    "ICL1": 1.104,
-    "ICL2": 1.112,
-    "ICL3": 1.211,
-    "ECL1": 1.084,
-    "ECL2": 1.234,
-    "ECL3": 1.153,
-    "N-term": 1.061,
+    "TM7": 1.0747,
+    "H8": 1.2138,
+    "ICL1": 1.1035,
+    "ICL2": 1.1117,
+    "ICL3": 1.2114,
+    "ICL4": 1.3432,
+    "ECL1": 1.0839,
+    "ECL2": 1.2339,
+    "ECL3": 1.1526,
+    "N-term": 1.0607,
     "C-term": 1.188
    }
   },
@@ -300,8 +321,8 @@
   "activation_reference.tsv": "ec18984c0588cecb820a5e29d833b8a8db8be7db9497716bc2cc452a9b7fbaa5",
   "activation_motifs.json": "4362387eca0c737accdbc3da37a28c2c982c49a137ab4f362bb78276c933bc81",
   "activation_recovery.tsv": "f4f5e00c968f16dc7d5542b56fdc97cb11ea15de39afd467b9754f8511013715",
-  "segments.tsv": "99a2aceaabc61a9fd064cb80e19ee351ce9ce39a8e055656208b1776b2f1dc60",
-  "interfaces.tsv": "8236ee1009e20a2d2523fd17302aa9b09c881e90655061bd84f86528dfe6a63e",
+  "segments.tsv": "abfa05d52739230f890b2551f8d2d73fe2a1b3a99508f36e40c868b1aa2c0f60",
+  "interfaces.tsv": "1c812964181c628778c678014ca3500111027a4b26eeac21c75715c9f67d9303",
   "conservation_positions.tsv": "0061d9502a360e5cb6e3dbcbc46b89754a30783c3b0f90e963f90bc53fb3068a",
   "../supplement_2026-11-05b/FigS4b_recurrence_bands.tsv": "9f385757cb416e88d7553ea47ee2b07f4a666929581cc708881d629edb9651cb",
   "../supplement_2026-11-05b/ed14_a_conservation_strata_plotdata.tsv": "0bc8d101b4e3fdb7c9a4c607ba11c6f1d1df9706af0eb9f5967b815a6c38bedd"

@@ -17,9 +17,12 @@ What it does, in order:
 3. Writes the activation reference (39 positions: the Zhou et al. 2019 common activation pathway plus the
    class A motifs, the e19 known set), the five named motifs, and the recovery curve of the reference down
    the corrected ranking over the e19 universe (positions numbered in at least half of the receptors).
-4. Copies the segment, interface and per-position conservation tables byte for byte, and the two
-   AlphaMissense band tables into data/supplement_2026-11-05b/.
-5. Writes checks.json (every check with its detail, sha256 of every input and output) and PROVENANCE.md.
+4. Recomputes the change per contact by segment (every segment, ICL4 included) and by pair of TM1 to TM7 over
+   all contacts, asserts that the canonical maps reproduce the ed1 tables, and writes segments.tsv and
+   interfaces.tsv with GPR4 on its own GPCRdb entry as in step 2.
+5. Copies the per-position conservation table byte for byte, and the two AlphaMissense band tables into
+   data/supplement_2026-11-05b/.
+6. Writes checks.json (every check with its detail, sha256 of every input and output) and PROVENANCE.md.
 
 Nothing is written unless every check passes.
 
@@ -188,6 +191,66 @@ def run(deltas, numbering):
     return p, prs, pd.DataFrame(div), rare
 
 
+# ------------------------------------------------------------------ change per contact by segment
+#: Segment order of segments.tsv: the helices, then loops and termini (ICL4 kept so endpoints close on 2 x pairs).
+TMS = ['TM%d' % i for i in range(1, 8)]
+BUNDLE = TMS + ['H8']
+OUTSIDE = ['ICL1', 'ICL2', 'ICL3', 'ICL4', 'ECL1', 'ECL2', 'ECL3', 'N-term', 'C-term']
+INTERFACE_FLOOR = 50
+
+
+def load_contacts(batch):
+    """{gid: (res1, res2, |dRRCS|)} over every contact pair of the batch run."""
+    out = {}
+    for f in sorted(glob.glob(str(Path(batch) / '*_rrcs_delta.csv'))):
+        d = pd.read_csv(f, usecols=['res1', 'res2', 'abs_delta'])
+        out[os.path.basename(f).replace('_rrcs_delta.csv', '')] = (d.res1.to_numpy(), d.res2.to_numpy(),
+                                                                   d.abs_delta.to_numpy())
+    return out
+
+
+def legacy_segments(analysis, g):
+    return {int(r['sequence_number']): r['protein_segment'] for r in
+            json.load(open(Path(analysis) / 'gpcrdb_residues' / ('%s.json' % g))) if r.get('protein_segment')}
+
+
+def pack_segments(packs, g):
+    return {int(r[0]): r[2] for r in json.load(open(Path(packs) / ('%s.json' % g)))['residues'] if r[2]}
+
+
+def segment_tables(contacts, segmap):
+    """(segments, interfaces): mean |dRRCS| per contact endpoint by segment (each contact counts once at each of
+    its two residues), and per contact between two different helices of TM1 to TM7; segmap(gid) -> {residue:
+    segment}."""
+    ends, pairs = [], []
+    for g, (r1, r2, a) in contacts.items():
+        m = segmap(g)
+        s1 = np.array([m.get(int(x), '') for x in r1], dtype=object)
+        s2 = np.array([m.get(int(x), '') for x in r2], dtype=object)
+        ends.append(pd.DataFrame({'segment': np.concatenate([s1, s2]), 'a': np.concatenate([a, a])}))
+        tm = np.isin(s1, TMS) & np.isin(s2, TMS) & (s1 != s2)
+        lo = [min(u, v, key=TMS.index) for u, v in zip(s1[tm], s2[tm])]
+        hi = [max(u, v, key=TMS.index) for u, v in zip(s1[tm], s2[tm])]
+        pairs.append(pd.DataFrame({'seg_i': lo, 'seg_j': hi, 'a': a[tm]}))
+    e = pd.concat(ends, ignore_index=True)
+    e = e[e.segment.isin(BUNDLE + OUTSIDE)]
+    grp = e.groupby('segment').a
+    seg = pd.DataFrame([{'segment': s, 'block': 'bundle' if s in BUNDLE else 'outside',
+                         'mean_abs_delta': float(grp.get_group(s).mean()),
+                         'median_abs_delta': float(grp.get_group(s).median()),
+                         'endpoints': int(grp.get_group(s).size), 'total_abs_delta': float(grp.get_group(s).sum())}
+                        for s in BUNDLE + OUTSIDE if s in grp.groups])
+    pr = pd.concat(pairs, ignore_index=True).groupby(['seg_i', 'seg_j']).a
+    rows = []
+    for i, x in enumerate(TMS):
+        for y in TMS[i + 1:]:
+            v = pr.get_group((x, y)) if (x, y) in pr.groups else pd.Series(dtype=float)
+            rows.append({'seg_i': x, 'seg_j': y, 'n_contacts': int(v.size),
+                         'mean_abs_delta': float(v.mean()) if v.size else np.nan,
+                         'supported': bool(v.size >= INTERFACE_FLOOR)})
+    return seg, pd.DataFrame(rows)
+
+
 # ------------------------------------------------------------------ reference set
 def zhou_residues(ts_path):
     """Residues of the 34-pair common activation pathway of Zhou et al. 2019, as the Studio carries it."""
@@ -345,18 +408,38 @@ def main():
     n_motif_top = sum(1 for sns in NAMED_MOTIFS.values() for sn in sns if gn_of[sn] in set(top50))
     check('9 of the 16 named motif positions are in the top 50', n_motif_top == 9, n_motif_top)
 
-    # 4. tables copied byte for byte, and their checks
+    # 4. change per contact by segment and helix pair: the canonical maps reproduce the ed1 tables, then GPR4
+    #    is numbered on its own GPCRdb entry as in step 2
+    contacts = load_contacts(P['batch'])
     s6 = pd.read_csv(an / 'ed1_full_segments.tsv', sep='\t')
     s6i = pd.read_csv(an / 'ed1_full_interfaces.tsv', sep='\t')
-    seg = dict(zip(s6.segment, s6.mean_abs_delta))
-    check('segments: TM6 1.13, H8 1.21, TM1 and TM4 0.74',
-          round(seg['TM6'], 2) == 1.13 and round(seg['H8'], 2) == 1.21 and round(seg['TM1'], 2) == 0.74
-          and round(seg['TM4'], 2) == 0.74, {k: round(v, 3) for k, v in seg.items()})
-    sup = s6i[s6i.n_contacts >= 50].sort_values('mean_abs_delta', ascending=False)
+    L_seg, L_int = segment_tables(contacts, lambda g: legacy_segments(an, g))
+    ms = s6.merge(L_seg, on='segment', suffixes=('_c', '_r'))
+    check('canonical maps reproduce ed1_full_segments.tsv (16 segments: mean, median, endpoints)',
+          len(ms) == len(s6) == 16 and (ms.endpoints_c == ms.endpoints_r).all()
+          and np.allclose(ms.mean_abs_delta_c, ms.mean_abs_delta_r, rtol=0, atol=1e-9)
+          and np.allclose(ms.median_abs_delta_c, ms.median_abs_delta_r, rtol=0, atol=1e-9), len(ms))
+    extra = L_seg[~L_seg.segment.isin(s6.segment)]
+    check('the one segment the ed1 table leaves out is ICL4, and with it the endpoints close on 2 x pairs',
+          list(extra.segment) == ['ICL4'] and int(L_seg.endpoints.sum()) == 2 * sum(len(c[0]) for c in contacts.values()),
+          dict(extra=extra[['segment', 'endpoints']].to_dict('records'), endpoints=int(L_seg.endpoints.sum())))
+    mi = s6i.merge(L_int, on=['seg_i', 'seg_j'], suffixes=('_c', '_r'))
+    check('canonical maps reproduce ed1_full_interfaces.tsv (21 pairs of TM1 to TM7)',
+          len(mi) == len(s6i) == 21 and (mi.n_contacts_c == mi.n_contacts_r).all()
+          and np.allclose(mi.mean_abs_delta_c, mi.mean_abs_delta_r, rtol=0, atol=1e-9), len(mi))
+    N_seg, N_int = segment_tables(contacts, lambda g: pack_segments(P['packs'], g) if g == 'gpr4_human'
+                                  else legacy_segments(an, g))
+    seg = dict(zip(N_seg.segment, N_seg.mean_abs_delta))
+    check('segments with GPR4 on its own entry: TM6 1.13, H8 1.21, TM4 0.74, TM1 0.75',
+          round(seg['TM6'], 2) == 1.13 and round(seg['H8'], 2) == 1.21 and round(seg['TM4'], 2) == 0.74
+          and round(seg['TM1'], 2) == 0.75, {k: round(v, 4) for k, v in seg.items()})
+    sup = N_int[N_int.n_contacts >= INTERFACE_FLOOR].sort_values('mean_abs_delta', ascending=False)
     check('interfaces lead TM3-TM6 and TM5-TM6 1.42, TM3-TM7 1.31',
           [round(x, 2) for x in sup.mean_abs_delta.head(3)] == [1.42, 1.42, 1.31]
           and sup.head(3)[['seg_i', 'seg_j']].values.tolist() == [['TM3', 'TM6'], ['TM5', 'TM6'], ['TM3', 'TM7']],
           sup.head(3)[['seg_i', 'seg_j']].values.tolist())
+
+    # 5. tables copied byte for byte, and their checks
     f3a = pd.read_csv(P['f3a'], sep='\t')
     top_c = f3a[f3a.top50_by_cfr_score == 1].mean_conservation
     oth_c = f3a[f3a.top50_by_cfr_score == 0].mean_conservation
@@ -394,18 +477,18 @@ def main():
         print('all %d checks pass (dry run, nothing written)' % len(checks))
         return 0
 
-    # 5. write
+    # 6. write
     out.mkdir(parents=True, exist_ok=True)
     N_pos.to_csv(out / 'positions.tsv', sep='\t', index=False)
     N_pairs.drop(columns=['receptors']).to_csv(out / 'pairs.tsv', sep='\t', index=False)
+    N_seg.to_csv(out / 'segments.tsv', sep='\t', index=False)
+    N_int.to_csv(out / 'interfaces.tsv', sep='\t', index=False)
     N_div.to_csv(out / 'partner_diversity.tsv', sep='\t', index=False)
     N_rare.to_csv(out / 'positions_below_recurrence.tsv', sep='\t', index=False)
     ref.to_csv(out / 'activation_reference.tsv', sep='\t', index=False)
     (out / 'activation_motifs.json').write_text(json.dumps(motif_doc, indent=1) + '\n', encoding='utf-8')
     recovery.to_csv(out / 'activation_recovery.tsv', sep='\t', index=False)
-    copies = {out / 'segments.tsv': an / 'ed1_full_segments.tsv',
-              out / 'interfaces.tsv': an / 'ed1_full_interfaces.tsv',
-              out / 'conservation_positions.tsv': P['f3a'],
+    copies = {out / 'conservation_positions.tsv': P['f3a'],
               supp_out / 'FigS4b_recurrence_bands.tsv': P['supp_tables'] / 'FigS4b_recurrence_bands.tsv',
               supp_out / 'ed14_a_conservation_strata_plotdata.tsv':
                   P['panels'] / 'ed14_a_conservation_strata_plotdata.tsv'}
@@ -464,13 +547,16 @@ RULES = {
                                  '(34 residue pairs) plus the class A motifs (D2.50, DRY, PIF, CWxP, NPxxY, the '
                                  'sodium pocket, 6.30); ordered by rank in the recovery universe', 'derived'),
     'activation_motifs.json': ('the five named motifs and their 16 positions', 'derived'),
-    'activation_recovery.tsv': ('the 262 recurrent positions numbered in at least half of the receptors, in CFR score order, '
-                                'with the cumulative count of reference positions and the count expected by '
-                                'chance (rank x 39 / 262)', 'derived'),
-    'segments.tsv': ('mean |dRRCS| per contact endpoint by segment, all contacts with full GPCRdb residue maps',
-                     'byte copy'),
-    'interfaces.tsv': ('mean |dRRCS| per contact between two helices, all contacts; supported = at least 50 '
-                       'contacts', 'byte copy'),
+    'activation_recovery.tsv': ('the 262 structure positions (GPCRdb structure-based numbers) numbered in at least half '
+                                'of the receptors that hold a recurrent position, in CFR score order; each takes the '
+                                'highest CFR score among its generic numbers (generic_number = that one, which can '
+                                'itself be numbered in fewer receptors); with the cumulative count of reference '
+                                'positions and the count expected by chance (rank x 39 / 262)', 'derived'),
+    'segments.tsv': ('mean |dRRCS| per contact endpoint by segment (17 segments, ICL4 included), all contacts, '
+                     'GPCRdb residue maps with GPR4 on its own GPCRdb entry; the canonical maps reproduce '
+                     'ed1_full_segments.tsv, which leaves out ICL4', 'recomputed'),
+    'interfaces.tsv': ('mean |dRRCS| per contact between two of TM1 to TM7, all contacts, same maps; supported = '
+                       'at least 50 contacts; the canonical maps reproduce ed1_full_interfaces.tsv', 'recomputed'),
     'conservation_positions.tsv': ('mean conservation (VarSite via ProtVar) per generic position with at least 20 '
                                    'scored residues; top 50 flag', 'byte copy'),
     '../supplement_2026-11-05b/FigS4b_recurrence_bands.tsv': (
@@ -514,7 +600,9 @@ def write_provenance(out, out_sha, copies, n_checks):
         'receptors (39.9293%, mean |dRRCS| 5.2107, CFR score 0.46452, rank 36) and shifts some ranks outside the',
         'top 50; the top 50 and its order are unchanged. A build-time recompute on the Studio packs (every',
         'receptor on the current GPCRdb numbering) gives the same top 50 but differs from these tables at 6',
-        'positions outside the top 50, by 1 or 2 receptors, so the build reads these files instead.',
+        'positions outside the top 50, by 1 or 2 receptors, so the build reads these files instead. The',
+        'segment and interface tables are recomputed the same way: the canonical maps reproduce the ed1 tables',
+        '(which leave out ICL4, 35 endpoints), and GPR4 on its own entry moves TM1 to 0.7450 and TM7 to 1.0747.',
         '',
         'The activation reference is the known set of the cfr_main_quest e19 analysis (Zhou et al. 2019 pathway',
         'residues, from the Studio\'s zhou2019.ts, plus the class A motif set). The recovery curve on the',

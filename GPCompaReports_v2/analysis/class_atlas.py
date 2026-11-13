@@ -229,11 +229,11 @@ def ligand_group(ligand):
 
 #: Numbering sentence of the payloads built on the class tables (data/class_tables_2026-11-13), whose residue
 #: maps are older than the per-receptor numbering (data_versions.json gpcrdb_residue_maps).
-def maps_numbering(magnitude=False):
+def maps_numbering():
     from ..website import data_versions as dv
     m = dv.load()['sources'].get('gpcrdb_residue_maps') or {}
     when = 'GPCRdb API fetched %s' % m.get('fetched', 'unknown')
-    if not magnitude and m.get('exception'):
+    if m.get('exception'):
         when += '; %s' % m['exception']
     return 'Residue segments and generic numbers: GPCRdb residue maps (%s).' % when
 
@@ -564,7 +564,7 @@ def build_class_atlas(store, manuscript=None, folder=None):
     payloads['helix_pairs'], payloads['helix_pair_cells'] = build_helix_pairs(inputs)
     class_results.add_segments_interfaces(payloads['helix_pairs'])
     payloads['helix_pairs']['meta']['sources']['numbering_magnitude'] = (
-        'interfaces and segments_magnitude: ' + maps_numbering(magnitude=True))
+        'interfaces and segments_magnitude: ' + maps_numbering())
     hrc = class_results.build_helix_receptor_cells(payloads['helix_pair_cells'], payloads['helix_pairs'])
     payloads['helix_receptor_cells'] = dict(hrc, meta=_meta('helix_receptor_cells', inputs))
     payloads['cfr_atlas'] = build_cfr_atlas(inputs)

@@ -32,7 +32,7 @@
       "label": "GPCRdb residue maps",
       "fetched": "2026-08-12",
       "exception": "GPR4 on its own GPCRdb entry, fetched 2026-10-18",
-      "note": "Segment and generic number of every residue. Used by the ranked positions, pairs, partners and activation recovery (with the GPR4 exception) and by the change per contact by segment and helix pair."
+      "note": "Segment and generic number of every residue. Used, with the GPR4 exception, by the ranked positions, pairs, partners, activation recovery and the change per contact by segment and helix pair."
     },
     "gnomad": {
       "label": "gnomAD v4.1.2",

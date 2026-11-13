@@ -74,8 +74,7 @@ def test_copies_equal_their_sources_where_present():
     """The byte copies equal their sources when those exist on this machine (paths from checks.json)."""
     doc = json.loads((cr.CLASS_DIR / 'checks.json').read_text(encoding='utf-8'))
     src = {k: Path(os.path.expanduser(v['path'])) for k, v in doc['inputs'].items()}
-    pairs = {'segments.tsv': 'ed1_full_segments.tsv', 'interfaces.tsv': 'ed1_full_interfaces.tsv',
-             'conservation_positions.tsv': 'F3a_conservation_by_generic_position.tsv',
+    pairs = {'conservation_positions.tsv': 'F3a_conservation_by_generic_position.tsv',
              '../supplement_2026-11-05b/FigS4b_recurrence_bands.tsv': 'FigS4b_recurrence_bands.tsv',
              '../supplement_2026-11-05b/ed14_a_conservation_strata_plotdata.tsv':
                  'ed14_a_conservation_strata_plotdata.tsv'}
@@ -87,6 +86,26 @@ def test_copies_equal_their_sources_where_present():
             checked += 1
     if not checked:
         pytest.skip('no source tables on this machine')
+
+
+def test_segments_and_interfaces(t):
+    """Recomputed with GPR4 on its own GPCRdb entry; ICL4 kept, so the endpoints close on 2 x 213,456; the builder
+    checked that the canonical maps reproduce the ed1 tables."""
+    seg = t['segments']
+    assert list(seg['segment']) == ['TM1', 'TM2', 'TM3', 'TM4', 'TM5', 'TM6', 'TM7', 'H8', 'ICL1', 'ICL2', 'ICL3',
+                                    'ICL4', 'ECL1', 'ECL2', 'ECL3', 'N-term', 'C-term']
+    assert int(seg['endpoints'].sum()) == 2 * 213456
+    by = seg.set_index('segment')
+    assert int(by.loc['ICL4', 'endpoints']) == 35 and round(by.loc['ICL4', 'mean_abs_delta'], 4) == 1.3432
+    assert (round(by.loc['TM1', 'mean_abs_delta'], 6), int(by.loc['TM1', 'endpoints'])) == (0.745035, 35706)
+    assert (round(by.loc['TM7', 'mean_abs_delta'], 6), int(by.loc['TM7', 'endpoints'])) == (1.074721, 43512)
+    it = t['interfaces']
+    assert len(it) == 21 and int(it['supported'].astype(str).eq('True').sum()) == 14
+    doc = json.loads((cr.CLASS_DIR / 'checks.json').read_text(encoding='utf-8'))
+    for name in ('canonical maps reproduce ed1_full_segments.tsv (16 segments: mean, median, endpoints)',
+                 'canonical maps reproduce ed1_full_interfaces.tsv (21 pairs of TM1 to TM7)',
+                 'the one segment the ed1 table leaves out is ICL4, and with it the endpoints close on 2 x pairs'):
+        assert doc['checks'][name]['ok'], name
 
 
 def test_a_changed_table_is_refused(tmp_path, monkeypatch):
@@ -152,6 +171,13 @@ def test_activation_recovery(t):
     assert (round(ex[10], 2), round(ex[50], 2)) == (1.49, 7.44)
     assert len(class_cfr_set() & set(rc['generic_number'])) == 49
     assert list(rc['known_found']) == list(rc['known'].cumsum())
+    # rows are structure positions; generic_number is the best-scoring generic number of that structure position
+    struct = lambda g: '%sx%s' % (g.split('.')[0], g.split('x')[1])  # noqa: E731
+    assert rc['struct_number'].is_unique and all(struct(g) == s for g, s in zip(rc['generic_number'], rc['struct_number']))
+    pos = t['positions']
+    best = pos.assign(s=[struct(g) for g in pos['generic_number']]).sort_values('cfr_score', ascending=False) \
+        .drop_duplicates('s').set_index('s')['generic_number']
+    assert all(best[s] == g for s, g in zip(rc['struct_number'], rc['generic_number']))
 
 
 def test_bands(t):
@@ -208,6 +234,9 @@ def test_class_positions(payloads):
     assert (p['n_distinct'], p['n_both_top50'], len(p['top']), p['top_all_both_top50']) == (2231, 181, 20, True)
     rec = pos['recovery']
     assert (rec['universe'], rec['known'], rec['top_in_universe'], len(rec['rows'])) == (262, 39, 49, 262)
+    assert rec['columns'][:4] == ['rank_in_universe', 'cfr_score_rank', 'struct', 'gn']
+    r212 = dict(zip(rec['columns'], rec['rows'][211]))
+    assert (r212['struct'], r212['gn']) == ('6x46', '6.45x46')
     assert rec['cuts'] == {'10': {'known_found': 8, 'expected': 1.4885},
                            '50': {'known_found': 20, 'expected': 7.4427}}
     sc = pos['scaffold']
@@ -346,8 +375,8 @@ def test_computed_notes(payloads):
     assert n['histogram'] == ('Each bar counts contact pairs by ΔRRCS (active minus inactive). 111,035 of 213,456 '
                               'pairs (52.0%) are stronger in the inactive model. 25 pairs beyond ±20 are not drawn.')
     assert n['segments'] == ('Mean |ΔRRCS| per contact endpoint, over all contacts with full GPCRdb residue maps. '
-                             'Highest in the bundle: H8 1.21 and TM6 1.13; lowest: TM1 and TM4 0.74. Loops and '
-                             'termini: 1.06 to 1.23.')
+                             'Highest in the bundle: H8 1.21 and TM6 1.13; lowest: TM4 0.74. Loops and termini: 1.06 '
+                             'to 1.23. ICL4 (35 endpoints) is not drawn: fewer than 50.')
     assert n['ranking_outlier'] == ('3.19x19 is a CFR in only 6 receptors and ranks 18 by CFR score because its mean '
                                     '|ΔRRCS| (10.09) is the largest of the 50.')
     assert n['motifs_in_top'] == '9 of the 16 motif positions are in the top 50.'
@@ -441,14 +470,16 @@ def test_release_labels_of_the_class_tables(payloads):
     """The ranked tables name the residue maps they were computed on; no dangling numbering sentence."""
     num = payloads['class_positions']['meta']['sources']['numbering']
     assert 'GPCRdb residue maps' in num and '2026-08-12' in num and 'GPR4' in num
-    assert '2026-08-12' in payloads['helix_pairs']['meta']['sources']['numbering_magnitude']
+    mag = payloads['helix_pairs']['meta']['sources']['numbering_magnitude']
+    assert '2026-08-12' in mag and 'GPR4' in mag
     for name, p in payloads.items():
         src = (p.get('meta') or {}).get('sources') or {}
         assert 'With it' not in src.get('numbering', ''), name
         assert 'class_A_all' not in json.dumps(p.get('meta') or {}), name
         assert 'class-wide CFR set' not in json.dumps(p.get('meta') or {}), name
     rec = payloads['class_positions']['recovery']
-    assert rec['rule'].startswith('The %d recurrent positions numbered in at least half' % rec['universe'])
+    assert rec['rule'].startswith('The %d structure positions (GPCRdb structure-based numbers) numbered in at least '
+                                  'half' % rec['universe'])
     assert 'H8 are not included' in payloads['helix_pairs']['magnitude_rule']['interfaces']
 
 
