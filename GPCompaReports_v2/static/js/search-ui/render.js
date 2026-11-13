@@ -1162,13 +1162,17 @@ function tiles(r, o, sub) {
   } else if (sub.mismatch) popBody = html`<span class="sr-na">not looked up</span>`;
   else if (missense) popBody = html`<span class="sr-na">not in ${gl}</span>`;
   else popBody = html`<span class="sr-big">${(r.residueAlleles ?? []).length}</span> <span class="sr-sub">missense allele${(r.residueAlleles ?? []).length === 1 ? '' : 's'} at this residue</span>`;
-  // ClinVar
-  const cv = sub.mismatch ? [] : (r.clinvar ?? []);
+  // ClinVar: on a residue card only missense records speak for the residue (a synonymous record's class is not
+  // the residue's); the other records are counted in the foot and listed under Clinical
+  const all = sub.mismatch ? [] : (r.clinvar ?? []);
+  const cv = headlineClinvar(r, all);
   const c0 = cv[0];
+  const others = all.length - cv.length;
+  const otherText = others ? otherClinvarText(all.filter((c) => !cv.includes(c))) : '';
   const cvBody = c0
     ? html`${pathChip(cvClassKey(c0.classification), c0.classification || 'no classification')} ${stars(c0.stars)}`
-    : html`<span class="sr-na">${sub.mismatch ? 'not looked up' : 'no record'}</span>`;
-  const cvFoot = c0 ? html`${c0.conditions?.length ? `${c0.conditions.slice(0, 2).join('; ')}${c0.conditions.length > 2 ? '; more' : ''}` : 'no condition given'}${cv.length > 1 ? `; ${cv.length} records` : ''}` : '';
+    : html`<span class="sr-na">${sub.mismatch ? 'not looked up' : others ? 'no missense record' : 'no record'}</span>`;
+  const cvFoot = c0 ? html`${c0.conditions?.length ? `${c0.conditions.slice(0, 2).join('; ')}${c0.conditions.length > 2 ? '; more' : ''}` : 'no condition given'}${cv.length > 1 ? `; ${cv.length} records` : ''}${otherText ? `; ${otherText}` : ''}` : otherText;
   return html`<ul class="sr-tiles">
     ${tile('structure', 'Structure', structHead, structFoot)}
     ${tile('predictions', 'AlphaMissense', html`${amBody}${amGauge(amVal, { cls: amCls })}`, html`<span class="sr-sub">prediction, not an observation</span>`)}
@@ -1176,6 +1180,23 @@ function tiles(r, o, sub) {
     ${tile('clinical', 'ClinVar', cvBody, cvFoot)}
     ${tile('conservation', 'Conservation', html`<span class="sr-big">${f.conservation === null ? html`<span class="sr-na">n/a</span>` : f.conservation.toFixed(2)}</span>${plainGauge(f.conservation, 'Conservation')}`, html`<span class="sr-sub">0 variable to 1 conserved</span>`)}
   </ul>`;
+}
+
+/**
+ * The ClinVar records that speak for a card's subject. A residue card keeps the missense records only: a
+ * synonymous, stop or frameshift record at the residue is not the residue's missense status.
+ */
+export function headlineClinvar(r, recs = r.clinvar ?? []) {
+  if (r.kind !== 'residue') return recs;
+  return recs.filter((c) => !c.kind || c.kind === 'missense');
+}
+
+/** "1 synonymous record" for the records a residue card's tile leaves out. */
+function otherClinvarText(recs) {
+  const by = new Map();
+  const word = { stop: 'nonsense', ext: 'extension', indel: 'insertion or deletion', synonymous: 'synonymous', frameshift: 'frameshift', noncoding: 'noncoding' };
+  for (const c of recs) { const k = word[c.kind] ?? 'other'; by.set(k, (by.get(k) ?? 0) + 1); }
+  return [...by].map(([k, n]) => `${n} ${k === 'other' ? '' : `${k} `}${n === 1 ? 'record' : 'records'}`).join(', ');
 }
 
 /** The compact identifier line under the title: c. on MANE, GRCh38 allele, rsID, ClinVar record, UniProt. */
@@ -1188,7 +1209,7 @@ function idLine(r, o, sub) {
   if (mane && !sub.mismatch) items.push(html`<span class="mono">${mane.transcript}:${mane.c}</span>`);
   for (const a of (r.alleles ?? []).slice(0, 2)) items.push(g38Link(a.id, rel));
   for (const rs of [...new Set((r.alleles ?? []).flatMap((a) => a.rsids ?? []))].slice(0, 2)) items.push(extLink(L.dbsnpUrl(rs), rs, SITE.dbsnp));
-  if (!sub.mismatch) for (const c of (r.clinvar ?? []).slice(0, 2)) items.push(extLink(c.url ?? L.clinvarUrl(c.variationId), c.accession, SITE.clinvar));
+  if (!sub.mismatch) for (const c of headlineClinvar(r).slice(0, 2)) items.push(extLink(c.url ?? L.clinvarUrl(c.variationId), c.accession, SITE.clinvar));
   if (r.receptor?.uniprot) items.push(extLink(L.uniprotUrl(r.receptor.uniprot), r.receptor.uniprot, 'UniProt'));
   if (!items.length) return '';
   return html`<p class="sr-idline">${items.map((it, i) => html`${i ? html`<span class="sr-dot" aria-hidden="true">·</span>` : ''}${it}`)}</p>`;
