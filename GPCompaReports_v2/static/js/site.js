@@ -61,33 +61,72 @@
     if (!trigger || !drawer) return;
 
     // Closed, the drawer is inert (set in the markup too) and hidden by the stylesheet, so
-    // its search box and links are not in the page's Tab order.
+    // its search box and links are not in the page's Tab order. Open, it is a modal dialog:
+    // everything else in the body is made inert, and Tab and Shift+Tab wrap inside it.
     drawer.setAttribute('inert', '');
+    var closeBtn = drawer.querySelector('.mobile-drawer-close');
+    var inerted = [];
+    function isOpen() { return drawer.getAttribute('aria-hidden') === 'false'; }
+    function setBackgroundInert(on) {
+      if (on) {
+        Array.prototype.forEach.call(document.body.children, function(el) {
+          if (el === drawer || el.tagName === 'SCRIPT' || el.hasAttribute('inert')) return;
+          el.setAttribute('inert', '');
+          inerted.push(el);
+        });
+      } else {
+        inerted.forEach(function(el) { el.removeAttribute('inert'); });
+        inerted = [];
+      }
+    }
+    function focusables() {
+      return Array.prototype.filter.call(
+        drawer.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])'),
+        function(el) { return el.offsetWidth || el.offsetHeight || el.getClientRects().length; });
+    }
     function open() {
+      setBackgroundInert(true);
       drawer.removeAttribute('inert');
       drawer.setAttribute('aria-hidden', 'false');
       trigger.setAttribute('aria-expanded', 'true');
       document.body.style.overflow = 'hidden';
-      var firstLink = drawer.querySelector('.mobile-drawer-nav a');
-      if (firstLink) firstLink.focus();
+      if (closeBtn) closeBtn.focus();
     }
-    function close() {
+    function close(returnFocus) {
+      var wasOpen = isOpen();
+      setBackgroundInert(false);
       drawer.setAttribute('aria-hidden', 'true');
       drawer.setAttribute('inert', '');
       trigger.setAttribute('aria-expanded', 'false');
       document.body.style.overflow = '';
-      trigger.focus();
+      if (wasOpen && returnFocus !== false) trigger.focus();
     }
     trigger.addEventListener('click', open);
     drawer.querySelectorAll('[data-drawer-close]').forEach(function(el) {
-      el.addEventListener('click', close);
+      el.addEventListener('click', function() { close(); });
     });
     drawer.querySelectorAll('.mobile-drawer-nav a').forEach(function(a) {
-      a.addEventListener('click', close);
+      a.addEventListener('click', function() { close(); });
     });
     document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape' && drawer.getAttribute('aria-hidden') === 'false') close();
+      if (!isOpen()) return;
+      if (e.key === 'Escape') { close(); return; }
+      if (e.key !== 'Tab') return;
+      var f = focusables();
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (!drawer.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+      else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     });
+    // Widened to the desktop bar (rotated phone, resized window): the toggle is gone, so close the
+    // drawer and release the scroll lock rather than leave an overlay nothing can dismiss.
+    try {
+      var wide = matchMedia('(min-width: 1080px)');
+      var onWide = function(e) { if (e.matches && isOpen()) close(false); };
+      if (wide.addEventListener) wide.addEventListener('change', onWide);
+      else if (wide.addListener) wide.addListener(onWide);
+    } catch (e) {}
   }
 
   // -------------------- Tooltips --------------------
