@@ -1,18 +1,19 @@
 {% extends "base.html" %}
-{% from "_partials/chart-card.html" import chart_card %}
+{% from "_partials/chart-card.html" import story_card, chart_body %}
 {% from "_partials/fine_print.html" import fine_print, data_versions_table %}
 
 {#
-  The Statistics page, ordered by reader question:
-    orientation tiles, section index, coverage table
-    A  where activation rewires the helix bundle (helix-pair atlas)
-    C  the CFR positions across receptors (atlas, bubble plot, ranked tables)
-    D  variants and predicted pathogenicity (class comparison first, per-position panel second)
-    E  receptors and families (explorer)
-    methods, sources, downloads
-  Section ids sec-c and sec-d are linked from the landing page and pinned by tests; they stay.
-  Chart payloads: small charts inline (window.STATS_CHART_DATA), everything else in
-  data/stats/*.json fetched when the card scrolls near (static/js/stats-page.js).
+  The Statistics page: four questions from top to bottom, then the reader's receptor.
+    header   h1, lede, census line, four glance facts, the selection box
+    1 sec-scale   what changes between the inactive and the active model
+    2 sec-a       where in the helix bundle
+    3 sec-c       which positions, and how consistently
+    4 sec-d       what it means for variants
+    5 sec-e       where a receptor sits
+    sec-methods   coverage, definitions, the activation reference, releases, downloads
+  Section ids sec-a, sec-c, sec-d and sec-e are linked from the landing page and pinned by tests.
+  Every number comes from statistics_page.py (payloads and tracked tables); the cards are drawn by
+  static/js/stats-story.js from data/stats/*.json, fetched when a card comes within 600 px.
 #}
 
 {% block head %}
@@ -28,314 +29,323 @@
 {% endblock %}
 
 {% block content %}
-<section class="stats-page">
-  <div class="section-inner">
-    <header class="section-head">
+<div class="stats" id="top" data-plotly-on-demand>
+<script type="application/json" id="stats-config">{{ config_json | safe }}</script>
+<div class="stats-wrap">
+  <aside class="stats-rail" aria-label="On this page">
+    <nav><ol class="rail-list">
+      {% for r in rail %}<li><a href="{{ r.href }}" data-rail="{{ r.href[1:] }}"><i aria-hidden="true">{{ r.n }}</i>{{ r.label }}</a></li>{% endfor %}
+    </ol></nav>
+    <div class="sel-slot" data-sel-slot="rail"></div>
+  </aside>
+
+  <div class="stats-main">
+    <header class="stats-head">
       <h1>Database statistics</h1>
-      <p class="section-sub">
-        What changes between the active and the inactive model across all {{ total_gpcrs }} human Class A
-        GPCRs: where the helix bundle rewires, the {{ cfr_top_n }} Core Functional Residue positions,
-        variants at those positions, and every receptor placed in the class. Every chart downloads as
-        PNG, SVG or CSV and can be read as a table.
-      </p>
+      <p class="stats-lede">What changes when a Class A GPCR activates, where in the receptor it happens, how
+        consistently it recurs across the class, and what that means for variants. Each of {{ total_gpcrs }} human
+        receptors is compared between its active and inactive predicted models from GPCRdb.</p>
+      <p class="stats-census">{% for v, l, h in census %}<a href="{{ h }}"><b>{{ v }}</b> {{ l }}</a>{% if not loop.last %}<span class="sep" aria-hidden="true"> · </span>{% endif %}{% endfor %}</p>
+
+      <ul class="glance" aria-label="At a glance">
+        {% for g in glance %}
+        <li><a class="glance-fact glance-{{ g.key }}" href="{{ g.href }}">
+          <span class="glance-big">{{ g.big }}</span>
+          <span class="glance-line">{{ g.line }}</span>
+          {{ g.svg | safe }}
+        </a></li>
+        {% endfor %}
+      </ul>
+
+      <div class="sel-slot" data-sel-slot="main">
+        <div class="sel" id="stats-sel" hidden>
+          <label class="sel-label" for="sel-input">Follow a receptor, or pick a position or helix pair</label>
+          <div class="sel-field">
+            <input id="sel-input" type="text" autocomplete="off" spellcheck="false" role="combobox"
+                   aria-expanded="false" aria-controls="sel-list" aria-autocomplete="list"
+                   placeholder="Gene symbol, UniProt name, 6.48x48 or TM3-TM6">
+            <ul class="sel-list" id="sel-list" role="listbox" hidden></ul>
+          </div>
+          <div class="sel-chips" data-sel-chips></div>
+          <p class="sel-summary" data-sel-summary aria-live="polite">Nothing selected. Every chart shows all {{ total_gpcrs }} receptors.</p>
+          <p class="sel-hint">Matches gene symbol, UniProt entry name, protein name and family; exact generic numbers; helix pairs such as TM3-TM6.</p>
+        </div>
+      </div>
+
+      <ol class="stats-toc">
+        {% for r in rail %}<li><a href="{{ r.href }}"><i aria-hidden="true">{{ r.n }}</i>{{ r.label }}</a></li>{% endfor %}
+      </ol>
     </header>
 
-    {# ---- orientation ---- #}
-    <ul class="stats-tiles" aria-label="Headline numbers">
-      {% for t in tiles %}
-      <li><a class="stats-tile" href="{{ t.href }}">
-        <div class="stats-tile-num">{{ t.value }}</div>
-        <div class="stats-tile-label">{{ t.label }}</div>
-        <div class="stats-tile-sub">{{ t.sub }}</div>
-      </a></li>
-      {% endfor %}
-    </ul>
+    {# ---------------------------------------------------------------- 1 scale #}
+    <section class="story" id="sec-scale" aria-labelledby="sec-scale-q">
+      <div class="sec-head"><span class="sec-num" aria-hidden="true">1</span>
+        <h2 id="sec-scale-q">What changes between the inactive and the active model?</h2>
+        <p class="finding">{{ findings['sec-scale'] | safe }}</p></div>
 
-    <ul class="stats-toc" aria-label="Sections">
-      {% for s in toc %}<li><a href="{{ s.href }}">{{ s.q }}</a></li>{% endfor %}
-    </ul>
+      {% call story_card(cards['chart-thresholds'], static_prefix) %}
+        {% call chart_body('chart-thresholds', 'strip-host') %}{{ svg_thresholds | safe }}{% endcall %}
+      {% endcall %}
 
-    <div class="v2-table-wrap stats-coverage">
-      <div class="v2-table-toolbar"><strong>What each kind of result covers</strong></div>
-      <div class="v2-table-scroll">
-        <table class="v2-table">
-          <thead><tr><th>View</th><th class="num">Receptors</th><th>Source</th><th>Not included</th></tr></thead>
-          <tbody>
-          {% for c in coverage %}
-            <tr><td>{{ c.view }}</td><td class="num">{{ c.n }}</td><td>{{ c.source }}</td><td>{{ c.excluded or '' }}</td></tr>
+      <details class="more" id="more-histogram">
+        <summary>{{ cards['chart-histogram'].title }}</summary>
+        {% call story_card(cards['chart-histogram'], static_prefix) %}
+          {{ chart_body('chart-histogram') }}
+        {% endcall %}
+      </details>
+    </section>
+
+    {# ---------------------------------------------------------------- 2 bundle #}
+    <section class="story" id="sec-a" aria-labelledby="sec-a-q">
+      <div class="sec-head"><span class="sec-num" aria-hidden="true">2</span>
+        <h2 id="sec-a-q">Where in the helix bundle does it happen?</h2>
+        <p class="finding">{{ findings['sec-a'] | safe }}</p></div>
+
+      {% call story_card(cards['chart-helix-pairs'], static_prefix) %}
+        <div class="controls">
+          <span class="seg" role="group" aria-label="Mode" data-ctl="mode">
+            <button type="button" data-value="direction" aria-pressed="true">Direction</button>
+            <button type="button" data-value="magnitude" aria-pressed="false">Magnitude</button>
+            <button type="button" data-value="grid" aria-pressed="false">Grid</button>
+          </span>
+          <span class="seg seg-small" role="group" aria-label="Segments" data-ctl="segments" hidden>
+            <button type="button" data-value="helices" aria-pressed="true">Helices and H8</button>
+            <button type="button" data-value="all" aria-pressed="false">All segments</button>
+          </span>
+        </div>
+        <div class="chips" role="group" aria-label="Receptor group" data-ctl="group"></div>
+        <div class="bundle-wrap">
+          <div class="scard-body">
+            <div class="schart" id="chart-helix-pairs" data-chart="chart-helix-pairs"><p class="nojs-note">Interactive chart (needs JavaScript).</p></div>
+            <div class="scard-table" hidden></div>
+            <aside class="chart-card-side" hidden aria-live="polite"></aside>
+          </div>
+          <div class="ledger" data-ledger></div>
+        </div>
+        <div class="legend" data-legend></div>
+      {% endcall %}
+
+      {% call story_card(cards['chart-segments'], static_prefix) %}
+        <div class="controls seg-order-row"><span class="seg-order-slot" data-seg-order-slot></span>
+          <span class="ctl-note">Segment order for every chart on this page.</span></div>
+        {{ chart_body('chart-segments') }}
+      {% endcall %}
+    </section>
+
+    {# ---------------------------------------------------------------- 3 positions #}
+    <section class="story" id="sec-c" aria-labelledby="sec-c-q">
+      <div class="sec-head"><span class="sec-num" aria-hidden="true">3</span>
+        <h2 id="sec-c-q">Which positions change in most receptors?</h2>
+        <p class="finding">{{ findings['sec-c'] | safe }}</p></div>
+
+      <ul class="defs" aria-label="Definitions">
+        <li><b>CFR (Core Functional Residue)</b>: a residue in at least one above-threshold contact of its receptor.</li>
+        <li><b>{{ cfr_total_positions }} recurrent positions</b>: generic positions that are CFRs in three or more receptors.</li>
+        <li><b>{{ cfr_top_n }} top-ranked positions</b>: the highest CFR score, which weighs how many receptors have a CFR at the position together with the mean |ΔRRCS| of those contacts.</li>
+      </ul>
+      {% call fine_print(summary="What are Core Functional Residues (CFRs)?", cls="cfr-def") %}
+        <p>A Core Functional Residue (CFR) is a residue in at least one above-threshold contact of its receptor.
+          {{ cfr_total_positions }} generic positions are CFRs in three or more receptors; the {{ cfr_top_n }} with the
+          highest CFR score are highlighted across the site. Cross-receptor recurrence analyses are limited to residues
+          assigned GPCRdb generic numbers.</p>
+      {% endcall %}
+
+      {% call story_card(cards['chart-scaffold'], static_prefix) %}
+        {{ chart_body('chart-scaffold') }}
+      {% endcall %}
+
+      {% call story_card(cards['chart-ranking'], static_prefix, 'has-server-table') %}
+        <div class="chips" role="group" aria-label="Order" data-ctl="sort">
+          <button type="button" data-value="score" aria-pressed="true">CFR score</button>
+          <button type="button" data-value="receptors" aria-pressed="false">Receptors</button>
+          <button type="button" data-value="segment" aria-pressed="false">Segment order</button>
+        </div>
+        <div class="scard-body">
+          <div class="schart" id="chart-ranking" data-chart="chart-ranking"><p class="nojs-note">Interactive chart (needs JavaScript).</p></div>
+          <div class="scard-table server-table" data-server-table>
+            <table class="v2-table rank-table" id="cfr-table">
+              <caption class="sr-only">The {{ cfr_top_n }} top-ranked positions by CFR score</caption>
+              <thead><tr><th>Rank</th><th>Generic number</th><th>Segment</th><th class="num">Receptors</th><th class="num">% of receptors</th><th class="num">Mean |Δ|</th><th class="num">CFR score</th><th>Motif</th></tr></thead>
+              <tbody>
+              {% for row in cfr_table -%}
+<tr><td class="num">{{ row.cfr_score_rank }}</td><td><strong>{{ row.generic_number }}</strong></td><td>{{ row.segment }}</td><td class="num">{{ row.n_receptors }}</td><td class="num">{{ "%.1f"|format(row.pct_receptors) }}%</td><td class="num">{{ "%.2f"|format(row.mean_abs_delta) }}</td><td class="num">{{ "%.3f"|format(row.cfr_score) }}</td><td>{{ row.motif }}</td></tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <aside class="chart-card-side" hidden aria-live="polite"></aside>
+        </div>
+        <p class="small-note">{{ notes.get('ranking_outlier', '') }}</p>
+        <h4 class="sub-head">All {{ cfr_total_positions }} recurrent positions, in CFR score order</h4>
+        <div class="schart-sub" data-strip368></div>
+        <p class="small-note">{{ notes.get('motifs_in_top', '') }}</p>
+      {% endcall %}
+
+      <div class="grid2">
+        {% call story_card(cards['chart-recovery'], static_prefix) %}
+          {{ chart_body('chart-recovery') }}
+        {% endcall %}
+
+        {% call story_card(cards['chart-partners'], static_prefix, 'has-server-table') %}
+          <div class="tabs" role="tablist" aria-label="View" data-ctl="tab">
+            <button type="button" role="tab" data-value="partners" aria-selected="true">Positions and partners</button>
+            <button type="button" role="tab" data-value="pairs" aria-selected="false">Most recurrent pairs</button>
+          </div>
+          <p class="scard-guide tab-guide" data-tab-guide="pairs" hidden>The 20 exact contact pairs (both residues CFRs) that recur in the most receptors, of {{ "{:,}".format(cfr_network_total) }} distinct pairs. All {{ cfr_network|length }} join two top-ranked positions.</p>
+          <div class="scard-body">
+            <div class="schart" id="chart-partners" data-chart="chart-partners"><p class="nojs-note">Interactive chart (needs JavaScript).</p></div>
+            <div class="scard-table server-table" data-server-table="pairs">
+              <table class="v2-table" id="cfr-pairs-table">
+                <caption>The {{ cfr_network|length }} most recurrent CFR contact pairs, of {{ "{:,}".format(cfr_network_total) }}</caption>
+                <thead><tr><th>Position 1</th><th>Position 2</th><th class="num">Receptors</th><th class="num">% of receptors</th></tr></thead>
+                <tbody>
+                {% for row in cfr_network -%}
+<tr><td><strong>{{ row.cfr_1 }}</strong></td><td><strong>{{ row.cfr_2 }}</strong></td><td class="num">{{ row.n_receptors }}</td><td class="num">{{ "%.1f"|format(row.pct_receptors) }}%</td></tr>
+                {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <aside class="chart-card-side" hidden aria-live="polite"></aside>
+          </div>
+          <div class="legend" data-legend></div>
+        {% endcall %}
+      </div>
+
+      {% call story_card(cards['chart-cfr-atlas'], static_prefix) %}
+        <div class="controls">
+          <span class="seg" role="group" aria-label="Cells" data-ctl="view">
+            <button type="button" data-value="cfr" aria-pressed="true">CFR or not</button>
+            <button type="button" data-value="direction" aria-pressed="false">Direction</button>
+          </span>
+        </div>
+        {{ chart_body('chart-cfr-atlas') }}
+      {% endcall %}
+    </section>
+
+    {# ---------------------------------------------------------------- 4 variants #}
+    <section class="story" id="sec-d" aria-labelledby="sec-d-q">
+      <div class="sec-head"><span class="sec-num" aria-hidden="true">4</span>
+        <h2 id="sec-d-q">What does it mean for variants?</h2>
+        <p class="finding">{{ findings['sec-d'] | safe }}</p></div>
+      <p class="sec-note">AlphaMissense predicted classes. Predictions, not clinical evidence. Conservation is an observation across species.</p>
+
+      {% call story_card(cards['chart-pathogenicity'], static_prefix) %}
+        {{ chart_body('chart-pathogenicity') }}
+        <details class="am-classes" id="am-classes">
+          <summary>All three classes, including ambiguous</summary>
+          <div class="am-comp">
+          {% for g in am_rows %}
+            <div class="am-comp-row">
+              <span class="am-comp-label">{{ g.label }}</span>
+              <span class="am-comp-bar" aria-hidden="true"><i class="c-path" style="width:{{ '%.2f'|format(g.p) }}%"></i><i class="c-amb" style="width:{{ '%.2f'|format(g.a) }}%"></i><i class="c-ben" style="width:{{ '%.2f'|format(g.b) }}%"></i></span>
+              <span class="am-comp-text">{{ "%.1f"|format(g.p) }}% predicted pathogenic, {{ "%.1f"|format(g.a) }}% ambiguous, {{ "%.1f"|format(g.b) }}% predicted benign of {{ "{:,}".format(g.scored) }} scored ({{ "{:,}".format(g.decisive) }} decisive calls; {{ "{:,}".format(g.ambiguous) }} ambiguous)</span>
+            </div>
           {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-    {% call fine_print(summary="Receptors outside the database", cls="stats-coverage-note") %}
-      <p>class_A_all.csv lists 287 human Class A receptors; GPR26, LGR5, OPSX and RXFP1 lack a complete active and inactive model pair and are not in the database, so every count here is over {{ total_gpcrs }}.</p>
-    {% endcall %}
-
-    {# ---- A. Where activation rewires the helix bundle ---- #}
-    <section class="analysis-section reveal" aria-labelledby="sec-a">
-      <header class="section-head">
-        <p class="section-kicker">Structure</p>
-        <h2 id="sec-a">Where does activation rewire the helix bundle?</h2>
-        <p class="section-sub">
-          Every receptor's above-threshold contact pairs, placed on the helix pair they connect. Red
-          means stronger in the active model, blue stronger in the inactive model. Click a cell for the
-          receptors behind it.
-        </p>
-      </header>
-      {% call chart_card(cards['chart-helix-pairs'], static_prefix, layout_light_json, layout_dark_json) %}
-        <span class="chips" role="group" aria-label="Metric" data-chips="metric">
-          <span class="chips-name">Show</span>
-          <button type="button" class="chip" data-value="mean_net" aria-pressed="true">Direction (mean net ΔRRCS)</button>
-          <button type="button" class="chip" data-value="coverage" aria-pressed="false">Coverage (share of receptors)</button>
-          <button type="button" class="chip" data-value="mean_net_present" aria-pressed="false">Mean net among receptors with a pair</button>
-        </span>
-        <span class="chips" role="group" aria-label="Receptors" data-chips="group"><span class="chips-name">Receptors</span></span>
-        <span class="chips" role="group" aria-label="Segments" data-chips="segments">
-          <button type="button" class="chip" data-value="helices" aria-pressed="true">Helices and H8</button>
-          <button type="button" class="chip" data-value="all" aria-pressed="false">All segments</button>
-        </span>
+          </div>
+        </details>
+        <dl class="footnote">
+          <dt>Allele set</dt><dd>{{ am_allele_set }} missense alleles, {{ am_month }} query of residues in contacts with |ΔRRCS| of 3.0 or more, {{ am_receptors }} receptors.</dd>
+          <dt>Residues compared</dt><dd>the {{ cfr_top_n }} top-ranked positions against all other positions with a GPCRdb generic number.</dd>
+        </dl>
       {% endcall %}
-      <details class="fine-print stats-folded">
-        <summary>More charts: the ΔRRCS distribution and the per-helix means</summary>
-        {{ chart_card(cards['chart-histogram'], static_prefix, layout_light_json, layout_dark_json) }}
-        {{ chart_card(cards['chart-tm-bar'], static_prefix, layout_light_json, layout_dark_json) }}
-      </details>
+
+      <div class="grid2">
+        {% call story_card(cards['chart-am-bands'], static_prefix) %}
+          {{ chart_body('chart-am-bands') }}
+        {% endcall %}
+        {% call story_card(cards['chart-position-conservation'], static_prefix) %}
+          {{ chart_body('chart-position-conservation') }}
+        {% endcall %}
+      </div>
+
+      {% call story_card(cards['chart-am-quintiles'], static_prefix) %}
+        {{ chart_body('chart-am-quintiles') }}
+      {% endcall %}
+
+      {% call story_card(cards['chart-cfr-variants'], static_prefix) %}
+        <div class="chips" role="group" aria-label="Order" data-ctl="order">
+          <button type="button" data-value="share" aria-pressed="false">Predicted pathogenic share <span data-dir></span></button>
+          <button type="button" data-value="rank" aria-pressed="true">Rank <span data-dir></span></button>
+        </div>
+        {{ chart_body('chart-cfr-variants') }}
+      {% endcall %}
     </section>
 
-    {# ---- C. Core Functional Residues ---- #}
-    <section class="analysis-section reveal" aria-labelledby="sec-c">
-      <header class="section-head">
-        <p class="section-kicker">Core Functional Residues</p>
-        <h2 id="sec-c">Which positions change in most receptors?</h2>
-        <p class="section-sub">
-          Core Functional Residues (CFRs) are one class-wide set: the {{ cfr_top_n }} generic-numbered positions
-          with the highest CFR score, a composite of how many receptors show an above-threshold change at the
-          position and the mean |ΔRRCS| there. {{ cfr_total_positions }} positions recur in three or more
-          receptors; the {{ cfr_top_n }} reported here are the top of that ranking, and the report snake plots,
-          the residue tables and search mark the same {{ cfr_top_n }}.
-        </p>
-      </header>
-      {% call fine_print(summary="What are Core Functional Residues (CFRs)? How they are computed, and where the cross-receptor numbers come from") %}
-        <p>
-          Residues that carry a GPCRdb generic number are mapped onto that shared position across
-          the {{ total_gpcrs }} receptors. A position is flagged as a CFR if it appears in the
-          above-threshold contact list of many receptors, meaning that position repeatedly
-          participates in active-inactive contact remodeling across the family. The mapping used
-          here comes from the full GPCRdb residue maps for all {{ total_gpcrs }} receptors.
-        </p>
-        <p>
-          Positions are ranked by a composite score of (1) how many receptors show an
-          above-threshold change at that position (recurrence) and (2) the average magnitude of
-          change (mean |ΔRRCS|). High-ranking positions mark generic-numbered sites that recur across
-          receptors and may reflect conserved components of Class A GPCR activation-associated contact networks.
-        </p>
-        <p>
-          The ranked list is cut at the top {{ cfr_top_n }} positions. That cutoff is a reporting threshold,
-          not a definition: {{ cfr_total_positions }} positions meet the CFR criterion of recurring in at
-          least three receptors. A position ranked below {{ cfr_top_n }} is still a recurrent CFR position,
-          it just falls outside the subset reported here.
-        </p>
-        <p>
-          <strong>Where these cross-receptor numbers come from.</strong>
-          Cross-receptor recurrence analyses are limited to residues assigned GPCRdb generic numbers. Residues
-          without one, largely in loops and terminal regions, cannot be aligned to a shared position across
-          receptors and take no part in these statistics. The recurrence counts in the tables below are
-          computed on the full GPCRdb residue maps for all {{ total_gpcrs }} receptors. The atlas uses each
-          receptor's own GPCRdb numbering; with it 49 of the {{ cfr_top_n }} positions have the same receptor
-          count as the table, and 8.48x48 counts one receptor more.
-        </p>
-      {% endcall %}
+    {# ---------------------------------------------------------------- 5 receptors #}
+    <section class="story" id="sec-e" aria-labelledby="sec-e-q">
+      <div class="sec-head"><span class="sec-num" aria-hidden="true">5</span>
+        <h2 id="sec-e-q">Where does my receptor sit, and which are like it?</h2>
+        <p class="finding">{{ findings['sec-e'] | safe }}</p></div>
 
-      <div class="seg-order-row">
-        <span class="seg-order-slot" data-seg-order-slot></span>
-        <aside class="fine-print seg-order-fine">Segment order for every chart on this page. Helices first: TM1 to TM7 and H8, then the loops, then the termini. Sequence: along the chain. The models are most reliable in the helices. The choice is remembered in this browser.</aside>
-      </div>
-
-      {% call chart_card(cards['chart-cfr-atlas'], static_prefix, layout_light_json, layout_dark_json) %}
-        <span class="chips" role="group" aria-label="Group rows by" data-chips="group">
-          <span class="chips-name">Rows</span>
-          <button type="button" class="chip" data-value="ligand" aria-pressed="true">By ligand type</button>
-          <button type="button" class="chip" data-value="family" aria-pressed="false">By family</button>
-        </span>
-        <span class="chips" role="group" aria-label="Cell" data-chips="mode">
-          <span class="chips-name">Cells</span>
-          <button type="button" class="chip" data-value="state" aria-pressed="true">Above threshold / mapped / not numbered</button>
-          <button type="button" class="chip" data-value="direction" aria-pressed="false">Direction (net ΔRRCS)</button>
-        </span>
-        <span class="chips" role="group" aria-label="Column order" data-chips="order">
-          <span class="chips-name">Columns</span>
-          <button type="button" class="chip" data-value="rank" aria-pressed="false">CFR rank</button>
-        </span>
-        <span class="chips" role="group" aria-label="View" data-chips="view">
-          <button type="button" class="chip" data-value="matrix" aria-pressed="true">Matrix</button>
-          <button type="button" class="chip" data-value="summary" aria-pressed="false">Group summary</button>
-        </span>
-        <span class="find-box"><label class="chips-name" for="cfr-atlas-find">Find receptor</label><input id="cfr-atlas-find" type="search" autocomplete="off" placeholder="gene or name" data-find="cfr_atlas"></span>
-      {% endcall %}
-
-      {{ chart_card(cards['chart-cfr-dotplot'], static_prefix, layout_light_json, layout_dark_json) }}
-
-      {% if cfr_table %}
-      <div class="v2-table-wrap">
-        <div class="v2-table-toolbar">
-          <strong>Top {{ cfr_top_n }} Core Functional Residue Positions</strong>
-          <span class="v2-table-tools">
-            <a class="cc-btn" href="{{ static_prefix }}{{ stats_dir }}/cfr_top50.csv" download>CSV</a>
-          </span>
-          <span class="v2-table-note">Click a column to sort; a generic number opens search.</span>
+      {% call story_card(cards['chart-receptors'], static_prefix) %}
+        <div class="tabs" role="tablist" aria-label="View" data-ctl="tab">
+          <button type="button" role="tab" data-value="scatter" aria-selected="true">Scatter</button>
+          <button type="button" role="tab" data-value="table" aria-selected="false">Table</button>
+          <button type="button" role="tab" data-value="families" aria-selected="false">Families</button>
         </div>
+        <div class="chips axis-chips" role="group" aria-label="Axes" data-ctl="axes"></div>
+        <p class="view-text" data-view-text aria-live="polite"></p>
+        {{ chart_body('chart-receptors') }}
+        <div class="explorer-table" hidden></div>
+        <p class="small-note families-text" data-families-text hidden>{{ families_text }}</p>
+      {% endcall %}
+
+      <article class="scard atlas-teaser" id="card-atlas-teaser" aria-labelledby="atlas-teaser-title">
+        <div class="teaser-grid">
+          <div>
+            <h3 class="scard-title" id="atlas-teaser-title">Receptors with similar change patterns</h3>
+            <p class="scard-guide">Each dot is a receptor, placed so that receptors whose contacts change alike sit
+              together. A browsing aid, not a classification. The GPCRome Atlas is an experimental preview that shows
+              every receptor's helix bundle, a sequence tree and other groupings.</p>
+            <a class="btn btn-primary btn-sm" href="{{ static_prefix }}atlas.html">Open the GPCRome Atlas (Preview)</a>
+          </div>
+          <div class="teaser-map" id="atlas-teaser-map" data-chart="atlas-teaser"><p class="nojs-note">Interactive chart (needs JavaScript).</p></div>
+        </div>
+      </article>
+    </section>
+
+    {# ---------------------------------------------------------------- methods #}
+    <section class="story" id="sec-methods" aria-labelledby="sec-methods-q">
+      <div class="sec-head"><span class="sec-num" aria-hidden="true">•</span>
+        <h2 id="sec-methods-q">Methods, sources and downloads</h2></div>
+
+      <div class="scard methods-card">
+        <h3 class="scard-title">What each result covers</h3>
         <div class="v2-table-scroll">
-          <table class="v2-table" id="cfr-table" data-sortable data-gn-cols="1">
-            <thead>
-              <tr>
-                <th data-sort="num" data-tooltip="Rank by composite CFR score">Rank</th>
-                <th data-sort="text" data-tooltip="GPCRdb generic numbering for this position">Generic number</th>
-                <th data-sort="text">Segment</th>
-                <th data-sort="num" data-tooltip="Number of the {{ total_gpcrs }} receptors with an above-threshold ΔRRCS change at this position">Receptors</th>
-                <th data-sort="num" data-tooltip="Percentage of the {{ total_gpcrs }} receptors">% of receptors</th>
-                <th data-sort="num" data-tooltip="Mean |ΔRRCS| across receptors with an above-threshold change at this position">Mean |Δ|</th>
-                <th data-sort="num" data-tooltip="Composite score: the mean of normalized recurrence and normalized mean |ΔRRCS|">CFR score</th>
-              </tr>
-            </thead>
+          <table class="v2-table cov-table">
+            <thead><tr><th>Results</th><th>Receptors</th><th class="hide-phone">Data</th><th>Not included</th></tr></thead>
             <tbody>
-            {% for row in cfr_table %}
-              <tr>
-                <td class="num">{{ row.cfr_score_rank }}</td>
-                <td><strong>{{ row.generic_number }}</strong></td>
-                <td data-gpc-seg="{{ row.segment }}"><span class="badge badge-teal">{{ row.segment }}</span></td>
-                <td class="num">{{ row.n_receptors }}</td>
-                <td class="num">{{ "%.1f"|format(row.pct_receptors) }}%</td>
-                <td class="num">{{ "%.2f"|format(row.mean_abs_delta) }}</td>
-                <td class="num">{{ "%.3f"|format(row.cfr_score) }}</td>
-              </tr>
+            {% for c in coverage_rows %}
+              <tr><td>{{ c.results }}</td><td>{{ c.receptors }}</td><td class="hide-phone">{{ c.data }}</td><td>{{ c.not_included }}</td></tr>
             {% endfor %}
             </tbody>
           </table>
         </div>
+        <p class="downloads">
+          <a class="btn btn-primary btn-sm" href="{{ static_prefix }}{{ zip_href }}" download>Download all tables (zip, {{ n_tables }} CSV files)</a>
+          <a class="btn btn-ghost btn-sm" href="{{ static_prefix }}{{ stats_dir }}/coverage.csv" download>coverage.csv</a>
+          <a class="btn btn-ghost btn-sm" href="{{ static_prefix }}downloads.html">Downloads page</a>
+        </p>
       </div>
-      {% endif %}
 
-      {% if cfr_network %}
-      <div class="v2-table-wrap">
-        <div class="v2-table-toolbar">
-          <strong>CFR contact pairs</strong>
-          <span class="v2-table-tools">
-            <a class="cc-btn" href="{{ static_prefix }}{{ stats_dir }}/cfr_pairs_top20.csv" download>CSV</a>
-          </span>
-          <span class="v2-table-note">
-            Contact pairs in which both residues are among the {{ cfr_top_n }} highest-ranked
-            recurrent CFR positions. Showing the {{ cfr_network_shown }} highest-ranked pairs,
-            ranked across {{ "{:,}".format(cfr_network_total) }} unique contact pairs.
-          </span>
-        </div>
-        <div class="v2-table-scroll">
-          <table class="v2-table" id="cfr-pairs-table" data-sortable data-gn-cols="0 1">
-            <thead>
-              <tr><th data-sort="text">Position 1</th><th data-sort="text">Position 2</th><th data-sort="num">Receptors</th><th data-sort="num">% of receptors</th></tr>
-            </thead>
-            <tbody>
-            {% for row in cfr_network %}
-              <tr>
-                <td><strong>{{ row.cfr_1 }}</strong></td>
-                <td><strong>{{ row.cfr_2 }}</strong></td>
-                <td class="num">{{ row.n_receptors }}</td>
-                <td class="num">{{ "%.1f"|format(row.pct_receptors) }}%</td>
-              </tr>
-            {% endfor %}
-            </tbody>
-          </table>
-        </div>
+      <div class="fine-print methods-notes">
+        <p><strong>Where these cross-receptor numbers come from.</strong>
+          Cross-receptor recurrence analyses are limited to residues assigned GPCRdb generic numbers. Residues without
+          one, largely in loops and terminal regions, cannot be aligned to a shared position across receptors and take
+          no part in these statistics. Recurrence is counted on the full GPCRdb residue maps of all {{ total_gpcrs }}
+          receptors. class_A_all.csv lists 287 human Class A receptors; GPR26, LGR5, OPSX and RXFP1 lack a complete
+          active and inactive model pair and are not in the database.</p>
+        <dl class="defs-list">
+          <dt>ΔRRCS</dt><dd>RRCS of a residue contact pair in the active model minus that in the inactive model. Positive: stronger in the active model.</dd>
+          <dt>Threshold</dt><dd>Per receptor: the mean plus one standard deviation of its |ΔRRCS| values. A pair at or above it is above threshold.</dd>
+          <dt>CFR</dt><dd>Core Functional Residue: a residue in at least one above-threshold contact of its receptor.</dd>
+          <dt>Decisive call</dt><dd>An AlphaMissense prediction of predicted pathogenic or predicted benign (not ambiguous).</dd>
+        </dl>
+        <p><strong>Known activation positions</strong> ({{ reference|length }}): {{ reference_source }}.
+          {% for r in reference %}<span class="mono">{{ r.gn }}</span>{% if not loop.last %}, {% endif %}{% endfor %}.</p>
       </div>
-      {% endif %}
 
-      <details class="fine-print stats-folded">
-        <summary>More charts: conserved and variable positions</summary>
-        {{ chart_card(cards['chart-cv-scatter'], static_prefix, layout_light_json, layout_dark_json) }}
-      </details>
-    </section>
-
-    {# ---- D. Variants ---- #}
-    {# AlphaMissense class counts from data/supplement_2026-11-05b/ via manuscript_stats.load_am_comparison
-       (the card's method note, statistics_page._am_method). No odds ratio, interval or test on the page. #}
-    <section class="analysis-section reveal" aria-labelledby="sec-d">
-      <header class="section-head">
-        <p class="section-kicker">Variants</p>
-        <h2 id="sec-d" data-tooltip="How genetic variants relate to predicted pathogenicity, comparing the {{ cfr_top_n }} top-ranked class-wide CFR positions (by CFR score) with other generic-numbered positions">Are variants at CFR positions predicted pathogenic?</h2>
-        <p class="section-sub">
-          AlphaMissense predicted class of the missense substitutions seen in gnomAD, at the {{ cfr_top_n }}
-          CFR positions and at other generic-numbered positions. Predictions, not clinical evidence.
-        </p>
-      </header>
-
-      {{ chart_card(cards['chart-pathogenicity'], static_prefix, layout_light_json, layout_dark_json) }}
-
-      {% call chart_card(cards['chart-cfr-variants'], static_prefix, layout_light_json, layout_dark_json) %}
-        <span class="chips" role="group" aria-label="Position order" data-chips="order">
-          <span class="chips-name">Order</span>
-          <button type="button" class="chip" data-value="pathogenic" aria-pressed="false">By % predicted pathogenic</button>
-        </span>
-        <span class="chips" role="group" aria-label="Positions" data-chips="set">
-          <button type="button" class="chip" data-value="cfr" aria-pressed="true">CFR rank 1 to {{ cfr_top_n }}</button>
-          <button type="button" class="chip" data-value="other" aria-pressed="false">Compare: ranked {{ cfr_top_n + 1 }} to {{ cfr_total_positions }}</button>
-        </span>
-        <span class="chips" role="group" aria-label="Panel" data-chips="panel">
-          <button type="button" class="chip" data-value="composition" aria-pressed="true">AlphaMissense class</button>
-          <button type="button" class="chip" data-value="counts" aria-pressed="false">Alleles and ClinVar</button>
-        </span>
-      {% endcall %}
-
-      <details class="fine-print stats-folded">
-        <summary>More charts: conservation against contact change (a null result)</summary>
-        {{ chart_card(cards['chart-conservation'], static_prefix, layout_light_json, layout_dark_json) }}
-        <p>
-          The conservation chart uses the variant data, which covers {{ variant_layer_receptors }} receptors. NPY6R and TAAR3 lack protein-coding missense
-          annotations because they are annotated as pseudogene loci. GP182 and P2RY8 are excluded
-          from the current variant dataset because their identifiers were not successfully
-          resolved during data collection.
-        </p>
-      </details>
-    </section>
-
-    {# ---- E. Receptors and families ---- #}
-    <section class="analysis-section reveal" aria-labelledby="sec-e">
-      <header class="section-head">
-        <p class="section-kicker">Receptors and families</p>
-        <h2 id="sec-e">Where does my receptor sit, and which are like it?</h2>
-        <p class="section-sub">
-          All {{ total_gpcrs }} receptors on one chart, a sortable table with class rank, and the families
-          side by side. Type a gene name to highlight one receptor and see the ones with the most similar
-          CFR pattern.
-        </p>
-      </header>
-      {% call chart_card(cards['chart-receptors'], static_prefix, layout_light_json, layout_dark_json) %}
-        <span class="stats-tabs" role="tablist" aria-label="View" data-chips="tab">
-          <button type="button" class="stats-tab" role="tab" data-value="scatter" aria-selected="true">Scatter</button>
-          <button type="button" class="stats-tab" role="tab" data-value="table" aria-selected="false">Table</button>
-          <button type="button" class="stats-tab" role="tab" data-value="families" aria-selected="false">Families</button>
-        </span>
-        <span class="chips" role="group" aria-label="Metric on the x axis" data-chips="x"><span class="chips-name">x</span></span>
-        <span class="chips" role="group" aria-label="Metric on the y axis" data-chips="y"><span class="chips-name">y</span></span>
-        <span class="chips" role="group" aria-label="Color" data-chips="color">
-          <span class="chips-name">Color</span>
-          <button type="button" class="chip" data-value="ligand" aria-pressed="true">Ligand type</button>
-          <button type="button" class="chip" data-value="family" aria-pressed="false">Family</button>
-        </span>
-        <span class="find-box"><label class="chips-name" for="receptors-find">Find receptor</label><input id="receptors-find" type="search" autocomplete="off" placeholder="gene or name" data-find="receptors"></span>
-      {% endcall %}
-    </section>
-
-    {# ---- methods, sources, downloads ---- #}
-    <section class="analysis-section reveal" aria-labelledby="sec-methods">
-      <header class="section-head">
-        <p class="section-kicker">Methods and data</p>
-        <h2 id="sec-methods">Methods, sources and downloads</h2>
-      </header>
-      <p>
-        <a class="btn btn-primary btn-sm" href="{{ static_prefix }}{{ zip_href }}" download>Download all statistics tables ({{ n_tables }} CSV files, zip)</a>
-        <a class="btn btn-ghost btn-sm" href="{{ static_prefix }}downloads.html">Downloads page</a>
-      </p>
-      {% call fine_print(summary="Data releases behind this page", open=True, cls="stats-provenance") %}
+      {% call fine_print(summary="Data releases behind this page", cls="stats-provenance") %}
         {{ data_versions_table(data_versions) }}
       {% endcall %}
       <p class="stats-refs fine-print fine-print--page">
@@ -352,16 +362,11 @@
       </p>
     </section>
   </div>
-</section>
+</div>
+</div>
 {% endblock %}
 
 {% block scripts %}
-<script>
-window.STATS_CHART_DATA = window.STATS_CHART_DATA || {};
-{% for cid, card in cards.items() if card.inline %}
-window.STATS_CHART_DATA['{{ cid }}'] = {{ card.payload_json | safe }};
-{% endfor %}
-</script>
 <script src="{{ static_prefix }}static/js/segment-order.js" defer></script>
-<script src="{{ static_prefix }}static/js/stats-page.js" defer></script>
+<script src="{{ static_prefix }}static/js/stats-story.js" defer></script>
 {% endblock %}

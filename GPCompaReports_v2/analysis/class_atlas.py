@@ -1,7 +1,7 @@
 """Class-wide summaries for the Statistics page, computed from the site data (the "site layer").
 
 Payloads, written at build time to <site>/data/stats/ by write_stats_data() and rendered by the
-Statistics page (templates/statistics.html, static/js/stats-page.js):
+Statistics page (templates/statistics.html, static/js/stats-story.js):
 
     overview.json          orientation tiles and the coverage table
     helix_pairs.json       helix-pair rewiring atlas, all 283 receptors (built in tm_domain_analysis)

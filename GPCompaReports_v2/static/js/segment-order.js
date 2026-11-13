@@ -39,9 +39,7 @@
   var TABLES = [{ id: 'tm-summary-table', col: 0 }];
   var CHARTS = [
     { id: 'tm-breakdown-chart', kind: 'x' },
-    { id: 'chart-tm-heatmap', kind: 'xy' },
-    { id: 'chart-cfr-dotplot', kind: 'legend' },
-    { id: 'chart-cv-scatter', kind: 'legend' }
+    { id: 'chart-tm-heatmap', kind: 'xy' }
   ];
 
   function stored() {
