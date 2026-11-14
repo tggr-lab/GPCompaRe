@@ -50,3 +50,19 @@ calls on generic-numbered residues without a modeled contact). `ed14_a_conservat
 predicted pathogenic share of decisive calls by conservation fifth, top 50 (`lead_*`) against other
 positions (`rest_*`); 15,507 decisive calls (12 without a conservation score fall outside). The sibling
 meta JSON of the second file quotes superseded values and is not copied.
+
+## Substitutions without an AlphaMissense class (added 2026-11-14)
+
+| File | sha256 |
+|---|---|
+| `am_unclassified.tsv` | `c445a920a1ae604390e7f4f09b7e7775764c579503e325d7db96d4d1b6434b0e` |
+
+Written by `scripts/count_am_unclassified.py` from the audit table behind the summary above
+(`fig3_audit_variants_complete_modelnum_2026-11-05b.tsv`, sha256 `be52356e...c2686`): the 1,260 rows with a
+generic number, outside GPR3, GPR4 and XCR1, whose `am_status` is `unresolved` (483 at the top 50 positions, 49
+receptors). The summary counts only the classified rows (the script asserts 7,268 and 11,040), so these are
+outside every count of section 4. All but one are a second allele at a protein position whose first allele is
+classified: the batch variant CSVs fill the AlphaMissense column for the first allele at each position only.
+The Studio packs score all 1,260 (424 pathogenic, 641 benign, 195 ambiguous). The page states the counts in the
+method note of the AlphaMissense comparison (`class_variants.json` `unclassified`); the summary itself is
+unchanged.
