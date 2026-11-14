@@ -112,7 +112,7 @@ def test_the_top50_table_matches_the_class_ranking_and_the_submitted_order():
     assert idx != -1, 'ranked table heading not found'
     body = re.search(r'<tbody>(.*?)</tbody>', html[idx:], re.S).group(1)
     rendered = re.findall(
-        r'<td class="num">(\d+)</td>\s*<td><strong>([^<]+)</strong></td>', body)
+        r'<tr><td>(\d+)</td>\s*<td><strong>([^<]+)</strong></td>', body)   # number cells align by CSS, no class
     top50 = load_manuscript_stats()['top50']
     assert len(rendered) == len(top50) == CFR_TOP_N, (
         'ranked table shows %d rows, the ranking has %d' % (len(rendered), len(top50)))
@@ -130,10 +130,10 @@ def test_row_36_is_8_48x48_with_113_receptors():
     """GPR4 numbered with its own GPCRdb entry: 8.48x48 is a CFR in 113 receptors (39.9%), mean |ΔRRCS| 5.21,
     CFR score 0.465, rank 36; the table and the CFR atlas agree."""
     html = STATS.read_text(encoding='utf-8')
-    row = re.search(r'<td class="num">36</td>\s*<td><strong>([^<]+)</strong></td>(.*?)</tr>', html, re.S)
+    row = re.search(r'<tr><td>36</td>\s*<td><strong>([^<]+)</strong></td>(.*?)</tr>', html, re.S)
     assert row and row.group(1) == '8.48x48'
-    cells = re.findall(r'<td class="num">([^<]+)</td>', row.group(2))
-    assert cells == ['113', '39.9%', '5.21', '0.465'], cells
+    cells = re.findall(r'<td>([^<]*)</td>', row.group(2))   # segment, receptors, %, mean |ΔRRCS|, score, motif
+    assert cells[1:5] == ['113', '39.9%', '5.21', '0.465'], cells
 
 
 @needs_build

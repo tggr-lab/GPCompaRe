@@ -110,7 +110,7 @@ def test_statistics_landing_and_glossary_pages_state_the_same_size():
         assert _sizes(html) == {CFR_TOP_N}, (name, _sizes(html))
     stats = (BUILD / 'statistics.html').read_text(encoding='utf-8')
     body = stats[stats.index('The %d top-ranked positions' % CFR_TOP_N):]
-    shown = re.findall(r'<td class="num">\d+</td>\s*<td><strong>([^<]+)</strong></td>', body.split('</tbody>')[0])
+    shown = re.findall(r'<tr><td>\d+</td>\s*<td><strong>([^<]+)</strong></td>', body.split('</tbody>')[0])
     assert set(shown) == class_cfr_set(), 'the Statistics table and the marked set differ'
 
 

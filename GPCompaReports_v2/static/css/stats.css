@@ -160,6 +160,8 @@
 .scard-table th, .scard-table td, .explorer-table th, .explorer-table td { padding: 5px 8px; border-bottom: 1px solid var(--st-line-soft); text-align: left; white-space: nowrap; }
 .scard-table th, .explorer-table th { position: sticky; top: 0; background: var(--st-surface); color: var(--st-muted); font-weight: 600; z-index: 1; }
 .scard-table .num, .explorer-table .num { text-align: right; }
+/* the server table of the 50 top-ranked positions: its number columns align right by position (no per-cell class) */
+.rank-table td:nth-child(1), .rank-table td:nth-child(n+4):nth-child(-n+7) { text-align: right; }
 .table-note { font-size: 0.78rem; color: var(--st-muted); margin: 6px 0 0; }
 .stats.is-live .has-server-table .server-table[data-js-hidden] { display: none; }
 .server-table caption { caption-side: top; text-align: left; font-size: 0.82rem; color: var(--st-muted); padding: 4px 0; }

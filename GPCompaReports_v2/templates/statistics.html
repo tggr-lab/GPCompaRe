@@ -171,7 +171,7 @@
               <thead><tr><th>Rank</th><th>Generic number</th><th>Segment</th><th class="num">Receptors</th><th class="num">% of receptors</th><th class="num">Mean |ΔRRCS|</th><th class="num">CFR score</th><th>Motif</th></tr></thead>
               <tbody>
               {% for row in cfr_table -%}
-<tr><td class="num">{{ row.cfr_score_rank }}</td><td><strong>{{ row.generic_number }}</strong></td><td>{{ row.segment }}</td><td class="num">{{ row.n_receptors }}</td><td class="num">{{ "%.1f"|format(row.pct_receptors) }}%</td><td class="num">{{ "%.2f"|format(row.mean_abs_delta) }}</td><td class="num">{{ "%.3f"|format(row.cfr_score) }}</td><td>{{ row.motif }}</td></tr>
+<tr><td>{{ row.cfr_score_rank }}</td><td><strong>{{ row.generic_number }}</strong></td><td>{{ row.segment }}</td><td>{{ row.n_receptors }}</td><td>{{ "%.1f"|format(row.pct_receptors) }}%</td><td>{{ "%.2f"|format(row.mean_abs_delta) }}</td><td>{{ "%.3f"|format(row.cfr_score) }}</td><td>{{ row.motif }}</td></tr>
               {% endfor %}
               </tbody>
             </table>
