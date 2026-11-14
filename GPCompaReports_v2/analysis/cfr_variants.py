@@ -60,11 +60,6 @@ cfr_variants.json
                  missense_groups {plp, vus, blb, conflicting, other}, plp_db}
         conservation {median, n}   observation; n = receptor residues with a score
         links {search_q "6.48x48", search_url "search/?q=6.48x48", detail "data/stats/cfr_variants/6.48x48.json"}
-    groups         the same fields pooled over position sets, for a comparison row: top50;
-                   rank51_368 (rest of the 368 recurrent positions); outside_368 (generic-numbered
-                   residues outside the 368); other_generic (rank51_368 + outside_368, the comparison
-                   group the paper names "other generic-numbered positions", here on site data).
-                   Each adds {key, label, positions (distinct generic numbers)}.
     totals_check   {alleles_in_packs, substitutions_in_packs}: every pack allele of the 283 receptors
 
 cfr_variants/<generic>.json   one per CFR position, fetched on click: the receptors carrying it
@@ -110,12 +105,6 @@ ORDER_SEQUENCE = ['N-term', 'TM1', 'ICL1', 'TM2', 'ECL1', 'TM3', 'ICL2', 'TM4', 
 CLINVAR_PLP = ('Pathogenic', 'Likely pathogenic', 'Pathogenic/Likely pathogenic')
 CLINVAR_BLB = ('Benign', 'Likely benign', 'Benign/Likely benign')
 CLINVAR_GROUPS = ('plp', 'vus', 'blb', 'conflicting', 'other')
-
-GROUPS = (('top50', 'Top 50 positions by CFR score'),
-          ('rank51_368', 'Positions ranked 51 to 368 by CFR score'),
-          ('outside_368', 'Generic-numbered positions outside the 368 recurrent positions'),
-          ('other_generic', 'Other generic-numbered positions (ranked 51 to 368, or outside the 368 recurrent '
-                            'positions)'))
 
 DETAIL_FIELDS = ['receptor', 'residue', 'aa', 'alleles', 'substitutions', 'am_benign', 'am_ambiguous',
                  'am_pathogenic', 'am_unscored', 'allele_count', 'af_max', 'clinvar_missense', 'clinvar_plp_db', 'conservation',
@@ -343,7 +332,6 @@ def build_cfr_variants(gids, pack_folder=None, search2_dir=None, ranks=None):
     with_clinvar = search2_dir is not None
 
     per_pos = {g: _acc() for g in top_order}
-    per_group = {k: _acc() for k, _ in GROUPS}
     receptors, detail_rows = [], {g: [] for g in top_order}
     cov, totals, missing = Counter(), Counter(), []
     for gid in sorted(gids):
@@ -372,14 +360,6 @@ def build_cfr_variants(gids, pack_folder=None, search2_dir=None, ranks=None):
         receptors.append([gid, gene, meta.get('uniprotName') or gid, report_href(gid)])
         for pos, r in sorted(residue_rows(pack, cv).items()):
             g = r['generic']
-            if g in top:
-                keys = ('top50',)
-            elif g in ranks:
-                keys = ('rank51_368', 'other_generic')
-            else:
-                keys = ('outside_368', 'other_generic')
-            for k in keys:
-                _add(per_group[k], gid, r)
             if g not in top:
                 continue
             _add(per_pos[g], gid, r)
@@ -402,11 +382,6 @@ def build_cfr_variants(gids, pack_folder=None, search2_dir=None, ranks=None):
         p.update(_finish(per_pos[g], with_clinvar))
         p['links'] = {'search_q': g, 'search_url': search_href(g), 'detail': detail_href(g)}
         positions.append(p)
-    groups = []
-    for key, label in GROUPS:
-        item = {'key': key, 'label': label, 'positions': len(per_group[key]['generics'])}
-        item.update(_finish(per_group[key], with_clinvar))
-        groups.append(item)
     summary = {
         'schema': SCHEMA,
         'label': _label(sources),
@@ -418,7 +393,6 @@ def build_cfr_variants(gids, pack_folder=None, search2_dir=None, ranks=None):
                      'clinvar_all_classes': with_clinvar},
         'receptors': {'fields': ['gid', 'gene', 'name', 'report_url'], 'rows': receptors},
         'positions': positions,
-        'groups': groups,
         'totals_check': dict(totals),
     }
     details = {g: {'schema': SCHEMA, 'generic': g, 'cfr_rank': ranks[g],
@@ -510,7 +484,7 @@ def _dump(path, obj):
 
 
 SUMMARY_CSV_HEAD = [
-    'cfr_rank', 'generic_number', 'segment', 'positions', 'receptors_numbered', 'receptors_with_alleles',
+    'cfr_rank', 'generic_number', 'segment', 'receptors_numbered', 'receptors_with_alleles',
     'alleles', 'substitutions', 'allele_count', 'af_median', 'am_benign', 'am_ambiguous', 'am_pathogenic',
     'am_unscored', 'am_pathogenic_pct_decisive', 'clinvar_records', 'clinvar_missense', 'clinvar_missense_plp',
     'clinvar_missense_vus', 'clinvar_missense_blb', 'clinvar_missense_conflicting', 'clinvar_missense_other',
@@ -519,16 +493,15 @@ SUMMARY_CSV_HEAD = [
 
 def _summary_csv_rows(summary):
     rows = []
-    for p in summary['positions'] + summary['groups']:
+    for p in summary['positions']:
         cv, am = p['clinvar'], p['am_substitutions']
         grp = cv['missense_groups'] or {}
-        rows.append([p.get('cfr_rank', ''), p.get('generic', p.get('label')), p.get('segment', ''),
-                     p.get('positions', 1), p['receptors_numbered'], p['receptors_with_alleles'], p['alleles'],
+        rows.append([p['cfr_rank'], p['generic'], p['segment'], p['receptors_numbered'], p['receptors_with_alleles'], p['alleles'],
                      p['substitutions'], p['allele_count'], p['af_median'], am['benign'], am['ambiguous'],
                      am['pathogenic'], am['unscored'], p['pathogenic_pct_decisive'], cv['records'], cv['missense'],
                      grp.get('plp'), grp.get('vus'), grp.get('blb'), grp.get('conflicting'), grp.get('other'),
                      cv['plp_db'], p['conservation']['median'], p['conservation']['n'],
-                     (p.get('links') or {}).get('search_url', '')])
+                     p['links']['search_url']])
     return rows
 
 

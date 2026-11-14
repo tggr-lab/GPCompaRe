@@ -154,19 +154,13 @@ def test_counts_equal_the_packs(built, packs):
     assert s['totals_check']['alleles_in_packs'] == sum(len(p.get('variants') or []) for p in packs.values())
 
 
-def test_groups_partition_the_generic_numbered_residues(built, packs):
+def test_no_pooled_group_rows(built):
+    # the pooled comparison (top 50 vs other positions, ClinVar counts by group) is not published
     s = built['summary']
-    g = {x['key']: x for x in s['groups']}
-    top = g['top50']
-    for k in ('alleles', 'substitutions', 'allele_count', 'residues'):
-        assert top[k] == sum(p[k] for p in s['positions'])
-        assert g['other_generic'][k] == g['rank51_368'][k] + g['outside_368'][k]
-    gn = {g: {r[0] for r in p['residues'] if r[3]} for g, p in packs.items()}
-    numbered = sum(1 for g, p in packs.items() for v in p.get('variants') or [] if v[0] in gn[g])
-    assert top['alleles'] + g['other_generic']['alleles'] == numbered
-    assert (top['positions'], g['rank51_368']['positions']) == (50, 318)
-    for x in s['groups']:
-        assert sum(x['am_substitutions'].values()) == x['substitutions']
+    assert 'groups' not in s
+    rows = list(csv.reader((built['out'] / 'data/stats/cfr_variants.csv').read_text().splitlines()))
+    assert [r[1] for r in rows[1:]] == [p['generic'] for p in s['positions']]
+    assert all(r[0] for r in rows[1:])
 
 
 def test_receptor_files_add_up_to_the_summary(built):
@@ -188,7 +182,7 @@ def test_receptor_files_add_up_to_the_summary(built):
     assert all(r[3] == 'reports/%s.html' % r[0] for r in s['receptors']['rows'])
     lines = (out / 'cfr_variants.csv').read_text().splitlines()
     # plain tables: the header first, every column named, pathogenicity columns marked as AlphaMissense calls
-    assert lines[0].startswith('cfr_rank,') and len(lines) == 1 + 50 + 4
+    assert lines[0].startswith('cfr_rank,') and len(lines) == 1 + 50
     head = lines[0].split(',')
     assert all(head) and len(head) == len(next(csv.reader([lines[1]])))
     assert {h for h in head if 'pathogenic' in h or 'benign' in h} == {
