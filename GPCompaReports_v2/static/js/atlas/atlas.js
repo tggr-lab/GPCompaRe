@@ -2238,9 +2238,9 @@
     if (view === 'tree' && !st.layouts.tree) view = 'similarity';
     var j = h.pos ? A.parseGn(st.data, h.pos) : -1;
     st.lensPin = j;
-    $('atlas-pos-input').value = j >= 0 ? st.data.positions[j].gn : '';
     if (COLORS.indexOf(h.color) >= 0) st.color = h.color;
     if ((st.color === 'cons' || st.color === 'am') && st.lensPin < 0) st.lensPin = st.data.gnIndex['3.50x50'] || 0;
+    $('atlas-pos-input').value = st.lensPin >= 0 ? st.data.positions[st.lensPin].gn : '';
     var rec = h.receptor || h.r;
     var ri = rec && st.data.byGid[rec] ? st.data.byGid[rec].index : -1;
     if (intro || view !== st.view) setView(view, { intro: intro, camera: true });
