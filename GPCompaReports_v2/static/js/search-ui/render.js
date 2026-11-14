@@ -188,8 +188,11 @@ export function readAsText(answer, query) {
   const asm = answer.assembly ? ` on ${answer.assembly}` : '';
   switch (i.kind) {
     case 'receptor': {
-      const t = i.receptorId ? `the ${({ uniprot: 'UniProt accession', entry: 'UniProt entry name', ensg: 'Ensembl gene ID', hgnc: 'HGNC ID', geneid: 'NCBI Gene ID' })[i.receptorId.type] ?? 'identifier'} ${i.receptorId.value}` : `the name “${i.receptorTerm ?? query}”`;
-      if (rs.length > 1) return `${rs.length} receptors whose names start with “${i.receptorTerm ?? query}”`;
+      const rid = i.receptorId;
+      const acc = rid?.type === 'accession' ? `${rid.value}${rid.version ? `.${rid.version}` : ''}` : null;
+      const t = acc ? `the ${/^(?:NP|XP)_|^ENSP/.test(acc) ? 'protein' : 'transcript'} ${acc}`
+        : rid ? `the ${({ uniprot: 'UniProt accession', entry: 'UniProt entry name', ensg: 'Ensembl gene ID', hgnc: 'HGNC ID', geneid: 'NCBI Gene ID' })[rid.type] ?? 'identifier'} ${rid.value}` : `the name “${i.receptorTerm ?? query}”`;
+      if (rs.length > 1) return acc ? `${rs.length} receptors, from ${t}` : `${rs.length} receptors whose names start with “${i.receptorTerm ?? query}”`;
       if (rec && first.clinvarList) return `every ClinVar record of ${rec}`;
       if (rec && first.cfrList !== undefined) return `the variants of ${rec} at, connected to or near its CFR positions`;
       return rec ? `the receptor ${rec}, from ${t}` : `a receptor, from ${t}`;

@@ -112,7 +112,7 @@ export function parseGenomic(s) {
     const c = nc ? { chrom: nc.chrom } : chromOf(m[1]);
     if (!c) return { malformed: `unknown chromosome "${m[1]}"` };
     const b = /^(\d+)(?:_(\d+))?(.*)$/.exec(m[2]);
-    if (!b) return { malformed: `cannot read the position in "${t}"` };
+    if (!b) return { malformed: 'cannot read the position' };
     const pos = Number(b[1]);
     const extra = nc ? { accession: nc.accession, version: nc.version } : {};
     if (b[2]) extra.end = Number(b[2]);
@@ -120,11 +120,11 @@ export function parseGenomic(s) {
     if (b[3] === '') g = snv(c, pos, null, null, 'hgvs_g', extra);
     else {
       const op = readOp(b[3]);
-      if (!op) return { malformed: `cannot read the change "${b[3]}" in "${t}"` };
+      if (!op) return { malformed: `cannot read the change "${b[3]}"` };
       g = snv(c, pos, op.op === 'sub' || op.op === 'delins' ? op.ref : null, op.op === 'sub' ? op.alt : null, 'hgvs_g', { ...extra, op: op.op });
       if (op.inserted) g.inserted = op.inserted;
     }
-    if (!g) return { malformed: `cannot read "${t}"` };
+    if (!g) return { malformed: 'cannot read it as a genomic variant' };
     g.assemblyHint = nc ? nc.assembly : null;
     return withIds(g);
   }
@@ -136,7 +136,7 @@ export function parseGenomic(s) {
     if (!nc) return { malformed: `unknown sequence "${m[1]}"` };
     const del = /^\d+$/.test(m[3]) ? null : m[3].toUpperCase();
     const g = snv({ chrom: nc.chrom }, Number(m[2]) + 1, del || null, m[4] || null, 'spdi', { accession: nc.accession, version: nc.version });
-    if (!g) return { malformed: `cannot read "${t}"` };
+    if (!g) return { malformed: 'cannot read it as a genomic variant' };
     if (/^\d+$/.test(m[3])) g.deletedLength = Number(m[3]);
     g.assemblyHint = nc.assembly;
     const out = withIds(g);
@@ -185,7 +185,7 @@ export function parseGenomic(s) {
 
   // looks like a genomic id but is incomplete ('5-76833084-G', 'chr5:')
   if (/^chr(?:[0-9]{1,2}|X|Y|MT?)?\b/i.test(t) || /^NC_\d/i.test(t) || /^(?:[0-9]{1,2}|X|Y)[-:_]\d{3,}/i.test(t)) {
-    return { malformed: `cannot read "${t}" as a genomic position or variant` };
+    return { malformed: 'cannot read it as a genomic position or variant' };
   }
   return null;
 }

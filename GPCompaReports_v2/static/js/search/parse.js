@@ -16,7 +16,7 @@
  *   flags?: string[],              // e.g. 'possibly-receptor-name', 'rna-coordinate', 'clinvar-list' ("ADRB2 ClinVar"),
  *                                  //   'cfr-list' ("ADRB2 CFR variants", "CFR variants in MC4R", "ADRB2 near CFR")
  *   receptorTerm?: string,         // the receptor as typed ('PAR2', 'β2AR', 'P55085', 'HGNC:3538')
- *   receptorId?: {type: 'uniprot'|'entry'|'ensg'|'hgnc'|'geneid', value, isoform?},
+ *   receptorId?: {type: 'uniprot'|'entry'|'ensg'|'hgnc'|'geneid'|'accession', value, isoform?, version?},
  *   receptorMatches?: [{gid, exact}],   // only when ctx.matchReceptor was given
  *   change?: {ref, pos, alt, kind, hgvsPrefix, end?, inserted?, newAa?, fsTer?, ext?, accession?, version?, label?},
  *   cdna?: {coord, transcript?, version?, pos, offset?, region, end?, op, ref, alt, inserted?, repeat?, legacy?},
@@ -115,7 +115,7 @@ function readAccessioned(t) {
     if (m[3]) r.receptorTerm = m[3];
     return r;
   }
-  if (/^(?:NM|NR|XM|XR|NG|NP|XP)_|^ENS[TP]\d|^LRG_/i.test(t)) return { malformed: `cannot read "${t}"; expected an accession, ':' and a change` };
+  if (/^(?:NM|NR|XM|XR|NG|NP|XP)_|^ENS[TP]\d|^LRG_/i.test(t)) return { malformed: 'write the change after the accession, like NM_000024.6:c.391C>T' };
   return null;
 }
 
@@ -206,8 +206,8 @@ function readNotation(t, tail) {
       if (q) return { readings: [proteinReading(q, 0.95)], malformed: null, exclusive: false };
     }
   }
-  if (!malformed && /^(?:[pcgnmr]\.|chr|vcv|rcv|hgnc|ens[gtp]|n[mrpc]_)/i.test(t)) malformed = `cannot read "${t}"`;
-  if (!malformed && /^\d+(?:\.\d+){2,}$/.test(t)) malformed = `cannot read "${t}" as a number`;
+  if (!malformed && /^(?:[pcgnmr]\.|chr|vcv|rcv|hgnc|ens[gtp]|n[mrpc]_)/i.test(t)) malformed = 'this notation is not one the search reads';
+  if (!malformed && /^\d+(?:\.\d+){2,}$/.test(t)) malformed = 'it is not a number or a position the search reads';
   return { readings: out, malformed, exclusive: false };
 }
 
@@ -428,7 +428,7 @@ function parseText(query, ctx) {
   // 1. a receptor identifier on its own (UniProt accession, entry name, ENSG, HGNC:, GeneID)
   const rid = parseReceptorId(text);
   if (rid) {
-    out.push(receptorInterp(text, rid, matchOf(text, matcher), 0.97, `Read as the receptor identifier ${rid.value} (${rid.type}).`));
+    out.push(receptorInterp(text, rid, matchOf(text, matcher), 0.97, rid.type === 'accession' ? `Read as the accession ${text}.` : `Read as the receptor identifier ${rid.value} (${rid.type}).`));
     const p = parseProtein(text);
     if (p && !p.malformed) out.push(finish({ ...proteinReading(p, 1), flags: ['possibly-identifier'] }, 0.25));
     return rank(out);
@@ -503,7 +503,7 @@ function parseText(query, ctx) {
   // 6. nothing read as a variant: the whole query as a receptor name, or unrecognised
   if (!out.length) {
     if (malformedTail) {
-      out.push(finish(reading('unrecognised', 1, `Could not read "${malformedTail.tail}": ${malformedTail.why}.`), 0.6, { term: malformedTail.head, rid: malformedTail.rid, match: matchOf(malformedTail.head, matcher) }));
+      out.push(finish(reading('unrecognised', 1, `Could not read "${text}": ${malformedTail.why}.`), 0.6, { term: malformedTail.head, rid: malformedTail.rid, match: matchOf(malformedTail.head, matcher) }));
       out.push(receptorInterp(malformedTail.head, malformedTail.rid, matchOf(malformedTail.head, matcher), 0.4, `Only the receptor "${malformedTail.head}" could be read.`));
     } else if (nameLike && !alone.malformed) {
       const match = matchOf(text, matcher);

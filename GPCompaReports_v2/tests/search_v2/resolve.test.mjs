@@ -827,3 +827,33 @@ describe('one rsID with several protein changes (review 2026-11-13, search-01)',
     assert.equal(ans.results[0].alleles.length, 2);
   });
 });
+
+describe('could-not-read messages and bare accessions (review 2026-11-13, search-new-03)', { skip }, () => {
+  test('a bare transcript or protein accession opens its receptor', async () => {
+    for (const q of ['NM_000024.6', 'NM_000024', 'ENST00000305988', 'ENST00000305988.6', 'NP_000015.2', 'ENSP00000305372']) {
+      const ans = await search(q, loader);
+      assert.equal(ans.expect, 'receptor', `${q}: ${ans.message}`);
+      assert.deepEqual(ans.results.map((r) => r.gid), ['adrb2_human'], q);
+    }
+    const none = await search('NM_999999.1', loader);
+    assert.equal(none.expect, 'not_in_resource');
+    assert.match(none.message, /^NM_999999\.1 is not a transcript or protein of the 283 receptors/);
+  });
+  test('messages echo the whole query once, in plain words', async () => {
+    const cases = [
+      ['ADRB2 c.391', /^Could not read "ADRB2 c\.391": the change after the position is missing/],
+      ['ADRB2 R131C R131H', /^Could not read "ADRB2 R131C R131H": search one change at a time, like "ADRB2 R131C"\.$/],
+      ['FOO R131C', /^Could not read "FOO R131C": no receptor is called "FOO"\.$/],
+    ];
+    for (const [q, re] of cases) {
+      const ans = await search(q, loader);
+      assert.equal(ans.expect, 'unrecognised', q);
+      assert.match(ans.message, re);
+    }
+    for (const q of ['c.391', 'c.477G>', 'p.Met159Xyz', 'chr5:', '1.2.3', 'ADRB2 p.Arg131_Ser']) {
+      const m = (await search(q, loader)).message;
+      assert.equal(m.split(`"${q}"`).length - 1, 1, `${q} echoed once: ${m}`);
+      assert.doesNotMatch(m, /\(missing\)|expected an accession/, m);
+    }
+  });
+});

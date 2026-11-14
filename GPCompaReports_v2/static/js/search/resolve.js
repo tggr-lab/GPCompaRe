@@ -171,6 +171,8 @@ export async function resolve(interps, loader, opts = {}) {
   const list = Array.isArray(interps) && interps.length ? interps : [{ kind: 'unrecognised', why: 'Nothing was typed.' }];
   const top = list[0];
   if (top.kind === 'unrecognised') return answer('unrecognised', [], { message: top.why, interpretation: top });
+  // a transcript or protein accession names its receptor through the accession index
+  if (!ctx.meta.txindex && list.some((i) => i.receptorId?.type === 'accession')) ctx.meta.txindex = (await ctx.S.txindex()) ?? {};
 
   // a bare integer: candidate identifiers, never a residue
   if (isBareInteger(list)) return resolveBareInteger(ctx, list);
@@ -256,6 +258,10 @@ function receptorsOf(meta, i) {
   const term = i.receptorTerm;
   if (!term && !i.receptorId) return { gids: [], status: 'absent', term: null };
   const rid = i.receptorId;
+  if (rid?.type === 'accession') {
+    const gids = [...new Set((meta.txindex?.[rid.value] ?? []).map((x) => meta.receptors[x]?.gid).filter(Boolean))];
+    return gids.length ? { gids, status: 'exact', term, rid } : { gids: [], status: 'none', term, rid };
+  }
   if (rid) {
     const field = { uniprot: 'uniprot', entry: 'entry', ensg: 'ensg', hgnc: 'hgnc', geneid: 'geneId' }[rid.type];
     const hit = meta.receptors.filter((r) => String(r[field] ?? '').toUpperCase() === String(rid.value).toUpperCase());
@@ -271,12 +277,23 @@ function receptorsOf(meta, i) {
 
 /** Why a receptor term names nothing: excluded receptor, a member number we do not know, or another gene. */
 function unknownReceptor(meta, term, i) {
+  const t = String(term).trim();
+  if (i?.receptorId?.type === 'accession') {
+    return answer('not_in_resource', [], { interpretation: i, message: `${t} is not a transcript or protein of the 283 receptors in the GPCompaRe database.` });
+  }
+  // "ADRB2 R131C R131H": a receptor and two changes; the search reads one change at a time
+  const words = t.split(/\s+/);
+  if (words.length >= 2 && meta.matchReceptor?.(words[0])?.some((x) => x.exact)) {
+    const rest = words.slice(1).join(' ');
+    if (VARIANT_KINDS.has(parse(rest)?.[0]?.kind)) {
+      return answer('unrecognised', [], { interpretation: i, message: `Could not read "${i?.query ?? t}": search one change at a time, like "${t}".` });
+    }
+  }
   const k = aliasKey(term);
   const ex = meta.excluded.find((e) => e.keys.includes(k));
   if (ex) {
     return answer('not_in_resource', [], { interpretation: i, message: `${ex.symbol} is a Class A receptor that is not in the GPCompaRe database (${ex.reason}); it holds 283 human Class A GPCRs.` });
   }
-  const t = String(term).trim();
   const fam = /^([A-Za-z]+)(\d+)$/.exec(t);
   if (fam) {
     const stem = fam[1].toUpperCase();
@@ -288,7 +305,8 @@ function unknownReceptor(meta, term, i) {
   if (/^[A-Z][A-Z0-9-]{1,14}$/.test(t) && /\d/.test(t)) {
     return answer('not_in_resource', [], { interpretation: i, message: `"${t}" is not one of the 283 human Class A GPCRs in the GPCompaRe database.` });
   }
-  return answer('unrecognised', [], { interpretation: i, message: `Could not read "${t}" as a receptor, variant or position.` });
+  const whole = i?.query && i.query !== t ? i.query : null;
+  return answer('unrecognised', [], { interpretation: i, message: whole ? `Could not read "${whole}": no receptor is called "${t}".` : `Could not read "${t}" as a receptor, variant or position.` });
 }
 
 function receptorResult(meta, gid, extraNotes = []) {
