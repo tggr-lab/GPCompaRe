@@ -44,7 +44,7 @@
     },
     "gnomad_batch": {
       "label": "gnomAD v4.1.0",
-      "long_label": "gnomAD v4.1 (dataset gnomad_r4, accessed 2 February 2026)",
+      "long_label": "gnomAD v4.1.0 (dataset gnomad_r4, accessed 2 February 2026)",
       "release": "v4.1.0",
       "dataset": "gnomad_r4",
       "fetched": "2026-02-02/2026-02-03",

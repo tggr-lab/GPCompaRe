@@ -56,7 +56,12 @@ def test_freeze_reversal_tracks_the_registry_label():
     deltas = json.loads((BASE / 'tests' / 'fixtures' / 'freeze_approved_deltas.json').read_text(encoding='utf-8'))
     rules = {r['id']: r for r in deltas['reversal']}
     assert rules['gnomad-release-2026-11-05']['after'] == dv.long_label('gnomad')
-    assert rules['gnomad-release-2026-11-05']['before'] == dv.long_label('gnomad_batch') == rules['gnomad-release']['after']
+    assert rules['gnomad-release-2026-11-05']['before'] == rules['gnomad-release']['after']
+    # the 2026-10-19 report label named the February query as "v4.1"; the registry now names its patch release
+    # (v4.1.0, as every other mention of that query does), which is not a report label, so no rule follows it
+    assert rules['gnomad-release']['after'] == 'gnomAD v4.1 (dataset gnomad_r4, accessed 2 February 2026)'
+    assert dv.long_label('gnomad_batch') == 'gnomAD v4.1.0 (dataset gnomad_r4, accessed 2 February 2026)'
+    assert dv.label('gnomad_batch') == 'gnomAD v4.1.0' and dv.source('gnomad_batch')['release'] == 'v4.1.0'
     ids = [r['id'] for r in deltas['reversal']]
     assert ids.index('gnomad-release-2026-11-05') < ids.index('gnomad-release')
 
