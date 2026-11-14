@@ -94,7 +94,6 @@
 .sel-chip button { border: 0; background: none; color: var(--st-muted); font-size: 1rem; line-height: 1; cursor: pointer; padding: 0 6px; border-radius: 50%; }
 .sel-chip button:hover { color: var(--st-fg); }
 .sel-summary { margin: 8px 0 0; color: var(--st-muted); }
-.sel-hint { margin: 4px 0 0; color: var(--st-faint); font-size: 0.76rem; }
 .stats-head .sel-slot .sel { margin: 4px 0 0; padding: 14px 16px; background: var(--st-surface); border: 1px solid var(--st-line); border-radius: 12px; }
 
 /* ---- sections ---- */
@@ -110,8 +109,7 @@
   .finding { font-size: 1.3rem; grid-column: 1 / -1; }
   .stats-head h1 { font-size: 2rem; }
 }
-.sec-note { background: var(--st-surface); border: 1px solid var(--st-line); border-left: 3px solid var(--st-brand); border-radius: 8px; padding: 10px 14px; font-size: 0.92rem; margin: 0 0 16px; max-width: 80ch; }
-.defs { list-style: none; padding: 0; margin: 0 0 12px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.defs { list-style: none; padding: 0; margin: 8px 0 12px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .defs li { background: var(--st-surface); border: 1px solid var(--st-line); border-radius: 10px; padding: 10px 14px; font-size: 0.86rem; color: var(--st-muted); }
 .defs b { color: var(--st-fg); }
 @media (max-width: 900px) { .defs { grid-template-columns: minmax(0, 1fr); } }
@@ -122,6 +120,7 @@
 @media (max-width: 720px) { .scard { padding: 14px 12px 10px; border-radius: 12px; } }
 .scard-title { font-family: inherit; font-size: 1.05rem; font-weight: 600; margin: 0 0 2px; color: var(--st-fg); }
 .scard-guide { font-size: 0.86rem; color: var(--st-muted); margin: 0 0 12px; max-width: 92ch; }
+.scard-guide:empty { display: none; }
 .t-up { color: var(--st-active); font-weight: 600; } .t-down { color: var(--st-inactive); font-weight: 600; }
 .scard-body { position: relative; min-width: 0; }
 .schart { position: relative; min-width: 0; min-height: 40px; }
@@ -294,9 +293,6 @@ details.more[open] > summary { margin-bottom: 8px; }
 .am-comp-bar i { display: block; height: 100%; }
 .am-comp-text { grid-column: 2; color: var(--st-muted); font-size: 0.8rem; }
 @media (max-width: 720px) { .am-comp-row { grid-template-columns: minmax(0, 1fr); } .am-comp-text { grid-column: 1; } }
-.footnote { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 12px 0 0; font-size: 0.78rem; color: var(--st-muted); }
-.footnote dt { font-weight: 600; color: var(--st-fg); }
-.footnote dd { margin: 0; }
 
 /* explorer */
 .explorer-table { max-height: 520px; overflow: auto; }

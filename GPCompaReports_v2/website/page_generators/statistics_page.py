@@ -12,7 +12,7 @@ Writes output/statistics.html plus the files behind its cards (data/stats/):
     gpcompare_statistics_tables.zip     every CSV in data/stats, one download
 
 The page itself is server-rendered where a reader needs it without JavaScript: the header, the glance facts
-(with small inline drawings), the section findings, the definition strip, the threshold strips of card 1a as
+(with small inline drawings), the section headlines, the threshold strips of card 1a as
 an SVG, the top-ranked table, the pair table and Methods. Every number comes from a payload or a tracked
 table; release labels come from data_versions.json. No card names a source layer on the page.
 """
@@ -318,14 +318,44 @@ def keep_abs_together(html):
 
 
 def _card(cid, title, guide, scope_n, scope_rest, pill, csv_name=None, method='', export=None, table=True):
-    return {'id': cid, 'title': title, 'guide': guide, 'scope_n': scope_n, 'scope_rest': scope_rest,
-            'pill': pill, 'csv': ('%s/%s' % (STATS_DIR, csv_name)) if csv_name else None, 'method': method,
+    """One card. On the page the card shows its title, a short line (SHORT_GUIDES; none when the chart reads on its
+    own) and a receptor-count chip; the full reading (the longer guide), the method, the full scope and the data
+    source sit in the collapsed Method panel, whose scope line the copied caption repeats."""
+    short = SHORT_GUIDES.get(cid, guide)
+    about = '' if short == guide or not guide else '<p>%s</p>' % guide
+    source = '<p data-src>Scope: <span data-src-scope>%s</span>.%s</p>' % (
+        _esc(scope_n.rstrip('.')), (' <span data-src-data>%s</span>' % _esc(scope_rest)) if scope_rest else '')
+    return {'id': cid, 'title': title, 'guide': short, 'scope_n': scope_n.split(', ')[0].rstrip('.') + '.',
+            'scope_rest': scope_rest,
+            'pill': pill, 'csv': ('%s/%s' % (STATS_DIR, csv_name)) if csv_name else None,
+            'method': about + method + source,
             'export': export or cid.replace('chart-', ''), 'table': table}
 
 
+#: The one visible line of a card, only where the chart cannot be read without it ('' = none). Cards not listed
+#: keep their guide (the histogram, inside its own disclosure).
+SHORT_GUIDES = {
+    'chart-thresholds': 'One dot per receptor.',
+    'chart-helix-pairs': ('Lines join helices with above-threshold contacts. Width: receptors that agree in '
+                          'direction.'),
+    'chart-segments': '',
+    'chart-scaffold': '%s snake layout. Point at a residue for its position and count.',
+    'chart-ranking': '',
+    'chart-recovery': 'Known activation positions found walking down the ranking. Dashed: chance.',
+    'chart-partners': '',
+    'chart-cfr-atlas': 'Rows: receptors, grouped by ligand type. Columns: the top-ranked positions.',
+    'chart-pathogenicity': 'Missense substitutions seen in gnomAD at strongly changing contacts.',
+    'chart-am-bands': 'Positions grouped by how many receptors have a CFR there.',
+    'chart-position-conservation': 'Mean conservation per position. The ranking does not use it.',
+    'chart-am-quintiles': 'Residues grouped by conservation, Q1 lowest.',
+    'chart-cfr-variants': 'All gnomAD missense substitutions at each top-ranked position: a separate allele set.',
+    'chart-receptors': '',
+}
+
+
 def _cards(ctx):
-    """Every card of the page, in page order: title, guide, scope (bold denominator + rest), response pill,
-    CSV, method note."""
+    """Every card of the page, in page order: title, guide (the full reading; it moves into the Method panel where
+    SHORT_GUIDES gives the card a shorter line), scope (count + rest), response pill, CSV, method note."""
     c = ctx
     n = c['total']
     cards = [
@@ -353,8 +383,16 @@ def _cards(ctx):
               'sum of signed ΔRRCS over those pairs. The line color is the mean of that net over all receptors '
               'in the group (receptors without the pair count as 0); the share in agreement is over receptors '
               'with the pair. Magnitude mode: mean |ΔRRCS| per contact over all contacts between two of TM1 to TM7, '
-              'above-threshold or not, for pairs with at least %d contacts (H8 pairs not included), on the %s.</p>'
-              % (c['min_contacts'], c['maps'])),
+              'above-threshold or not, for pairs with at least %d contacts (H8 pairs not included), on the %s; disc '
+              'size and the width of the H8 bar: mean |ΔRRCS| per contact endpoint on the helix, unsigned.</p>'
+              '<p>Grid: each cell shows the mean net ΔRRCS per receptor of the pair (bold) and the share of receptors '
+              'with the pair whose net has that sign; where cells are small, point at a cell for its values. Blank '
+              'cells: fewer than %d receptors carry the pair, and within-helix pairs. Loops and termini appear '
+              'under All segments.</p><p>A receptor group with fewer than %d receptors shows how many of its '
+              'receptors carry each pair, without a class direction; each receptor\'s own bundle is on its report. '
+              'The bars beside the bundle count the receptors carrying each pair, split by the sign of their net '
+              'change. Click a line, a row or a cell for the receptors behind it.</p>'
+              % (c['min_contacts'], c['maps'], c['min_receptors'], c['min_receptors'])),
         _card('chart-segments', 'Change per contact, by segment', c['notes'].get('segments', ''),
               '%d receptors.' % n, '%s.' % c['maps'], 'Follows position and helix pair', 'segments.csv',
               '<p>Every contact endpoint counts once for the segment of its residue. Unsigned: how much contacts '
@@ -377,7 +415,9 @@ def _cards(ctx):
               '<p>CFR score: the mean of normalized recurrence (receptors in which the position is a CFR) and '
               'normalized mean |ΔRRCS| of those contacts. %d generic positions are CFRs in three or more '
               'receptors; the %d with the highest score are marked across the site. Recurrence is counted on the '
-              'full GPCRdb residue maps.</p>' % (c['recurrent'], CFR_TOP_N)),
+              'full GPCRdb residue maps.</p><p>%s</p><p>%s</p>'
+              % (c['recurrent'], CFR_TOP_N, _esc(c['notes'].get('ranking_outlier', '')),
+                 _esc(c['notes'].get('motifs_in_top', '')))),
         _card('chart-recovery', 'Known activation positions down the ranking', c['recovery_guide'],
               '%d positions, %d known.' % (c['universe'], c['known']),
               'Structure positions numbered in at least half of the %d receptors.' % n, 'Follows position',
@@ -393,6 +433,9 @@ def _cards(ctx):
               'One row per receptor, one column per top-ranked position. Rows grouped by ligand type and sorted by '
               'how many of the %d are CFRs.' % CFR_TOP_N,
               '%d receptors, %d positions.' % (n, CFR_TOP_N), '', 'Follows receptor and position', 'cfr_atlas.csv',
+              '<p>Direction view: red, the net change of the CFR contacts is stronger in the active model; blue, '
+              'stronger in the inactive model. On a phone the grid folds into one row per ligand type (the share '
+              'with a CFR at each position); the full receptor-by-position grid is in the Table view.</p>'
               '<p>A position is numbered in a receptor when the GPCRdb residue map assigns it that generic number. '
               'It is a CFR there when at least one contact pair touching that residue is at or above the '
               'receptor\'s threshold. Direction: the sign of the summed ΔRRCS of those contacts.</p>'),
@@ -431,7 +474,9 @@ def _cards(ctx):
               'similarity of the signed fingerprint over the %d top-ranked positions, a browsing aid.</p>'
               % CFR_TOP_N, table=False),   # its own Table tab is the table view; the CSV stays in Export
     ]
-    return {cd['id']: cd for cd in cards}
+    out = {cd['id']: cd for cd in cards}
+    out['chart-scaffold']['guide'] = out['chart-scaffold']['guide'] % c['scaffold_gene']
+    return out
 
 
 # ---------------------------------------------------------------------------- the page
@@ -554,8 +599,13 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
         'am_method': '',
     }
     groups = cv.get('groups') or []
+    ctx['am_method'] = (
+        '<p>AlphaMissense predicted classes. Predictions, not clinical evidence. Conservation is an observation '
+        'across species.</p><p>Allele set: %s missense alleles, %s query of residues in contacts with |ΔRRCS| of '
+        '3.0 or more, %d receptors. Residues compared: the %d top-ranked positions against all other positions '
+        'with a GPCRdb generic number.</p>' % (_esc(batch_gnomad), _esc(month), am_receptors, CFR_TOP_N))
     if groups:
-        ctx['am_method'] = ''.join(
+        ctx['am_method'] += ''.join(
             '<p>%s: %s scored substitutions, %s decisive (%s predicted pathogenic, %s predicted benign) and %s '
             'ambiguous.</p>' % (_esc(g['label']), format(g['scored'], ','), format(g['decisive'], ','),
                                 format(g['predicted_pathogenic'], ','), format(g['predicted_benign'], ','),

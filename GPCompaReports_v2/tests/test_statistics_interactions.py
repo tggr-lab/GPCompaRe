@@ -58,15 +58,15 @@ def test_the_recovery_curve_is_read_by_structure_position(open_page):
     page = open_page('/statistics.html?sel=pos:6.48x48')
     _settle(page, ['chart-recovery'])
     assert '6.48x48: rank 2 of 262, a known position' in page.locator('#chart-recovery').inner_text()
-    assert 'Structure positions numbered in at least half' in page.locator('#card-chart-recovery [data-scope]').inner_text()
+    assert 'Structure positions numbered in at least half' in page.locator('#card-chart-recovery [data-src]').evaluate('e => e.textContent')
 
 
 @needs_build
 def test_the_segment_chart_names_the_segment_it_leaves_out(open_page):
     page = open_page()
     _settle(page, ['chart-segments'])
-    guide = page.locator('#card-chart-segments [data-guide]').inner_text()
-    assert 'ICL4 (35 endpoints) is not drawn: fewer than 50.' in guide
+    method = page.locator('#chart-segments-method').evaluate('e => e.textContent')   # the Method panel says it
+    assert 'ICL4 (35 endpoints) is not drawn: fewer than 50.' in method
     labels = page.evaluate("Array.from(document.querySelectorAll('#chart-segments text')).map(t => t.textContent)")
     assert 'ICL4' not in labels and 'ECL2' in labels
 
@@ -134,11 +134,14 @@ def test_a_variants_row_opens_no_profile_later(open_page):
     page.locator('#chart-cfr-variants g[data-gn="3.49x49"] [data-hit]').first.click()
     page.wait_for_timeout(800)
     assert 'sel=pos:3.49x49' in page.url and page.locator('.pos-profile').count() == 0
-    y = page.evaluate('scrollY')
+    top = "document.getElementById('card-chart-cfr-variants').getBoundingClientRect().top"
+    y = page.evaluate(top)
     page.evaluate("StatsSel.set({ rec: 'ccr5_human' })")
     page.wait_for_timeout(1200)
     assert page.locator('.pos-profile').count() == 0
-    assert abs(page.evaluate('scrollY') - y) < 50   # the threshold strips above grow a label row, nothing more
+    # the card stays where the reader sees it: cards above may grow (the helix card adds the receptor's own bundle
+    # when it has loaded), and scroll anchoring keeps the view in place
+    assert abs(page.evaluate(top) - y) < 50
 
 
 @needs_build

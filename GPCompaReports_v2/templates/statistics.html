@@ -4,7 +4,9 @@
 
 {#
   The Statistics page: four questions from top to bottom, then the reader's receptor.
-    header   h1, lede, census line, four glance facts, the selection box
+    header   h1, a one-line lede, census line, four glance facts, the selection box
+    Visual first: a section shows its question and a short numeric headline; a card its title and at most one
+    short line. Definitions, readings, sources and caveats sit in each card's Method panel and in Methods.
     1 sec-scale   what changes between the inactive and the active model
     2 sec-a       where in the helix bundle
     3 sec-c       which positions, and how consistently
@@ -42,12 +44,7 @@
   <div class="stats-main">
     <header class="stats-head">
       <h1>Database statistics</h1>
-      <p class="stats-lede">What changes when a Class A GPCR activates, where in the receptor it happens, how
-        consistently it recurs across the class, and what that means for variants. Each of {{ total_gpcrs }} human
-        receptors is compared between its active and inactive predicted models from GPCRdb. Contact change is ΔRRCS,
-        the change in the residue-residue contact score (RRCS) of a residue pair between the two models. Positions
-        are compared by GPCRdb generic number: a recurrent position carries a core functional residue (CFR) in three
-        or more receptors, and the {{ cfr_top_n }} top-ranked positions have the highest CFR score.</p>
+      <p class="stats-lede">How contacts change between the inactive and active models of {{ total_gpcrs }} human Class A GPCRs.</p>
       <p class="stats-census">{% for v, l, h in census %}<a href="{{ h }}"><b>{{ v }}</b> {{ l }}</a>{% if not loop.last %}<span class="sep" aria-hidden="true"> · </span>{% endif %}{% endfor %}</p>
 
       <ul class="glance" aria-label="At a glance">
@@ -62,7 +59,7 @@
 
       <div class="sel-slot" data-sel-slot="main">
         <div class="sel" id="stats-sel" hidden>
-          <label class="sel-label" for="sel-input">Follow a receptor, or pick a position or helix pair</label>
+          <label class="sel-label" for="sel-input">Follow a receptor, position or helix pair</label>
           <div class="sel-field">
             <input id="sel-input" type="text" autocomplete="off" spellcheck="false" role="combobox"
                    aria-expanded="false" aria-controls="sel-list" aria-autocomplete="list"
@@ -70,8 +67,7 @@
             <ul class="sel-list" id="sel-list" role="listbox" hidden></ul>
           </div>
           <div class="sel-chips" data-sel-chips></div>
-          <p class="sel-summary" data-sel-summary aria-live="polite">Nothing selected. Every chart shows all {{ total_gpcrs }} receptors.</p>
-          <p class="sel-hint">Matches gene symbol, UniProt entry name, protein name and family; exact generic numbers; helix pairs such as TM3-TM6.</p>
+          <p class="sel-summary" data-sel-summary aria-live="polite">Nothing selected.</p>
         </div>
       </div>
 
@@ -141,16 +137,13 @@
         <h2 id="sec-c-q">Which positions change in most receptors?</h2>
         <p class="finding">{{ findings['sec-c'] | safe }}</p></div>
 
-      <ul class="defs" aria-label="Definitions">
-        <li><b>CFR (Core Functional Residue)</b>: a residue in at least one above-threshold contact of its receptor.</li>
-        <li><b>{{ cfr_total_positions }} recurrent positions</b>: generic positions that are CFRs in three or more receptors.</li>
-        <li><b>{{ cfr_top_n }} top-ranked positions</b>: the highest CFR score, which weighs how many receptors have a CFR at the position together with the mean |ΔRRCS| of those contacts.</li>
-      </ul>
       {% call fine_print(summary="What are Core Functional Residues (CFRs)?", cls="cfr-def") %}
-        <p>A Core Functional Residue (CFR) is a residue in at least one above-threshold contact of its receptor.
-          {{ cfr_total_positions }} generic positions are CFRs in three or more receptors; the {{ cfr_top_n }} with the
-          highest CFR score are highlighted across the site. Cross-receptor recurrence analyses are limited to residues
-          assigned GPCRdb generic numbers.</p>
+        <ul class="defs" aria-label="Definitions">
+          <li><b>CFR (Core Functional Residue)</b>: a residue in at least one above-threshold contact of its receptor.</li>
+          <li><b>{{ cfr_total_positions }} recurrent positions</b>: generic positions that are CFRs in three or more receptors.</li>
+          <li><b>{{ cfr_top_n }} top-ranked positions</b>: the highest CFR score, which weighs how many receptors have a CFR at the position together with the mean |ΔRRCS| of those contacts. They are highlighted across the site.</li>
+        </ul>
+        <p>Cross-receptor recurrence analyses are limited to residues assigned GPCRdb generic numbers.</p>
       {% endcall %}
 
       {% call story_card(cards['chart-scaffold'], static_prefix) %}
@@ -178,10 +171,8 @@
           </div>
           <aside class="chart-card-side" hidden></aside>
         </div>
-        <p class="small-note">{{ notes.get('ranking_outlier', '') }}</p>
         <h4 class="sub-head">All {{ cfr_total_positions }} recurrent positions, in CFR score order</h4>
         <div class="schart-sub" data-strip368></div>
-        <p class="small-note">{{ notes.get('motifs_in_top', '') }}</p>
       {% endcall %}
 
       <div class="grid2">
@@ -230,7 +221,6 @@
       <div class="sec-head"><span class="sec-num" aria-hidden="true">4</span>
         <h2 id="sec-d-q">What does it mean for variants?</h2>
         <p class="finding">{{ findings['sec-d'] | safe }}</p></div>
-      <p class="sec-note">AlphaMissense predicted classes. Predictions, not clinical evidence. Conservation is an observation across species.</p>
 
       {% call story_card(cards['chart-pathogenicity'], static_prefix) %}
         {{ chart_body('chart-pathogenicity') }}
@@ -246,10 +236,6 @@
           {% endfor %}
           </div>
         </details>
-        <dl class="footnote">
-          <dt>Allele set</dt><dd>{{ am_allele_set }} missense alleles, {{ am_month }} query of residues in contacts with |ΔRRCS| of 3.0 or more, {{ am_receptors }} receptors.</dd>
-          <dt>Residues compared</dt><dd>the {{ cfr_top_n }} top-ranked positions against all other positions with a GPCRdb generic number.</dd>
-        </dl>
       {% endcall %}
 
       <div class="grid2">
@@ -297,9 +283,7 @@
         <div class="teaser-grid">
           <div>
             <h3 class="scard-title" id="atlas-teaser-title">Receptors with similar change patterns</h3>
-            <p class="scard-guide">Each dot is a receptor, placed so that receptors whose contacts change alike sit
-              together. A browsing aid, not a classification. The GPCRome Atlas is an experimental preview that shows
-              every receptor's helix bundle, a sequence tree and other groupings.</p>
+            <p class="scard-guide" title="A browsing aid, not a classification. The GPCRome Atlas shows every receptor's helix bundle, a sequence tree and other groupings.">Receptors whose contacts change alike sit together. An experimental preview.</p>
             <a class="btn btn-primary btn-sm" href="{{ static_prefix }}atlas.html">Open the GPCRome Atlas (Preview)</a>
           </div>
           <div class="teaser-map" id="atlas-teaser-map" data-chart="atlas-teaser"><p class="nojs-note">Interactive chart (needs JavaScript).</p></div>
@@ -331,7 +315,7 @@
         </p>
       </div>
 
-      <div class="fine-print methods-notes">
+      <details class="fine-print methods-notes"><summary>Definitions, scope and the activation reference</summary>
         <p><strong>Where these cross-receptor numbers come from.</strong>
           Cross-receptor recurrence analyses are limited to residues assigned GPCRdb generic numbers. Residues without
           one, largely in loops and terminal regions, cannot be aligned to a shared position across receptors and take
@@ -340,19 +324,19 @@
           {{ exclusions.names }}, which lack a complete active and inactive model pair and are not in the
           database.{% endif %}</p>
         <dl class="defs-list">
+          <dt>Models</dt><dd>Each of the {{ total_gpcrs }} receptors is compared between its active and inactive predicted models from GPCRdb.</dd>
           <dt>ΔRRCS</dt><dd>RRCS (residue-residue contact score) of a residue contact pair in the active model minus that in the inactive model. Positive: stronger in the active model.</dd>
           <dt>Threshold</dt><dd>Per receptor: the mean plus one standard deviation of its |ΔRRCS| values. A pair at or above it is above threshold.</dd>
           <dt>CFR</dt><dd>Core Functional Residue: a residue in at least one above-threshold contact of its receptor.</dd>
-          <dt>Decisive call</dt><dd>An AlphaMissense prediction that is predicted pathogenic or predicted benign (not ambiguous).</dd>
+          <dt>Positions</dt><dd>Compared across receptors by GPCRdb generic number. A recurrent position is a CFR in three or more receptors ({{ cfr_total_positions }} positions); the {{ cfr_top_n }} top-ranked positions have the highest CFR score.</dd>
+          <dt>Decisive call</dt><dd>An AlphaMissense prediction that is predicted pathogenic or predicted benign (not ambiguous). AlphaMissense classes are predictions, not clinical evidence; conservation is an observation across species.</dd>
         </dl>
         <p><strong>Known activation positions</strong> ({{ reference|length }}): {{ reference_source }}.
           {% for r in reference %}<span class="mono">{{ r.gn }}</span>{% if not loop.last %}, {% endif %}{% endfor %}.</p>
-      </div>
-
-      {% call fine_print(summary="Data releases behind this page", cls="stats-provenance") %}
+      </details>
+      {% call fine_print(summary="Data releases and sources", cls="stats-provenance") %}
         {{ data_versions_table(data_versions) }}
-      {% endcall %}
-      <p class="stats-refs fine-print fine-print--page">
+      <p class="stats-refs fine-print">
         Data &amp; methods:
         <a href="https://github.com/huhlim/alphafold-multistate" target="_blank" rel="noopener">AlphaFold multistate</a> ·
         <a href="https://doi.org/10.1038/s41586-021-03819-2" target="_blank" rel="noopener">AlphaFold2</a> (some states) ·
@@ -364,6 +348,7 @@
         <a href="https://www.uniprot.org/" target="_blank" rel="noopener">UniProt</a> ·
         <a href="https://www.ebi.ac.uk/ProtVar/" target="_blank" rel="noopener">ProtVar</a> (VarSite conservation)
       </p>
+      {% endcall %}
     </section>
   </div>
 </div>

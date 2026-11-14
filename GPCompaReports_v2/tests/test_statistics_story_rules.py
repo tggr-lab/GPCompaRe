@@ -136,7 +136,7 @@ def test_csv_headers_have_no_em_dash():
 def test_nothing_is_selected_and_nothing_par_specific_by_default():
     html = STATS.read_text(encoding='utf-8')
     assert 'sel=' not in html
-    assert 'Nothing selected. Every chart shows all 283 receptors.' in html
+    assert '>Nothing selected.</p>' in html
     for bad in ('par1_human', 'par2_human', 'par3_human', 'par4_human', 'f2r_human', 'Met159', 'M159I'):
         assert bad not in html, bad
     assert 'class="pos-profile' not in html

@@ -481,7 +481,7 @@
     }
     function render(st) {
       clear(chips);
-      if (!st.rec && !st.pos && !st.pair) { summary.textContent = 'Nothing selected. Every chart shows all ' + NREC + ' receptors.'; return; }
+      if (!st.rec && !st.pos && !st.pair) { summary.textContent = 'Nothing selected.'; return; }
       data().then(function (arr) {
         clear(chips);
         var R = receptorIndex(arr[0]), P = positionIndex(arr[1]), hp = arr[2], lines = [];
@@ -730,11 +730,17 @@
     h('p', 'table-note', box, list.length > MAX ? 'The first ' + fmt(MAX) + ' of ' + fmt(list.length) + ' rows; the CSV has all of them.' : fmt(list.length) + ' rows.');
   }
 
+  // the full scope and source: the Method panel's scope line (the footer chip shows only the count)
+  function scopeLine(card) {
+    var src = card.el.querySelector('[data-src]');
+    if (src) return src.textContent.replace(/\s+/g, ' ').trim().replace(/^Scope:\s*/, '');
+    return card.scope ? card.scope.textContent.replace(/\s+/g, ' ').trim() : '';
+  }
   function captionText(card) {
     var guide = card.guide ? card.guide.textContent.replace(/\s+/g, ' ').trim() : '';
-    var scope = card.scope ? card.scope.textContent.replace(/\s+/g, ' ').trim().replace(/\.$/, '') : '';
+    var scope = scopeLine(card).replace(/\.$/, '');
     var title = card.el.querySelector('.scard-title').textContent.trim();
-    return title + '. ' + guide + ' Scope: ' + scope + '. GPCompaRe database, ' + location.origin + location.pathname + '#card-' + card.id;
+    return title + '. ' + (guide ? guide + ' ' : '') + 'Scope: ' + scope + '. GPCompaRe database, ' + location.origin + location.pathname + '#card-' + card.id;
   }
   function copyCaption(card, btn) {
     var text = captionText(card);
@@ -840,7 +846,7 @@
     });
     if (card.def.vector) { var v = card.def.vector(card, w, L); if (v) parts = [{ s: v, vb: v.getAttribute('viewBox').split(/\s+/).map(Number) }]; }
     var title = card.el.querySelector('.scard-title').textContent.trim();
-    var scope = card.scope ? card.scope.textContent.replace(/\s+/g, ' ').trim() : '';
+    var scope = scopeLine(card);
     var W = Math.max(w, maxOf(parts.map(function (p) { return p.vb[2]; })) || w);
     // title and scope wrap to the export width, so nothing runs past its right edge; the legend comes along
     var tl = wrapLines(title, W, 15, 600), sl = wrapLines(scope + ' GPCompaRe database, statistics.html#card-' + card.id, W, 11);
@@ -870,7 +876,7 @@
   function frameCanvas(card, chart, cw, ch) {
     var L = lightTokens(), W = cw;
     var title = card.el.querySelector('.scard-title').textContent.trim();
-    var scope = card.scope ? card.scope.textContent.replace(/\s+/g, ' ').trim() : '';
+    var scope = scopeLine(card);
     var tl = wrapLines(title, W, 15, 600), sl = wrapLines(scope + ' GPCompaRe database, statistics.html#card-' + card.id, W, 11);
     var lay = legendLayout(legendItems(card), W);
     var top = 20 + (tl.length - 1) * 19 + 14, legY = top + ch + 10, H = legY + (lay.h ? lay.h + 8 : 0) + sl.length * 15 + 9;
@@ -989,10 +995,6 @@
     draw: function (card, node, w, o) {
       var sc = card.D.class_scale, cen = sc.census, R = rows(sc.receptor_columns, sc.receptors);
       var phone = isPhone() || w < 800, r = phone ? 2.4 : 3, gap = 40, pw = phone ? w : (w - gap) / 2;
-      if (!o.exporting && card.guide) {
-        if (!card.guideBase) card.guideBase = card.guide.innerHTML;
-        card.guide.innerHTML = phone ? card.guideBase.replace('Left:', 'Top:').replace('Right:', 'Bottom:') : card.guideBase;
-      }
       var rec = StatsSel.get().rec;
       var P = [
         { title: 'Threshold |ΔRRCS|', key: 'threshold', half: true, note: 'range ' + f2(cen.threshold_min) + ' to ' + f2(cen.threshold_max) + ', median ' + f2(cen.threshold_median), f: function (v) { return 'threshold |ΔRRCS| ' + f2(v); } },
@@ -1153,15 +1155,13 @@
         segBox.hidden = st.mode !== 'grid';
         var scope = (st.group === 'all' || st.mode === 'magnitude') ? NREC + ' receptors.' : G.n + ' receptors (' + G.label.replace(/ receptors$/, '').toLowerCase() + ').';
         card.scope.querySelector('b').textContent = scope;
-        var rest = card.scope.querySelector('[data-scope-rest]');
-        if (!rest) {   // the text after the bold count, kept in one span so the mode can change it
-          rest = h('span', ''); rest.setAttribute('data-scope-rest', '');
-          var b0 = card.scope.querySelector('b'), nx = b0.nextSibling;
-          while (nx) { var nn = nx.nextSibling; rest.appendChild(nx); nx = nn; }
-          card.scope.appendChild(rest);
-          card.scopeRest = rest.textContent;
+        // the Method panel's scope line (and so the copied caption) follows the group, its source the mode
+        var sScope = card.el.querySelector('[data-src-scope]'), sData = card.el.querySelector('[data-src-data]');
+        if (sScope) sScope.textContent = scope.replace(/\.$/, '');
+        if (sData) {
+          if (card.srcData === undefined) card.srcData = sData.textContent;
+          sData.textContent = st.mode === 'magnitude' && CFG.labels.scope_maps ? CFG.labels.scope_maps : card.srcData;
         }
-        rest.textContent = st.mode === 'magnitude' && CFG.labels.scope_maps ? ' ' + CFG.labels.scope_maps : card.scopeRest;
         card.gridShows = st.mode === 'grid' ? gridShows(gridCell(hp, st, w)) : null;
         card.guide.innerHTML = nwAbs(guideFor(hp, G, st, small, card.gridShows));
         ledger(card, hp, G, small);
@@ -1173,17 +1173,12 @@
     onSelect: function (card) { draw(card, {}); }
   });
   function guideFor(hp, G, st, small, shows) {
-    if (st.mode === 'magnitude') return 'Line width and label: mean |ΔRRCS| per contact over all contacts between two of TM1 to TM7, for pairs with at least ' + hp.magnitude_rule.min_contacts + ' contacts; H8 pairs are not included. Disc size, and the width of the H8 bar: mean |ΔRRCS| per contact endpoint on the helix. Unsigned, over all ' + NREC + ' receptors.';
-    if (st.mode === 'grid' && small) return esc(G.label.replace(/ receptors$/, '')) + ': ' + G.n + ' receptors, fewer than the ' + hp.min_receptors + ' a class direction needs. Each cell: how many of them carry the pair, without a direction. Within-helix pairs are not shown.';
-    if (st.mode === 'grid') {
-      var mean = 'the mean net ΔRRCS of the pair over all receptors in the group (receptors without the pair count as 0)', share = 'the share of receptors with the pair whose net has that sign';
-      var cells = shows === 'both' ? 'Each cell: ' + mean + ', and ' + share + '.'
-        : shows === 'mean' ? 'Each cell: ' + mean + '. Point at a cell for ' + share + '.'
-        : 'Cell color: ' + mean + '. Point at a cell for its value and ' + share + '.';
-      return cells + ' Within-helix pairs are not shown.' + (st.segments === 'helices' ? ' Loops and termini appear under All segments.' : '');
-    }
-    if (small) return esc(G.label.replace(/ receptors$/, '')) + ': ' + G.n + ' receptors, fewer than the ' + hp.min_receptors + ' a class direction needs. Lines join the helices these receptors pair, width by how many carry the pair. Each receptor’s own bundle is on its report.';
-    return 'Each line joins two helices that share above-threshold contacts. Color: mean net ΔRRCS per receptor, <span class="t-up">red</span> stronger in the active model, <span class="t-down">blue</span> stronger in the inactive model. Width: receptors that change in the majority direction. Pairs carried by fewer than ' + hp.min_receptors + ' receptors are not drawn.';
+    var few = esc(G.label.replace(/ receptors$/, '')) + ': ' + G.n + ' receptors, fewer than the ' + hp.min_receptors + ' a class direction needs';
+    if (st.mode === 'magnitude') return 'Line width and disc size: mean |ΔRRCS| per contact, unsigned.';
+    if (st.mode === 'grid' && small) return few + '. Cells count receptors carrying the pair, without a direction.';
+    if (st.mode === 'grid') return shows === 'both' ? 'Each cell: mean net ΔRRCS per receptor (bold) and the share agreeing in sign.' : 'Point at a cell for its mean net ΔRRCS and the share agreeing in sign.';
+    if (small) return few + '. Width: receptors carrying the pair, without a direction.';
+    return 'Lines join helices with above-threshold contacts. Width: receptors that agree in direction.';
   }
   function legendFor(card, st, small) {
     var L = card.legend; if (!L) return;
@@ -1349,17 +1344,10 @@
       return;
     }
     if (st.mode === 'grid' && !small) {
-      h('h4', '', L, 'How to read the grid');
-      var share = 'the share of receptors carrying the pair whose net has that sign', shows = card.gridShows || 'both';
-      h('p', 'small-note', L, (shows === 'both' ? 'Each cell: mean net ΔRRCS per receptor (bold) and ' + share + '.'
-        : shows === 'mean' ? 'Each cell: mean net ΔRRCS per receptor. Point at a cell for ' + share + '.'
-        : 'Cells show color only: point at a cell for its mean net ΔRRCS per receptor and ' + share + '.') +
-        ' Blank: fewer than ' + hp.min_receptors + ' receptors carry the pair, and within-helix pairs (not shown). Click a cell for the receptors behind it.');
-      return;
+      return;   // the grid reads from its guide line; the rest is in the card's Method panel
     }
     if (st.mode === 'grid') {
       h('h4', '', L, 'Receptors carrying each helix pair');
-      h('p', 'small-note', L, 'With fewer than ' + hp.min_receptors + ' receptors the grid shows how many of them carry each pair, not a class direction. Click a cell for the receptors behind it, or follow one of them:');
       smallChips(L, hp, G);
       return;
     }
@@ -1389,12 +1377,7 @@
       }
       r.addEventListener('click', function () { StatsSel.set({ pair: [c.i, c.j] }); openCell(card, c.i, c.j, true); });
     });
-    if (small) {
-      h('p', 'small-note', L, 'With fewer than ' + hp.min_receptors + ' receptors the page shows which helix pairs they carry, not a class direction. Follow one of them:');
-      smallChips(L, hp, G);
-    } else {
-      h('p', 'small-note', L, 'Bars: receptors carrying the pair, split by the sign of their net change (blue weaker, red stronger in the active model). Click a line or a row for the receptors behind it.');
-    }
+    if (small) smallChips(L, hp, G);
   }
   function smallChips(L, hp, G) {
     var list = h('div', 'group-chips-list chips', L);
@@ -2080,7 +2063,7 @@
       if (!o.exporting) ctl.hidden = phone;
       if (phone) {
         if (!o.exporting) {
-          card.guide.textContent = 'Share of receptors in each ligand type with a CFR at each top-ranked position (columns in rank order). The full receptor-by-position grid is in the Table view.';
+          card.guide.textContent = 'Share of each ligand type with a CFR at each top-ranked position.';
           card.legend.innerHTML = '<span>0%</span><span class="ramp" style="background:linear-gradient(90deg,' + C.b0 + ',' + C.b5 + ')"></span><span>100% of the group</span>';
         }
         var G = A.groups.ligand, lw = 112, cw = Math.max(4, Math.floor((w - lw) / M.cols.length)), rh = 22, H = 70 + G.length * rh + 22;
@@ -2107,9 +2090,7 @@
         return;
       }
       if (!o.exporting) {
-        card.guide.textContent = view === 'direction'
-          ? 'One row per receptor, one column per top-ranked position. Rows grouped by ligand type and sorted by how many of the ' + TOP + ' are CFRs. Red: the net change of the CFR contacts is stronger in the active model; blue: stronger in the inactive model.'
-          : 'One row per receptor, one column per top-ranked position. Rows grouped by ligand type and sorted by how many of the ' + TOP + ' are CFRs.';
+        card.guide.textContent = 'Rows: receptors, grouped by ligand type. Columns: the top-ranked positions.';
         var sw = function (bg, lab, cls) { return '<span><span class="sw' + (cls ? ' ' + cls : '') + '"' + (bg ? ' style="background:' + bg + '"' : '') + '></span>' + lab + '</span>'; };
         card.legend.innerHTML = (view === 'cfr' ? sw(C.b4, 'CFR at the position') : sw(C.active, 'CFR, net stronger in the active model') + sw(C.inactive, 'CFR, net stronger in the inactive model'))
           + sw(C.cellEmpty, 'numbered, no above-threshold contact') + sw('', 'no residue numbered here', 'hollow');
@@ -2499,7 +2480,7 @@
       C = saved;
       // title and scope line, as in the other exports (Plotly title with a subtitle), wrapped to the width
       var tw = card.lastW - 24, title = card.el.querySelector('.scard-title').textContent.trim();
-      var scope = (card.scope ? card.scope.textContent.replace(/\s+/g, ' ').trim() : '') + ' GPCompaRe database, statistics.html#card-' + card.id;
+      var scope = scopeLine(card) + ' GPCompaRe database, statistics.html#card-' + card.id;
       var tl = wrapLines(title, tw, 15, 600), sl = wrapLines(scope, tw, 11), extra = 19 * tl.length + 15 * sl.length + 18;
       fig.layout.title = { text: tl.join('<br>'), x: 0.01, xanchor: 'left', y: 0.99, yanchor: 'top', yref: 'container', font: { size: 15, color: L.fg },
         subtitle: { text: sl.join('<br>'), font: { size: 11, color: L.muted } } };
@@ -2596,7 +2577,6 @@
     return { data: data, layout: layout, rc: rc };
   }
   // lower-case a label inside a sentence, keeping abbreviations and symbols: 'Sum |ΔRRCS|' -> 'sum |ΔRRCS|'
-  function lowerFirst(t) { return /^[A-Z][a-z]/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t; }
   function scatter(card, node, w, o) {
     var st = card.state, rj = card.D.receptors, need = [];
     var sel = StatsSel.get();
@@ -2605,7 +2585,7 @@
     return Promise.all(need).then(function () {
       var fig = scatterFigure(card, w, false);
       var lab = {}; rj.metrics.forEach(function (m) { lab[m.key] = m.label; });
-      card.view.textContent = fig.rc ? fig.rc.text || fig.rc.note : 'Scatter: x ' + lowerFirst(lab[st.x]) + ', y ' + lowerFirst(lab[st.y]) + '; color by ligand group; dot size by top-ranked positions with a CFR.';
+      card.view.textContent = fig.rc ? fig.rc.text || fig.rc.note : '';   // the axes and the legend name what the dots show
       var back = card.el.querySelector('[data-back]');
       var recolored = !!(fig.rc && fig.rc.by);   // a note alone (a position outside the top 50) changes no color
       if (recolored) {
@@ -2643,7 +2623,7 @@
   function families(card, node, w, o) {
     var rj = card.D.receptors, RI = receptorIndex(rj), rec = StatsSel.get().rec, by = {};
     if (!o.exporting) { if (card.plotDiv && window.Plotly && window.Plotly.purge) window.Plotly.purge(card.plotDiv); clear(node); node.classList.remove('plotly-host'); card.plotDiv = null; card.plotted = false; }
-    if (!o.exporting) card.view.textContent = 'Families: total |ΔRRCS| per receptor, one row per ligand type, ordered by median. Tick: median.';
+    if (!o.exporting) card.view.textContent = 'Total |ΔRRCS| per receptor by ligand type. Tick: median.';
     RI.list.forEach(function (r) { (by[r.ligand] = by[r.ligand] || []).push(r); });
     var L = Object.keys(by).map(function (k) { return { k: k, rs: by[k], m: median(by[k].map(function (r) { return r.sum_abs; })) }; }).sort(function (a, b) { return b.m - a.m; });
     var phone = isPhone() || w < 560, lab = phone ? 0 : 210, rh = phone ? 42 : 28, s = svgIn(node, w, L.length * rh + 30, 'Total |ΔRRCS| per receptor by ligand type');
@@ -2675,7 +2655,7 @@
   ];
   function explorerTable(card) {
     var rj = card.D.receptors, RI = receptorIndex(rj), st = card.state, box = card.explorer, rec = StatsSel.get().rec, lc = ligandColors(rj);
-    card.view.textContent = 'Table: all ' + RI.list.length + ' receptors; sort by any column.';
+    card.view.textContent = 'All ' + RI.list.length + ' receptors; sort by any column.';
     var list = RI.list.slice();
     if (st.sort) list.sort(function (a, b) { var va = a[st.sort], vb = b[st.sort]; if (typeof va === 'string') return st.dir * va.localeCompare(vb); return st.dir * ((va === null ? -Infinity : va) - (vb === null ? -Infinity : vb)); });
     clear(box);
