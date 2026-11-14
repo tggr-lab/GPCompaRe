@@ -45,7 +45,9 @@
       <p class="stats-lede">What changes when a Class A GPCR activates, where in the receptor it happens, how
         consistently it recurs across the class, and what that means for variants. Each of {{ total_gpcrs }} human
         receptors is compared between its active and inactive predicted models from GPCRdb. Contact change is ΔRRCS,
-        the change in the residue-residue contact score (RRCS) of a residue pair between the two models.</p>
+        the change in the residue-residue contact score (RRCS) of a residue pair between the two models. Positions
+        are compared by GPCRdb generic number: a recurrent position carries a core functional residue (CFR) in three
+        or more receptors, and the {{ cfr_top_n }} top-ranked positions have the highest CFR score.</p>
       <p class="stats-census">{% for v, l, h in census %}<a href="{{ h }}"><b>{{ v }}</b> {{ l }}</a>{% if not loop.last %}<span class="sep" aria-hidden="true"> · </span>{% endif %}{% endfor %}</p>
 
       <ul class="glance" aria-label="At a glance">
@@ -341,7 +343,7 @@
           <dt>ΔRRCS</dt><dd>RRCS (residue-residue contact score) of a residue contact pair in the active model minus that in the inactive model. Positive: stronger in the active model.</dd>
           <dt>Threshold</dt><dd>Per receptor: the mean plus one standard deviation of its |ΔRRCS| values. A pair at or above it is above threshold.</dd>
           <dt>CFR</dt><dd>Core Functional Residue: a residue in at least one above-threshold contact of its receptor.</dd>
-          <dt>Decisive call</dt><dd>An AlphaMissense prediction of predicted pathogenic or predicted benign (not ambiguous).</dd>
+          <dt>Decisive call</dt><dd>An AlphaMissense prediction that is predicted pathogenic or predicted benign (not ambiguous).</dd>
         </dl>
         <p><strong>Known activation positions</strong> ({{ reference|length }}): {{ reference_source }}.
           {% for r in reference %}<span class="mono">{{ r.gn }}</span>{% if not loop.last %}, {% endif %}{% endfor %}.</p>

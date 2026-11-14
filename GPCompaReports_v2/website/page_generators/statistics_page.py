@@ -217,7 +217,10 @@ def _coverage_rows(store, payloads, am, cfr_var, src, total, rrcs_label, numberi
     if not pos or not am:
         return [], []
     gids = list(store.gpcr_ids)
-    labels = class_results.receptor_labels(gids)
+    rj = payloads.get('receptors') or {}
+    sym_col = (rj.get('columns') or []).index('symbol') if 'symbol' in (rj.get('columns') or []) else None
+    symbols = {r[0]: r[sym_col] for r in rj.get('rows') or []} if sym_col is not None else {}
+    labels = class_results.receptor_labels(gids, symbols)
     dropped = [g for g in gids if g in set(am.get('dropped') or [])]
     vdir = Path(getattr(store, 'variant_dir', ''))
     no_records = [g for g in gids if not (vdir / ('%s_variants.csv' % g)).is_file()]
@@ -298,6 +301,21 @@ def scaffold_csv(pos):
 
 # ---------------------------------------------------------------------------- cards
 
+_ABS = '|ΔRRCS|'
+_TAG_OR_TEXT = re.compile(r'(<script\b.*?</script>|<style\b.*?</style>|<title\b.*?</title>|<svg\b.*?</svg>|<[^>]+>)',
+                          re.S | re.I)
+
+
+def keep_abs_together(html):
+    """|ΔRRCS| never breaks after its first bar: in the text of the page (not in tags, attributes, scripts, SVG or
+    the title) it sits in a no-wrap span."""
+    parts = _TAG_OR_TEXT.split(html)
+    for i in range(0, len(parts), 2):   # even indexes are text between tags
+        if _ABS in parts[i]:
+            parts[i] = parts[i].replace(_ABS, '<span class="nw">%s</span>' % _ABS)
+    return ''.join(parts)
+
+
 def _card(cid, title, guide, scope_n, scope_rest, pill, csv_name=None, method='', export=None, table=True):
     return {'id': cid, 'title': title, 'guide': guide, 'scope_n': scope_n, 'scope_rest': scope_rest,
             'pill': pill, 'csv': ('%s/%s' % (STATS_DIR, csv_name)) if csv_name else None, 'method': method,
@@ -361,7 +379,7 @@ def _cards(ctx):
               'full GPCRdb residue maps.</p>' % (c['recurrent'], CFR_TOP_N)),
         _card('chart-recovery', 'Known activation positions down the ranking', c['recovery_guide'],
               '%d positions, %d known.' % (c['universe'], c['known']),
-              'Recurrent positions numbered in at least half of the %d receptors.' % n, 'Follows position',
+              'Structure positions numbered in at least half of the %d receptors.' % n, 'Follows position',
               'activation_recovery.csv',
               '<p>%s</p><p>Known positions: %s.</p>' % (_esc(c['recovery_rule']), _esc(c['reference_source']))),
         _card('chart-partners', 'Positions recur in more receptors than their exact contacts do', c['partners_guide'],
@@ -483,6 +501,12 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
     numbering_short = 'GPCRdb numbering fetched %s' % numbering['fetched'] if numbering.get('fetched') else 'GPCRdb numbering'
     maps_src = src.get('gpcrdb_residue_maps') or {}
     maps_short = ('GPCRdb residue maps fetched %s' % maps_src['fetched']) if maps_src.get('fetched') else 'GPCRdb residue maps'
+    # every table on these maps numbers one receptor on its own entry: the scope lines say which
+    exc = re.match(r'(\S+) on its own GPCRdb entry, fetched (\S+)$', maps_src.get('exception') or '')
+    if exc:
+        maps_short += ' (%s: own entry, %s)' % exc.groups()
+    elif maps_src.get('exception'):
+        maps_short += ' (%s)' % maps_src['exception']
 
     ctx = {
         'total': total, 'rrcs': _short(rrcs_label), 'numbering': numbering_short, 'maps': maps_short,
@@ -495,9 +519,11 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
         'recovery_rule': rec.get('rule', ''), 'reference_source': pos.get('reference_source', ''),
         'recovery_guide': (
             'Reference: %d known activation positions (the common activation pathway of Zhou et al. 2019, plus '
-            'D2.50, DRY, PIF, CWxP, NPxxY, the sodium pocket and 6.30). The curve walks down the %d recurrent '
-            'positions numbered in at least half of the receptors, in CFR score order, and counts the known positions '
-            'among the first N. Dashed line: the count expected if the order ignored activation.'
+            'D2.50, DRY, PIF, CWxP, NPxxY, the sodium pocket and 6.30). The curve walks down the %d structure '
+            'positions (GPCRdb structure-based numbers such as 6x48) numbered in at least half of the receptors, in '
+            'CFR score order, and counts the known positions among the first N. A structure position takes the '
+            'highest CFR score of its generic numbers. Dashed line: the count expected if the order ignored '
+            'activation.'
             % (rec.get('known', 0), rec.get('universe', 0))),
         'n_pairs': (pos.get('pairs') or {}).get('n_distinct', 0),
         'partners_guide': ('Filled dot: receptors with a CFR at the position. Open dot: receptors in which it '
@@ -513,7 +539,8 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
         'cons_positions': cons.get('n_top', 0) + cons.get('n_other', 0),
         'conservation_label': conservation_label,
         'decisive_fifths': totals.get('decisive_fifths', 0),
-        'fifths_guide': ('Decisive calls split into five groups by the conservation of the residue, lowest first. '
+        'fifths_guide': ('Decisive calls split into five groups (Q1 to Q5) by the conservation of the residue, '
+                         'lowest first. '
                          'In each group: predicted pathogenic share at the top %d positions (solid) and at other '
                          'positions (light). %s' % (CFR_TOP_N, notes.get('am_fifths_guide_count', ''))),
         'variants_receptors': variants_receptors,
@@ -573,7 +600,7 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
     config = {
         'urls': {k: '%s/%s.json' % (STATS_DIR, k) for k in CLASS_PAYLOADS},
         'stats_dir': STATS_DIR, 'top_n': CFR_TOP_N, 'n_receptors': total,
-        'cards': {cid: {'title': cd['title'], 'export': cd['export'], 'csv': cd['csv']} for cid, cd in cards.items()},
+        'cards': {cid: {'export': cd['export'], 'csv': cd['csv']} for cid, cd in cards.items()},
         'csv_extra': {'helix_interfaces': '%s/helix_interfaces.csv' % STATS_DIR,
                       'pairs': '%s/pairs.csv' % STATS_DIR},
         'labels': {'site_gnomad': site_gnomad, 'variants_none_gids': [g for g, _ in variants_none],
@@ -645,6 +672,7 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
         config_json=json.dumps(config, separators=(',', ':'), ensure_ascii=False).replace('</', '<\\/'),
     )
 
+    html = keep_abs_together(html)
     out_path = output_dir / 'statistics.html'
     out_path.write_text(re.sub(r'\n[ \t]+', '\n', html), encoding='utf-8')
     print(f"  Generated: statistics.html ({n_tables} tables in {STATS_DIR}/)")

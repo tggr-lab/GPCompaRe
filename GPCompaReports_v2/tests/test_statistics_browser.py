@@ -468,7 +468,7 @@ def test_back_returns_the_selection_of_the_entry(open_page):
 def test_profile_opens_in_view_takes_focus_and_gives_it_back(open_page):
     page = open_page()
     _settle(page, ['chart-ranking'])
-    bar = page.locator('#card-chart-ranking [data-strip368] rect[data-gn="%s"]' % _rank_gn(300))
+    bar = page.locator('#card-chart-ranking [data-strip368] rect.hitcol[data-gn="%s"]' % _rank_gn(300))
     bar.scroll_into_view_if_needed()
     bar.click()
     prof = page.locator('.pos-profile')

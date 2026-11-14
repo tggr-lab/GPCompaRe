@@ -34,11 +34,6 @@
   var SEARCH = function (q) { return 'search/index.html?q=' + encodeURIComponent(q); };
   var HELIX = ['TM1', 'TM2', 'TM3', 'TM4', 'TM5', 'TM6', 'TM7', 'H8'];
   var MOTIF_ORDER = ['D2.50', 'DRY', 'PIF', 'CWxP', 'NPxxY'];
-  var LIGAND_DARK = {
-    'Peptide receptors': '#5EEAD4', 'Orphan receptors': '#FCD34D', 'Aminergic receptors': '#C4B5FD',
-    'Lipid receptors': '#F0ABFC', 'Protein receptors': '#4ADE80', 'Nucleotide receptors': '#BEF264',
-    'Sensory receptors': '#D4A373', 'Other': '#9CA3AF'
-  };
   var NF = new Intl.NumberFormat('en-US');
 
   // ------------------------------------------------------------------ tokens
@@ -78,6 +73,8 @@
     return (x > 0 ? '+' : x < 0 ? '−' : '') + s;
   }
   function pct(x, d) { return (100 * x).toFixed(d || 0) + '%'; }
+  // |ΔRRCS| never breaks after its first bar (HTML strings only)
+  function nwAbs(html) { return String(html).split('|ΔRRCS|').join('<span class="nw">|ΔRRCS|</span>'); }
   function esc(s) { return String(s === null || s === undefined ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function median(a) { var s = a.slice().sort(function (x, y) { return x - y; }), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
   function quant(a, q) { var s = a.slice().sort(function (x, y) { return x - y; }); return s[Math.floor(q * (s.length - 1))]; }
@@ -196,6 +193,8 @@
     IDX.rec = { list: list, by: by };
     return IDX.rec;
   }
+  // '6.46x46' -> '6x46', the GPCRdb structure-based number
+  function structOf(gn) { var m = /^(\d+)\.\d+x(\d+)$/.exec(gn || ''); return m ? m[1] + 'x' + m[2] : ''; }
   function positionIndex(cp) {
     if (IDX.pos) return IDX.pos;
     var rk = rows(cp.ranking_columns, cp.ranking), by = {};
@@ -203,13 +202,15 @@
     var partners = {}; rows(cp.partner_columns, cp.partners).forEach(function (r) { partners[r.gn] = r; });
     var cons = {}; rows(cp.conservation.columns, cp.conservation.rows).forEach(function (r) { cons[r.gn] = r; });
     var motif = {}; cp.motifs.forEach(function (m) { m.positions.forEach(function (g) { motif[g] = m.name; }); });
-    var rec = {}; rows(cp.recovery.columns, cp.recovery.rows).forEach(function (r) { rec[r.gn] = r; });
+    // the recovery curve runs over structure positions (6x48): key it by those, so every generic number of a
+    // structure position finds its row
+    var rec = {}; rows(cp.recovery.columns, cp.recovery.rows).forEach(function (r) { rec[r.struct] = r; });
     IDX.pos = { ranking: rk, by: by, partners: partners, cons: cons, motif: motif, recovery: rec };
     return IDX.pos;
   }
   function ligandColors(rj, tok) {
     var m = {};
-    rj.ligand_groups.forEach(function (g) { m[g.key] = (tok || C).dark ? (LIGAND_DARK[g.key] || g.color) : g.color; });
+    rj.ligand_groups.forEach(function (g) { m[g.key] = (tok || C).dark ? (g.color_dark || g.color) : g.color; });
     return m;
   }
 
@@ -303,12 +304,18 @@
       return a < b ? [a, b] : [b, a];
     }
     function get() { return { rec: state.rec, pos: state.pos, pair: state.pair ? state.pair.slice() : null }; }
+    // the ?sel value of a state, exactly as writeURL writes it
+    function str(st) {
+      st = st || state;
+      var parts = [];
+      if (st.rec) parts.push('rec:' + st.rec);
+      if (st.pos) parts.push('pos:' + st.pos);
+      if (st.pair) parts.push('pair:' + pairName(st.pair));
+      return parts.join(',');
+    }
     function writeURL() {
-      var params = new URLSearchParams(location.search), parts = [];
-      if (state.rec) parts.push('rec:' + state.rec);
-      if (state.pos) parts.push('pos:' + state.pos);
-      if (state.pair) parts.push('pair:' + pairName(state.pair));
-      if (parts.length) params.set('sel', parts.join(',')); else params.delete('sel');
+      var params = new URLSearchParams(location.search), q0 = str();
+      if (q0) params.set('sel', q0); else params.delete('sel');
       var q = params.toString().replace(/%3A/gi, ':').replace(/%2C/gi, ',');
       try { history.replaceState(history.state, '', location.pathname + (q ? '?' + q : '') + location.hash); } catch (e) { /* file URLs */ }
     }
@@ -325,7 +332,7 @@
     }
     function clear(kind) { var p = {}; p[kind] = null; set(p); }
     // ?sel= on load, validated against the payloads; unknown kinds or values are dropped silently
-    function fromURL() {
+    function fromURL(opts) {
       var raw = new URLSearchParams(location.search).get('sel');
       if (!raw) {
         if (state.rec || state.pos || state.pair) {
@@ -346,16 +353,22 @@
       else if (want.pair) { var p = parsePair(want.pair); if (p) jobs.push(Promise.resolve({ pair: p })); }
       return Promise.all(jobs).then(function (list) {
         var patch = {}; list.forEach(function (o) { for (var k in o) patch[k] = o[k]; });
-        state = { rec: patch.rec || null, pos: patch.pos || null, pair: patch.pair || null };
+        var next = { rec: patch.rec || null, pos: patch.pos || null, pair: patch.pair || null }, same = str(next) === str();
+        state = next;
         writeURL();
-        document.dispatchEvent(new CustomEvent('gpc:stats-select', { detail: Object.assign(get(), { fromURL: true }) }));
+        // a history step that lands on the same selection (an in-page #anchor) changes nothing
+        if (!(opts && opts.ifChanged && same)) document.dispatchEvent(new CustomEvent('gpc:stats-select', { detail: Object.assign(get(), { fromURL: true }) }));
       });
     }
-    return { get: get, set: set, clear: clear, fromURL: fromURL, parsePair: parsePair };
+    return { get: get, set: set, clear: clear, fromURL: fromURL, parsePair: parsePair, str: function () { return str(); } };
   })();
   window.StatsSel = StatsSel;
-  // Back and Forward: the page follows the ?sel of the history entry
-  window.addEventListener('popstate', function () { StatsSel.fromURL(); });
+  // Back and Forward: the page follows the ?sel of the history entry. Browsers also fire popstate for in-page
+  // #anchor links (the rail, the census); those keep ?sel, so nothing is redrawn
+  window.addEventListener('popstate', function () {
+    if ((new URLSearchParams(location.search).get('sel') || '') === StatsSel.str()) return;
+    StatsSel.fromURL({ ifChanged: true });
+  });
   function urlParam(k) { return new URLSearchParams(location.search).get(k); }
   function setUrlParam(k, v) {
     var params = new URLSearchParams(location.search);
@@ -458,7 +471,7 @@
         if (st.pos && P.by[st.pos]) {
           var p = P.by[st.pos];
           chip(st.pos, 'pos');
-          lines.push(st.pos + ': ' + p.segment + ', rank ' + p.rank + ', CFR in ' + p.n + ' of ' + NREC);
+          lines.push(st.pos + ': ' + p.segment + ', rank ' + p.rank + ' by CFR score, CFR in ' + p.n + ' of ' + NREC);
         }
         if (st.pair) {
           chip(pairName(st.pair), 'pair');
@@ -493,7 +506,7 @@
       table: article.querySelector('.scard-table'), side: article.querySelector('.chart-card-side'),
       body: article.querySelector('.scard-body'), legend: article.querySelector('[data-legend]'),
       guide: article.querySelector('[data-guide]'), scope: article.querySelector('[data-scope]'),
-      meta: (CFG.cards || {})[id] || { title: id, export: id.replace('chart-', '') },
+      meta: (CFG.cards || {})[id] || { export: id.replace('chart-', '') },
       state: {}, loaded: false, drawn: false, dirty: false, lastW: 0
     };
     card.serverTable = article.querySelector('[data-server-table]');
@@ -715,6 +728,70 @@
     finally { C = saved; }
     return { host: host, w: w };
   }
+  // words of a line wrapped to maxW (title, scope line and legend text of an export)
+  function wrapLines(text, maxW, size, weight) {
+    var words = String(text).split(/\s+/).filter(Boolean), lines = [], cur = '';
+    words.forEach(function (wd) {
+      var t = cur ? cur + ' ' + wd : wd;
+      if (cur && textW(t, size, weight) > maxW) { lines.push(cur); cur = wd; } else cur = t;
+    });
+    if (cur) lines.push(cur);
+    return lines.length ? lines : [''];
+  }
+  function normColor(c) { MEASURE.fillStyle = '#000'; MEASURE.fillStyle = c; return MEASURE.fillStyle; }
+  // the card's HTML legend as export items {text, fill, stroke, round, ramp}, in light-theme colors: swatch colors
+  // drawn from the current theme's tokens are mapped to the light tokens
+  function legendItems(card) {
+    var lg = card.legend;
+    if (!lg || !lg.children.length || lg.hidden) return [];
+    var L = lightTokens(), map = {};
+    Object.keys(TOKENS).forEach(function (k) { if (C[k] && L[k]) map[normColor(C[k])] = normColor(L[k]); });
+    var light = function (c) { if (!c || /rgba\(0, 0, 0, 0\)|transparent/.test(c)) return null; var n = normColor(c); return map[n] || n; };
+    var probe = h('div', 'stats-probe'), cl = lg.cloneNode(true);
+    probe.appendChild(cl); document.body.appendChild(probe);
+    var out = [];
+    Array.prototype.forEach.call(cl.children, function (span) {
+      var text = span.textContent.replace(/\s+/g, ' ').trim(), sw = span.matches('.sw, .ramp') ? span : span.querySelector('.sw, .ramp');
+      if ((!text && !sw) || /^(Click|Hover|Tap)\b/.test(text)) return;   // instructions are for the page, not the figure
+      var it = { text: text };
+      if (sw) {
+        var cs = getComputedStyle(sw), bw = parseFloat(cs.borderTopWidth) || 0;
+        it.fill = light(cs.backgroundColor);
+        it.stroke = bw && cs.borderTopStyle !== 'none' ? light(cs.borderTopColor) : null;
+        it.round = cs.borderTopLeftRadius.indexOf('%') > 0 || parseFloat(cs.borderTopLeftRadius) >= 6;
+        it.opacity = parseFloat(cs.opacity) || 1;
+        if (sw.classList.contains('ramp')) it.ramp = (cs.backgroundImage.match(/rgba?\([^)]*\)/g) || []).map(light);
+      }
+      out.push(it);
+    });
+    probe.remove();
+    return out;
+  }
+  // lay the legend items out in rows within W: [{it, x, y}], height
+  function legendLayout(items, W) {
+    var x = 0, y = 0, rowH = 0, at = [];
+    items.forEach(function (it) {
+      var sw = it.ramp ? 70 : it.fill || it.stroke ? 17 : 0, lines = wrapLines(it.text, W - sw, 11);
+      var iw = sw + maxOf(lines.map(function (l) { return textW(l, 11); })), ih = 4 + 14 * lines.length;
+      if (x && x + iw > W) { x = 0; y += rowH; rowH = 0; }
+      at.push({ it: it, x: x, y: y, sw: sw, lines: lines });
+      x += iw + 16; rowH = Math.max(rowH, ih);
+    });
+    return { at: at, h: y + rowH };
+  }
+  function legendSVG(out, lay, y0, L) {
+    lay.at.forEach(function (a, i) {
+      var it = a.it, y = y0 + a.y;
+      if (it.ramp && it.ramp.length) {
+        var id = 'xramp' + i, gr = el('linearGradient', { id: id }, el('defs', {}, out));
+        it.ramp.forEach(function (c, k) { el('stop', { offset: (it.ramp.length > 1 ? k / (it.ramp.length - 1) : 0), 'stop-color': c }, gr); });
+        el('rect', { x: a.x, y: y + 2, width: 62, height: 10, rx: 5, fill: 'url(#' + id + ')' }, out);
+      } else if (it.fill || it.stroke) {
+        el('rect', { x: a.x, y: y + 1, width: 12, height: 12, rx: it.round ? 6 : 3, fill: it.fill || 'none', 'fill-opacity': it.opacity, stroke: it.stroke || 'none', 'stroke-width': it.stroke ? 1.4 : 0 }, out);
+      }
+      a.lines.forEach(function (line, k) { el('text', { x: a.x + a.sw, y: y + 11 + 14 * k, 'font-size': 11, fill: L.muted }, out, line); });
+    });
+  }
   function exportSVGString(card) {
     var off = offscreen(card), host = off.host, w = off.w, L = lightTokens();
     var parts = [], y = 0;
@@ -726,25 +803,63 @@
     if (card.def.vector) { var v = card.def.vector(card, w, L); if (v) parts = [{ s: v, vb: v.getAttribute('viewBox').split(/\s+/).map(Number) }]; }
     var title = card.el.querySelector('.scard-title').textContent.trim();
     var scope = card.scope ? card.scope.textContent.replace(/\s+/g, ' ').trim() : '';
-    var top = 34, gap = 10;
+    var W = Math.max(w, maxOf(parts.map(function (p) { return p.vb[2]; })) || w);
+    // title and scope wrap to the export width, so nothing runs past its right edge; the legend comes along
+    var tl = wrapLines(title, W, 15, 600), sl = wrapLines(scope + ' GPCompaRe database, statistics.html#card-' + card.id, W, 11);
+    var lay = legendLayout(legendItems(card), W);
+    var top = 20 + (tl.length - 1) * 19 + 14, gap = 10;
     var out = el('svg', { xmlns: NS, 'font-family': 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif' });
     var total = top;
     parts.forEach(function (p) { p.y = total; total += p.vb[3] + gap; });
-    var W = Math.max(w, maxOf(parts.map(function (p) { return p.vb[2]; })) || w);
-    var H = total + 24;
+    var legY = total, H = total + (lay.h ? lay.h + 8 : 0) + sl.length * 15 + 9;
     out.setAttribute('viewBox', '0 0 ' + W + ' ' + H); out.setAttribute('width', W); out.setAttribute('height', H);
     el('rect', { width: W, height: H, fill: '#ffffff' }, out);
-    el('text', { x: 0, y: 20, 'font-size': 15, 'font-weight': 600, fill: L.fg }, out, title);
+    tl.forEach(function (line, i) { el('text', { x: 0, y: 20 + i * 19, 'font-size': 15, 'font-weight': 600, fill: L.fg }, out, line); });
     parts.forEach(function (p) {
       var g = p.s.cloneNode(true);
       g.setAttribute('x', 0); g.setAttribute('y', p.y);
       g.removeAttribute('style'); g.setAttribute('width', p.vb[2]); g.setAttribute('height', p.vb[3]);
       out.appendChild(g);
     });
-    el('text', { x: 0, y: H - 8, 'font-size': 11, fill: L.muted }, out, scope + ' GPCompaRe database, statistics.html#card-' + card.id);
+    legendSVG(out, lay, legY, L);
+    var sy = H - 8 - (sl.length - 1) * 15;
+    sl.forEach(function (line, i) { el('text', { x: 0, y: sy + i * 15, 'font-size': 11, fill: L.muted }, out, line); });
     host.remove();
     out.querySelectorAll('[data-tip]').forEach(function (n) { n.removeAttribute('data-tip'); n.removeAttribute('tabindex'); n.removeAttribute('role'); n.removeAttribute('data-hit'); n.removeAttribute('aria-label'); });
     return { text: '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(out), w: W, h: H };
+  }
+  // a canvas chart (the matrix) framed like the SVG exports: title, chart, legend, scope line
+  function frameCanvas(card, chart, cw, ch) {
+    var L = lightTokens(), W = cw;
+    var title = card.el.querySelector('.scard-title').textContent.trim();
+    var scope = card.scope ? card.scope.textContent.replace(/\s+/g, ' ').trim() : '';
+    var tl = wrapLines(title, W, 15, 600), sl = wrapLines(scope + ' GPCompaRe database, statistics.html#card-' + card.id, W, 11);
+    var lay = legendLayout(legendItems(card), W);
+    var top = 20 + (tl.length - 1) * 19 + 14, legY = top + ch + 10, H = legY + (lay.h ? lay.h + 8 : 0) + sl.length * 15 + 9;
+    var cv = document.createElement('canvas'); cv.width = W * 2; cv.height = H * 2;
+    var g = cv.getContext('2d'); g.scale(2, 2);
+    var font = function (wt, sz) { return wt + ' ' + sz + 'px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'; };
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
+    g.fillStyle = L.fg; g.font = font(600, 15); tl.forEach(function (line, i) { g.fillText(line, 0, 20 + i * 19); });
+    g.drawImage(chart, 0, top, cw, ch);
+    lay.at.forEach(function (a) {
+      var it = a.it, y = legY + a.y;
+      if (it.ramp && it.ramp.length) {
+        var gr = g.createLinearGradient(a.x, 0, a.x + 62, 0);
+        it.ramp.forEach(function (c, k) { gr.addColorStop(it.ramp.length > 1 ? k / (it.ramp.length - 1) : 0, c); });
+        g.fillStyle = gr; g.fillRect(a.x, y + 2, 62, 10);
+      } else if (it.fill || it.stroke) {
+        g.beginPath(); if (g.roundRect) g.roundRect(a.x, y + 1, 12, 12, it.round ? 6 : 3); else g.rect(a.x, y + 1, 12, 12);
+        if (it.fill) { g.globalAlpha = it.opacity; g.fillStyle = it.fill; g.fill(); g.globalAlpha = 1; }
+        if (it.stroke) { g.strokeStyle = it.stroke; g.lineWidth = 1.4; g.stroke(); }
+      }
+      g.fillStyle = L.muted; g.font = font(400, 11);
+      a.lines.forEach(function (line, k) { g.fillText(line, a.x + a.sw, y + 11 + 14 * k); });
+    });
+    g.fillStyle = L.muted; g.font = font(400, 11);
+    var sy = H - 8 - (sl.length - 1) * 15;
+    sl.forEach(function (line, i) { g.fillText(line, 0, sy + i * 15); });
+    return cv;
   }
   function exportCard(card, kind) {
     if (!card.D) return;
@@ -840,8 +955,8 @@
       }
       var rec = StatsSel.get().rec;
       var P = [
-        { title: 'Threshold |ΔRRCS|', key: 'threshold', half: true, note: 'range ' + f2(cen.threshold_min) + ' to ' + f2(cen.threshold_max) + ', median ' + f2(cen.threshold_median), f: f2 },
-        { title: 'Above-threshold pairs per 100 pairs', key: 'above_per_100', half: false, note: 'median ' + f2(cen.above_per_100_median) + ' per receptor', f: f2 }
+        { title: 'Threshold |ΔRRCS|', key: 'threshold', half: true, note: 'range ' + f2(cen.threshold_min) + ' to ' + f2(cen.threshold_max) + ', median ' + f2(cen.threshold_median), f: function (v) { return 'threshold |ΔRRCS| ' + f2(v); } },
+        { title: 'Above-threshold pairs per 100 pairs', key: 'above_per_100', half: false, note: 'median ' + f2(cen.above_per_100_median) + ' per receptor', f: function (v) { return f2(v) + ' above-threshold pairs per 100 pairs'; } }
       ];
       P.forEach(function (p) {
         p.vals = R.map(function (x) { return x[p.key]; });
@@ -1007,7 +1122,7 @@
           card.scopeRest = rest.textContent;
         }
         rest.textContent = st.mode === 'magnitude' && CFG.labels.scope_maps ? ' ' + CFG.labels.scope_maps : card.scopeRest;
-        card.guide.innerHTML = guideFor(hp, G, st, small);
+        card.guide.innerHTML = nwAbs(guideFor(hp, G, st, small));
         ledger(card, hp, G, small);
         legendFor(card, st, small);
       }
@@ -1164,7 +1279,7 @@
       IF.slice(0, isPhone() ? 6 : IF.length).forEach(function (i) {
         var r = h('div', 'lrow', L);
         h('span', 'lab', r, i.seg_i + '-' + i.seg_j);
-        var bar = h('span', 'lbar', r); var b = h('i', '', bar); b.style.width = (100 * i.mean_abs_delta / mx) + '%'; b.style.background = C.ink;
+        var bar = h('span', 'lbar', r); var b = h('i', '', bar); b.style.width = (100 * i.mean_abs_delta / mx) + '%'; b.style.background = 'var(--st-ink-bar)';
         var t = h('span', 'txt', r); h('b', '', t, f2(i.mean_abs_delta)); t.appendChild(document.createTextNode(' over ' + fmt(i.n_contacts) + ' contacts'));
       });
       return;
@@ -1193,12 +1308,12 @@
       h('span', 'lab', r, HELIX[c.i] + '-' + HELIX[c.j]);
       var bar = h('span', 'lbar', r), t = h('span', 'txt', r);
       if (small) {
-        var bb = h('i', '', bar); bb.style.width = (100 * c.n_present / G.n) + '%'; bb.style.background = C.faint;
+        var bb = h('i', '', bar); bb.style.width = (100 * c.n_present / G.n) + '%'; bb.style.background = 'var(--st-faint)';
         t.appendChild(document.createTextNode('carried by ')); h('b', '', t, c.n_present + ' of ' + G.n);
       } else {
         var dn = h('i', '', bar), up = h('i', '', bar);
-        dn.style.width = (100 * c.n_down / c.n_present) + '%'; dn.style.background = C.inactive;
-        up.style.width = (100 * c.n_up / c.n_present) + '%'; up.style.background = C.active;
+        dn.style.width = (100 * c.n_down / c.n_present) + '%'; dn.style.background = 'var(--st-inactive)';
+        up.style.width = (100 * c.n_up / c.n_present) + '%'; up.style.background = 'var(--st-active)';
         var weaker = c.n_down >= c.n_up;
         t.appendChild(document.createTextNode((weaker ? 'weaker' : 'stronger') + ' in '));
         h('b', '', t, (weaker ? c.n_down : c.n_up) + ' of ' + c.n_present);
@@ -1238,7 +1353,7 @@
           var rec = hp.receptors[r[0]], row = h('div', 'sb', bars);
           h('span', '', row, rec.symbol);
           var track = h('span', '', row), i = h('i', '', track);
-          i.style.width = (100 * Math.abs(r[1]) / mx) + '%'; i.style.background = r[1] >= 0 ? C.active : C.inactive;
+          i.style.width = (100 * Math.abs(r[1]) / mx) + '%'; i.style.background = r[1] >= 0 ? 'var(--st-active)' : 'var(--st-inactive)';
           h('span', '', row, signed(r[1], 1));
         });
         h('p', 'side-note', side, fmt(list.length) + ' receptors with an above-threshold pair here' + (list.length > 16 ? '; the bars show the eight at each end' : '') + '. Red: stronger in the active model. Blue: stronger in the inactive model.');
@@ -1255,7 +1370,8 @@
   define('chart-segments', {
     needs: ['helix_pairs', 'class_positions'],
     draw: function (card, node, w, o) {
-      var S = card.D.helix_pairs.segments_magnitude, mode = segMode(), sel = StatsSel.get();
+      var HP = card.D.helix_pairs, floor = (HP.magnitude_rule || {}).min_endpoints || 0, mode = segMode(), sel = StatsSel.get();
+      var S = HP.segments_magnitude.filter(function (q) { return q.endpoints >= floor; });
       var mark = {};
       if (sel.pos) { var p = positionIndex(card.D.class_positions).by[sel.pos]; if (p) mark[p.segment] = true; }
       if (sel.pair) { mark[HELIX[sel.pair[0]]] = true; mark[HELIX[sel.pair[1]]] = true; }
@@ -1469,8 +1585,12 @@
     });
     A.forEach(function (p, i) {
       var y = top + hh - p.n / NREC * hh;
-      var r = el('rect', { x: x(i), y: y, width: Math.max(0.6, bw - 0.4), height: top + hh - y, fill: i < cp.top_n ? C.b4 : C.b2, 'data-gn': p.gn }, s);
-      if (!o.exporting) hit(r, p.gn + ' · rank ' + p.rank + ' · CFR in ' + p.n + ' of ' + NREC, function (e, nd) { selectPos(p.gn, card, nd); }, null, true);
+      el('rect', { x: x(i), y: y, width: Math.max(0.6, bw - 0.4), height: top + hh - y, fill: i < cp.top_n ? C.b4 : C.b2, 'data-gn': p.gn }, s);
+    });
+    // hover and click targets: one full-height column per position, so the short bars of the tail can be picked
+    if (!o.exporting) A.forEach(function (p, i) {
+      var t = el('rect', { x: x(i), y: top - 2, width: bw, height: hh + 2, fill: 'transparent', 'class': 'hitcol', 'data-gn': p.gn }, s);
+      hit(t, p.gn + ' · rank ' + p.rank + ' · CFR in ' + p.n + ' of ' + NREC, function (e, nd) { selectPos(p.gn, card, nd); }, null, true);
     });
     if (sel && PI.by[sel]) {
       var i = PI.by[sel].rank - 1, xx = x(i) + bw / 2;
@@ -1487,7 +1607,10 @@
 
   // ---- position profile: one shared drawer
   var Profile = (function () {
-    var panel = null, hostCard = null, current = null, back = null;
+    var panel = null, hostCard = null, current = null, back = null, pending = 0, lastPos = null, recheck = null;
+    // a scroll the reader starts (wheel, touch, keys, scrollbar) cancels the profile's own follow-up scroll
+    function cancelRecheck() { if (recheck) { clearTimeout(recheck); recheck = null; } }
+    ['wheel', 'touchstart', 'keydown', 'mousedown'].forEach(function (t) { window.addEventListener(t, cancelRecheck, { passive: true, capture: true }); });
     function close(clearSel, refocusTrigger) {
       if (panel) { panel.remove(); panel = null; }
       current = null;
@@ -1505,7 +1628,8 @@
     document.addEventListener('click', function (e) {
       if (!panel || panel.contains(e.target)) return;
       if (e.target.closest && e.target.closest('[data-hit], [data-chart], [data-strip368], .ledger, .chart-card-side, .controls, .chips, .tabs, .legend, .scard-foot, .sel, .lrow, button, a, canvas, .js-plotly-plot')) return;
-      close(true);
+      // phone: a tap on the page folds the sheet and keeps the position, so the cards that follow it can be read
+      if (isPhone()) setPeek(true); else close(true);
     });
     function open(gn, card, anchor, opts) {
       card = card || CARDS['chart-ranking'];
@@ -1517,11 +1641,12 @@
         if (ar.height || ar.width) opts.anchorTop = ar.top - card.el.getBoundingClientRect().top;
       }
       if (opts.focus) back = focusKey(STATS) || (anchor && anchor.getAttribute && anchor.getAttribute('data-key')) || null;
-      current = gn; hostCard = card;
+      current = gn; hostCard = card; pending++;
       Promise.all([load('class_positions'), load('cfr_atlas').catch(function () { return null; }), load('cfr_variants').catch(function () { return null; })]).then(function (arr) {
+        pending--;
         if (current !== gn) return;
         build(gn, card, arr[0], arr[1], arr[2], anchor, opts);
-      });
+      }, function () { pending--; });
     }
     // desktop: beside the mark that opened it (or near the top of the card), kept inside the card
     function place(card, anchorTop) {
@@ -1531,16 +1656,41 @@
       top = Math.max(8, Math.min(top, card.el.offsetHeight - ph - 8));
       panel.style.top = Math.round(top) + 'px';
     }
+    // phone: the bottom sheet folds to a one-line peek that keeps the position selected
+    function setPeek(on) {
+      if (!panel) return;
+      panel.classList.toggle('is-peek', !!on);
+      var hb = panel.querySelector('.handle');
+      if (hb) { hb.setAttribute('aria-expanded', on ? 'false' : 'true'); hb.setAttribute('aria-label', on ? 'Show the position profile' : 'Fold the position profile'); }
+    }
     function build(gn, card, cp, atlas, cv, anchor, opts) {
       var PI = positionIndex(cp), x = PI.by[gn];
       if (!x) return;
       opts = opts || {};
-      if (panel) panel.remove();
+      // a rebuild in place (the followed receptor changed) keeps the panel where it is, its focus and its fold
+      var keepTop = null, keepFocus = false, keepPeek = null;
+      if (panel) {
+        if (opts.keep) { keepTop = panel.style.top; keepFocus = panel.contains(document.activeElement); keepPeek = panel.classList.contains('is-peek'); }
+        panel.remove();
+      }
       panel = h('aside', 'pos-profile', card.el);
       panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Position ' + gn); panel.tabIndex = -1;
-      h('span', 'handle', panel);
-      var xb = h('button', 'x', panel, '×'); xb.type = 'button'; xb.setAttribute('aria-label', 'Close');
+      var hb = h('button', 'handle', panel); hb.type = 'button';
+      hb.addEventListener('click', function (e) { e.stopPropagation(); setPeek(!panel.classList.contains('is-peek')); });
+      (function (me, grip) {
+        var y0 = null;
+        grip.addEventListener('touchstart', function (e) { y0 = e.touches[0].clientY; }, { passive: true });
+        grip.addEventListener('touchend', function (e) {
+          if (y0 === null || panel !== me) return;
+          var dy = e.changedTouches[0].clientY - y0; y0 = null;
+          if (dy > 30) setPeek(true); else if (dy < -30) setPeek(false);
+        });
+      })(panel, hb);
+      var xb = h('button', 'x', panel, '×'); xb.type = 'button'; xb.setAttribute('aria-label', 'Close and clear the position');
       xb.addEventListener('click', function (e) { e.stopPropagation(); close(true, true); });
+      var peek = h('button', 'ppeek', panel); peek.type = 'button';
+      h('span', 'mono', peek, gn); peek.appendChild(document.createTextNode(' · rank ' + x.rank + ' by CFR score · CFR in ' + x.n + ' of ' + NREC));
+      peek.addEventListener('click', function (e) { e.stopPropagation(); setPeek(false); });
       var head = h('div', 'pgn', panel, gn);
       if (x.motif) h('span', 'tag', head, x.motif);
       h('div', 'psub', panel, x.segment + (x.adrb2 ? ' · ' + cp.scaffold.gene + ' ' + x.adrb2 : '') + ' · rank ' + x.rank + ' by CFR score');
@@ -1550,8 +1700,8 @@
         var col = atlas.columns[k];
         h('div', 'plab', panel, 'Net change of those contacts');
         var bar = h('div', 'pbar', panel), dn = h('i', '', bar), up = h('i', '', bar);
-        dn.style.width = (100 * col.n_down / col.n_hit) + '%'; dn.style.background = C.inactive;
-        up.style.width = (100 * col.n_up / col.n_hit) + '%'; up.style.background = C.active;
+        dn.style.width = (100 * col.n_down / col.n_hit) + '%'; dn.style.background = 'var(--st-inactive)';
+        up.style.width = (100 * col.n_up / col.n_hit) + '%'; up.style.background = 'var(--st-active)';
         h('div', 'pnote', panel, 'stronger in the inactive model in ' + col.n_down + ', in the active model in ' + col.n_up);
         var rec = StatsSel.get().rec;
         if (rec) {
@@ -1585,25 +1735,34 @@
         b.addEventListener('click', function (e) { e.stopPropagation(); var vc = CARDS['chart-cfr-variants']; if (vc) { loadCard(vc).then(function () { showVariantPosition(vc, vp, true); vc.el.scrollIntoView({ block: 'start', behavior: SCROLL() }); }); } });
       }
       links.appendChild(link('Search ' + gn, SEARCH(gn), 'cc-btn'));
-      place(card, opts.anchorTop);
-      if (opts.focus) panel.focus({ preventScroll: isPhone() });
+      if (isPhone()) setPeek(keepPeek !== null ? keepPeek : !!opts.peek);
+      if (keepTop !== null && !isPhone()) panel.style.top = keepTop; else place(card, opts.anchorTop);
+      if (opts.focus || keepFocus) panel.focus({ preventScroll: isPhone() || keepFocus });
       if ((opts.focus || opts.scroll) && !isPhone()) {
         var me = panel;
+        cancelRecheck();
         me.scrollIntoView({ block: 'nearest', behavior: SCROLL() });
-        // cards that load on the way can move it: look again once the scroll has settled
-        setTimeout(function () {
+        // cards that load on the way can move it: look again once the scroll has settled, unless the reader
+        // has scrolled on since (cancelRecheck)
+        recheck = setTimeout(function () {
+          recheck = null;
           if (panel !== me) return;
           var r = me.getBoundingClientRect();
           if (r.bottom < 60 || r.top > window.innerHeight - 40) me.scrollIntoView({ block: 'nearest' });
         }, 900);
       }
     }
+    // the profile opens when the selected position changes, and only then: a change of the followed receptor
+    // rebuilds an open profile in place, and a position picked without a profile (4e) stays without one
     document.addEventListener('gpc:stats-select', function (e) {
-      var p = e.detail.pos, o = { scroll: !e.detail.fromURL };
+      var p = e.detail.pos, prev = lastPos;
+      lastPos = p;
       if (!p) { if (panel) close(false); return; }
-      if (e.detail.noProfile) { if (panel) close(false); return; }   // a view that shows the position itself
-      if (p !== current) open(p, hostCard && hostCard.el.isConnected ? hostCard : null, null, o);
-      else if (panel) open(p, hostCard, null, {});
+      if (e.detail.noProfile) { if (panel) close(false); current = null; return; }   // a view that shows the position itself
+      if (p !== prev) {
+        if (p === current && (pending || panel)) return;   // opened directly by the mark that was clicked
+        open(p, hostCard && hostCard.el.isConnected ? hostCard : null, null, { scroll: !e.detail.fromURL, peek: !!e.detail.fromURL });
+      } else if (panel && p === current && !pending) open(p, hostCard, null, { keep: true });
     });
     return { open: open, close: close };
   })();
@@ -1623,8 +1782,8 @@
       var d = 'M' + x(0) + ',' + y(0), len = 0, px = x(0), py = y(0);
       list.forEach(function (r) { var nx = x(r.rank_in_universe), ny = y(r.known_found); len += Math.abs(nx - px) + Math.abs(ny - py); px = nx; py = ny; d += 'H' + nx.toFixed(1) + 'V' + ny.toFixed(1); });
       el('path', { d: d, fill: 'none', stroke: C.brand, 'stroke-width': 2.4, class: 'trace', style: '--len:' + Math.ceil(len) }, s);
-      var rankText = function (r) { return 'rank ' + r.rank_in_universe + ' of ' + M + (r.cfr_score_rank !== r.rank_in_universe ? '; CFR score rank ' + r.cfr_score_rank : ''); };
-      list.forEach(function (r) { if (r.known) { var t = el('rect', { x: x(r.rank_in_universe) - 0.8, y: hh + 4, width: 1.6, height: 7, fill: C.fg }, s); if (!o.exporting) t.setAttribute('data-tip', r.gn + (r.motif ? ' (' + r.motif + ')' : '') + ', ' + rankText(r)); } });
+      var rankText = function (r) { return 'rank ' + r.rank_in_universe + ' of ' + M + (r.cfr_score_rank !== r.rank_in_universe ? '; ' + r.gn + ' is rank ' + r.cfr_score_rank + ' by CFR score' : ''); };
+      list.forEach(function (r) { if (r.known) { var t = el('rect', { x: x(r.rank_in_universe) - 0.8, y: hh + 4, width: 1.6, height: 7, fill: C.fg }, s); if (!o.exporting) t.setAttribute('data-tip', 'Structure position ' + r.struct + ' (' + r.gn + (r.motif ? ', ' + r.motif : '') + '), ' + rankText(r)); } });
       Object.keys(Rv.cuts).map(Number).sort(function (a, b) { return a - b; }).forEach(function (n, i) {
         var cut = Rv.cuts[n], kf = cut.known_found, px2 = x(n), py2 = y(kf);
         el('circle', { cx: px2, cy: py2, r: 4.5, fill: C.brand, stroke: C.surface, 'stroke-width': 2 }, s);
@@ -1639,14 +1798,16 @@
       var sel = StatsSel.get().pos, note = card.el.querySelector('[data-rec-note]');
       if (!o.exporting) { if (!note) { note = h('p', 'small-note', null); note.setAttribute('data-rec-note', ''); card.chart.parentNode.insertBefore(note, card.chart.nextSibling); } note.textContent = ''; }
       if (sel) {
-        var r = positionIndex(cp).recovery[sel];
+        var st = structOf(sel), r = positionIndex(cp).recovery[st], nAll = positionIndex(cp).ranking.length;
         if (r) {
-          var rx = x(r.rank_in_universe);
+          var rx = x(r.rank_in_universe), own = r.gn === sel;
           el('line', { x1: rx, x2: rx, y1: 4, y2: hh, stroke: C.fg, 'stroke-width': 1.5 }, s);
-          var sl = sel + ': ' + r.rank_in_universe + ' of ' + M + (r.known ? ', a known position' : ''), right = rx + 5 + textW(sl, 12, 700) <= w;
+          var sl = (own ? sel : st) + ': rank ' + r.rank_in_universe + ' of ' + M + (r.known ? ', a known position' : ''), right = rx + 5 + textW(sl, 12, 700) <= w;
           el('text', { x: right ? rx + 5 : rx - 5, y: 16, 'text-anchor': right ? 'start' : 'end', 'font-size': 12, 'font-weight': 700, fill: C.fg, stroke: C.surface, 'stroke-width': 3, 'paint-order': 'stroke' }, s, sl);
-          if (note) note.textContent = sel + ' is at ' + r.rank_in_universe + ' of the ' + M + ' positions of this curve' + (r.cfr_score_rank !== r.rank_in_universe ? ' (rank ' + r.cfr_score_rank + ' by CFR score among all ' + positionIndex(cp).ranking.length + ' recurrent positions).' : '.');
-        } else if (note) note.textContent = sel + ': numbered in fewer than half of the receptors, so it is not among the ' + M + ' positions of this ranking.';
+          if (note) note.textContent = own
+            ? sel + ' (structure position ' + st + ') is at rank ' + r.rank_in_universe + ' of the ' + M + ' positions of this curve' + (r.cfr_score_rank !== r.rank_in_universe ? ' (rank ' + r.cfr_score_rank + ' by CFR score among all ' + nAll + ' recurrent positions).' : '.')
+            : sel + ' shares structure position ' + st + ' with ' + r.gn + ', which has the higher CFR score and places ' + st + ' at rank ' + r.rank_in_universe + ' of the ' + M + ' positions of this curve' + (r.known ? ', a known position.' : '.');
+        } else if (note) note.textContent = sel + ': its structure position ' + st + ' is numbered in fewer than half of the receptors, so it is not among the ' + M + ' positions of this curve.';
       }
     },
     onSelect: function (card) { draw(card, {}); }
@@ -1900,7 +2061,7 @@
       if (isPhone()) return null;
       var w = card.lastW || width(card.chart), L = matrixLayout(card, w), cv = document.createElement('canvas');
       paintMatrix(card, canvasPainter(cv, L.W, L.H, 2), L.W, lightTokens(), L);
-      return cv;
+      return frameCanvas(card, cv, L.W, L.H);
     },
     onSelect: function (card) { draw(card, {}); }
   });
@@ -1932,21 +2093,28 @@
     init: function (card) { var d = card.el.querySelector('#am-classes'); if (d && !isPhone()) d.open = true; },
     draw: function (card, node, w, o) {
       var G = card.D.class_variants.groups, ph = isPhone() || w < 560, lab = ph ? 0 : 230, right = ph ? 0 : 110, rh = ph ? 86 : 64;
-      var s = svgIn(node, w, rh * 2 + (ph ? 12 : 8), 'Predicted pathogenic share of decisive AlphaMissense calls'), sg = selGroup(card.D.class_positions, StatsSel.get().pos);
+      // phone: the group label sits above its bar, the share at the right; a label that would run into the
+      // share wraps onto a second line
+      var labs = G.map(function (g) { return ph ? wrapLines(g.label, w - textW(f1(g.pct_predicted_pathogenic_of_decisive) + '%', 18, 600) - 12, 12.5, 600) : [g.label]; });
+      var extra = labs.map(function (l) { return (l.length - 1) * 17; }), off = [0];
+      extra.forEach(function (e, i) { off.push(off[i] + e); });
+      var s = svgIn(node, w, rh * 2 + (ph ? 12 : 8) + off[G.length], 'Predicted pathogenic share of decisive AlphaMissense calls'), sg = selGroup(card.D.class_positions, StatsSel.get().pos);
       if (anim(o)) s.classList.add('draw-in');
       G.forEach(function (g, i) {
-        var y = i * rh + (ph ? 24 : 10), bw = w - lab - right, p = bw * g.predicted_pathogenic / g.decisive, by = ph ? y + 2 : y;
-        el('text', { x: ph ? 0 : lab - 12, y: ph ? y - 5 : y + 17, 'text-anchor': ph ? 'start' : 'end', 'font-size': 12.5, 'font-weight': 600, fill: C.fg }, s, g.label);
+        var y = i * rh + (ph ? 24 : 10) + off[i + 1], bw = w - lab - right, p = bw * g.predicted_pathogenic / g.decisive, by = ph ? y + 2 : y;
+        labs[i].forEach(function (line, k) { el('text', { x: ph ? 0 : lab - 12, y: ph ? y - 5 - 17 * (labs[i].length - 1 - k) : y + 17, 'text-anchor': ph ? 'start' : 'end', 'font-size': 12.5, 'font-weight': 600, fill: C.fg }, s, line); });
         el('rect', { x: lab, y: by, width: p, height: 26, fill: C.path, rx: 3, class: 'grow' }, s);
         el('rect', { x: lab + p, y: by, width: bw - p, height: 26, fill: C.ben, rx: 3, class: 'grow' }, s);
         var tc = C.dark ? '#0d1117' : '#ffffff';
-        el('text', { x: lab + 8, y: by + 17.5, 'font-size': 12, 'font-weight': 600, fill: tc }, s, fmt(g.predicted_pathogenic) + (ph ? '' : ' predicted pathogenic'));
-        el('text', { x: lab + bw - 8, y: by + 17.5, 'text-anchor': 'end', 'font-size': 12, 'font-weight': 600, fill: tc }, s, fmt(g.predicted_benign) + (ph ? '' : ' predicted benign'));
+        // a segment shows its words only when they fit inside it, else the count alone, else nothing
+        var inSeg = function (n, words, room) { var a = fmt(n) + ' ' + words; return textW(a, 12, 600) + 16 <= room ? a : textW(fmt(n), 12, 600) + 16 <= room ? fmt(n) : ''; };
+        el('text', { x: lab + 8, y: by + 17.5, 'font-size': 12, 'font-weight': 600, fill: tc }, s, inSeg(g.predicted_pathogenic, 'predicted pathogenic', p));
+        el('text', { x: lab + bw - 8, y: by + 17.5, 'text-anchor': 'end', 'font-size': 12, 'font-weight': 600, fill: tc }, s, inSeg(g.predicted_benign, 'predicted benign', bw - p));
         el('text', { x: lab, y: by + 42, 'font-size': 11, fill: C.muted }, s, fit([fmt(g.decisive) + ' decisive calls; ' + fmt(g.ambiguous) + ' ambiguous; ' + fmt(g.scored) + ' scored',
           fmt(g.decisive) + ' decisive; ' + fmt(g.ambiguous) + ' ambiguous', fmt(g.decisive) + ' decisive calls'], w - lab - (ph ? 0 : right), 11));
         var share = f1(g.pct_predicted_pathogenic_of_decisive) + '%';
         if (!ph) el('text', { x: w - right + 14, y: by + 21, 'font-family': "'Source Serif 4', Georgia, serif", 'font-size': 26, 'font-weight': 600, fill: C.fg }, s, share);
-        else el('text', { x: w, y: y - 5, 'text-anchor': 'end', 'font-family': "'Source Serif 4', Georgia, serif", 'font-size': 18, 'font-weight': 600, fill: C.fg }, s, share);
+        else el('text', { x: w, y: y - 5 - 17 * (labs[i].length - 1), 'text-anchor': 'end', 'font-family': "'Source Serif 4', Georgia, serif", 'font-size': 18, 'font-weight': 600, fill: C.fg }, s, share);
         if (sg === i) el('rect', { x: lab - 3, y: by - 3, width: bw + 6, height: 32, rx: 5, fill: 'none', stroke: C.fg, 'stroke-width': 2 }, s);
       });
       if (!o.exporting && card.legend) card.legend.innerHTML = '<span><span class="sw c-path"></span>predicted pathogenic</span><span><span class="sw c-ben"></span>predicted benign</span><span><span class="sw c-amb"></span>ambiguous (counted, not in the share)</span><span>Large number: predicted pathogenic share of decisive calls</span>';
@@ -2006,7 +2174,7 @@
       if (anim(o)) s.classList.add('draw-in');
       lay.forEach(function (L, i) {
         var g = G[i], cy = y0 + L.half;
-        if (phone) el('text', { x: 0, y: y0 - 6, 'font-size': 11.5, 'font-weight': 600, fill: C.fg }, s, g[0] + ', ' + g[1].length + ' positions');
+        if (phone) el('text', { x: 0, y: y0 - 6, 'font-size': 11.5, 'font-weight': 600, fill: C.fg }, s, g[0] + ' (' + g[1].length + ' positions)');
         L.L.pts.forEach(function (q) {
           var p = g[1][q[2]], m = PI.motif[p.gn], on = p.gn === sel;
           var c = el('circle', { cx: q[0], cy: cy + q[1] * L.L.step, r: on ? r + 3 : r, fill: m ? 'none' : (i ? C.ink : C.b4), stroke: m || on ? C.fg : 'none', 'stroke-width': on ? 2 : 1.3, 'fill-opacity': i ? 0.55 : 0.9, 'data-gn': p.gn }, s);
@@ -2041,7 +2209,7 @@
         [[q.top50_pct, 1, q.top50_predicted_pathogenic, q.top50_decisive], [q.other_pct, 0, q.other_predicted_pathogenic, q.other_decisive]].forEach(function (b, k) {
           var x = x0 + k * (bw + 4);
           var r = el('rect', { x: x, y: y(b[0]), width: bw, height: hh - y(b[0]), rx: 3, fill: b[1] ? C.path : C.pathSoft, stroke: C.path, 'stroke-width': b[1] ? 0 : 1, class: 'grow-y' }, s);
-          if (!o.exporting) r.setAttribute('data-tip', 'Q' + q.fifth + ', ' + (b[1] ? 'top ' + TOP + ' positions' : 'other positions') + ': ' + fmt(b[2]) + ' predicted pathogenic of ' + fmt(b[3]) + ' decisive calls');
+          if (!o.exporting) r.setAttribute('data-tip', 'Q' + q.fifth + ' (conservation group ' + q.fifth + ' of 5, ' + f2(q.conservation_from) + ' to ' + f2(q.conservation_to) + '), ' + (b[1] ? 'top ' + TOP + ' positions' : 'other positions') + ': ' + fmt(b[2]) + ' predicted pathogenic of ' + fmt(b[3]) + ' decisive calls');
           el('text', { x: x + bw / 2, y: y(b[0]) - 5, 'text-anchor': 'middle', 'font-size': phone ? 10 : 11, 'font-weight': 600, fill: C.fg }, s, phone ? Math.round(b[0]) + '%' : f1(b[0]) + '%');
         });
         el('text', { x: x0 + bw + 2, y: hh + 16, 'text-anchor': 'middle', 'font-size': 11, 'font-weight': 600, fill: C.fg }, s, 'Q' + q.fifth);
@@ -2138,17 +2306,17 @@
         var a = pos.am_substitutions;
         h('p', '', side, fmt(pos.substitutions) + ' unique substitutions (' + fmt(pos.alleles) + ' alleles) in ' + pos.receptors_with_alleles + ' of ' + pos.receptors_numbered + ' receptors numbered here' + (k >= 0 ? '; ' + nCfr + ' of the ' + pos.receptors_numbered + ' have a CFR here' : '') + '. AlphaMissense: ' + fmt(a.pathogenic) + ' predicted pathogenic, ' + fmt(a.ambiguous) + ' ambiguous, ' + fmt(a.benign) + ' predicted benign.');
         side.appendChild(link('Search ' + pos.generic, SEARCH(pos.generic), 'cc-btn'));
-        var list = d.rows.slice().sort(function (x, y) { return y[F.pathogenic] - x[F.pathogenic] || y[F.substitutions] - x[F.substitutions]; });
+        var list = d.rows.slice().sort(function (x, y) { return y[F.am_pathogenic] - x[F.am_pathogenic] || y[F.substitutions] - x[F.substitutions]; });
         var head = [{ label: 'Receptor' }, { label: 'Residue' }];
         if (k >= 0) head.push({ label: 'CFR' });
         side.appendChild(sideTable(
-          head.concat([{ label: 'Subst.', num: true }, { label: 'Path.', num: true }, { label: 'Amb.', num: true }, { label: 'Ben.', num: true }, { label: 'AC', num: true }, { label: 'ClinVar P/LP', num: true }]),
+          head.concat([{ label: 'Subst.', num: true }, { label: 'Pred. path.', num: true }, { label: 'Amb.', num: true }, { label: 'Pred. benign', num: true }, { label: 'AC', num: true }, { label: 'ClinVar P/LP', num: true }]),
           list.map(function (r) {
             var rec = recs[r[F.receptor]], row = [link(rec[RF.gene], rec[RF.report_url] || REPORT(rec[RF.gid])), (r[F.aa] || '') + r[F.residue]];
             if (k >= 0) row.push(cfr[rec[RF.gid]] ? 'yes' : '');
-            return row.concat([r[F.substitutions], r[F.pathogenic], r[F.ambiguous], r[F.benign], r[F.allele_count], r[F.clinvar_plp_db] || '']);
+            return row.concat([r[F.substitutions], r[F.am_pathogenic], r[F.am_ambiguous], r[F.am_benign], r[F.allele_count], r[F.clinvar_plp_db] || '']);
           })));
-        h('p', 'side-note', side, (k >= 0 ? 'CFR: yes when the residue is in an above-threshold contact of its receptor. ' : '') + 'Path., Amb., Ben.: AlphaMissense predicted classes of the unique substitutions. AC: gnomAD allele count. ClinVar P/LP: pathogenic or likely pathogenic missense records, per receptor.');
+        h('p', 'side-note', side, (k >= 0 ? 'CFR: yes when the residue is in an above-threshold contact of its receptor. ' : '') + 'Pred. path., Amb., Pred. benign: AlphaMissense predicted classes (predicted pathogenic, ambiguous, predicted benign) of the unique substitutions. AC: gnomAD allele count. ClinVar P/LP: pathogenic or likely pathogenic missense records, per receptor.');
       });
     }, function () { openSide(card, pos.generic, function (side) { h('p', 'side-note', side, 'The receptor list could not load.'); }); });
   }
@@ -2190,6 +2358,7 @@
     suffix: function (card) { return card.state.tab === 'scatter' ? card.state.x + '_' + card.state.y : card.state.tab; },
     draw: function (card, node, w, o) {
       var st = card.state;
+      if (st.tab !== 'scatter') { var bk = card.el.querySelector('[data-back]'); if (bk) bk.remove(); }
       if (st.tab === 'table') { explorerTable(card); return; }
       if (st.tab === 'families') return families(card, node, w, o);
       if (o.exporting) return;
@@ -2207,11 +2376,18 @@
       }
       if (!window.Plotly || !card.plotDiv) return;
       var saved = C; C = lightTokens();
-      var fig = scatterFigure(card, card.lastW, true);
+      var fig = scatterFigure(card, card.lastW, true), L = C;
       C = saved;
-      var tmp = h('div', '', STATS); tmp.style.cssText = 'position:absolute;left:-20000px;top:0;width:' + card.lastW + 'px;height:480px';
+      // title and scope line, as in the other exports (Plotly title with a subtitle), wrapped to the width
+      var tw = card.lastW - 24, title = card.el.querySelector('.scard-title').textContent.trim();
+      var scope = (card.scope ? card.scope.textContent.replace(/\s+/g, ' ').trim() : '') + ' GPCompaRe database, statistics.html#card-' + card.id;
+      var tl = wrapLines(title, tw, 15, 600), sl = wrapLines(scope, tw, 11), extra = 19 * tl.length + 15 * sl.length + 18;
+      fig.layout.title = { text: tl.join('<br>'), x: 0.01, xanchor: 'left', y: 0.99, yanchor: 'top', yref: 'container', font: { size: 15, color: L.fg },
+        subtitle: { text: sl.join('<br>'), font: { size: 11, color: L.muted } } };
+      fig.layout.margin = Object.assign({}, fig.layout.margin, { t: (fig.layout.margin.t || 10) + extra });
+      var tmp = h('div', '', STATS); tmp.style.cssText = 'position:absolute;left:-20000px;top:0;width:' + card.lastW + 'px;height:' + (480 + extra) + 'px';
       window.Plotly.newPlot(tmp, fig.data, fig.layout, { staticPlot: true }).then(function () {
-        return window.Plotly.downloadImage(tmp, { format: kind, scale: kind === 'png' ? 2 : 1, width: card.lastW, height: 520, filename: fileName(card, kind).replace(/\.\w+$/, '') });
+        return window.Plotly.downloadImage(tmp, { format: kind, scale: kind === 'png' ? 2 : 1, width: card.lastW, height: 520 + extra, filename: fileName(card, kind).replace(/\.\w+$/, '') });
       }).then(function () { window.Plotly.purge(tmp); tmp.remove(); }, function () { tmp.remove(); });
     }
   });
@@ -2309,21 +2485,33 @@
       card.view.textContent = fig.rc ? fig.rc.text || fig.rc.note : 'Scatter: x ' + lab[st.x].toLowerCase() + ', y ' + lab[st.y].toLowerCase() + '; color by ligand group; dot size by top-ranked positions with a CFR.';
       var back = card.el.querySelector('[data-back]');
       var recolored = !!(fig.rc && fig.rc.by);   // a note alone (a position outside the top 50) changes no color
-      if (recolored && !back) {
-        back = h('button', 'cc-btn', null, 'Back to ligand colors'); back.type = 'button'; back.setAttribute('data-back', '');
-        back.addEventListener('click', function () { StatsSel.set({ pos: null, pair: null }); });
-        card.view.parentNode.insertBefore(back, card.view.nextSibling);
-      } else if (!recolored && back) back.remove();
+      if (recolored) {
+        // the button clears the page-wide selection, so it names what it clears
+        var what = sel.pos || (sel.pair ? pairName(sel.pair) : '');
+        if (!back) {
+          back = h('button', 'cc-btn', null, ''); back.type = 'button'; back.setAttribute('data-back', '');
+          back.addEventListener('click', function () { StatsSel.set({ pos: null, pair: null }); });
+          card.view.parentNode.insertBefore(back, card.view.nextSibling);
+        }
+        back.textContent = 'Clear ' + what + ', back to ligand colors';
+      } else if (back) back.remove();
       node.classList.add('plotly-host');
       if (!card.plotDiv || !node.contains(card.plotDiv)) { clear(node); card.plotDiv = h('div', 'plot', node); card.plotDiv.style.height = '100%'; card.plotDiv.id = 'chart-receptors-plot'; card.plotDiv.setAttribute('role', 'img'); card.plotDiv.setAttribute('aria-label', 'Receptor explorer scatter'); }
       if (!window.Plotly) { clear(node); h('p', 'load-note', node, 'This chart could not load.'); return; }
-      var fn = card.plotted ? window.Plotly.react : window.Plotly.newPlot;
-      return fn(card.plotDiv, fig.data, fig.layout, { responsive: true, displayModeBar: false, displaylogo: false, scrollZoom: false }).then(function () {
-        if (!card.plotted) {
-          card.plotted = true;
-          card.plotDiv.on('plotly_click', function (ev) { var p = ev.points && ev.points[0]; if (p && p.customdata) receptorPanel(card, p.customdata); });
-        }
-      });
+      var cfg = { responsive: true, displayModeBar: false, displaylogo: false, scrollZoom: false }, div = card.plotDiv;
+      card.wantFig = fig;
+      if (card.plotted) return window.Plotly.react(div, fig.data, fig.layout, cfg);
+      // the first plot waits for Plotly to load; a redraw asked for meanwhile is drawn when it lands
+      if (card.plotting && card.plottingDiv === div) return card.plotting;
+      card.plottingDiv = div;
+      var job = card.plotting = window.Plotly.newPlot(div, fig.data, fig.layout, cfg).then(function () {
+        if (card.plotting === job) card.plotting = null;
+        if (card.plotDiv !== div) return;
+        card.plotted = true;
+        div.on('plotly_click', function (ev) { var p = ev.points && ev.points[0]; if (p && p.customdata) receptorPanel(card, p.customdata); });
+        if (card.wantFig !== fig) return window.Plotly.react(div, card.wantFig.data, card.wantFig.layout, cfg);
+      }, function (err) { if (card.plotting === job) card.plotting = null; throw err; });
+      return job;
     });
   }
   function families(card, node, w, o) {
@@ -2392,7 +2580,7 @@
         var g = cv.getContext('2d'); g.scale(dpr, dpr);
         var xs = P.map(function (p) { return p.x; }), ys = P.map(function (p) { return p.y; });
         var x0 = minOf(xs), x1 = maxOf(xs), y0 = minOf(ys), y1 = maxOf(ys);
-        var colors = m.ligand_groups.map(function (gg) { return C.dark ? (LIGAND_DARK[gg.key] || gg.color) : gg.color; });
+        var colors = m.ligand_groups.map(function (gg) { return C.dark ? (gg.color_dark || gg.color) : gg.color; });
         g.fillStyle = C.plate; g.beginPath(); if (g.roundRect) g.roundRect(0, 0, w, hh, 14); else g.rect(0, 0, w, hh); g.fill();
         var px = function (p) { return [14 + (p.x - x0) / (x1 - x0) * (w - 28), 14 + (1 - (p.y - y0) / (y1 - y0)) * (hh - 28)]; };
         P.forEach(function (p) { var q = px(p); g.fillStyle = colors[p.group] || C.muted; g.globalAlpha = 0.85; g.beginPath(); g.arc(q[0], q[1], 3.4, 0, 7); g.fill(); g.globalAlpha = 1; });
@@ -2477,7 +2665,10 @@
         entries.forEach(function (en) { seen[en.target.id] = en.isIntersecting ? en.boundingClientRect.top : null; });
         var best = null;
         Object.keys(seen).forEach(function (id) { if (seen[id] !== null && (best === null || Math.abs(seen[id]) < Math.abs(seen[best]))) best = id; });
-        if (best && best !== current) {
+        // no section in the band: above the first section (the header, after Home) nothing is marked; between two
+        // sections the last mark stays
+        if (!best) { var first = document.querySelector('.stats section.story[id]'); if (!first || first.getBoundingClientRect().top < window.innerHeight * 0.2) return; }
+        if (best !== current) {
           current = best;
           Object.keys(links).forEach(function (k) { links[k].classList.toggle('is-current', k === best); if (k === best) links[k].setAttribute('aria-current', 'location'); else links[k].removeAttribute('aria-current'); });
         }
