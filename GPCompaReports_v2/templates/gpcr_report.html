@@ -998,7 +998,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var rows;
     try { rows = JSON.parse(node.textContent); } catch (e) { return; }
     if (!Array.isArray(rows) || !rows.length) return;
-    var cols = ['position','amino_acid','protein_segment','generic_number','display_number',
+    var cols = ['position','amino_acid','protein_segment','display_number',
                 'n_contact_partners','active_minus_inactive','max_abs_delta','max_signed_delta','partner_at_max'];
     function esc(v) {
       var s = (v == null) ? '' : String(v);

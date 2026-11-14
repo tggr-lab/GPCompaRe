@@ -555,7 +555,9 @@ def generate_all_reports(env: Environment, store, output_dir, analysis_results=N
         if residue_metrics.empty:
             residue_summary_json = ''
         else:
-            residue_summary_json = residue_metrics.to_json(orient='records')
+            # generic_number is GPCRdb's own field, empty in every annotation file; the page and its
+            # CSV carry the numbering once, as display_number
+            residue_summary_json = residue_metrics.drop(columns=['generic_number']).to_json(orient='records')
 
         snake_svg, snake_json = v1._prepare_snake_plot(gid, delta_df, var_df, sig_threshold)
         has_snake_plot = snake_svg is not None

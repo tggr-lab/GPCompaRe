@@ -356,3 +356,43 @@ def test_a_chosen_motif_chip_keeps_its_residues_readable_in_dark_mode(open_repor
     c = page.evaluate("""(() => { var ch = document.querySelector('#sp-motif-chips .sp-chip.is-on');
       return [getComputedStyle(ch.querySelector('.sp-chip-res')).color, getComputedStyle(document.body).color]; })()""")
     assert c[0] == c[1], 'the residues take the page text colour on a chosen chip'
+
+
+# ---- release review 2026-11-14: residues without a contact pair, the residue summary CSV ----
+
+def _json_script(html, sid):
+    m = re.search(r'<script type="application/json" id="%s">(.*?)</script>' % sid, html, re.S)
+    return json.loads(m.group(1)) if m else None
+
+
+@needs_build
+def test_a_residue_without_contact_pairs_is_named_like_every_other_residue(open_report):
+    gid = _pick('id="rx-config"', 'id="residue-summary-data"')
+    html = _html(gid)
+    cfg = _json_script(html, 'rx-config')
+    have = {r['position'] for r in _json_script(html, 'residue-summary-data')}
+    assert cfg.get('aa'), 'rx-config carries the amino acid of every residue'
+    tm = [int(p) for p, a in cfg['annotation'].items()
+          if int(p) not in have and a[0].startswith('TM') and cfg['aa'].get(p)]
+    if not tm:
+        pytest.skip('every helix residue of %s has a contact pair' % gid)
+    pos = tm[0]
+    three = {'A': 'Ala', 'R': 'Arg', 'N': 'Asn', 'D': 'Asp', 'C': 'Cys', 'Q': 'Gln', 'E': 'Glu', 'G': 'Gly',
+             'H': 'His', 'I': 'Ile', 'L': 'Leu', 'K': 'Lys', 'M': 'Met', 'F': 'Phe', 'P': 'Pro', 'S': 'Ser',
+             'T': 'Thr', 'W': 'Trp', 'Y': 'Tyr', 'V': 'Val'}[cfg['aa'][str(pos)]]
+    page = open_report(gid, '#res=%d' % pos)
+    expect(page.locator('#rx-drawer')).to_be_visible()
+    assert page.inner_text('#rx-drawer-title').strip() == '%s%d' % (three, pos)
+    assert ('%s%d' % (three, pos)) in page.inner_text('.gpc-selbar-what')
+    assert _errors(page) == []
+
+
+@needs_build
+def test_the_residue_summary_carries_one_numbering_column():
+    gid = _pick('id="residue-summary-data"')
+    html = _html(gid)
+    rows = _json_script(html, 'residue-summary-data')
+    assert rows and all('generic_number' not in r for r in rows)
+    assert any(r.get('display_number') for r in rows)
+    m = re.search(r"var cols = \[([^\]]*)\]", html)
+    assert m and "'display_number'" in m.group(1) and 'generic_number' not in m.group(1)
