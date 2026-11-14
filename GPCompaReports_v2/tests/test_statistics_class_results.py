@@ -275,6 +275,29 @@ def test_class_variants(payloads):
     assert cv['totals'] == {'decisive_groups': 15524, 'decisive_bands': 15519, 'decisive_fifths': 15507,
                             'positions_bands': 402}
     assert not {'or', 'odds', 'ci', 'mh', 'odds_ratio', 'conservation_adjusted', 'mh_conservation'} & set(_keys(cv))
+    # substitutions of the set without an AlphaMissense class in it: counted for the method note, never in a share
+    assert cv['unclassified'] == {'substitutions': 1260, 'top50': 483, 'receptors': 49}
+
+
+def test_unclassified_table_is_pinned_and_outside_the_summary():
+    un = cr.load_am_unclassified()
+    assert _sha(cr.SUPP_DIR / cr.AM_UNCLASSIFIED) == cr.AM_UNCLASSIFIED_SHA
+    assert list(un.columns) == ['gid', 'protein_position', 'ref_aa', 'alt_aa', 'generic_number', 'top50']
+    assert len(un) == 1260 and int(un['top50'].sum()) == 483 and un['gid'].nunique() == 49
+    assert not {'gpr3_human', 'gpr4_human', 'xcr1_human'} & set(un['gid'])
+    assert un['generic_number'].notna().all()
+    top = set(cr.class_ranking()['generic_number'][:50])
+    assert (un['generic_number'].isin(top).astype(int) == un['top50']).all()
+    assert ((un['gid'] == '5ht4r_human') & (un['protein_position'] == 117) & (un['alt_aa'] == 'G')).any()
+    text = (cr.SUPP_DIR / 'PROVENANCE.md').read_text(encoding='utf-8')
+    assert '`am_unclassified.tsv` | `%s`' % cr.AM_UNCLASSIFIED_SHA in text
+
+
+def test_recovery_rule_names_its_receptor_count(payloads):
+    rule = payloads['class_positions']['recovery']['rule']
+    assert rule.startswith('The 262 structure positions (GPCRdb structure-based numbers) numbered in at least 142 '
+                           'of the 283 receptors, in CFR score order.')
+    assert 'recurrent position' not in rule
 
 
 def test_helix_receptor_cells_size(payloads):
@@ -396,8 +419,8 @@ def test_built_payloads_and_csvs():
     assert not (STATS_DIR / 'figures').exists()
     assert not (STATS_DIR / 'conservation_by_residue.csv').exists()
     cov = (STATS_DIR / 'coverage.csv').read_text(encoding='utf-8')
-    assert 'GPR3, GPR4 and XCR1. GPR182 (ACKR5), NPY6R, P2RY8 and TAAR3: no records in that query.' in cov
-    assert 'NPY6R and TAAR3: no protein-coding missense records' in cov
+    assert 'GPR3, GPR4 and XCR1. GPR182 (ACKR5), NPY6R, P2RY8 and TAAR3P: no records in that query.' in cov
+    assert 'NPY6R and TAAR3P: no protein-coding missense records' in cov
     assert cov.count('GPR182') == 1 and cov.count('P2RY8') == 1
     cfr = json.loads((STATS_DIR / 'cfr_variants.json').read_text(encoding='utf-8'))
     assert cfr['coverage']['receptors_with_alleles'] == 281
@@ -407,6 +430,35 @@ def test_built_payloads_and_csvs():
             assert v not in text, (name, v)
         for w in BANNED_WORDS:
             assert w not in text.lower(), (name, w)
+
+
+@needs_build
+def test_built_manifest_lists_every_stats_file():
+    man = json.loads((STATS_DIR / 'manifest.json').read_text(encoding='utf-8'))
+    listed = {f['path']: f['bytes'] for f in man['files']}
+    on_disk = {str(p.relative_to(BUILD)): p.stat().st_size for p in STATS_DIR.rglob('*')
+               if p.is_file() and p.name != 'manifest.json'}
+    assert listed == on_disk
+    assert 'data/stats/gpcompare_statistics_tables.zip' in listed and 'data/stats/coverage.csv' in listed
+    assert not (STATS_DIR / 'overview.json').exists()
+
+
+@needs_build
+def test_built_cfr_atlas_groups_carry_counts():
+    atlas = json.loads((STATS_DIR / 'cfr_atlas.json').read_text(encoding='utf-8'))
+    orphan = [g for g in atlas['groups']['ligand'] if g['key'].startswith('Orphan')][0]
+    k = [p['gn'] for p in atlas['positions']].index('7.32x31')
+    assert (orphan['cfr'][k], orphan['n'], orphan['hit'][k]) == (30, 78, 0.385)
+    assert round(100 * orphan['cfr'][k] / orphan['n']) == 38
+
+
+@needs_build
+def test_built_am_method_note_counts_the_unclassified():
+    html = (BUILD / 'statistics.html').read_text(encoding='utf-8')
+    card = html[html.index('id="card-chart-pathogenicity"'):]
+    card = card[:card.index('</article>')]
+    assert ('1,260 substitutions in this set (483 at the top 50 positions, in 49 receptors) have no AlphaMissense '
+            'class in this comparison and are not counted') in re.sub(r'\s+', ' ', card)
 
 
 @needs_build
@@ -479,7 +531,7 @@ def test_release_labels_of_the_class_tables(payloads):
         assert 'class-wide CFR set' not in json.dumps(p.get('meta') or {}), name
     rec = payloads['class_positions']['recovery']
     assert rec['rule'].startswith('The %d structure positions (GPCRdb structure-based numbers) numbered in at least '
-                                  'half' % rec['universe'])
+                                  '142 of the 283' % rec['universe'])
     assert 'H8 are not included' in payloads['helix_pairs']['magnitude_rule']['interfaces']
 
 

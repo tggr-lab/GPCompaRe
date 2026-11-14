@@ -151,7 +151,8 @@ def test_figures(hp):
 def test_written_files(data, tmp_path):
     files = ca.write_stats_data(data[1], tmp_path)
     root = tmp_path / 'data' / 'stats'
-    for name in ('overview', 'helix_pairs', 'helix_pair_cells', 'helix_receptor_cells', 'cfr_atlas', 'receptors',
+    assert not (root / 'overview.json').exists()
+    for name in ('helix_pairs', 'helix_pair_cells', 'helix_receptor_cells', 'cfr_atlas', 'receptors',
                  'class_scale', 'class_positions', 'class_variants', 'manifest'):
         assert (root / ('%s.json' % name)).is_file()
     assert not (root / 'figures').exists(), 'figures/*.json are no longer written'

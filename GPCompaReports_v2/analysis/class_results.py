@@ -63,6 +63,10 @@ PINS = {
     '../supplement_2026-11-05b/ed14_a_conservation_strata_plotdata.tsv':
         '0bc8d101b4e3fdb7c9a4c607ba11c6f1d1df9706af0eb9f5967b815a6c38bedd',
 }
+#: The substitutions of the AlphaMissense comparison without a class in it (scripts/count_am_unclassified.py;
+#: SUPP_DIR/PROVENANCE.md). Kept apart from PINS, which lists the outputs of scripts/build_class_tables.py.
+AM_UNCLASSIFIED = 'am_unclassified.tsv'
+AM_UNCLASSIFIED_SHA = 'c445a920a1ae604390e7f4f09b7e7775764c579503e325d7db96d4d1b6434b0e'
 
 TOP_N = 50
 #: Helix cells of the bundle: TM1 to TM7 and H8 (helix_pairs.json segments[:8]).
@@ -105,6 +109,18 @@ def _read(name, **kw):
 
 
 _TABLES = None
+
+
+def load_am_unclassified():
+    """SUPP_DIR/am_unclassified.tsv, sha256-asserted: gid, protein_position, ref_aa, alt_aa, generic_number, top50."""
+    path = SUPP_DIR / AM_UNCLASSIFIED
+    if not path.is_file():
+        raise FileNotFoundError('%s is missing; it is written by scripts/count_am_unclassified.py' % path)
+    got = _sha(path)
+    if got != AM_UNCLASSIFIED_SHA:
+        raise ValueError('%s has sha256 %s, expected %s (see %s/PROVENANCE.md)' % (path, got, AM_UNCLASSIFIED_SHA,
+                                                                                SUPP_DIR.name))
+    return pd.read_csv(path, sep='\t', keep_default_na=False, na_values=[''])
 
 
 def load_class_tables():
@@ -367,10 +383,10 @@ def build_class_positions(adrb2_pack=None, n_receptors=None):
                      'columns': ['rank_in_universe', 'cfr_score_rank', 'struct', 'gn', 'known', 'motif',
                                  'known_found', 'expected'],
                      'rows': recovery_rows, 'cuts': cuts,
-                     'rule': ('The %d structure positions (GPCRdb structure-based numbers) numbered in at least half '
-                              'of the %d receptors that hold a recurrent position, in CFR score order. A structure '
-                              'position takes the highest CFR score among its generic numbers (gn = that one); '
-                              'expected = rank x known / universe.' % (M, n_rec))},
+                     'rule': ('The %d structure positions (GPCRdb structure-based numbers) numbered in at least %d '
+                              'of the %d receptors, in CFR score order. A structure position takes the highest CFR '
+                              'score among its generic numbers (gn = that one); expected = rank x known / universe.'
+                              % (M, -(-n_rec // 2), n_rec))},
         'scaffold': {'gid': SCAFFOLD_GID, 'gene': (adrb2_pack or {}).get('meta', {}).get('gene', ''),
                      'columns': ['num', 'aa', 'segment', 'gn', 'x', 'y', 'n'], 'residues': scaffold,
                      'n_rule': ('n: receptors with a CFR at the generic position (null: no generic number), from the '
@@ -413,6 +429,9 @@ def build_class_variants(am_summary=None):
                        'top50_pct': float(q.lead_pct),
                        'other_predicted_pathogenic': int(q.rest_path), 'other_decisive': int(q.rest_n),
                        'other_pct': float(q.rest_pct)})
+    un = load_am_unclassified()
+    unclassified = {'substitutions': int(len(un)), 'top50': int(un['top50'].sum()),
+                    'receptors': int(un['gid'].nunique())}
     totals = {'decisive_groups': sum(g['decisive'] for g in groups),
               'decisive_bands': sum(b['decisive'] for b in bands),
               'decisive_fifths': sum(f['top50_decisive'] + f['other_decisive'] for f in fifths),
@@ -423,6 +442,7 @@ def build_class_variants(am_summary=None):
         'bands': bands,
         'fifths': fifths,
         'totals': totals,
+        'unclassified': unclassified,
         'notes': {
             'groups': 'Unique missense substitutions with an AlphaMissense call at generic-numbered positions; '
                       'decisive = predicted pathogenic or predicted benign.',
@@ -451,6 +471,9 @@ def write_atlas_map(index, out_dir):
     path = Path(out_dir) / 'data' / 'stats' / 'atlas_map.json'
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(build_atlas_map(index), separators=(',', ':'), allow_nan=False), encoding='utf-8')
+    if (path.parent / 'manifest.json').is_file():   # a site build: the manifest lists the new file too
+        from .class_atlas import write_manifest
+        write_manifest(out_dir)
     return path
 
 
@@ -472,18 +495,16 @@ def hgnc_names(gids):
 
 def receptor_labels(gids, symbols=None):
     """{gid: label}: the site's gene symbol (symbols, else the UniProt entry stem), followed by the HGNC symbol
-    when that differs other than by a pseudogene 'P' ('GPR182 (ACKR5)'; 'TAAR3' for TAAR3P)."""
+    when that differs other than by a pseudogene 'P' ('GPR182 (ACKR5)'; 'TAAR3P' and 'NPY6R' as on the site)."""
     recs = _hgnc_records()
     symbols = symbols or {}
     out = {}
     for g in gids:
         stem = g.split('_')[0].upper()
-        sym = (recs.get(g) or {}).get('symbol') or stem
-        if sym in (stem, stem + 'P'):
-            out[g] = stem
-        else:
-            site = symbols.get(g) or stem
-            out[g] = site if sym in (site, site + 'P') else '%s (%s)' % (site, sym)
+        site = symbols.get(g) or stem
+        sym = (recs.get(g) or {}).get('symbol') or site
+        same = {site, site + 'P', stem, stem + 'P'}
+        out[g] = site if sym in same else '%s (%s)' % (site, sym)
     return out
 
 

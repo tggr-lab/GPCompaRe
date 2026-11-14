@@ -3,15 +3,15 @@
 Payloads, written at build time to <site>/data/stats/ by write_stats_data() and rendered by the
 Statistics page (templates/statistics.html, static/js/stats-story.js):
 
-    overview.json          orientation tiles and the coverage table
     helix_pairs.json       helix-pair rewiring atlas, all 283 receptors (built in tm_domain_analysis)
     helix_pair_cells.json  the receptors behind each helix-pair cell (fetch on the first cell click)
     cfr_atlas.json     the 50 class-wide CFR positions x 283 receptors
     receptors.json     the receptor explorer: one row per receptor, families, pattern similarity
 
 plus helix_receptor_cells.json, class_scale.json, class_positions.json and class_variants.json
-(analysis/class_results.py), one CSV per table (the card's table and download) and manifest.json, which lists
-every file with its size.
+(analysis/class_results.py) and one CSV per table (the card's table and download). manifest.json lists every
+file under data/stats/ with its size; write_manifest() rewrites it after each writer that adds files (the page
+generator after coverage.csv, cfr_variants and the zip; the Atlas step after atlas_map.json).
 
 Sources. Every structural number comes from the batch RRCS run (batch_analysis_20260202_151051): per
 receptor, the contact pairs with |dRRCS| at or above the receptor's own threshold (the report rule: mean +
@@ -35,12 +35,6 @@ Every payload has a "meta" block:
     n_receptors   283
     sources       {rrcs, numbering, cfr_set, metadata}: one plain sentence each
     sign, threshold_rule, segment_order where they apply
-
-overview.json
-    tiles     [{key, value, display, label, source: "database"|"ranking", source_label}], in page order:
-              receptors, contact_pairs, above_threshold, median_threshold, recurrent_positions, cfr_set
-    coverage  [{view, receptors, source, note}]
-    exclusions  {not_modeled: [4 names], not_modeled_note}
 
 helix_pairs.json
     segments          17 names, helices first; the first n_helices (8: TM1 to TM7, H8) form the default grid
@@ -71,8 +65,8 @@ cfr_atlas.json
                   has no residue numbered at that position. net: 50 values, the signed sum of the
                   above-threshold dRRCS of the contacts touching the residue (null unless state is 2).
     columns       [{n_hit, n_numbered, n_up, n_down}] per position (site layer)
-    groups        {ligand: [...], family: [...]}: [{key, n, hit: [50 shares of the group's receptors],
-                  numbered: [50 counts]}]
+    groups        {ligand: [...], family: [...]}: [{key, n, hit: [50 shares of the group's receptors, 3 decimals,
+                  for color], cfr: [50 counts of receptors with a CFR there], numbered: [50 counts]}]
 
 receptors.json
     metrics       [{key, label, description}] for the explorer chips
@@ -96,7 +90,7 @@ Hook for the page generator (statistics_page.py):
 
 It builds the payloads once (cached in analysis_results['class_atlas']), writes data/stats/ under
 output_dir and returns {'payloads': {name: dict}, 'files': {relative path: bytes}, 'urls': {name:
-'data/stats/<name>.json'}}.
+'data/stats/<name>.json'}, 'exclusions': {not_modeled, listed, not_modeled_note}} (exclusions are not written).
 """
 import csv
 import io
@@ -109,7 +103,7 @@ import pandas as pd
 from scipy import stats as sstats
 
 from . import class_results, pack_layer
-from .manuscript_stats import class_cfr_ranks, class_cfr_set, load_am_comparison
+from .manuscript_stats import class_cfr_ranks, class_cfr_set
 from .tm_domain_analysis import helix_pair_atlas
 
 SCHEMA = 'gpcompare-stats/%s@1'
@@ -356,9 +350,10 @@ def build_cfr_atlas(inputs):
         for key in keys:
             members = [row for row in rows if row[attr] == key]
             n = len(members)
-            hit = [round(sum(1 for m in members if m['state'][k] == '2') / n, 3) for k in range(len(gns))]
+            cfr = [sum(1 for m in members if m['state'][k] == '2') for k in range(len(gns))]
             numbered = [sum(1 for m in members if m['state'][k] != '0') for k in range(len(gns))]
-            out.append({'key': key, 'n': n, 'hit': hit, 'numbered': numbered})
+            out.append({'key': key, 'n': n, 'hit': [round(c / n, 3) for c in cfr], 'cfr': cfr,
+                        'numbered': numbered})
         return out
 
     rank_order = sorted(range(len(positions)), key=lambda k: positions[k]['rank'])
@@ -462,63 +457,19 @@ def build_receptors(inputs, atlas):
     }
 
 
-# --------------------------------------------------------------------------- overview
+# --------------------------------------------------------------------------- exclusions
 
 NOT_MODELED = ['GPR26', 'LGR5', 'OPSX', 'RXFP1']
 
 
-def build_overview(inputs, manuscript=None, am=None):
-    manuscript = manuscript or {}
-    am = am if am is not None else (manuscript.get('am_comparison') or load_am_comparison())
-    n_pairs = int(sum(i.n_pairs for i in inputs))
-    n_above = int(sum(len(i.sig_delta) for i in inputs))
-    med = float(np.median([i.threshold for i in inputs]))
-    lo, hi = min(i.threshold for i in inputs), max(i.threshold for i in inputs)
-    n_recurrent = manuscript.get('n_recurrent_positions') or len(class_cfr_ranks())
-    n_cfr = len(class_cfr_set())
-    site = LAYER_LABEL
-    ranking = 'GPCompaRe CFR ranking (full GPCRdb residue maps)'
-    tiles = [
-        {'key': 'receptors', 'value': len(inputs), 'display': '{:,}'.format(len(inputs)),
-         'label': 'human Class A receptors with an active and an inactive model', 'source': 'database',
-         'source_label': site},
-        {'key': 'contact_pairs', 'value': n_pairs, 'display': '{:,}'.format(n_pairs),
-         'label': 'residue contact pairs compared', 'source': 'database', 'source_label': site},
-        {'key': 'above_threshold', 'value': n_above, 'display': '{:,}'.format(n_above),
-         'label': 'pairs at or above their receptor threshold', 'source': 'database', 'source_label': site},
-        {'key': 'median_threshold', 'value': round(med, 4), 'display': '%.2f' % med,
-         'label': 'median receptor threshold on |ΔRRCS|', 'source': 'database', 'source_label': site},
-        {'key': 'share_above', 'value': round(100.0 * n_above / n_pairs, 2), 'display': '%.1f%%' % (100.0 * n_above / n_pairs),
-         'label': 'of contact pairs at or above their receptor threshold', 'source': 'database', 'source_label': site},
-        {'key': 'threshold_range', 'value': [round(lo, 4), round(hi, 4)], 'display': '%.2f to %.2f' % (lo, hi),
-         'label': 'range of receptor thresholds on |ΔRRCS|', 'source': 'database', 'source_label': site},
-        {'key': 'recurrent_positions', 'value': int(n_recurrent), 'display': '{:,}'.format(int(n_recurrent)),
-         'label': 'recurrent positions (above-threshold in at least 3 receptors)', 'source': 'ranking',
-         'source_label': ranking},
-        {'key': 'cfr_set', 'value': n_cfr, 'display': str(n_cfr),
-         'label': 'top-ranked positions by CFR score', 'source': 'ranking',
-         'source_label': ranking},
-    ]
-    n_numbered_any = sum(1 for i in inputs if any(i.gn2pos.get(g) for g in class_cfr_set()))
-    coverage = [
-        {'view': 'Structural summaries (helix-pair atlas, receptor explorer)', 'receptors': len(inputs),
-         'source': 'database', 'note': 'Every receptor with an active and an inactive model.'},
-        {'view': 'Every receptor at the top-ranked positions', 'receptors': len(inputs), 'source': 'database',
-         'note': '%d receptors have a residue numbered at one or more of the top-ranked positions.' % n_numbered_any},
-        {'view': 'AlphaMissense class comparison', 'receptors': int(am['receptors']), 'source': 'alphamissense',
-         'note': 'GPR3, GPR4 and XCR1 are not included.'},
-    ]
+def build_exclusions(inputs):
+    """The listed receptors without a complete active and inactive model pair (for the page, not written)."""
     return {
-        'meta': _meta('overview', inputs),
-        'tiles': tiles,
-        'coverage': coverage,
-        'exclusions': {
-            'not_modeled': NOT_MODELED,
-            'listed': len(inputs) + len(NOT_MODELED),
-            'not_modeled_note': ('The list of %d human Class A receptors also names these %d; they lack a complete '
-                                 'active and inactive model pair and are not in the database.'
-                                 % (len(inputs) + len(NOT_MODELED), len(NOT_MODELED))),
-        },
+        'not_modeled': NOT_MODELED,
+        'listed': len(inputs) + len(NOT_MODELED),
+        'not_modeled_note': ('The list of %d human Class A receptors also names these %d; they lack a complete '
+                             'active and inactive model pair and are not in the database.'
+                             % (len(inputs) + len(NOT_MODELED), len(NOT_MODELED))),
     }
 
 
@@ -540,13 +491,17 @@ def _csv(rows, header):
     return buf.getvalue()
 
 
+#: cfr_atlas.csv spells out the state codes of cfr_atlas.json (net_delta_rrcs is empty unless the state is cfr)
+STATE_WORDS = {'2': 'cfr', '1': 'numbered_no_contact', '0': 'not_numbered'}
+
+
 def csv_tables(payloads):
     """{filename: CSV text} for the cards' table views and downloads (the class_results tables included).
     coverage.csv is written by the page generator from the Methods rows."""
     atlas, rec = payloads['cfr_atlas'], payloads['receptors']
     pos = atlas['positions']
     at_rows = [[r['gid'], r['symbol'], r['ligand'], r['family'], p['gn'], p['segment'], p['rank'],
-                int(r['state'][k]), r['net'][k]] for r in atlas['receptors'] for k, p in enumerate(pos)]
+                STATE_WORDS[r['state'][k]], r['net'][k]] for r in atlas['receptors'] for k, p in enumerate(pos)]
     rc = rec['columns']
     out = {
         'cfr_atlas.csv': _csv(at_rows, ['gid', 'symbol', 'ligand_type', 'family', 'generic_number',
@@ -573,7 +528,6 @@ def build_class_atlas(store, manuscript=None, folder=None):
     payloads['helix_receptor_cells'] = dict(hrc, meta=_meta('helix_receptor_cells', inputs))
     payloads['cfr_atlas'] = build_cfr_atlas(inputs)
     payloads['receptors'] = build_receptors(inputs, payloads['cfr_atlas'])
-    payloads['overview'] = build_overview(inputs, manuscript)
     payloads['class_scale'] = dict(class_results.build_class_scale(inputs, store.delta_data),
                                    meta=_meta('class_scale', inputs))
     payloads['class_positions'] = dict(
@@ -585,11 +539,23 @@ def build_class_atlas(store, manuscript=None, folder=None):
                    scope=('Unique missense substitutions of the gnomAD v4.1.0 query of the RRCS batch run at '
                           'residues in contacts with |ΔRRCS| of 3.0 or more, generic-numbered positions; the '
                           'receptors field is the receptor count of that allele set.')))
-    return {'payloads': payloads, 'n_receptors': len(inputs)}
+    return {'payloads': payloads, 'n_receptors': len(inputs), 'exclusions': build_exclusions(inputs)}
 
 
 def _dump(obj):
     return json.dumps(obj, ensure_ascii=False, separators=(',', ':'), allow_nan=False)
+
+
+def write_manifest(output_dir):
+    """(Re)write data/stats/manifest.json: every file under data/stats/ (manifest.json itself left out) with its
+    size, in path order. Returns the manifest."""
+    root = Path(output_dir) / STATS_SUBDIR
+    files = sorted((str(STATS_SUBDIR / p.relative_to(root)), p.stat().st_size)
+                   for p in root.rglob('*') if p.is_file() and p.name != 'manifest.json')
+    manifest = {'schema': SCHEMA % 'manifest', 'label': LAYER_LABEL,
+                'files': [{'path': p, 'bytes': b} for p, b in files]}
+    (root / 'manifest.json').write_text(_dump(manifest), encoding='utf-8')
+    return manifest
 
 
 def write_stats_data(atlas, output_dir):
@@ -607,9 +573,9 @@ def write_stats_data(atlas, output_dir):
         put('%s.json' % name, _dump(payload))
     for fname, text in csv_tables(atlas['payloads']).items():
         put(fname, text)
-    manifest = {'schema': SCHEMA % 'manifest', 'label': LAYER_LABEL,
-                'files': [{'path': p, 'bytes': b} for p, b in sorted(files.items())]}
-    put('manifest.json', _dump(manifest))
+    write_manifest(output_dir)
+    mp = root / 'manifest.json'
+    files[str(STATS_SUBDIR / 'manifest.json')] = mp.stat().st_size
     return files
 
 
@@ -622,4 +588,5 @@ def stats_data_for_page(store, analysis_results, output_dir):
         analysis_results['class_atlas'] = atlas
     files = write_stats_data(atlas, output_dir)
     urls = {name: str(STATS_SUBDIR / ('%s.json' % name)) for name in atlas['payloads']}
-    return {'payloads': atlas['payloads'], 'files': files, 'urls': urls}
+    return {'payloads': atlas['payloads'], 'files': files, 'urls': urls,
+            'exclusions': atlas.get('exclusions')}

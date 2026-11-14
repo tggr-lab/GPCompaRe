@@ -31,7 +31,7 @@ from jinja2 import Environment
 
 from ...analysis import class_results
 from ...analysis.cfr_analysis import CFR_TOP_N
-from ...analysis.class_atlas import FAMILY_MIN_KW, stats_data_for_page
+from ...analysis.class_atlas import FAMILY_MIN_KW, stats_data_for_page, write_manifest
 from ...analysis.cfr_variants import write_cfr_variants
 from ...analysis.manuscript_stats import write_am_comparison
 from .. import data_versions
@@ -52,7 +52,7 @@ CLASS_PAYLOADS = ('class_scale', 'helix_pairs', 'helix_pair_cells', 'helix_recep
 RETIRED_FILES = ('chart-histogram.json', 'chart-histogram.csv', 'chart-tm-bar.json', 'chart-tm-bar.csv',
                  'chart-cv-scatter.json', 'chart-cv-scatter.csv', 'chart-conservation.json',
                  'chart-conservation.csv', 'chart-cfr-dotplot.csv', 'chart-pathogenicity.csv', 'cfr_top50.csv',
-                 'cfr_pairs_top20.csv', 'conservation_by_residue.csv')
+                 'cfr_pairs_top20.csv', 'conservation_by_residue.csv', 'overview.json')
 
 MINUS = '−'
 
@@ -561,6 +561,13 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
                                 format(g['ambiguous'], ',')) for g in groups) + (
             '<p>The comparison group is every other generic-numbered position, which includes recurrent positions '
             'ranked below the top %d.</p>' % CFR_TOP_N)
+        un = cv.get('unclassified') or {}
+        if un.get('substitutions'):
+            ctx['am_method'] += (
+                '<p>%s substitutions in this set (%s at the top %d positions, in %d receptors) have no AlphaMissense '
+                'class in this comparison and are not counted, here or in the recurrence and conservation groups '
+                'below.</p>' % (format(un['substitutions'], ','), format(un['top50'], ','), CFR_TOP_N,
+                                un['receptors']))
     cards = _cards(ctx)
 
     # the 4a composition rows (all three classes), rounded once
@@ -613,6 +620,7 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
         for p in sorted(stats_dir.glob('*.csv')):
             z.write(p, p.name)
     n_tables = sum(1 for _ in stats_dir.glob('*.csv'))
+    write_manifest(output_dir)   # every file of data/stats/, the ones written above included
 
     rail = [
         {'href': '#sec-scale', 'n': '1', 'label': 'What changes'},
@@ -623,7 +631,7 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
         {'href': '#sec-methods', 'n': '•', 'label': 'Methods and downloads'},
     ]
 
-    exc = (payloads.get('overview') or {}).get('exclusions') or {}
+    exc = atlas.get('exclusions') or {}
     exclusions = ({'listed': exc['listed'], 'names': class_results.names_list(exc['not_modeled'])}
                   if exc.get('listed') and exc.get('not_modeled') else None)
 

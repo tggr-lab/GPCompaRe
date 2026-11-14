@@ -33,8 +33,8 @@ def rec(data):
 
 
 @pytest.fixture(scope='module')
-def overview(data):
-    return data[1]['payloads']['overview']
+def exclusions(data):
+    return data[1]['exclusions']
 
 
 # ------------------------------------------------------------------------------- CFR atlas
@@ -86,7 +86,12 @@ def test_column_and_group_totals(atlas):
         assert sum(g['n'] for g in groups) == N_RECEPTORS
         for k, c in enumerate(atlas['columns']):
             assert round(sum(g['hit'][k] * g['n'] for g in groups)) == c['n_hit']
+            assert sum(g['cfr'][k] for g in groups) == c['n_hit']
             assert sum(g['numbered'][k] for g in groups) == c['n_numbered']
+        for g in groups:   # the counts behind the rounded shares (the phone matrix rounds once, from these)
+            members = [r for r in rows if r[kind] == g['key']]
+            assert g['cfr'] == [sum(1 for r in members if r['state'][k] == '2') for k in range(len(atlas['columns']))]
+            assert g['hit'] == [round(c / g['n'], 3) for c in g['cfr']]
 
 
 def test_atlas_net_equals_the_batch_rows(data, atlas):
@@ -116,7 +121,7 @@ def test_explorer_has_283_rows(rec, data):
     assert all(r['report'] == 'reports/%s.html' % r['gid'] for r in rows)
 
 
-def test_explorer_totals_equal_the_source(rec, data, overview):
+def test_explorer_totals_equal_the_source(rec, data):
     store = data[0]
     rows = {r['gid']: r for r in ca.explorer_rows(rec)}
     assert sum(r['n_pairs'] for r in rows.values()) == 213456
@@ -198,28 +203,24 @@ def test_similarity(rec):
         assert sims == sorted(sims, reverse=True) and all(-1 <= s <= 1 for s in sims)
 
 
-# ------------------------------------------------------------------------------- overview
+# ------------------------------------------------------------------------------- exclusions
 
-def test_overview_tiles(overview):
-    t = {x['key']: x for x in overview['tiles']}
-    assert [x['key'] for x in overview['tiles']] == ['receptors', 'contact_pairs', 'above_threshold',
-                                                    'median_threshold', 'share_above', 'threshold_range',
-                                                    'recurrent_positions', 'cfr_set']
-    assert t['share_above']['value'] == 10.79 and t['share_above']['display'] == '10.8%'
-    assert t['threshold_range']['display'] == '1.23 to 3.78'
-    assert t['receptors']['value'] == 283 and t['receptors']['source'] == 'database'
-    assert t['contact_pairs']['display'] == '213,456'
-    assert t['above_threshold']['display'] == '23,025'
-    assert t['median_threshold']['display'] == '2.40'
-    assert t['recurrent_positions']['value'] == 368 and t['recurrent_positions']['source'] == 'ranking'
-    assert t['cfr_set']['value'] == 50
+def test_exclusions_are_kept_for_the_page_and_no_overview_is_written(data, exclusions):
+    """The orientation tiles and coverage of overview.json had no reader (the page renders the coverage rows
+    itself); only the exclusions remain, in memory."""
+    assert 'overview' not in data[1]['payloads']
+    assert exclusions['not_modeled'] == ['GPR26', 'LGR5', 'OPSX', 'RXFP1']
+    assert exclusions['listed'] == N_RECEPTORS + 4
 
 
-def test_coverage(overview):
-    cov = {c['view']: c for c in overview['coverage']}
-    assert any(c['receptors'] == 276 and c['source'] == 'alphamissense' for c in cov.values())
-    assert all(c['receptors'] == 283 for c in cov.values() if c['source'] == 'database')
-    assert len(overview['exclusions']['not_modeled']) == 4
+def test_cfr_atlas_csv_spells_out_the_states(data):
+    import csv
+    import io
+    text = ca.csv_tables(data[1]['payloads'])['cfr_atlas.csv']
+    rows = list(csv.DictReader(io.StringIO(text)))
+    assert {r['state'] for r in rows} == {'cfr', 'numbered_no_contact', 'not_numbered'}
+    assert all((r['net_delta_rrcs'] == '') == (r['state'] != 'cfr') for r in rows)
+    assert sum(r['state'] == 'cfr' for r in rows) == sum(c['n_hit'] for c in data[1]['payloads']['cfr_atlas']['columns'])
 
 
 # ------------------------------------------------------------------------------- text

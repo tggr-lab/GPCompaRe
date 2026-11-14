@@ -3,13 +3,14 @@
 The Statistics page has two allele sets (2026-11-13 page rewrite):
 
   * the AlphaMissense comparison, recurrence groups and conservation groups use the February batch query
-    (276 receptors): GPR3, GPR4 and XCR1 are left out, and GPR182 (ACKR5), NPY6R, P2RY8 and TAAR3 had no
+    (276 receptors): GPR3, GPR4 and XCR1 are left out, and GPR182 (ACKR5), NPY6R, P2RY8 and TAAR3P had no
     records in that query. The Methods row "What each result covers" names all seven, in two sentences;
-  * the per-position variants use the report variant layer (281 receptors): NPY6R and TAAR3 have no
+  * the per-position variants use the report variant layer (281 receptors): NPY6R and TAAR3P have no
     protein-coding missense records (pseudogene loci), which the card guide says.
 
 GPR182 and P2RY8 appear only in the Methods row, and never as lacking gnomAD variants. The old 279-receptor
-variant layer (conservation scatter) is gone from the page.
+variant layer (conservation scatter) is gone from the page. Receptors are named by the site's gene symbol
+(TAAR3P, as in the selection box and receptors.json), with the HGNC symbol after it where that differs (GPR182).
 """
 import os
 import pathlib
@@ -29,7 +30,7 @@ else:
 
 STATS = BUILD_DIR / 'statistics.html'
 
-PSEUDOGENE = ('NPY6R', 'TAAR3')
+PSEUDOGENE = ('NPY6R', 'TAAR3P')
 UNRESOLVED = ('GPR182', 'P2RY8')
 
 needs_build = pytest.mark.skipif(
@@ -58,7 +59,7 @@ def _text():
 @needs_build
 def test_the_per_position_card_names_its_281_receptors_and_the_two_without_records():
     text = _text()
-    assert '281 receptors (NPY6R and TAAR3 have none)' in text
+    assert '281 receptors (NPY6R and TAAR3P have none)' in text
 
 
 @needs_build
@@ -70,9 +71,9 @@ def test_the_methods_row_names_the_seven_receptors_in_two_sentences():
     cells = [re.sub(r'<[^>]+>', '', c).strip() for c in re.findall(r'<td[^>]*>(.*?)</td>', am[0], re.S)]
     assert cells[1] == '276'
     assert 'GPR3, GPR4 and XCR1.' in cells[3]
-    assert 'GPR182 (ACKR5), NPY6R, P2RY8 and TAAR3: no records in that query.' in cells[3]
+    assert 'GPR182 (ACKR5), NPY6R, P2RY8 and TAAR3P: no records in that query.' in cells[3]
     v = [r for r in rows if 'Variants at each top-ranked position' in r]
-    assert len(v) == 1 and 'NPY6R and TAAR3: no protein-coding missense records' in v[0]
+    assert len(v) == 1 and 'NPY6R and TAAR3P: no protein-coding missense records' in v[0]
 
 
 @needs_build
@@ -102,3 +103,13 @@ def test_gp182_and_p2ry8_are_not_described_as_lacking_gnomad_variants():
 @needs_build
 def test_the_retired_279_receptor_layer_is_gone():
     assert '279' not in _text()
+
+
+@needs_build
+def test_receptors_are_named_by_the_site_symbol():
+    """TAAR3P is the symbol of the selection box, the profile and receptors.json; the bare UniProt stem never
+    stands for it on the page or in coverage.csv."""
+    assert not re.search(r'TAAR3(?!P)', _text())
+    cov = BUILD_DIR / 'data' / 'stats' / 'coverage.csv'
+    if cov.is_file():
+        assert not re.search(r'TAAR3(?!P)', cov.read_text(encoding='utf-8'))
