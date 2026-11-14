@@ -2774,23 +2774,26 @@
       document.querySelectorAll('.stats section.story[id]').forEach(function (s) { ro.observe(s); });
     }
     // a link to a card inside a closed disclosure opens it
-    function openHash() {
+    function openHash(e) {
       var t = location.hash && document.getElementById(location.hash.slice(1));
       var d = t && t.closest('details'); if (d) d.open = true;
-      if (t && STATS.contains(t)) holdHash(t);
+      if (t && STATS.contains(t)) holdHash(t, !!e);
     }
-    // cards above a linked card draw after the jump and push it down: while they settle, the target is put back
-    // under the topbar (its scroll-margin), until the reader scrolls or presses a key
-    function holdHash(t) {
-      var stop = false, n = 0, lastY = null;
+    // cards above a linked card draw after the jump and push it down: the target is put back under the topbar
+    // (its scroll-margin) while they settle. On load: until the reader scrolls, clicks or presses a key. After an
+    // in-page link: only when the target moved while it sat in place, so a scroll elsewhere is never undone.
+    var hashJob = 0;
+    function holdHash(t, inPage) {
+      var job = ++hashJob, stop = false, n = 0, prevTop = null, prevAligned = false;
       var cancel = function () { stop = true; };
       ['wheel', 'touchstart', 'keydown', 'mousedown'].forEach(function (ev) { window.addEventListener(ev, cancel, { once: true, passive: true, capture: true }); });
       (function tick() {
-        if (stop || n++ > 14) return;
-        var y = window.scrollY, want = parseFloat(getComputedStyle(t).scrollMarginTop) || 0, top = t.getBoundingClientRect().top;
-        // a scroll still under way (a smooth jump from a link) is left to finish
-        if (lastY !== null && Math.abs(y - lastY) < 1 && Math.abs(top - want) > 4) window.scrollTo(0, y + top - want);
-        lastY = window.scrollY;
+        if (stop || job !== hashJob || n++ > 14) return;
+        var want = parseFloat(getComputedStyle(t).scrollMarginTop) || 0, top = t.getBoundingClientRect().top, docTop = top + window.scrollY;
+        var moved = prevTop !== null && Math.abs(docTop - prevTop) > 1;
+        if (Math.abs(top - want) > 4 && (inPage ? moved && prevAligned : prevTop !== null)) window.scrollTo(0, docTop - want);
+        prevTop = docTop;
+        prevAligned = Math.abs(t.getBoundingClientRect().top - want) <= 4;
         setTimeout(tick, 300);
       })();
     }
