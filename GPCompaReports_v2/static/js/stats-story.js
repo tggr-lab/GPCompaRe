@@ -709,13 +709,24 @@
     for (var k = 0; k < rows.length && k < 30; k++) { var v = rows[k][i]; if (v === '' || v === undefined) continue; if (isNaN(parseFloat(v)) || !isFinite(v)) return false; seen++; }
     return seen > 0;
   }
+  // display rounding for the Table view (the CSV keeps full precision): integers as written, other
+  // numbers to 2 decimals at 1 or more, else 3 significant digits ("58.78", "0.00000137")
+  function cellNum(v) {
+    if (v === '' || v === undefined || !/[.eE]/.test(v)) return v;
+    var x = Number(v);
+    if (!isFinite(x) || Number.isInteger(x)) return v;
+    if (Math.abs(x) >= 1) return String(Math.round(x * 100) / 100);
+    var s = x.toPrecision(3);
+    if (/e/.test(s)) s = x.toFixed(Math.min(20, 2 - Math.floor(Math.log10(Math.abs(x)))));
+    return s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+  }
   function renderTable(box, header, list) {
     var MAX = 400;
     clear(box);
     var t = h('table', '', box), tr = h('tr', '', h('thead', '', t)), tb = h('tbody', '', t);
     var num = header.map(function (x, i) { return isNum(list, i); });
     header.forEach(function (x, i) { h('th', num[i] ? 'num' : '', tr, x); });
-    list.slice(0, MAX).forEach(function (r) { var row = h('tr', '', tb); r.forEach(function (v, i) { h('td', num[i] ? 'num' : '', row, v); }); });
+    list.slice(0, MAX).forEach(function (r) { var row = h('tr', '', tb); r.forEach(function (v, i) { h('td', num[i] ? 'num' : '', row, num[i] ? cellNum(v) : v); }); });
     h('p', 'table-note', box, list.length > MAX ? 'The first ' + fmt(MAX) + ' of ' + fmt(list.length) + ' rows; the CSV has all of them.' : fmt(list.length) + ' rows.');
   }
 
@@ -1151,7 +1162,8 @@
           card.scopeRest = rest.textContent;
         }
         rest.textContent = st.mode === 'magnitude' && CFG.labels.scope_maps ? ' ' + CFG.labels.scope_maps : card.scopeRest;
-        card.guide.innerHTML = nwAbs(guideFor(hp, G, st, small));
+        card.gridShows = st.mode === 'grid' ? gridShows(gridCell(hp, st, w)) : null;
+        card.guide.innerHTML = nwAbs(guideFor(hp, G, st, small, card.gridShows));
         ledger(card, hp, G, small);
         legendFor(card, st, small);
       }
@@ -1160,10 +1172,16 @@
     },
     onSelect: function (card) { draw(card, {}); }
   });
-  function guideFor(hp, G, st, small) {
+  function guideFor(hp, G, st, small, shows) {
     if (st.mode === 'magnitude') return 'Line width and label: mean |ΔRRCS| per contact over all contacts between two of TM1 to TM7, for pairs with at least ' + hp.magnitude_rule.min_contacts + ' contacts; H8 pairs are not included. Disc size, and the width of the H8 bar: mean |ΔRRCS| per contact endpoint on the helix. Unsigned, over all ' + NREC + ' receptors.';
     if (st.mode === 'grid' && small) return esc(G.label.replace(/ receptors$/, '')) + ': ' + G.n + ' receptors, fewer than the ' + hp.min_receptors + ' a class direction needs. Each cell: how many of them carry the pair, without a direction. Within-helix pairs are not shown.';
-    if (st.mode === 'grid') return 'Each cell: the mean net ΔRRCS of the pair over all receptors in the group (receptors without the pair count as 0), and the share of receptors with the pair whose net has that sign. Within-helix pairs are not shown. Loops and termini appear under All segments.';
+    if (st.mode === 'grid') {
+      var mean = 'the mean net ΔRRCS of the pair over all receptors in the group (receptors without the pair count as 0)', share = 'the share of receptors with the pair whose net has that sign';
+      var cells = shows === 'both' ? 'Each cell: ' + mean + ', and ' + share + '.'
+        : shows === 'mean' ? 'Each cell: ' + mean + '. Point at a cell for ' + share + '.'
+        : 'Cell color: ' + mean + '. Point at a cell for its value and ' + share + '.';
+      return cells + ' Within-helix pairs are not shown.' + (st.segments === 'helices' ? ' Loops and termini appear under All segments.' : '');
+    }
     if (small) return esc(G.label.replace(/ receptors$/, '')) + ': ' + G.n + ' receptors, fewer than the ' + hp.min_receptors + ' a class direction needs. Lines join the helices these receptors pair, width by how many carry the pair. Each receptor’s own bundle is on its report.';
     return 'Each line joins two helices that share above-threshold contacts. Color: mean net ΔRRCS per receptor, <span class="t-up">red</span> stronger in the active model, <span class="t-down">blue</span> stronger in the inactive model. Width: receptors that change in the majority direction. Pairs carried by fewer than ' + hp.min_receptors + ' receptors are not drawn.';
   }
@@ -1172,7 +1190,7 @@
     if (st.mode === 'magnitude') { L.innerHTML = '<span><span class="sw" style="background:var(--st-ink-bar)"></span>mean |ΔRRCS| per contact (unsigned)</span>'; return; }
     if (small && st.mode === 'direction') { L.innerHTML = '<span><span class="sw" style="background:var(--st-faint)"></span>line width: receptors carrying the pair (no direction)</span>'; return; }
     if (small) { L.innerHTML = '<span><span class="sw" style="background:var(--st-faint)"></span>cell: receptors of the group carrying the pair (no direction)</span>'; return; }
-    L.innerHTML = '<span>stronger in the inactive model</span><span class="ramp" style="background:linear-gradient(90deg,' + C.inactive + ',' + C.neutral + ',' + C.active + ')"></span><span>stronger in the active model</span><span>scale ±6 |ΔRRCS| per receptor</span>';
+    L.innerHTML = '<span>stronger in the inactive model</span><span class="ramp" style="background:linear-gradient(90deg,' + C.inactive + ',' + C.neutral + ',' + C.active + ')"></span><span>stronger in the active model</span><span>scale ±6 ΔRRCS per receptor</span>';
   }
   function bundle(card, node, w, hp, G, small, o) {
     var st = card.state, S = Math.min(520, w), s = svgIn(node, S, S, 'Helix bundle seen from the extracellular side');
@@ -1270,11 +1288,18 @@
       }, function () { box.remove(); });
     }
   }
+  function gridSegs(hp, st) { return st.segments === 'helices' ? hp.segments.slice(0, hp.n_helices) : hp.segments.slice(); }
+  function gridCell(hp, st, w) {
+    var n = gridSegs(hp, st).length, lab = isPhone() ? 40 : 52;
+    return Math.min(st.segments === 'helices' ? 62 : 40, Math.floor((Math.min(w, 620) - lab) / n));
+  }
+  // what a grid cell prints at that size: 'both' (mean and share), 'mean', or 'none' (color only)
+  function gridShows(cell) { return cell >= 50 ? 'both' : cell >= 34 ? 'mean' : 'none'; }
   function gridView(card, node, w, hp, G, o) {
     var small = G.n < hp.min_receptors;
-    var st = card.state, segs = st.segments === 'helices' ? hp.segments.slice(0, hp.n_helices) : hp.segments.slice();
+    var st = card.state, segs = gridSegs(hp, st);
     var order = segs.map(function (s, i) { return i; }).sort(function (a, b) { return segRank(segs[a]) - segRank(segs[b]); });
-    var n = segs.length, lab = isPhone() ? 40 : 52, cell = Math.min(st.segments === 'helices' ? 62 : 40, Math.floor((Math.min(w, 620) - lab) / n));
+    var n = segs.length, lab = isPhone() ? 40 : 52, cell = gridCell(hp, st, w);
     var s = svgIn(node, lab + n * cell + 2, lab + n * cell + 2, 'Helix pair grid');
     var cells = {}; hpCells(hp, G).forEach(function (c) { cells[c.i + ',' + c.j] = c; });
     var sel = StatsSel.get().pair;
@@ -1325,7 +1350,11 @@
     }
     if (st.mode === 'grid' && !small) {
       h('h4', '', L, 'How to read the grid');
-      h('p', 'small-note', L, 'Each cell: mean net ΔRRCS per receptor (bold) and the share of receptors carrying the pair whose net has that sign. Blank: fewer than ' + hp.min_receptors + ' receptors carry the pair, and within-helix pairs (not shown). Click a cell for the receptors behind it.');
+      var share = 'the share of receptors carrying the pair whose net has that sign', shows = card.gridShows || 'both';
+      h('p', 'small-note', L, (shows === 'both' ? 'Each cell: mean net ΔRRCS per receptor (bold) and ' + share + '.'
+        : shows === 'mean' ? 'Each cell: mean net ΔRRCS per receptor. Point at a cell for ' + share + '.'
+        : 'Cells show color only: point at a cell for its mean net ΔRRCS per receptor and ' + share + '.') +
+        ' Blank: fewer than ' + hp.min_receptors + ' receptors carry the pair, and within-helix pairs (not shown). Click a cell for the receptors behind it.');
       return;
     }
     if (st.mode === 'grid') {
@@ -2481,13 +2510,15 @@
       }).then(function () { window.Plotly.purge(tmp); tmp.remove(); }, function () { tmp.remove(); });
     }
   });
+  // phone axis selects: shorter wording where the full label does not fit a 320 px screen
+  var AXIS_SHORT = { above_per_100: 'Above threshold per 100 pairs', share_active: 'Share stronger in active model', cfr_hits: 'CFRs at top-ranked positions' };
   function buildAxes(card, rj) {
     var st = card.state, box = card.axes;
     clear(box);
     if (isPhone()) {
       ['x', 'y'].forEach(function (ax) {
         var lab = h('label', 'ctl-note', box, ax + ' '), sel = h('select', '', lab);
-        rj.metrics.forEach(function (m) { var op = h('option', '', sel, m.label); op.value = m.key; });
+        rj.metrics.forEach(function (m) { var op = h('option', '', sel, AXIS_SHORT[m.key] || m.label); op.value = m.key; op.title = m.label; });
         sel.value = st[ax];
         sel.addEventListener('change', function () { st[ax] = sel.value; draw(card, { force: true }); });
       });
@@ -2564,6 +2595,8 @@
       legend: { orientation: 'h', yanchor: 'top', y: isPhone() ? -0.3 : -0.2, x: 0, font: { size: isPhone() ? 10 : 11.5 } }, hoverlabel: { font: { size: 12 } } };
     return { data: data, layout: layout, rc: rc };
   }
+  // lower-case a label inside a sentence, keeping abbreviations and symbols: 'Sum |ΔRRCS|' -> 'sum |ΔRRCS|'
+  function lowerFirst(t) { return /^[A-Z][a-z]/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t; }
   function scatter(card, node, w, o) {
     var st = card.state, rj = card.D.receptors, need = [];
     var sel = StatsSel.get();
@@ -2572,7 +2605,7 @@
     return Promise.all(need).then(function () {
       var fig = scatterFigure(card, w, false);
       var lab = {}; rj.metrics.forEach(function (m) { lab[m.key] = m.label; });
-      card.view.textContent = fig.rc ? fig.rc.text || fig.rc.note : 'Scatter: x ' + lab[st.x].toLowerCase() + ', y ' + lab[st.y].toLowerCase() + '; color by ligand group; dot size by top-ranked positions with a CFR.';
+      card.view.textContent = fig.rc ? fig.rc.text || fig.rc.note : 'Scatter: x ' + lowerFirst(lab[st.x]) + ', y ' + lowerFirst(lab[st.y]) + '; color by ligand group; dot size by top-ranked positions with a CFR.';
       var back = card.el.querySelector('[data-back]');
       var recolored = !!(fig.rc && fig.rc.by);   // a note alone (a position outside the top 50) changes no color
       if (recolored) {

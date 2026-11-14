@@ -457,8 +457,9 @@ def test_built_am_method_note_counts_the_unclassified():
     html = (BUILD / 'statistics.html').read_text(encoding='utf-8')
     card = html[html.index('id="card-chart-pathogenicity"'):]
     card = card[:card.index('</article>')]
-    assert ('1,260 substitutions in this set (483 at the top 50 positions, in 49 receptors) have no AlphaMissense '
-            'class in this comparison and are not counted') in re.sub(r'\s+', ' ', card)
+    # 49 receptors carry the 1,260; the 483 at the top 50 are a part of them (in 47 receptors)
+    assert ('1,260 substitutions in this set, in 49 receptors (483 of them at the top 50 positions), have no '
+            'AlphaMissense class in this comparison and are not counted') in re.sub(r'\s+', ' ', card)
 
 
 @needs_build

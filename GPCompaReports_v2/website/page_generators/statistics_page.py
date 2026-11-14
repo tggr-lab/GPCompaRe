@@ -428,7 +428,7 @@ def _cards(ctx):
               'stronger in the active model: the fraction of above-threshold pairs with ΔRRCS above 0. Total '
               '|ΔRRCS|: the sum over all contact pairs; it grows with receptor size. Similar receptors: cosine '
               'similarity of the signed fingerprint over the %d top-ranked positions, a browsing aid.</p>'
-              % CFR_TOP_N),
+              % CFR_TOP_N, table=False),   # its own Table tab is the table view; the CSV stays in Export
     ]
     return {cd['id']: cd for cd in cards}
 
@@ -564,10 +564,10 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
         un = cv.get('unclassified') or {}
         if un.get('substitutions'):
             ctx['am_method'] += (
-                '<p>%s substitutions in this set (%s at the top %d positions, in %d receptors) have no AlphaMissense '
-                'class in this comparison and are not counted, here or in the recurrence and conservation groups '
-                'below.</p>' % (format(un['substitutions'], ','), format(un['top50'], ','), CFR_TOP_N,
-                                un['receptors']))
+                '<p>%s substitutions in this set, in %d receptors (%s of them at the top %d positions), have no '
+                'AlphaMissense class in this comparison and are not counted, here or in the recurrence and '
+                'conservation groups below.</p>' % (format(un['substitutions'], ','), un['receptors'],
+                                                   format(un['top50'], ','), CFR_TOP_N))
     cards = _cards(ctx)
 
     # the 4a composition rows (all three classes), rounded once
