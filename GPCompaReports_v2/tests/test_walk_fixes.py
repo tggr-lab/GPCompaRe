@@ -413,3 +413,16 @@ def test_a_residue_link_lands_below_the_sticky_tabs_with_the_snake_controls(open
     assert g['res'] <= g['sel'], g           # and the residue is above the selection bar
     assert _errors(page) == []
 
+
+@needs_build
+def test_table_on_the_selection_bar_is_not_covered_by_the_residue_panel(open_report):
+    if not (REPORTS_DIR / 'mc4r_human.html').is_file():
+        pytest.skip('mc4r_human not in this build')
+    page = open_report('mc4r_human', '#sec=sec-snake&res=137', viewport={'width': 1920, 'height': 1080}, wait=1500)
+    assert not page.evaluate("document.getElementById('rx-drawer').hidden")
+    page.click('#gpc-selbar button:text-is("Table")')
+    page.wait_for_timeout(1200)
+    assert page.evaluate("document.getElementById('rx-drawer').hidden")
+    expect(page.locator('#gpc-selbar')).to_be_visible()          # the selection stays
+    assert page.evaluate("window.GPCSelect.current().res") == 137
+    assert _errors(page) == []

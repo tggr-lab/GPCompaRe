@@ -617,10 +617,12 @@
     if (!node || !node.scrollIntoView) return;
     // a target inside a section folded by Compact view: open that section first
     if (window.V3Nav && window.V3Nav.reveal) window.V3Nav.reveal(node);
-    // on a phone the drawer is a bottom sheet over the page: close it so the target is seen
-    if (window.innerWidth <= 720 && window.ReportExtras && window.ReportExtras.close) {
-      var drawer = document.getElementById('rx-drawer');
-      if (drawer && !drawer.hidden) window.ReportExtras.close();
+    // on a phone the drawer is a bottom sheet over the page, and on a wide screen it floats over
+    // the right edge: close it when it would cover the target (a table row runs under it)
+    var drawer = document.getElementById('rx-drawer');
+    if (drawer && !drawer.hidden && window.ReportExtras && window.ReportExtras.close) {
+      var dr = drawer.getBoundingClientRect(), nr = node.getBoundingClientRect();
+      if (window.innerWidth <= 720 || (dr.width && nr.right > dr.left && nr.left < dr.right)) window.ReportExtras.close();
     }
     node.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' });
   }
