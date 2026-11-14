@@ -86,8 +86,7 @@ def test_section_d_shows_the_class_counts_and_no_test_statistic():
     d = _text(_section_d(STATS.read_text(encoding='utf-8')))
     assert INTRO in d
     assert GUIDE_4A in d
-    assert ('At the 50 top-ranked positions, 66.9% of decisive AlphaMissense calls are predicted pathogenic, against '
-            '43.6% at other generic-numbered positions.') in re.sub(r'\s+', ' ', re.sub(r'</?b>', '', _section_d(
+    assert '66.9% predicted pathogenic at the 50 top-ranked positions, 43.6% at others.' in re.sub(r'\s+', ' ', re.sub(r'</?b>', '', _section_d(
                 STATS.read_text(encoding='utf-8'))))
     for label in ('Top 50 positions by CFR score', 'Other generic-numbered positions'):
         assert label in d

@@ -197,8 +197,9 @@ def glance_svg(fact):
         parts = []
         for i, cl in enumerate(cells[:2]):
             cls = 'g-down' if cl['mean_net'] < 0 else 'g-up'
-            parts.append('<rect class="%s" x="%d" y="0" width="56" height="24" rx="5"/><text class="g-cell" x="%d" '
-                         'y="16.5" text-anchor="middle">%s</text>' % (cls, i * 62, i * 62 + 28, _esc(cl['value'])))
+            parts.append('<g><title>%s: mean net ΔRRCS %s</title><rect class="%s" x="%d" y="0" width="56" height="24" '
+                         'rx="5"/><text class="g-cell" x="%d" y="16.5" text-anchor="middle">%s</text></g>'
+                         % (_esc(cl['pair']), _esc(cl['value']), cls, i * 62, i * 62 + 28, _esc(cl['value'])))
         return '<svg class="g-draw" viewBox="0 0 118 24" aria-hidden="true">%s</svg>' % ''.join(parts)
     if k == 'variants':
         a, b = (fact.get('bars') or [0, 0])[:2]

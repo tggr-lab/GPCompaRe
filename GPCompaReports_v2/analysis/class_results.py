@@ -36,6 +36,7 @@ import io
 import json
 import math
 import os
+import re
 from pathlib import Path
 
 import numpy as np
@@ -541,6 +542,12 @@ def _motif_letter(gn):
     return ''
 
 
+def _motif_short(gn):
+    """'R of DRY' for a position of a motif whose name spells its positions, else ''."""
+    m = re.match(r'the (\w) of the (\S+) motif$', _motif_letter(gn))
+    return '%s of %s' % m.groups() if m else ''
+
+
 def _ligand_medians(receptors_payload):
     cols = receptors_payload['columns']
     df = pd.DataFrame(receptors_payload['rows'], columns=cols)
@@ -566,16 +573,12 @@ def finding_values(payloads):
                   'thr_min': sc['threshold_min'], 'thr_max': sc['threshold_max']},
         'bundle': {'down': neg, 'up': posi},
         'positions': {'gn': first['gn'], 'n': first['n'], 'of': pos['n_receptors'], 'motif': _motif_letter(first['gn']),
+                      'motif_short': _motif_short(first['gn']),
                       'n_top_band': n_top_band, 'top_band_lo': top_band['lo']},
         'variants': {'top': g_top['pct_predicted_pathogenic_of_decisive'],
                      'other': g_oth['pct_predicted_pathogenic_of_decisive']},
         'receptors': _ligand_medians(payloads['receptors']),
     }
-
-
-def _share_phrase(lo, n):
-    """'three quarters of the class' when lo is the smallest count of at least three quarters of n."""
-    return 'three quarters of the class' if lo == math.ceil(0.75 * n) else '%.0f%% of the class' % (100.0 * lo / n)
 
 
 def finding_sentences(payloads):
@@ -584,40 +587,33 @@ def finding_sentences(payloads):
     s, b, p, va, r = v['scale'], v['bundle'], v['positions'], v['variants'], v['receptors']
     d, u = b['down'], b['up']
     lig = lambda name: name.lower()  # noqa: E731
+    low_lig = lig(r['low'])
+    if low_lig.endswith(' receptors') and lig(r['high']).endswith(' receptors'):
+        low_lig = low_lig[:-len(' receptors')]
+    # section headlines: at most 12 words, the numbers carry them
     findings = {
-        'sec-scale': '%s of %s contact pairs (%.1f%%) change beyond their receptor\'s own threshold.'
+        'sec-scale': '%s of %s contact pairs (%.1f%%) pass their receptor\'s threshold.'
                      % (_int(s['above']), _int(s['pairs']), s['share']),
-        'sec-a': ('Contacts between %s and %s are weaker in the active model in %d of %d receptors with a change '
-                  'there; contacts between %s and %s are stronger in %d of %d.'
-                  % (d['a'], d['b'], d['n'], d['of'], u['a'], u['b'], u['n'], u['of'])),
-        'sec-c': ('%s%s is a CFR in %d of %d receptors. %d positions are CFRs in at least %d receptors, %s.'
-                  % (p['gn'], (', %s,' % p['motif']) if p['motif'] else '', p['n'], p['of'], p['n_top_band'],
-                     p['top_band_lo'], _share_phrase(p['top_band_lo'], p['of']))),
-        'sec-d': ('At the %d top-ranked positions, %.1f%% of decisive AlphaMissense calls are predicted pathogenic, '
-                  'against %.1f%% at other generic-numbered positions.' % (TOP_N, va['top'], va['other'])),
-        'sec-e': ('Median total |ΔRRCS| per receptor runs from %.0f in %s to %.0f in %s (ligand types with %s or '
-                  'more receptors).' % (r['low_median'], lig(r['low']), r['high_median'], lig(r['high']),
-                                        NUMBER_WORDS.get(r['min_receptors'], str(r['min_receptors'])))),
+        'sec-a': ('%s weaker in %d of %d, %s stronger in %d of %d.'
+                  % (d['pair'], d['n'], d['of'], u['pair'], u['n'], u['of'])),
+        'sec-c': ('%s%s is a CFR in %d of %d receptors.'
+                  % (p['gn'], (' (%s)' % p['motif_short']) if p['motif_short'] else '', p['n'], p['of'])),
+        'sec-d': ('%.1f%% predicted pathogenic at the %d top-ranked positions, %.1f%% at others.'
+                  % (va['top'], TOP_N, va['other'])),
+        'sec-e': ('Median total |ΔRRCS| from %.0f in %s to %.0f in %s.'
+                  % (r['low_median'], low_lig, r['high_median'], lig(r['high']))),
     }
+    # glance tiles: a big number and a label of at most six words
     glance = [
-        {'key': 'scale', 'href': '#sec-scale', 'big': '%.1f%%' % s['share'],
-         'line': ('of %s contact pairs change beyond their receptor\'s own threshold (%s pairs). Thresholds run '
-                  'from %.2f to %.2f.' % (_int(s['pairs']), _int(s['above']), s['thr_min'], s['thr_max'])),
+        {'key': 'scale', 'href': '#sec-scale', 'big': '%.1f%%' % s['share'], 'line': 'of contact pairs pass threshold',
          'bar': round(s['share'] / 100.0, 4)},
-        {'key': 'bundle', 'href': '#sec-a', 'big': d['pair'],
-         'line': ('weaker in the active model in %d of %d receptors with a change there; %s stronger in %d of %d. '
-                  'Boxes: mean net ΔRRCS per receptor of each pair.'
-                  % (d['n'], d['of'], u['pair'], u['n'], u['of'])),
+        {'key': 'bundle', 'href': '#sec-a', 'big': d['pair'], 'line': 'weaker in the active model',
          'cells': [{'pair': d['pair'], 'mean_net': d['mean_net'], 'value': _signed(d['mean_net'])},
                    {'pair': u['pair'], 'mean_net': u['mean_net'], 'value': _signed(u['mean_net'])}]},
-        {'key': 'positions', 'href': '#sec-c', 'big': '%d of %d' % (p['n'], p['of']),
-         'line': ('receptors have a CFR (core functional residue) at %s%s'
-                  % (p['gn'], (', %s' % p['motif']) if p['motif'] else '')),
+        {'key': 'positions', 'href': '#sec-c', 'big': '%d of %d' % (p['n'], p['of']), 'line': 'have a CFR at %s' % p['gn'],
          'bar': round(p['n'] / float(p['of']), 4)},
         {'key': 'variants', 'href': '#sec-d', 'big': '%.1f%% vs %.1f%%' % (va['top'], va['other']),
-         'line': ('of decisive AlphaMissense calls (predicted pathogenic or predicted benign) are predicted '
-                  'pathogenic, at the %d top-ranked positions (by CFR score) against other generic-numbered '
-                  'positions' % TOP_N),
+         'line': 'predicted pathogenic, top-ranked vs other',
          'bars': [round(va['top'] / 100.0, 4), round(va['other'] / 100.0, 4)]},
     ]
     return {'findings': findings, 'glance': glance}

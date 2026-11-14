@@ -336,15 +336,11 @@ def test_csv_tables_are_plain(payloads):
 
 # ------------------------------------------------------------------------------------- sentences
 EXPECTED_FINDINGS = {
-    'sec-scale': "23,025 of 213,456 contact pairs (10.8%) change beyond their receptor's own threshold.",
-    'sec-a': ('Contacts between TM3 and TM6 are weaker in the active model in 210 of 264 receptors with a change '
-              'there; contacts between TM3 and TM7 are stronger in 208 of 222.'),
-    'sec-c': ('3.50x50, the R of the DRY motif, is a CFR in 274 of 283 receptors. 8 positions are CFRs in at least '
-              '213 receptors, three quarters of the class.'),
-    'sec-d': ('At the 50 top-ranked positions, 66.9% of decisive AlphaMissense calls are predicted pathogenic, '
-              'against 43.6% at other generic-numbered positions.'),
-    'sec-e': ('Median total |ΔRRCS| per receptor runs from 619 in nucleotide receptors to 845 in sensory receptors '
-              '(ligand types with five or more receptors).'),
+    'sec-scale': "23,025 of 213,456 contact pairs (10.8%) pass their receptor's threshold.",
+    'sec-a': 'TM3-TM6 weaker in 210 of 264, TM3-TM7 stronger in 208 of 222.',
+    'sec-c': '3.50x50 (R of DRY) is a CFR in 274 of 283 receptors.',
+    'sec-d': '66.9% predicted pathogenic at the 50 top-ranked positions, 43.6% at others.',
+    'sec-e': 'Median total |ΔRRCS| from 619 in nucleotide to 845 in sensory receptors.',
 }
 
 
@@ -354,13 +350,15 @@ def test_finding_sentences(payloads):
     g = {x['key']: x for x in fs['glance']}
     assert [x['key'] for x in fs['glance']] == ['scale', 'bundle', 'positions', 'variants']
     assert g['scale']['big'] == '10.8%'
-    assert g['scale']['line'] == ("of 213,456 contact pairs change beyond their receptor's own threshold (23,025 "
-                                  "pairs). Thresholds run from 1.23 to 3.78.")
+    assert g['scale']['line'] == 'of contact pairs pass threshold'
     assert g['bundle']['big'] == 'TM3-TM6' and [c['value'] for c in g['bundle']['cells']] == ['−5.90', '+4.67']
     assert g['positions']['big'] == '274 of 283'
     assert g['variants']['big'] == '66.9% vs 43.6%'
     for text in list(fs['findings'].values()) + [x['line'] for x in fs['glance']]:
         assert '—' not in text
+    # visual first: a headline of at most 12 words, a tile label of at most 6
+    assert all(len(t.split()) <= 12 for t in fs['findings'].values()), fs['findings']
+    assert all(len(x['line'].split()) <= 6 for x in fs['glance']), [x['line'] for x in fs['glance']]
 
 
 def test_finding_numbers_recomputed_from_the_payloads(payloads):
@@ -375,13 +373,11 @@ def test_finding_numbers_recomputed_from_the_payloads(payloads):
             if c[0] < 8 and c[1] < 8 and c[0] != c[1] and c[cols.index('n_present')] >= hp['min_receptors']]
     lo = min(rows, key=lambda r: r['mean_net'])
     hi = max(rows, key=lambda r: r['mean_net'])
-    assert 'in %d of %d receptors' % (lo['n_down'], lo['n_present']) in EXPECTED_FINDINGS['sec-a']
+    assert 'weaker in %d of %d' % (lo['n_down'], lo['n_present']) in EXPECTED_FINDINGS['sec-a']
     assert 'stronger in %d of %d' % (hi['n_up'], hi['n_present']) in EXPECTED_FINDINGS['sec-a']
     pos = payloads['class_positions']
     first = dict(zip(pos['ranking_columns'], pos['ranking'][0]))
-    n213 = sum(1 for r in pos['ranking'] if r[pos['ranking_columns'].index('n')] >= 213)
     assert EXPECTED_FINDINGS['sec-c'].startswith(first['gn']) and 'in %d of 283' % first['n'] in EXPECTED_FINDINGS['sec-c']
-    assert '%d positions are CFRs in at least 213' % n213 in EXPECTED_FINDINGS['sec-c']
     top, oth = payloads['class_variants']['groups']
     assert '%.1f%%' % (100.0 * top['predicted_pathogenic'] / top['decisive']) in EXPECTED_FINDINGS['sec-d']
     assert '%.1f%%' % (100.0 * oth['predicted_pathogenic'] / oth['decisive']) in EXPECTED_FINDINGS['sec-d']
@@ -389,7 +385,7 @@ def test_finding_numbers_recomputed_from_the_payloads(payloads):
     df = pd.DataFrame(rec['rows'], columns=rec['columns'])
     g = df.groupby('ligand')['sum_abs']
     med = g.median()[g.size() >= 5]
-    assert 'from %.0f in %s' % (med.min(), med.idxmin().lower()) in EXPECTED_FINDINGS['sec-e']
+    assert '%.0f in %s' % (med.min(), med.idxmin().lower().replace(' receptors', '')) in EXPECTED_FINDINGS['sec-e']
     assert 'to %.0f in %s' % (med.max(), med.idxmax().lower()) in EXPECTED_FINDINGS['sec-e']
 
 
