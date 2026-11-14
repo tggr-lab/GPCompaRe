@@ -396,3 +396,20 @@ def test_the_residue_summary_carries_one_numbering_column():
     assert any(r.get('display_number') for r in rows)
     m = re.search(r"var cols = \[([^\]]*)\]", html)
     assert m and "'display_number'" in m.group(1) and 'generic_number' not in m.group(1)
+
+
+# ---- movie walk (2026-11-14): a residue link keeps the snake controls in view; Table is not covered
+
+@needs_build
+@pytest.mark.parametrize('viewport', [{'width': 1920, 'height': 1080}, WIDE, {'width': 1280, 'height': 800}])
+def test_a_residue_link_lands_below_the_sticky_tabs_with_the_snake_controls(open_report, viewport):
+    if not (REPORTS_DIR / 'mc4r_human.html').is_file():
+        pytest.skip('mc4r_human not in this build')
+    page = open_report('mc4r_human', '#sec=sec-snake&res=137', viewport=viewport, wait=2000)
+    g = page.evaluate("""(() => { const r = s => document.querySelector(s).getBoundingClientRect();
+      return { tabs: r('.v3-secnav').bottom, bar: r('#sp-bar').top, res: r('#snake-plot-container circle[id="137"]').bottom,
+               sel: r('#gpc-selbar').top }; })()""")
+    assert g['bar'] >= g['tabs'], g          # the control row is not under the section tabs
+    assert g['res'] <= g['sel'], g           # and the residue is above the selection bar
+    assert _errors(page) == []
+

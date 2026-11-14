@@ -121,14 +121,17 @@
   // The part of the window the page can be read in: under the sticky bars, above the selection
   // bar, and on a phone above the residue sheet (a sheet spans the width; on a wide screen the
   // drawer floats beside the plot and leaves it free).
-  function openBand() {
+  // `below`: the top of what the page is about to scroll to; a sticky bar above it in the page's
+  // flow is counted where it will be stuck once the page has scrolled there.
+  function openBand(below) {
     var top = 0, bottom = window.innerHeight;
     ['.topbar', '.v3-secnav'].forEach(function (sel) {
       // a sticky bar counts only while it is stuck (before that it is in the page's flow)
       var n = document.querySelector(sel), cs = n && getComputedStyle(n);
       if (!cs || cs.position !== 'sticky') return;
-      var r = n.getBoundingClientRect();
-      if (Math.abs(r.top - (parseFloat(cs.top) || 0)) < 2) top = Math.max(top, r.bottom);
+      var r = n.getBoundingClientRect(), stuckTop = parseFloat(cs.top) || 0;
+      if (Math.abs(r.top - stuckTop) < 2) top = Math.max(top, r.bottom);
+      else if (below !== undefined && r.bottom <= below) top = Math.max(top, stuckTop + r.height);
     });
     [document.getElementById('rx-drawer'), document.getElementById('gpc-selbar')].forEach(function (n, i) {
       if (!n || n.hidden || !n.getClientRects().length) return;
@@ -153,12 +156,22 @@
         if (force) { var s = document.getElementById('sec-snake'); if (s) s.scrollIntoView(); }
         return;
       }
-      var b = openBand(), pad = 12;
       var top = Math.min.apply(null, rs.map(function (r) { return r.top; }));
+      var b = openBand(top), pad = 12;
       var bottom = Math.max.apply(null, rs.map(function (r) { return r.bottom; }));
       if (bottom - top > b.bottom - b.top - 2 * pad) { top = rs[0].top; bottom = rs[0].bottom; }
       if (!force && top >= b.top + pad && bottom <= b.bottom - pad) return;
-      window.scrollBy({ top: (top + bottom) / 2 - (b.top + b.bottom) / 2, behavior: 'auto' });
+      var dy = (top + bottom) / 2 - (b.top + b.bottom) / 2;
+      // the plot's control row above it stays clear of the sticky bars, as far as the residue still fits
+      var bar = document.getElementById('sp-bar');
+      if (bar && bar.getClientRects().length) {
+        var br = bar.getBoundingClientRect();
+        if (br.bottom <= top) {
+          var want = b.top + pad - (br.top - dy), room = b.bottom - pad - (bottom - dy);
+          if (want > 0) dy -= Math.min(want, Math.max(0, room));
+        }
+      }
+      window.scrollBy({ top: dy, behavior: 'auto' });
     }
     // the plot lays an opened loop out on the next tick
     setTimeout(function () { aim(true); setTimeout(function () { aim(false); }, 500); }, 60);
