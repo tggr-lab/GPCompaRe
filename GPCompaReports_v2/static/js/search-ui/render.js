@@ -2070,7 +2070,7 @@ export function compareModel(answer, o = {}) {
     { key: 'net', label: 'Net ΔRRCS', show: any((row) => row.f.net), num: true, sort: (row) => row.f.net, text: (row) => (row.f.net === null ? '' : signed(row.f.net, 1)) },
     { key: 'dmax', label: 'Largest |ΔRRCS|', show: any((row) => row.f.dmax), num: true, sort: (row) => row.f.dmax, text: (row) => (row.f.dmax === null ? '' : row.f.dmax.toFixed(1)) },
     { key: 'nsig', label: 'Contacts above threshold', show: any((row) => row.f.nsig), num: true, sort: (row) => row.f.nsig, text: (row) => (row.f.nsig === null ? '' : String(row.f.nsig)) },
-    { key: 'cfr', label: 'CFR rank', show: any((row) => row.f.cfrRank), num: true, sort: (row) => row.f.cfrRank, text: (row) => (row.f.cfrRank === null ? '' : String(row.f.cfrRank)) },
+    { key: 'cfr', label: 'Rank by CFR score', show: any((row) => row.f.cfrRank), num: true, sort: (row) => row.f.cfrRank, text: (row) => (row.f.cfrRank === null ? '' : String(row.f.cfrRank)) },
     { key: 'cons', label: 'Conservation (0 to 1)', show: any((row) => row.f.conservation), num: true, sort: (row) => row.f.conservation, text: (row) => (row.f.conservation === null ? '' : row.f.conservation.toFixed(1)) },
     { key: 'gnomad', label: 'gnomAD alleles', show: any((row) => row.gnomad), num: true, sort: (row) => row.gnomad, text: (row) => (row.gnomad === null ? '' : String(row.gnomad)) },
     { key: 'clinvar', label: 'ClinVar records', show: any((row) => row.clinvar), num: true, sort: (row) => row.clinvar, text: (row) => (row.clinvar === null ? '' : String(row.clinvar)) },
@@ -2121,8 +2121,10 @@ function cellHtml(col, row, o) {
       const d = direction(f.dmaxSigned);
       return html`<span class="${d ? `sr-net sr-net--${d.cls}` : ''}">${f.dmax.toFixed(1)}</span>${d ? html`<span class="sr-sr-only"> (${d.word})</span>` : ''}${f.partner ? html` <span class="sr-sub">with <span class="sr-notation">${f.partner}</span></span>` : ''}`;
     }
-    case 'nsig': return f.nsig === null ? html`<span class="sr-na">none</span>` : String(f.nsig);
-    case 'cfr': return f.cfrRank === null ? html`<span class="sr-na">none</span>` : html`${f.cfrRank}${f.cfr ? html` <span class="sr-badge sr-badge--cfr" title="Core functional residue: ${cfrOneOf(o.cfrTop)}">CFR</span>` : ''}`;
+    // CFR here is receptor-level (a contact at this residue passes this receptor's threshold), as in Statistics'
+    // "CFR in N of 283"; the rank column is the position's, the same on every row of a generic number
+    case 'nsig': return f.nsig === null ? html`<span class="sr-na">none</span>` : html`<span class="sr-nowrap">${String(f.nsig)}${f.nsig > 0 ? html` <span class="sr-badge sr-badge--cfr" title="Receptor-level CFR: at least one contact here passes this receptor's threshold">CFR</span>` : ''}</span>`;
+    case 'cfr': return f.cfrRank === null ? html`<span class="sr-na">none</span>` : html`<span title="Rank of the generic position by CFR score${f.cfr ? `: ${cfrOneOf(o.cfrTop)}` : ''}">${f.cfrRank}</span>`;
     case 'cons': return f.conservation === null ? html`<span class="sr-na">none</span>` : f.conservation.toFixed(1);
     case 'gnomad': return row.gnomad === null ? html`<span class="sr-na">n/a</span>` : (row.gnomad ? String(row.gnomad) : html`<span class="sr-na">not seen</span>`);
     case 'clinvar': return row.clinvar === null ? html`<span class="sr-na">n/a</span>` : (row.clinvar ? String(row.clinvar) : html`<span class="sr-na">none</span>`);

@@ -128,6 +128,18 @@ test('a bare change gives a comparison table with the data columns and a precise
   assert.ok(!visible(out.html).includes('undefined'));
 });
 
+test('a generic number marks receptor-level CFRs per row and ranks the position by CFR score once', { skip }, async () => {
+  const a = await search('3.40x40', loader);
+  const m = renderAnswer(a, '3.40x40', OPTS2).compare;
+  assert.equal(m.cols.find((c) => c.key === 'cfr').label, 'Rank by CFR score');
+  const body = renderCompareBody(m, { ...compareDefaults(), all: true }, { cfrTop: 50 }).toString();
+  const badges = (body.match(/title="Receptor-level CFR: at least one contact here passes this receptor's threshold">CFR</g) ?? []).length;
+  assert.equal(badges, m.rows.filter((r) => r.f.nsig > 0).length);
+  assert.ok(badges > 0 && badges < m.rows.length);
+  // the rank is the position's own: a number, no CFR badge beside it
+  assert.doesNotMatch(body, /class="sr-c-cfr[^"]*">[^<]*<span[^>]*>\d+<\/span> <span class="sr-badge/);
+});
+
 test('3.50x50 paginates at 25 rows, sorts with missing values last, filters by family and exports every row', { skip }, async () => {
   const a = await search('3.50x50', loader);
   const out = renderAnswer(a, '3.50x50', OPTS2);

@@ -816,7 +816,7 @@ def test_m159i_table_shows_the_data_columns(open_page):
     assert page.errors == []
     labels = _header_labels(page)
     for want in ('Receptor', 'Family', 'Residue', 'Generic number', 'Net ΔRRCS', 'Largest |ΔRRCS|',
-                 'Contacts above threshold', 'CFR rank', 'Conservation (0 to 1)', 'gnomAD alleles', 'ClinVar records'):
+                 'Contacts above threshold', 'Rank by CFR score', 'Conservation (0 to 1)', 'gnomAD alleles', 'ClinVar records'):
         assert any(want in l for l in labels), (want, labels)
     par2 = page.locator('.sr-table--cmp tbody tr', has_text='F2RL1').first
     text = par2.inner_text()
