@@ -1325,7 +1325,7 @@
     var s = '<strong>' + gn + '</strong>: ' + c.aa + c.resnum + ', net ΔRRCS <span class="' + signClass(c.net) + '">' + v + '</span>';
     s += ', ' + (c.hit ? c.hit + ' above-threshold contact' + (c.hit > 1 ? 's' : '') : 'no above-threshold contact');
     if (st.color === 'cons') s += ', conservation ' + (c.cons == null ? 'n/a' : c.cons.toFixed(2));
-    if (st.color === 'am') s += ', AlphaMissense ' + (c.am == null ? 'n/a' : c.am.toFixed(2));
+    if (st.color === 'am') s += ', predicted pathogenicity ' + (c.am == null ? 'n/a' : c.am.toFixed(2));
     return s;
   }
 
@@ -1356,7 +1356,7 @@
     h += '<dt>Net ΔRRCS</dt><dd class="' + signClass(cell.net) + '">' + (cell.clipped ? (cell.net > 0 ? '≥ ' : '≤ ') : '') + fmtNum(cell.net) + '</dd>';
     h += '<dt>Above-threshold contacts</dt><dd>' + cell.hit + '</dd>';
     h += '<dt>Conservation</dt><dd>' + (cell.cons == null ? 'n/a' : cell.cons.toFixed(2)) + '</dd>';
-    h += '<dt>AlphaMissense (mean)</dt><dd>' + (cell.am == null ? 'n/a' : cell.am.toFixed(2)) + '</dd>';
+    h += '<dt>Predicted pathogenicity (mean)</dt><dd>' + (cell.am == null ? 'n/a' : cell.am.toFixed(2)) + '</dd>';
     h += '</dl><div class="tp-hint">Click to open ' + esc(r.symbol) + ' at this position</div>';
     return h;
   }
@@ -1387,6 +1387,7 @@
   function bar(stops) {
     return '<div class="lg-bar" style="background:linear-gradient(90deg,' + stops.map(function(c) { return A.css(c); }).join(',') + ')"></div>';
   }
+  var AM_ENDS = '<div class="lg-ends"><span>0, benign</span><span>1, pathogenic</span></div>';
   function divBar() { var P = st.P; return bar([P.ina, P.neutral, P.act]); }
 
   function maybeLegend() {
@@ -1410,7 +1411,7 @@
       } else if (layer === 'cons') {
         h += '<p class="lg-title">Conservation per residue</p>' + bar(P.consStops) + '<div class="lg-ends"><span>0</span><span>1</span></div>';
       } else {
-        h += '<p class="lg-title">Mean AlphaMissense per residue</p>' + bar(P.amStops) + '<div class="lg-ends"><span>0</span><span>1</span></div>';
+        h += '<p class="lg-title">Mean predicted pathogenicity (AlphaMissense) per residue</p>' + bar(P.amStops) + AM_ENDS;
       }
     } else if (st.color === 'group') {
       var rr = rule();
@@ -1425,9 +1426,9 @@
       h += '<div class="lg-ends"><span>25% or less</span><span>50%</span><span>75% or more</span></div>';
     } else if (st.color === 'cons' || st.color === 'am') {
       var isC = st.color === 'cons';
-      h += '<p class="lg-title">' + (isC ? 'Conservation' : 'Mean AlphaMissense') + ' at ' + (gn || 'the lens position') + '</p>';
-      h += bar(isC ? P.consStops : P.amStops) + '<div class="lg-ends"><span>0</span><span>1</span></div>';
-      h += '<p class="lg-note">Faded: the receptor lacks this position. Gray: no value.</p>';
+      h += '<p class="lg-title">' + (isC ? 'Conservation' : 'Mean predicted pathogenicity (AlphaMissense)') + ' at ' + (gn || 'the lens position') + '</p>';
+      h += bar(isC ? P.consStops : P.amStops) + (isC ? '<div class="lg-ends"><span>0</span><span>1</span></div>' : AM_ENDS);
+      h += '<p class="lg-note">Faded: the receptor lacks this position. ' + (isC ? 'Gray' : P.dark ? 'Dark gray' : 'Pale gray') + ': no value.</p>';
     } else if (gn) {
       h += '<p class="lg-title">Net ΔRRCS at ' + gn + '</p>' + divBar();
       h += '<div class="lg-ends"><span>stronger inactive</span><span>stronger active</span></div>';

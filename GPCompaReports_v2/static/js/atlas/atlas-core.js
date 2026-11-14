@@ -200,13 +200,15 @@
     var neutral = dark ? [92, 101, 116, 1] : [176, 182, 192, 1];
     var plate = dark ? [255, 255, 255, 0.045] : [255, 255, 255, 0.92];
     var plateEdge = dark ? [255, 255, 255, 0.10] : [31, 35, 40, 0.10];
-    // conservation: neutral to deep slate-teal; AlphaMissense: viridis-like (never red/blue)
+    // conservation: neutral to deep slate-teal. Predicted pathogenicity (AlphaMissense) uses the site's
+    // pathogenicity colors only: green (benign) through gray to crimson (pathogenic), never red/blue.
+    // The middle gray is darker (light) or lighter (dark) than the no-value gray so the two stay apart.
     var consStops = dark
       ? [[58, 66, 80, 1], [70, 120, 130, 1], [94, 200, 190, 1], [200, 246, 236, 1]]
       : [[226, 230, 234, 1], [150, 196, 196, 1], [42, 128, 128, 1], [14, 66, 72, 1]];
     var amStops = dark
-      ? [[94, 60, 153, 1], [59, 82, 139, 1], [33, 145, 140, 1], [94, 201, 98, 1], [253, 231, 37, 1]]
-      : [[68, 1, 84, 1], [59, 82, 139, 1], [33, 145, 140, 1], [94, 201, 98, 1], [235, 205, 20, 1]];
+      ? [[129, 199, 132, 1], [150, 156, 166, 1], [244, 143, 177, 1]]
+      : [[43, 110, 47, 1], [140, 146, 156, 1], [180, 35, 75, 1]];
 
     var colors = [];           // rgba arrays
     function add(c) { colors.push(c); return colors.length - 1; }
