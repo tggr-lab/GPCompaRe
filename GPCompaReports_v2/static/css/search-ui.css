@@ -107,7 +107,10 @@
 .sr-row h4 { margin: 0; font-size: 0.86rem; font-weight: 600; color: var(--fgColor-muted); }
 .sr-row p { margin: 0 0 var(--s-2); }
 .sr-subhead { margin: var(--s-2) 0 var(--s-1); font-size: 0.84rem; color: var(--fgColor-muted); }
-.sr-list { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--s-3); }
+.sr-list { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-3); }
+/* a Clinical record never runs past the card: the long ClinVar class wraps, and so do accessions and titles */
+.sr-list > li { min-width: 0; overflow-wrap: anywhere; }
+.sr-list .sr-path-chip { white-space: normal; max-width: 100%; border-radius: 10px; }
 .sr-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: var(--s-3) var(--s-4); margin: 0; }
 .sr-fact dt { font-size: 0.78rem; color: var(--fgColor-muted); }
 .sr-fact dd { margin: 0; }
@@ -176,7 +179,7 @@
 .sr-seg { font: inherit; font-size: 0.88rem; padding: 4px 12px; border: 1px solid var(--borderColor-default); border-radius: var(--r-pill); background: var(--bgColor-default); color: var(--fgColor-default); cursor: pointer; }
 .sr-seg[aria-pressed="true"] { background: var(--bgColor-accent-muted); border-color: var(--brand-primary); font-weight: 600; }
 .sr-cmp-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s-3); margin: 0 0 var(--s-3); }
-.sr-cmp-field { display: flex; flex-direction: column; gap: 2px; font-size: 0.78rem; font-weight: 600; color: var(--fgColor-muted); }
+.sr-cmp-field { display: flex; flex-direction: column; gap: 2px; min-width: 0; max-width: 100%; font-size: 0.78rem; font-weight: 600; color: var(--fgColor-muted); }
 .sr-cmp-field select { font-weight: 400; color: var(--fgColor-default); min-width: 0; max-width: 100%; }
 .sr-cmp-sort { display: none; align-items: flex-end; gap: var(--s-2); }
 .sr-cmp-csv { margin-left: auto; }
