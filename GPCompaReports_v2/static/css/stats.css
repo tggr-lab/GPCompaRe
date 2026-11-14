@@ -83,7 +83,7 @@
 .sel-field { position: relative; }
 .sel-field input { font: inherit; font-size: 0.9rem; width: 100%; padding: 7px 11px; border: 1px solid var(--st-line); border-radius: 8px; background: var(--st-surface); color: var(--st-fg); }
 .sel-field input:focus { outline: 2px solid var(--st-brand); outline-offset: 1px; }
-.sel-list { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 4px); margin: 0; padding: 4px; list-style: none; background: var(--st-surface); border: 1px solid var(--st-line); border-radius: 10px; box-shadow: var(--st-shadow); max-height: 340px; overflow-y: auto; }
+.sel-list { position: absolute; z-index: 19; left: 0; right: 0; top: calc(100% + 4px); margin: 0; padding: 4px; list-style: none; background: var(--st-surface); border: 1px solid var(--st-line); border-radius: 10px; box-shadow: var(--st-shadow); max-height: 340px; overflow-y: auto; }
 .sel-list .grp { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--st-muted); padding: 6px 8px 2px; }
 .sel-list [role="option"] { padding: 6px 8px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; gap: 8px; }
 .sel-list [role="option"] small { color: var(--st-muted); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -118,7 +118,7 @@
 .cfr-def { margin: 0 0 16px; }
 
 /* ---- cards ---- */
-.scard { position: relative; background: var(--st-surface); border: 1px solid var(--st-line); border-radius: 16px; padding: 18px 20px 12px; margin: 0 0 16px; min-width: 0; box-shadow: var(--st-shadow); }
+.scard { position: relative; scroll-margin-top: calc(var(--topbar-height, 68px) + 12px); background: var(--st-surface); border: 1px solid var(--st-line); border-radius: 16px; padding: 18px 20px 12px; margin: 0 0 16px; min-width: 0; box-shadow: var(--st-shadow); }
 @media (max-width: 720px) { .scard { padding: 14px 12px 10px; border-radius: 12px; } }
 .scard-title { font-family: inherit; font-size: 1.05rem; font-weight: 600; margin: 0 0 2px; color: var(--st-fg); }
 .scard-guide { font-size: 0.86rem; color: var(--st-muted); margin: 0 0 12px; max-width: 92ch; }
@@ -142,7 +142,7 @@
 .cc-btn:hover { border-color: var(--st-brand); color: var(--st-fg); text-decoration: none; }
 .cc-btn[aria-pressed="true"], .cc-btn[aria-expanded="true"] { background: var(--st-fg); color: var(--st-surface); border-color: var(--st-fg); }
 .xmenu { position: relative; display: inline-block; }
-.xmenu-list { position: absolute; right: 0; bottom: calc(100% + 6px); z-index: 25; display: flex; flex-direction: column; min-width: 150px; padding: 4px; background: var(--st-surface); border: 1px solid var(--st-line); border-radius: 10px; box-shadow: var(--st-shadow); }
+.xmenu-list { position: absolute; right: 0; bottom: calc(100% + 6px); z-index: 16; display: flex; flex-direction: column; min-width: 150px; padding: 4px; background: var(--st-surface); border: 1px solid var(--st-line); border-radius: 10px; box-shadow: var(--st-shadow); }
 .xmenu-list[hidden] { display: none; }
 .xmenu-list > * { font: inherit; font-size: 0.84rem; text-align: left; padding: 6px 10px; border: 0; border-radius: 6px; background: none; color: var(--st-fg); cursor: pointer; text-decoration: none; }
 .xmenu-list > *:hover, .xmenu-list > *:focus-visible { background: var(--st-brand-soft); text-decoration: none; color: var(--st-fg); }
@@ -218,6 +218,9 @@ details.more[open] > summary { margin-bottom: 8px; }
 .lbar { display: flex; height: 12px; border-radius: 3px; overflow: hidden; background: var(--st-surface-2); }
 .lbar i { display: block; height: 100%; }
 @media (max-width: 720px) { .lrow { grid-template-columns: 62px minmax(0, 1fr); } .lrow .txt { grid-column: 1 / -1; margin-top: -2px; } }
+/* a narrow ledger column (small desktops, where it sits beside the bundle) puts the text under the bar */
+.ledger { container-type: inline-size; min-width: 0; }
+@container (max-width: 400px) { .lrow { grid-template-columns: 62px minmax(0, 1fr); } .lrow .txt { grid-column: 1 / -1; margin-top: -2px; } }
 .group-chips-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .focus-mini { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--st-line-soft); display: flex; gap: 14px; align-items: center; font-size: 0.84rem; color: var(--st-muted); }
 .focus-mini svg { flex: none; }
@@ -251,7 +254,7 @@ details.more[open] > summary { margin-bottom: 8px; }
 .btn-follow { margin: 4px 6px 8px 0; }
 
 /* position profile */
-.pos-profile { position: absolute; top: 104px; right: 16px; width: 360px; max-width: calc(100% - 32px); background: var(--st-surface); border: 1px solid var(--st-line); border-radius: 14px; box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18); padding: 16px 18px; font-size: 0.86rem; z-index: 20; }
+.pos-profile { position: absolute; top: 104px; right: 16px; width: 360px; max-width: calc(100% - 32px); background: var(--st-surface); border: 1px solid var(--st-line); border-radius: 14px; box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18); padding: 16px 18px; font-size: 0.86rem; z-index: 15; }   /* under the sticky topbar (20) */
 .pos-profile .x { position: absolute; right: 8px; top: 6px; border: 0; background: none; font-size: 1.35rem; color: var(--st-muted); cursor: pointer; line-height: 1; padding: 4px 8px; }
 .pos-profile .handle, .pos-profile .ppeek { display: none; }
 .pos-profile .pgn { font-family: var(--st-mono); font-size: 1.25rem; font-weight: 600; }
@@ -265,7 +268,8 @@ details.more[open] > summary { margin-bottom: 8px; }
 .pbar { display: flex; height: 12px; border-radius: 3px; overflow: hidden; }
 .pbar i { display: block; height: 100%; }
 @media (max-width: 720px) {
-  .pos-profile { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; max-width: none; max-height: 70vh; overflow-y: auto; border-radius: 16px 16px 0 0; padding-top: 22px; z-index: 60; }
+  .pos-profile { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; max-width: none; max-height: 70vh; overflow-y: auto; border-radius: 16px 16px 0 0; padding-top: 22px; z-index: 45; }   /* under the menu drawer (50) */
+  body.has-pos-sheet { padding-bottom: 72px; }   /* the folded sheet never covers the end of the page */
   .pos-profile .handle { display: block; position: absolute; top: 0; left: 50%; width: 96px; height: 22px; margin-left: -48px; padding: 0; border: 0; background: none; cursor: pointer; touch-action: none; }
   .pos-profile .handle::before { content: ""; position: absolute; top: 8px; left: 28px; width: 40px; height: 4px; border-radius: 2px; background: var(--st-line); }
   .pos-profile .handle:focus-visible { outline: 2px solid var(--st-brand); outline-offset: -2px; border-radius: 6px; }

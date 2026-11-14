@@ -239,6 +239,7 @@
       if (!dense) {
         node.setAttribute('tabindex', '0');
         node.setAttribute('role', 'button');
+        if (node.ownerSVGElement) node.ownerSVGElement.setAttribute('role', 'group');   // role=img would hide the buttons
         if (label || tip) { node.setAttribute('aria-label', label || tip); node.setAttribute('data-key', label || tip); }
       }
       node.addEventListener('click', function (e) { e.stopPropagation(); hideTip(); fn(e, node); });
@@ -426,9 +427,30 @@
         });
         if (!shown.length) { var li = h('li', 'grp', list, 'No receptor, position or helix pair matches'); li.setAttribute('role', 'presentation'); }
         list.hidden = false; input.setAttribute('aria-expanded', 'true');
+        fitList();
       }, function () {});
     }
     function close() { list.hidden = true; input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant'); active = -1; }
+    // in the rail (which scrolls on its own) the list is fixed to the input, so the rail never clips it; in
+    // either slot it stays inside the window: below the input, or above it when there is more room there
+    function fitList() {
+      if (list.hidden) return;
+      var r = input.getBoundingClientRect(), vw = document.documentElement.clientWidth;
+      var head = document.querySelector('.topbar'), hb = head ? head.getBoundingClientRect().bottom : 0;
+      var below = window.innerHeight - r.bottom - 16, above = r.top - hb - 16;
+      list.style.maxHeight = '340px';
+      var need = Math.min(340, list.scrollHeight + 2), up = below < need && above > below;   // the whole list, if it fits
+      var rail = !!box.closest('.stats-rail');
+      list.style.maxHeight = Math.round(Math.max(120, Math.min(340, up ? above : below))) + 'px';
+      list.style.position = rail ? 'fixed' : '';
+      list.style.left = rail ? Math.round(r.left) + 'px' : '';
+      list.style.right = rail ? 'auto' : '';
+      list.style.width = rail ? Math.round(Math.min(Math.max(r.width, 320), vw - r.left - 16)) + 'px' : '';
+      if (rail) { list.style.bottom = 'auto'; list.style.top = Math.round(up ? r.top - 4 - list.offsetHeight : r.bottom + 4) + 'px'; }
+      else { list.style.top = up ? 'auto' : ''; list.style.bottom = up ? 'calc(100% + 4px)' : ''; }
+    }
+    window.addEventListener('scroll', fitList, { passive: true, capture: true });
+    window.addEventListener('resize', fitList, { passive: true });
     function pick(it) {
       input.value = ''; close();
       if (it.kind === 'rec') StatsSel.set({ rec: it.value });
@@ -476,7 +498,7 @@
         if (st.pair) {
           chip(pairName(st.pair), 'pair');
           var c = helixCell(hp, 'all', st.pair[0], st.pair[1]);
-          if (c && c.n_present) lines.push(pairName(st.pair) + ': ' + (c.n_down >= c.n_up ? 'weaker in the active model in ' + c.n_down : 'stronger in the active model in ' + c.n_up) + ' of ' + c.n_present);
+          if (c && c.n_present) lines.push(pairName(st.pair) + ': ' + (c.n_down >= c.n_up ? 'weaker in the active model in ' + c.n_down : 'stronger in the active model in ' + c.n_up) + ' of ' + c.n_present + ' receptors');
           else lines.push(pairName(st.pair) + ': no above-threshold contact in any receptor');
         }
         summary.textContent = lines.join('. ') + '.';
@@ -548,7 +570,12 @@
         card.chart.firstElementChild.classList.add('fade-in');
       }
       [card.chart, card.strip].forEach(function (root) {
-        if (root) root.querySelectorAll('svg').forEach(function (sv) { if (!sv.parentElement.closest('svg')) roving(sv, key); });
+        if (root) root.querySelectorAll('svg').forEach(function (sv) {
+          if (sv.parentElement.closest('svg')) return;
+          // an image hides its children from assistive technology: a chart with buttons or links is a group
+          if (sv.querySelector('[role="button"], a[href]')) sv.setAttribute('role', 'group');
+          roving(sv, key);
+        });
       });
       refocus(card.el, key);
     };
@@ -878,7 +905,9 @@
   }
 
   // ---- side panel (helix cell, receptor, per-position variants)
-  function openSide(card, title, build) {
+  function openSide(card, title, opts, build) {
+    if (typeof opts === 'function') { build = opts; opts = {}; }
+    opts = opts || {};
     var side = card.side; if (!side) return;
     var a = document.activeElement, inCard = a && card.el.contains(a) && !side.contains(a);
     if (inCard) card.sideReturn = a.getAttribute('data-key') || a.getAttribute('data-pair') || null;
@@ -896,7 +925,7 @@
     }
     if (card.lastW && width(card.chart) !== card.lastW) draw(card, {});
     if (inCard) head.focus({ preventScroll: !isPhone() });
-    if (isPhone()) side.scrollIntoView({ block: 'nearest', behavior: SCROLL() });
+    if (isPhone() || opts.reveal) side.scrollIntoView({ block: 'nearest', behavior: SCROLL() });
   }
   function closeSide(card, back) {
     if (!card.side) return;
@@ -1205,7 +1234,7 @@
       var hg = el('g', {}, s);
       hits.forEach(function (x) {
         var hp2 = el('path', { d: 'M' + x[0].join(',') + 'L' + x[1].join(','), stroke: 'transparent', 'stroke-width': 14, fill: 'none', 'stroke-linecap': 'round' }, hg);
-        hit(hp2, x[2], x[3] ? function () { StatsSel.set({ pair: x[3] }); openCell(card, x[3][0], x[3][1]); } : null);
+        hit(hp2, x[2], x[3] ? function () { StatsSel.set({ pair: x[3] }); openCell(card, x[3][0], x[3][1], true); } : null);
       });
     }
     el('text', { x: 10, y: S - 8, 'font-size': 11, fill: C.muted }, s, 'extracellular view; numbers: TM1 to TM7');
@@ -1224,9 +1253,19 @@
           var a = q(pp[0]), b = q(pp[1]);
           el('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: divColor(v, 6), 'stroke-width': 1 + Math.min(6, Math.abs(v) / 2), 'stroke-linecap': 'round' }, mini);
         });
-        for (var j = 0; j < 7; j++) { var pj = q(j); el('circle', { cx: pj[0], cy: pj[1], r: 6, fill: C.surface, stroke: C.fg }, mini); }
+        for (var j = 0; j < 7; j++) {
+          var pj = q(j);
+          el('circle', { cx: pj[0], cy: pj[1], r: 7.5, fill: C.surface, stroke: C.fg }, mini);
+          el('text', { x: pj[0], y: pj[1] + 3.5, 'text-anchor': 'middle', 'font-size': 10, 'font-weight': 600, fill: C.fg }, mini, String(j + 1));
+        }
         var t = h('div', '', box); h('b', '', t, r.symbol);
-        t.appendChild(document.createTextNode(' on its own: net ΔRRCS of its above-threshold contacts between helices, same colors. '));
+        if (small) {   // the class bundle beside it is gray: the colors need their own key
+          t.appendChild(document.createTextNode(' on its own: net ΔRRCS of its above-threshold contacts between helices (TM1 to TM7), '));
+          h('span', 't-up', t, 'red');
+          t.appendChild(document.createTextNode(' stronger in the active model, '));
+          h('span', 't-down', t, 'blue');
+          t.appendChild(document.createTextNode(' stronger in the inactive model. '));
+        } else t.appendChild(document.createTextNode(' on its own: net ΔRRCS of its above-threshold contacts between helices (TM1 to TM7), same colors. '));
         t.appendChild(link('Open the ' + r.symbol + ' report', r.report || REPORT(rec)));
       }, function () { box.remove(); });
     }
@@ -1251,7 +1290,7 @@
         if (!ok) return;
         if (small) {
           if (cell >= 30) el('text', { x: x + cell / 2, y: y + cell / 2 + 4, 'text-anchor': 'middle', 'font-size': cell >= 50 ? 12 : 10, 'font-weight': 700, fill: C.fg }, s, d.n_present + '/' + G.n);
-          if (!o.exporting) hit(rect, segs[a] + '-' + segs[b] + ': carried by ' + d.n_present + ' of ' + G.n, function () { if (a < 8 && b < 8) StatsSel.set({ pair: [a, b] }); openCell(card, a, b); });
+          if (!o.exporting) hit(rect, segs[a] + '-' + segs[b] + ': carried by ' + d.n_present + ' of ' + G.n, function () { if (a < 8 && b < 8) StatsSel.set({ pair: [a, b] }); openCell(card, a, b, true); });
           return;
         }
         var dark = Math.abs(d.mean_net) > 2.5, txt = dark ? C.onDark : C.fg;
@@ -1262,7 +1301,7 @@
         var isSel = sel && a < 8 && b < 8 && samePair(sel, [a, b]);
         if (isSel) el('rect', { x: x + 1, y: y + 1, width: cell - 2, height: cell - 2, rx: 4, fill: 'none', stroke: C.fg, 'stroke-width': 2.5 }, s);
         if (!o.exporting) hit(rect, segs[a] + '-' + segs[b] + ': mean net ' + signed(d.mean_net) + ', ' + Math.round(100 * d.agree) + '% of ' + d.n_present + ' receptors agree',
-          function () { if (a < 8 && b < 8) StatsSel.set({ pair: [a, b] }); openCell(card, a, b); });
+          function () { if (a < 8 && b < 8) StatsSel.set({ pair: [a, b] }); openCell(card, a, b, true); });
       });
     });
   }
@@ -1319,7 +1358,7 @@
         h('b', '', t, (weaker ? c.n_down : c.n_up) + ' of ' + c.n_present);
         t.appendChild(document.createTextNode(' (' + Math.round(100 * Math.max(c.n_up, c.n_down) / c.n_present) + '%)'));
       }
-      r.addEventListener('click', function () { StatsSel.set({ pair: [c.i, c.j] }); openCell(card, c.i, c.j); });
+      r.addEventListener('click', function () { StatsSel.set({ pair: [c.i, c.j] }); openCell(card, c.i, c.j, true); });
     });
     if (small) {
       h('p', 'small-note', L, 'With fewer than ' + hp.min_receptors + ' receptors the page shows which helix pairs they carry, not a class direction. Follow one of them:');
@@ -1336,7 +1375,8 @@
       b.addEventListener('click', function () { StatsSel.set({ rec: r.gid }); });
     });
   }
-  function openCell(card, a, b) {
+  // reveal: opened by a click, so the panel is scrolled into view (it sits below the bundle and the ledger)
+  function openCell(card, a, b, reveal) {
     var hp = card.D.helix_pairs, st = card.state;
     if (st.mode === 'magnitude') return;
     card.sideKey = [a, b];
@@ -1345,7 +1385,7 @@
     load('helix_pair_cells').then(function (hc) {
       var cell = hc.cells.filter(function (c) { return c.i === a && c.j === b; })[0];
       var list = cell ? cell.receptors.filter(function (r) { return G.key === 'all' || hp.receptors[r[0]].ligand === G.key; }) : [];
-      openSide(card, name + ': the receptors behind it' + (G.key === 'all' ? '' : ' (' + G.label.replace(/ receptors$/, '').toLowerCase() + ')'), function (side) {
+      openSide(card, name + ': the receptors behind it' + (G.key === 'all' ? '' : ' (' + G.label.replace(/ receptors$/, '').toLowerCase() + ')'), { reveal: reveal }, function (side) {
         if (!list.length) { h('p', 'side-note', side, 'No receptor in this group has an above-threshold pair here.'); return; }
         var pick = list.length > 16 ? list.slice(0, 8).concat(list.slice(-8)) : list;
         var mx = maxOf(pick.map(function (r) { return Math.abs(r[1]); })) || 1, bars = h('div', 'side-bars', side);
@@ -1364,7 +1404,7 @@
             return [link(rec.symbol, REPORT(rec.gid)), r[1], r[2], r[3], r[4], fb];
           })));
       });
-    }, function () { openSide(card, name, function (side) { h('p', 'side-note', side, 'The receptor list could not load.'); }); });
+    }, function () { openSide(card, name, { reveal: reveal }, function (side) { h('p', 'side-note', side, 'The receptor list could not load.'); }); });
   }
 
   define('chart-segments', {
@@ -1488,7 +1528,11 @@
         if (m) { el('rect', { x: xx - 0.5, y: y - 1.5, width: cw, height: 17, rx: 2.5, fill: 'none', stroke: C.fg, 'stroke-width': 1.4 }, s); (marks[m] = marks[m] || []).push(xx); }
         if (sel && r.gn === sel) el('rect', { x: xx - 2, y: y - 3, width: cw + 3, height: 20, rx: 3, fill: 'none', stroke: C.fg, 'stroke-width': 2.4 }, s);
       });
-      Object.keys(marks).forEach(function (k) { el('text', { x: Math.min(w - 40, marks[k][0]), y: y + 27, 'font-size': 10.5, 'font-weight': 700, fill: C.fg }, s, k); });
+      // motif labels under their first cell, at least 6 px apart and inside the chart (PIF and CWxP share TM6)
+      var ml = Object.keys(marks).map(function (k) { return { k: k, x: marks[k][0], tw: textW(k, 10.5, 700) }; }).sort(function (a, b) { return a.x - b.x; });
+      ml.forEach(function (m, n) { if (n) m.x = Math.max(m.x, ml[n - 1].x + ml[n - 1].tw + 6); });
+      for (var n = ml.length - 1; n >= 0; n--) ml[n].x = Math.max(0, Math.min(ml[n].x, (n === ml.length - 1 ? w : ml[n + 1].x - 6) - ml[n].tw));
+      ml.forEach(function (m) { el('text', { x: m.x, y: y + 27, 'font-size': 10.5, 'font-weight': 700, fill: C.fg }, s, m.k); });
     });
   }
 
@@ -1525,8 +1569,9 @@
         var ox = c * (cw + gap), col = list.slice(c * per, (c + 1) * per);
         var bx = ox + 24 + 8 + 74 + 8 + 38 + 8, bw = cw - (bx - ox) - 48;
         var bs = Math.min(0.72, Math.max(0.3, (bw - 86) / bw));   // room for the count and a motif tag
-        var rlab = fit(['receptors, of ' + NREC, 'receptors'], ox + cw - 28 - bx, 11);
-        [['#', ox + 24, 'end'], ['position', ox + 32, 'start'], ['seg.', ox + 114, 'start'], [rlab, bx, 'start'], ['|Δ|', ox + cw, 'end']].forEach(function (t) {
+        var dlab = fit(['mean |ΔRRCS|', '|ΔRRCS|'], ox + cw - bx - textW('receptors', 11) - 12, 11);
+        var rlab = fit(['receptors, of ' + NREC, 'receptors'], ox + cw - textW(dlab, 11) - 10 - bx, 11);
+        [['#', ox + 24, 'end'], ['position', ox + 32, 'start'], ['seg.', ox + 114, 'start'], [rlab, bx, 'start'], [dlab, ox + cw, 'end']].forEach(function (t) {
           el('text', { x: t[1], y: 13, 'text-anchor': t[2], 'font-size': 11, fill: C.muted }, s, t[0]);
         });
         el('line', { x1: ox, x2: ox + cw, y1: head - 1, y2: head - 1, stroke: C.line }, s);
@@ -1545,11 +1590,13 @@
           el('text', { x: tx, y: y + 16, 'font-size': 11.5, fill: C.muted }, g, String(x.n));
           tx += String(x.n).length * 7 + 6;
           var tags = [];
-          if (x.motif) tags.push([x.motif, false]);
-          if (x === outlier) tags.push(['ranked on |Δ|', true]);
+          if (x.motif) tags.push([[x.motif], false]);
+          if (x === outlier) tags.push([['largest mean |ΔRRCS|', 'top |ΔRRCS|'], true]);
           tags.forEach(function (t) {
+            var room = ox + cw - 44 - tx;
+            t[0] = t[0].filter(function (v) { return v.length * 6.6 + 8 <= room; })[0];
+            if (!t[0]) return;
             var tw = t[0].length * 6.6 + 8;
-            if (tx + tw > ox + cw - 44) return;
             el('rect', { x: tx, y: y + 5, width: tw, height: 15, rx: 3, fill: 'none', stroke: t[1] ? C.muted : C.fg, 'stroke-dasharray': t[1] ? '3 2' : null }, g);
             el('text', { x: tx + tw / 2, y: y + 16, 'text-anchor': 'middle', 'font-size': 10.5, 'font-weight': t[1] ? 500 : 700, fill: t[1] ? C.muted : C.fg }, g, t[0]);
             tx += tw + 4;
@@ -1611,8 +1658,11 @@
     // a scroll the reader starts (wheel, touch, keys, scrollbar) cancels the profile's own follow-up scroll
     function cancelRecheck() { if (recheck) { clearTimeout(recheck); recheck = null; } }
     ['wheel', 'touchstart', 'keydown', 'mousedown'].forEach(function (t) { window.addEventListener(t, cancelRecheck, { passive: true, capture: true }); });
+    // phone: the page keeps room for the folded sheet at its end, so the footer stays reachable
+    function sheetRoom(on) { document.body.classList.toggle('has-pos-sheet', !!on); }
     function close(clearSel, refocusTrigger) {
       if (panel) { panel.remove(); panel = null; }
+      sheetRoom(false);
       current = null;
       if (clearSel && StatsSel.get().pos) StatsSel.set({ pos: null });
       if (refocusTrigger && back) { var k = back; back = null; refocus(STATS, k); }
@@ -1639,6 +1689,8 @@
       if (anchor && anchor.getBoundingClientRect && !isPhone()) {
         var ar = anchor.getBoundingClientRect();
         if (ar.height || ar.width) opts.anchorTop = ar.top - card.el.getBoundingClientRect().top;
+        // a column of the 368 strip: the profile goes above the strip, which stays in view
+        if (anchor.closest && anchor.closest('[data-strip368]')) opts.aboveStrip = true;
       }
       if (opts.focus) back = focusKey(STATS) || (anchor && anchor.getAttribute && anchor.getAttribute('data-key')) || null;
       current = gn; hostCard = card; pending++;
@@ -1648,11 +1700,14 @@
         build(gn, card, arr[0], arr[1], arr[2], anchor, opts);
       }, function () { pending--; });
     }
-    // desktop: beside the mark that opened it (or near the top of the card), kept inside the card
-    function place(card, anchorTop) {
+    // desktop: beside the mark that opened it (or near the top of the card), kept inside the card; opened from
+    // the strip of all positions, it sits above the strip so the strip and its marker stay visible
+    function place(card, anchorTop, aboveStrip) {
       if (isPhone() || !panel) return;
       var top = anchorTop === undefined ? 104 : anchorTop - 24;
       var ph = panel.offsetHeight || 420;
+      var sv = aboveStrip && card.strip ? card.strip.querySelector('svg') : null;
+      if (sv) top = sv.getBoundingClientRect().top - card.el.getBoundingClientRect().top - ph - 10;
       top = Math.max(8, Math.min(top, card.el.offsetHeight - ph - 8));
       panel.style.top = Math.round(top) + 'px';
     }
@@ -1736,7 +1791,8 @@
       }
       links.appendChild(link('Search ' + gn, SEARCH(gn), 'cc-btn'));
       if (isPhone()) setPeek(keepPeek !== null ? keepPeek : !!opts.peek);
-      if (keepTop !== null && !isPhone()) panel.style.top = keepTop; else place(card, opts.anchorTop);
+      sheetRoom(true);
+      if (keepTop !== null && !isPhone()) panel.style.top = keepTop; else place(card, opts.anchorTop, opts.aboveStrip);
       if (opts.focus || keepFocus) panel.focus({ preventScroll: isPhone() || keepFocus });
       if ((opts.focus || opts.scroll) && !isPhone()) {
         var me = panel;
@@ -1802,8 +1858,17 @@
         if (r) {
           var rx = x(r.rank_in_universe), own = r.gn === sel;
           el('line', { x1: rx, x2: rx, y1: 4, y2: hh, stroke: C.fg, 'stroke-width': 1.5 }, s);
-          var sl = (own ? sel : st) + ': rank ' + r.rank_in_universe + ' of ' + M + (r.known ? ', a known position' : ''), right = rx + 5 + textW(sl, 12, 700) <= w;
-          el('text', { x: right ? rx + 5 : rx - 5, y: 16, 'text-anchor': right ? 'start' : 'end', 'font-size': 12, 'font-weight': 700, fill: C.fg, stroke: C.surface, 'stroke-width': 3, 'paint-order': 'stroke' }, s, sl);
+          var sl = (own ? sel : st) + ': rank ' + r.rank_in_universe + ' of ' + M + (r.known ? ', a known position' : '');
+          // right of the rule, else left of it (clear of the y axis labels), else wrapped and kept right of the axis
+          var lines = [sl], tw = textW(sl, 12, 700), xl, anchor = 'start';
+          if (rx + 5 + tw <= w) xl = rx + 5;
+          else if (rx - 5 - tw >= ml + 4) { xl = rx - 5; anchor = 'end'; }
+          else {
+            lines = wrapLines(sl, w - ml - 8, 12, 700);
+            tw = maxOf(lines.map(function (t) { return textW(t, 12, 700); }));
+            xl = rx + 5 + tw <= w ? rx + 5 : Math.max(ml + 4, w - tw);
+          }
+          lines.forEach(function (t, k) { el('text', { x: xl, y: 16 + 15 * k, 'text-anchor': anchor, 'font-size': 12, 'font-weight': 700, fill: C.fg, stroke: C.surface, 'stroke-width': 3, 'paint-order': 'stroke' }, s, t); });
           if (note) note.textContent = own
             ? sel + ' (structure position ' + st + ') is at rank ' + r.rank_in_universe + ' of the ' + M + ' positions of this curve' + (r.cfr_score_rank !== r.rank_in_universe ? ' (rank ' + r.cfr_score_rank + ' by CFR score among all ' + nAll + ' recurrent positions).' : '.')
             : sel + ' shares structure position ' + st + ' with ' + r.gn + ', which has the higher CFR score and places ' + st + ' at rank ' + r.rank_in_universe + ' of the ' + M + ' positions of this curve' + (r.known ? ', a known position.' : '.');
@@ -1867,7 +1932,8 @@
         el('line', { x1: x(p.top_partner_n), x2: x(p.n), y1: y, y2: y, stroke: C.line, 'stroke-width': 3 }, g);
         el('circle', { cx: x(p.top_partner_n), cy: y, r: 4.5, fill: C.surface, stroke: C.fg, 'stroke-width': 1.6 }, g);
         el('circle', { cx: x(p.n), cy: y, r: 5.5, fill: C.b4 }, g);
-        if (!phone && p.top_partner) el('text', { x: x(p.top_partner_n) - 8, y: y + 4, 'text-anchor': 'end', 'font-size': 10.5, fill: C.muted }, g, p.top_partner);
+        // the partner's name sits left of its open dot, only where it clears the position label (the tip names it)
+        if (!phone && p.top_partner && x(p.top_partner_n) - 8 - textW(p.top_partner, 10.5) >= lab + 4) el('text', { x: x(p.top_partner_n) - 8, y: y + 4, 'text-anchor': 'end', 'font-size': 10.5, fill: C.muted }, g, p.top_partner);
         el('text', { x: w - right + 10, y: y + 4, 'font-size': 11, fill: C.muted }, g, phone ? String(p.distinct_partners) : p.distinct_partners + ' partners');
         if (!o.exporting) {
           var hr = el('rect', { x: 0, y: y - rh / 2, width: w, height: rh, fill: 'transparent' }, g);
@@ -1993,12 +2059,16 @@
         var sel = StatsSel.get(), selJ = M.cols.map(function (ci) { return A.positions[ci].gn; }).indexOf(sel.pos);
         var fr = sel.rec ? M.list.filter(function (r) { return r.gid === sel.rec; })[0] : null;
         var selI = fr ? G.map(function (g) { return g.key; }).indexOf(fr.ligand) : -1;
-        M.cols.forEach(function (ci, j) { if (j % 5 === 0 || j === selJ) el('text', { x: lw + j * cw + cw / 2, y: 62, 'font-size': 10, 'font-weight': j === selJ ? 700 : 400, fill: j === selJ ? C.fg : C.muted, transform: 'rotate(-60 ' + (lw + j * cw + cw / 2) + ' 62)', 'font-family': 'ui-monospace, Menlo, monospace' }, s, A.positions[ci].gn); });
+        // every fifth column is labeled, and the selected one; a fifth-column label too close to it gives way
+        var gap = Math.ceil(20 / cw);   // the spacing of the fifth-column labels themselves
+        M.cols.forEach(function (ci, j) { if ((j % 5 === 0 && !(selJ >= 0 && j !== selJ && Math.abs(j - selJ) < gap)) || j === selJ) el('text', { x: lw + j * cw + cw / 2, y: 62, 'font-size': 10, 'font-weight': j === selJ ? 700 : 400, fill: j === selJ ? C.fg : C.muted, transform: 'rotate(-60 ' + (lw + j * cw + cw / 2) + ' 62)', 'font-family': 'ui-monospace, Menlo, monospace' }, s, A.positions[ci].gn); });
         G.forEach(function (g, i) {
           el('text', { x: lw - 6, y: 70 + i * rh + 14, 'text-anchor': 'end', 'font-size': 11, 'font-weight': i === selI ? 700 : 400, fill: C.fg }, s, g.key.replace(/ receptors$/, '') + ' (' + g.n + ')');
           M.cols.forEach(function (ci, j) {
             var c = el('rect', { x: lw + j * cw, y: 70 + i * rh, width: cw - 1, height: rh - 2, fill: mix(C.b0, C.b5, g.hit[ci]) }, s);
-            if (!o.exporting) hit(c, g.key.replace(/ receptors$/, '') + ' at ' + A.positions[ci].gn + ': ' + Math.round(100 * g.hit[ci]) + '% with a CFR', function (e, nd) { selectPos(A.positions[ci].gn, card, nd); }, null, true);
+            // the share from the counts (hit is rounded for color), rounded once
+            var nc = g.cfr ? g.cfr[ci] : Math.round(g.hit[ci] * g.n);
+            if (!o.exporting) hit(c, g.key.replace(/ receptors$/, '') + ' at ' + A.positions[ci].gn + ': ' + Math.round(100 * nc / g.n) + '% with a CFR (' + nc + ' of ' + g.n + ')', function (e, nd) { selectPos(A.positions[ci].gn, card, nd); }, null, true);
           });
         });
         if (selI >= 0) el('rect', { x: lw - 2, y: 70 + selI * rh - 2, width: cw * M.cols.length + 3, height: rh + 2, rx: 3, fill: 'none', stroke: C.fg, 'stroke-width': 1.6 }, s);
@@ -2170,8 +2240,18 @@
       var G = [['Top ' + cp.top_n, list.filter(function (p) { return p.top50; }), cp.conservation.median_top], ['Other', list.filter(function (p) { return !p.top50; }), cp.conservation.median_other]];
       var lay = G.map(function (g) { var L = stripLayout(g[1].map(function (p) { return p.mean; }), lo, hi, ml, w - 10, r); return { L: L, half: (maxOf(L.pts.map(function (q) { return Math.abs(q[1]); })) + 1) * L.step }; });
       var sel = StatsSel.get().pos, selP = sel ? PI.cons[sel] : null;
+      if (sel && !selP) top += 18;   // a line above the strips for the note that the position has too few scores
       var hh = top + lay[0].half * 2 + lay[1].half * 2 + (phone ? 64 : 40) + 30, s = svgIn(node, w, hh, 'Conservation per generic position, top-ranked and other'), y0 = top;
       if (anim(o)) s.classList.add('draw-in');
+      // the median labels' boxes, so the selected dot's label can keep clear of them
+      var boxes = [], yy = top;
+      lay.forEach(function (L, i) {
+        var cy = yy + L.half, t = 'median ' + f2(G[i][2]);
+        boxes.push({ x0: x(G[i][2]) + 3, x1: x(G[i][2]) + 7 + textW(t, 11, 600), y0: cy - L.half - 9, y1: cy - L.half + 5 });
+        if (phone) boxes.push({ x0: 0, x1: textW(G[i][0] + ' (' + G[i][1].length + ' positions)', 11.5, 600) + 2, y0: yy - 17, y1: yy - 3 });
+        yy += L.half * 2 + (phone ? 32 : 20);
+      });
+      function clearOf(b) { return !boxes.some(function (m) { return b.x0 < m.x1 && b.x1 > m.x0 && b.y0 < m.y1 && b.y1 > m.y0; }); }
       lay.forEach(function (L, i) {
         var g = G[i], cy = y0 + L.half;
         if (phone) el('text', { x: 0, y: y0 - 6, 'font-size': 11.5, 'font-weight': 600, fill: C.fg }, s, g[0] + ' (' + g[1].length + ' positions)');
@@ -2179,7 +2259,12 @@
           var p = g[1][q[2]], m = PI.motif[p.gn], on = p.gn === sel;
           var c = el('circle', { cx: q[0], cy: cy + q[1] * L.L.step, r: on ? r + 3 : r, fill: m ? 'none' : (i ? C.ink : C.b4), stroke: m || on ? C.fg : 'none', 'stroke-width': on ? 2 : 1.3, 'fill-opacity': i ? 0.55 : 0.9, 'data-gn': p.gn }, s);
           if (!o.exporting) hit(c, p.gn + ': mean conservation ' + f2(p.mean) + ' over ' + p.n_residues + ' residues' + (m ? ' (' + m + ')' : ''), PI.by[p.gn] ? function () { selectPos(p.gn, card); } : null, null, true);
-          if (on) el('text', { x: q[0], y: cy + q[1] * L.L.step - r - 8, 'text-anchor': 'middle', 'font-size': 12, 'font-weight': 700, fill: C.fg, stroke: C.surface, 'stroke-width': 3, 'paint-order': 'stroke' }, s, p.gn + ' ' + f2(p.mean));
+          if (on) {   // above the dot, else below it, else beside it: never over a median label
+            var lt = p.gn + ' ' + f2(p.mean), tw = textW(lt, 12, 700), dy = cy + q[1] * L.L.step, cx = clampX(q[0], lt, 12, 700, 0, w);
+            var cand = [[cx, dy - r - 8], [cx, dy + r + 16], [Math.max(tw / 2 + 2, q[0] - r - 8 - tw / 2), dy + 4], [Math.min(w - tw / 2 - 2, q[0] + r + 8 + tw / 2), dy + 4]];
+            var at = cand.filter(function (c) { return clearOf({ x0: c[0] - tw / 2, x1: c[0] + tw / 2, y0: c[1] - 11, y1: c[1] + 2 }); })[0] || cand[0];
+            el('text', { x: at[0], y: at[1], 'text-anchor': 'middle', 'font-size': 12, 'font-weight': 700, fill: C.fg, stroke: C.surface, 'stroke-width': 3, 'paint-order': 'stroke' }, s, lt);
+          }
         });
         el('line', { x1: x(g[2]), x2: x(g[2]), y1: cy - L.half, y2: cy + L.half, stroke: C.fg, 'stroke-width': 2 }, s);
         if (!phone) {
@@ -2199,7 +2284,7 @@
   define('chart-am-quintiles', {
     needs: ['class_variants'],
     draw: function (card, node, w, o) {
-      var Q = card.D.class_variants.fifths, phone = isPhone() || w < 560, hh = 210, mb = phone ? 56 : 58, ml = 34;
+      var Q = card.D.class_variants.fifths, phone = isPhone() || w < 560, hh = 210, mb = phone ? 56 : 62, ml = 34;
       var s = svgIn(node, w, hh + mb, 'Predicted pathogenic share within conservation groups');
       if (anim(o)) s.classList.add('draw-in');
       var gw = (w - ml) / Q.length, y = function (p) { return hh - p / 100 * (hh - 16); };
@@ -2219,7 +2304,12 @@
           el('text', { x: x0 + bw + 2, y: hh + 30, 'text-anchor': 'middle', 'font-size': 9.5, fill: C.muted }, s, f2(q.conservation_from));
           el('text', { x: x0 + bw + 2, y: hh + 42, 'text-anchor': 'middle', 'font-size': 9.5, fill: C.muted }, s, 'to ' + f2(q.conservation_to));
         }
-        if (!phone) el('text', { x: x0 + bw + 2, y: hh + 44, 'text-anchor': 'middle', 'font-size': 10.5, fill: C.muted }, s, fmt(q.top50_decisive) + ' / ' + fmt(q.other_decisive) + ' calls');
+        if (!phone) {   // decisive calls at the top positions and at the others, named (two lines when narrow)
+          var cnt = fmt(q.top50_decisive) + ' top ' + TOP + ' / ' + fmt(q.other_decisive) + ' other';
+          (textW(cnt, 10.5) <= gw - 4 ? [cnt] : [fmt(q.top50_decisive) + ' top ' + TOP, fmt(q.other_decisive) + ' other']).forEach(function (t, k) {
+            el('text', { x: x0 + bw + 2, y: hh + 44 + 12 * k, 'text-anchor': 'middle', 'font-size': 10.5, fill: C.muted }, s, t);
+          });
+        }
       });
       if (!o.exporting && card.legend) card.legend.innerHTML = '<span><span class="sw c-path"></span>top ' + TOP + ' positions: predicted pathogenic, % of decisive calls</span><span><span class="sw" style="background:var(--path-soft);border:1px solid var(--path)"></span>other generic-numbered positions</span>';
     }
@@ -2500,7 +2590,10 @@
       if (!window.Plotly) { clear(node); h('p', 'load-note', node, 'This chart could not load.'); return; }
       var cfg = { responsive: true, displayModeBar: false, displaylogo: false, scrollZoom: false }, div = card.plotDiv;
       card.wantFig = fig;
-      if (card.plotted) return window.Plotly.react(div, fig.data, fig.layout, cfg);
+      if (card.plotted) return window.Plotly.react(div, fig.data, fig.layout, cfg).then(function () {
+        // a side panel opened or closed: the plot fits its column (Plotly sizes itself only on window resizes)
+        if (window.Plotly.Plots && Math.abs(div.getBoundingClientRect().width - (div._fullLayout ? div._fullLayout.width : 0)) > 1) return window.Plotly.Plots.resize(div);
+      });
       // the first plot waits for Plotly to load; a redraw asked for meanwhile is drawn when it lands
       if (card.plotting && card.plottingDiv === div) return card.plotting;
       card.plottingDiv = div;
@@ -2529,7 +2622,12 @@
       l.rs.forEach(function (r) {
         var f = r.gid === rec, c = el('circle', { cx: x(r.sum_abs), cy: y, r: f ? 6 : 3.4, fill: f ? C.fg : C.ink, 'fill-opacity': f ? 1 : 0.5, stroke: f ? C.surface : 'none', 'stroke-width': 1.5 }, s);
         if (!o.exporting) hit(c, r.symbol + ': ' + fmt(Math.round(r.sum_abs)), function () { receptorPanel(card, r.gid); }, null, true);
-        if (f) el('text', { x: x(r.sum_abs), y: y - 9, 'text-anchor': 'middle', 'font-size': 11, 'font-weight': 700, fill: C.fg }, s, r.symbol);
+        if (f) {
+          if (phone) {   // the row label sits above the strip: the name goes beside the dot (left near the edge)
+            var fx = x(r.sum_abs), right = fx + 9 + textW(r.symbol, 11, 700) <= w;
+            el('text', { x: right ? fx + 9 : fx - 9, y: y + 4, 'text-anchor': right ? 'start' : 'end', 'font-size': 11, 'font-weight': 700, fill: C.fg, stroke: C.surface, 'stroke-width': 3, 'paint-order': 'stroke' }, s, r.symbol);
+          } else el('text', { x: x(r.sum_abs), y: y - 9, 'text-anchor': 'middle', 'font-size': 11, 'font-weight': 700, fill: C.fg }, s, r.symbol);
+        }
       });
       el('line', { x1: x(l.m), x2: x(l.m), y1: y - 8, y2: y + 8, stroke: C.fg, 'stroke-width': 2.4 }, s);
     });
@@ -2679,6 +2777,22 @@
     function openHash() {
       var t = location.hash && document.getElementById(location.hash.slice(1));
       var d = t && t.closest('details'); if (d) d.open = true;
+      if (t && STATS.contains(t)) holdHash(t);
+    }
+    // cards above a linked card draw after the jump and push it down: while they settle, the target is put back
+    // under the topbar (its scroll-margin), until the reader scrolls or presses a key
+    function holdHash(t) {
+      var stop = false, n = 0, lastY = null;
+      var cancel = function () { stop = true; };
+      ['wheel', 'touchstart', 'keydown', 'mousedown'].forEach(function (ev) { window.addEventListener(ev, cancel, { once: true, passive: true, capture: true }); });
+      (function tick() {
+        if (stop || n++ > 14) return;
+        var y = window.scrollY, want = parseFloat(getComputedStyle(t).scrollMarginTop) || 0, top = t.getBoundingClientRect().top;
+        // a scroll still under way (a smooth jump from a link) is left to finish
+        if (lastY !== null && Math.abs(y - lastY) < 1 && Math.abs(top - want) > 4) window.scrollTo(0, y + top - want);
+        lastY = window.scrollY;
+        setTimeout(tick, 300);
+      })();
     }
     openHash();
     window.addEventListener('hashchange', openHash);

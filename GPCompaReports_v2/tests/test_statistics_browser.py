@@ -282,7 +282,7 @@ def test_url_selection_on_load(open_page):
     page = open_page('/statistics.html?sel=pair:TM3-TM6')
     _settle(page, ['chart-helix-pairs'])
     expect(page.locator('#card-chart-helix-pairs .lrow.is-sel[data-pair="TM3-TM6"]')).to_have_count(1)
-    assert 'TM3-TM6: weaker in the active model in 210 of 264' in page.locator('[data-sel-summary]').inner_text()
+    assert 'TM3-TM6: weaker in the active model in 210 of 264 receptors.' in page.locator('[data-sel-summary]').inner_text()
     page = open_page('/statistics.html?sel=bogus:1')
     _settle(page, ['chart-thresholds'])
     assert _errors(page) == []
