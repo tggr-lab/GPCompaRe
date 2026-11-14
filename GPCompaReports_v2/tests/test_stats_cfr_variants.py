@@ -6,6 +6,7 @@ The per-position counts must equal the Studio packs (and search v2's ClinVar pla
 here independently; the paper numbers must equal the corrected supplement summary exactly; site and paper
 must never share a label.
 """
+import csv
 import json
 import math
 import os
@@ -159,7 +160,7 @@ def test_groups_partition_the_generic_numbered_residues(built, packs):
     top = g['top50']
     for k in ('alleles', 'substitutions', 'allele_count', 'residues'):
         assert top[k] == sum(p[k] for p in s['positions'])
-        assert g['other_generic'][k] == g['rank51_368'][k] + g['outside_catalog'][k]
+        assert g['other_generic'][k] == g['rank51_368'][k] + g['outside_368'][k]
     gn = {g: {r[0] for r in p['residues'] if r[3]} for g, p in packs.items()}
     numbered = sum(1 for g, p in packs.items() for v in p.get('variants') or [] if v[0] in gn[g])
     assert top['alleles'] + g['other_generic']['alleles'] == numbered
@@ -178,15 +179,23 @@ def test_receptor_files_add_up_to_the_summary(built):
         assert d == json.loads(json.dumps(details[pos['generic']]))
         rows = d['rows']
         assert len(rows) == pos['receptors_numbered']
-        for k in ('alleles', 'substitutions', 'benign', 'ambiguous', 'pathogenic', 'allele_count'):
+        for k in ('alleles', 'substitutions', 'am_benign', 'am_ambiguous', 'am_pathogenic', 'allele_count'):
             col = sum(r[f.index(k)] for r in rows)
-            ref = pos[k] if k in pos else pos['am_substitutions'][k]
+            ref = pos[k] if k in pos else pos['am_substitutions'][k[3:]]
             assert col == ref, (pos['generic'], k)
         gene = s['receptors']['rows'][rows[0][0]][1]
         assert rows[0][f.index('search_q')] == '%s %s' % (gene, pos['generic'])
     assert all(r[3] == 'reports/%s.html' % r[0] for r in s['receptors']['rows'])
     lines = (out / 'cfr_variants.csv').read_text().splitlines()
-    assert lines[0].startswith('# gnomAD') and 'paper' not in lines[0] and len(lines) == 2 + 50 + 4
+    # plain tables: the header first, every column named, pathogenicity columns marked as AlphaMissense calls
+    assert lines[0].startswith('cfr_rank,') and len(lines) == 1 + 50 + 4
+    head = lines[0].split(',')
+    assert all(head) and len(head) == len(next(csv.reader([lines[1]])))
+    assert {h for h in head if 'pathogenic' in h or 'benign' in h} == {
+        'am_benign', 'am_pathogenic', 'am_pathogenic_pct_decisive'}
+    det = (out / 'cfr_variants_receptors.csv').read_text().splitlines()[0].split(',')
+    assert det[0] == 'generic_number' and all(det) and not {'benign', 'ambiguous', 'pathogenic'} & set(det)
+    assert 'catalog' not in (out / 'cfr_variants.csv').read_text() + json.dumps(s)
 
 
 def test_clinvar_counts_equal_search_v2(built, packs):

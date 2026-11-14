@@ -3,12 +3,12 @@
 The Statistics page has two allele sets (2026-11-13 page rewrite):
 
   * the AlphaMissense comparison, recurrence groups and conservation groups use the February batch query
-    (276 receptors): GPR3, GPR4 and XCR1 are left out, and ACKR5 (GP182), NPY6R, P2RY8 and TAAR3 had no
+    (276 receptors): GPR3, GPR4 and XCR1 are left out, and GPR182 (ACKR5), NPY6R, P2RY8 and TAAR3 had no
     records in that query. The Methods row "What each result covers" names all seven, in two sentences;
   * the per-position variants use the report variant layer (281 receptors): NPY6R and TAAR3 have no
     protein-coding missense records (pseudogene loci), which the card guide says.
 
-GP182 and P2RY8 appear only in the Methods row, and never as lacking gnomAD variants. The old 279-receptor
+GPR182 and P2RY8 appear only in the Methods row, and never as lacking gnomAD variants. The old 279-receptor
 variant layer (conservation scatter) is gone from the page.
 """
 import os
@@ -30,7 +30,7 @@ else:
 STATS = BUILD_DIR / 'statistics.html'
 
 PSEUDOGENE = ('NPY6R', 'TAAR3')
-UNRESOLVED = ('GP182', 'P2RY8')
+UNRESOLVED = ('GPR182', 'P2RY8')
 
 needs_build = pytest.mark.skipif(
     not STATS.exists(),
@@ -70,7 +70,7 @@ def test_the_methods_row_names_the_seven_receptors_in_two_sentences():
     cells = [re.sub(r'<[^>]+>', '', c).strip() for c in re.findall(r'<td[^>]*>(.*?)</td>', am[0], re.S)]
     assert cells[1] == '276'
     assert 'GPR3, GPR4 and XCR1.' in cells[3]
-    assert 'ACKR5 (GP182), NPY6R, P2RY8 and TAAR3: no records in that query.' in cells[3]
+    assert 'GPR182 (ACKR5), NPY6R, P2RY8 and TAAR3: no records in that query.' in cells[3]
     v = [r for r in rows if 'Variants at each top-ranked position' in r]
     assert len(v) == 1 and 'NPY6R and TAAR3: no protein-coding missense records' in v[0]
 

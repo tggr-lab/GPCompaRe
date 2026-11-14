@@ -87,7 +87,7 @@ receptors.json
                   positions are left out. A browsing aid, not a classification.
     kruskal       {sum_abs: {families: {H, p, k, n}, ligand_types: {H, p, k, n}}}: total |dRRCS| per receptor
                   across all ligand types and across families with at least FAMILY_MIN_KW (5) receptors
-    ligand_groups [{key, n, color}] (light-mode hues, validated for color-vision deficiency)
+    ligand_groups [{key, n, color, color_dark}] (light- and dark-theme hues)
 
 Hook for the page generator (statistics_page.py):
 
@@ -127,8 +127,12 @@ FAMILY_MIN_KW = 5
 LIGAND_GROUP_ORDER = ['Peptide receptors', 'Orphan receptors', 'Aminergic receptors', 'Lipid receptors',
                       'Protein receptors', 'Nucleotide receptors', 'Sensory receptors', 'Other']
 #: No blue or red (the signed ΔRRCS colors) and no crimson (predicted pathogenic); Other is a neutral gray.
-LIGAND_GROUP_COLORS = dict(zip(LIGAND_GROUP_ORDER, ['#0D9488', '#D97706', '#7C3AED', '#A21CAF', '#15803D',
-                                                    '#65A30D', '#92400E', '#6B7280']))
+#: Hues spread around the wheel at separated lightness (orange, purple, green, brown, charcoal, lavender, gold, gray);
+#: no teal (the brand and count color), and dark-theme partners of the same hues.
+LIGAND_GROUP_COLORS = dict(zip(LIGAND_GROUP_ORDER, ['#E8700A', '#7E3FB5', '#3D8B37', '#8C5A3C', '#2F3640',
+                                                    '#A77BCA', '#A88600', '#6B7280']))
+LIGAND_GROUP_COLORS_DARK = dict(zip(LIGAND_GROUP_ORDER, ['#FFB067', '#B68DE8', '#4FAE55', '#C49A78', '#E5E7EB',
+                                                         '#DCC6F0', '#E2C044', '#8B949E']))
 
 EXPLORER_METRICS = [
     ('n_above', 'Above-threshold pairs',
@@ -366,8 +370,7 @@ def build_cfr_atlas(inputs):
                       net=('Signed sum of the above-threshold ΔRRCS of the contacts touching the residue; '
                            'a sum can hide opposing changes.'),
                       table_note=('table_n_receptors is the receptor count of the ranked CFR table (full GPCRdb '
-                                  'residue maps); columns[].n_hit is the count with each receptor\'s own numbering. '
-                                  'The two agree at every position.')),
+                                  'residue maps); columns[].n_hit is the count with each receptor\'s own numbering.')),
         'positions': positions,
         'rank_order': rank_order,
         'receptors': rows,
@@ -442,8 +445,8 @@ def build_receptors(inputs, atlas):
     return {
         'meta': _meta('receptors', inputs,
                       similarity=('Pattern similarity: cosine over the signed 50-position CFR fingerprint '
-                                  '(net ΔRRCS at each CFR position, 0 where there is no above-threshold '
-                                  'contact). Receptors with fewer than %d numbered CFR positions are left out. '
+                                  '(net ΔRRCS at each top-ranked position, 0 where there is no above-threshold '
+                                  'contact). Receptors with fewer than %d numbered top-ranked positions are left out. '
                                   'A browsing aid, not a classification.' % SIMILARITY_MIN_NUMBERED),
                       kruskal_scope=('Kruskal-Wallis on total |ΔRRCS| per receptor, across all ligand types and '
                                      'across families with at least %d receptors; a test of spread across groups, '
@@ -453,7 +456,8 @@ def build_receptors(inputs, atlas):
         'rows': [[r[c] for c in columns] for r in rows],
         'similar': similar,
         'kruskal': kruskal,
-        'ligand_groups': [{'key': k, 'n': int(counts.get(k, 0)), 'color': LIGAND_GROUP_COLORS[k]}
+        'ligand_groups': [{'key': k, 'n': int(counts.get(k, 0)), 'color': LIGAND_GROUP_COLORS[k],
+                           'color_dark': LIGAND_GROUP_COLORS_DARK[k]}
                           for k in LIGAND_GROUP_ORDER],
     }
 
@@ -492,15 +496,15 @@ def build_overview(inputs, manuscript=None, am=None):
          'label': 'recurrent positions (above-threshold in at least 3 receptors)', 'source': 'ranking',
          'source_label': ranking},
         {'key': 'cfr_set', 'value': n_cfr, 'display': str(n_cfr),
-         'label': 'CFR positions: the top-ranked positions by CFR score', 'source': 'ranking',
+         'label': 'top-ranked positions by CFR score', 'source': 'ranking',
          'source_label': ranking},
     ]
     n_numbered_any = sum(1 for i in inputs if any(i.gn2pos.get(g) for g in class_cfr_set()))
     coverage = [
         {'view': 'Structural summaries (helix-pair atlas, receptor explorer)', 'receptors': len(inputs),
          'source': 'database', 'note': 'Every receptor with an active and an inactive model.'},
-        {'view': 'CFR atlas', 'receptors': len(inputs), 'source': 'database',
-         'note': '%d receptors have at least one CFR position numbered.' % n_numbered_any},
+        {'view': 'Every receptor at the top-ranked positions', 'receptors': len(inputs), 'source': 'database',
+         'note': '%d receptors have a residue numbered at one or more of the top-ranked positions.' % n_numbered_any},
         {'view': 'AlphaMissense class comparison', 'receptors': int(am['receptors']), 'source': 'alphamissense',
          'note': 'GPR3, GPR4 and XCR1 are not included.'},
     ]

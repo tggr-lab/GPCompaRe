@@ -61,8 +61,8 @@ cfr_variants.json
         conservation {median, n}   observation; n = receptor residues with a score
         links {search_q "6.48x48", search_url "search/?q=6.48x48", detail "data/stats/cfr_variants/6.48x48.json"}
     groups         the same fields pooled over position sets, for a comparison row: top50;
-                   rank51_368 (rest of the submitted 368-position catalog); outside_catalog (generic-numbered
-                   residues outside the 368); other_generic (rank51_368 + outside_catalog, the comparison
+                   rank51_368 (rest of the 368 recurrent positions); outside_368 (generic-numbered
+                   residues outside the 368); other_generic (rank51_368 + outside_368, the comparison
                    group the paper names "other generic-numbered positions", here on site data).
                    Each adds {key, label, positions (distinct generic numbers)}.
     totals_check   {alleles_in_packs, substitutions_in_packs}: every pack allele of the 283 receptors
@@ -113,11 +113,12 @@ CLINVAR_GROUPS = ('plp', 'vus', 'blb', 'conflicting', 'other')
 
 GROUPS = (('top50', 'Top 50 positions by CFR score'),
           ('rank51_368', 'Positions ranked 51 to 368 by CFR score'),
-          ('outside_catalog', 'Generic-numbered positions outside the 368-position catalog'),
-          ('other_generic', 'Other generic-numbered positions (ranked 51 to 368 and outside the catalog)'))
+          ('outside_368', 'Generic-numbered positions outside the 368 recurrent positions'),
+          ('other_generic', 'Other generic-numbered positions (ranked 51 to 368, or outside the 368 recurrent '
+                            'positions)'))
 
-DETAIL_FIELDS = ['receptor', 'residue', 'aa', 'alleles', 'substitutions', 'benign', 'ambiguous', 'pathogenic',
-                 'unscored', 'allele_count', 'af_max', 'clinvar_missense', 'clinvar_plp_db', 'conservation',
+DETAIL_FIELDS = ['receptor', 'residue', 'aa', 'alleles', 'substitutions', 'am_benign', 'am_ambiguous',
+                 'am_pathogenic', 'am_unscored', 'allele_count', 'af_max', 'clinvar_missense', 'clinvar_plp_db', 'conservation',
                  'search_q']
 
 
@@ -376,7 +377,7 @@ def build_cfr_variants(gids, pack_folder=None, search2_dir=None, ranks=None):
             elif g in ranks:
                 keys = ('rank51_368', 'other_generic')
             else:
-                keys = ('outside_catalog', 'other_generic')
+                keys = ('outside_368', 'other_generic')
             for k in keys:
                 _add(per_group[k], gid, r)
             if g not in top:
@@ -511,7 +512,7 @@ def _dump(path, obj):
 SUMMARY_CSV_HEAD = [
     'cfr_rank', 'generic_number', 'segment', 'positions', 'receptors_numbered', 'receptors_with_alleles',
     'alleles', 'substitutions', 'allele_count', 'af_median', 'am_benign', 'am_ambiguous', 'am_pathogenic',
-    'am_unscored', 'pathogenic_pct_decisive', 'clinvar_records', 'clinvar_missense', 'clinvar_missense_plp',
+    'am_unscored', 'am_pathogenic_pct_decisive', 'clinvar_records', 'clinvar_missense', 'clinvar_missense_plp',
     'clinvar_missense_vus', 'clinvar_missense_blb', 'clinvar_missense_conflicting', 'clinvar_missense_other',
     'clinvar_plp_db', 'conservation_median', 'conservation_n', 'search_url']
 
@@ -531,9 +532,9 @@ def _summary_csv_rows(summary):
     return rows
 
 
-def _write_csv(path, head, rows, note):
+def _write_csv(path, head, rows):
+    """A plain table: the header line, then the rows (the releases are named in the card scope and Methods)."""
     with path.open('w', newline='', encoding='utf-8') as fh:
-        fh.write('# %s\n' % note)
         w = csv.writer(fh)
         w.writerow(head)
         for r in rows:
@@ -555,12 +556,11 @@ def write_cfr_variants(output_dir, gids, pack_folder=None, search2_dir=None):
     for g, obj in details.items():
         _dump(out / detail_href(g), obj)
     paths['details'] = d / 'cfr_variants'
-    paths['summary_csv'] = _write_csv(d / 'cfr_variants.csv', SUMMARY_CSV_HEAD, _summary_csv_rows(summary),
-                                      summary['label'])
+    paths['summary_csv'] = _write_csv(d / 'cfr_variants.csv', SUMMARY_CSV_HEAD, _summary_csv_rows(summary))
     recs = summary['receptors']['rows']
     rows = [[g, recs[r[0]][0], recs[r[0]][1]] + r[1:] + [recs[r[0]][3]]
             for g, obj in details.items() for r in obj['rows']]
     paths['detail_csv'] = _write_csv(
         d / 'cfr_variants_receptors.csv', ['generic_number', 'gid', 'gene'] + DETAIL_FIELDS[1:] + ['report_url'],
-        rows, summary['label'])
+        rows)
     return {'summary': summary, 'details': details, 'paths': paths}

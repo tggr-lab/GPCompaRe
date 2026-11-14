@@ -470,15 +470,20 @@ def hgnc_names(gids):
     return {g: (recs.get(g) or {}).get('name') or None for g in gids} if recs else {}
 
 
-def receptor_labels(gids):
-    """{gid: label}: the UniProt entry stem ('GP182'), led by the HGNC symbol when that differs other than by
-    a pseudogene 'P' ('ACKR5 (GP182)'; 'TAAR3' for TAAR3P)."""
+def receptor_labels(gids, symbols=None):
+    """{gid: label}: the site's gene symbol (symbols, else the UniProt entry stem), followed by the HGNC symbol
+    when that differs other than by a pseudogene 'P' ('GPR182 (ACKR5)'; 'TAAR3' for TAAR3P)."""
     recs = _hgnc_records()
+    symbols = symbols or {}
     out = {}
     for g in gids:
         stem = g.split('_')[0].upper()
         sym = (recs.get(g) or {}).get('symbol') or stem
-        out[g] = stem if sym in (stem, stem + 'P') else '%s (%s)' % (sym, stem)
+        if sym in (stem, stem + 'P'):
+            out[g] = stem
+        else:
+            site = symbols.get(g) or stem
+            out[g] = site if sym in (site, site + 'P') else '%s (%s)' % (site, sym)
     return out
 
 
@@ -579,7 +584,8 @@ def finding_sentences(payloads):
                   'from %.2f to %.2f.' % (_int(s['pairs']), _int(s['above']), s['thr_min'], s['thr_max'])),
          'bar': round(s['share'] / 100.0, 4)},
         {'key': 'bundle', 'href': '#sec-a', 'big': d['pair'],
-         'line': ('weaker in the active model in %d of %d receptors with a change there; %s stronger in %d of %d'
+         'line': ('weaker in the active model in %d of %d receptors with a change there; %s stronger in %d of %d. '
+                  'Boxes: mean net ΔRRCS per receptor of each pair.'
                   % (d['n'], d['of'], u['pair'], u['n'], u['of'])),
          'cells': [{'pair': d['pair'], 'mean_net': d['mean_net'], 'value': _signed(d['mean_net'])},
                    {'pair': u['pair'], 'mean_net': u['mean_net'], 'value': _signed(u['mean_net'])}]},
@@ -589,7 +595,8 @@ def finding_sentences(payloads):
          'bar': round(p['n'] / float(p['of']), 4)},
         {'key': 'variants', 'href': '#sec-d', 'big': '%.1f%% vs %.1f%%' % (va['top'], va['other']),
          'line': ('of decisive AlphaMissense calls (predicted pathogenic or predicted benign) are predicted '
-                  'pathogenic, at the %d top-ranked positions against other generic-numbered positions' % TOP_N),
+                  'pathogenic, at the %d top-ranked positions (by CFR score) against other generic-numbered '
+                  'positions' % TOP_N),
          'bars': [round(va['top'] / 100.0, 4), round(va['other'] / 100.0, 4)]},
     ]
     return {'findings': findings, 'glance': glance}

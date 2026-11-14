@@ -49,8 +49,13 @@
       aa: b64bytes(L.aa.data),
       pos: pos
     };
+    // a group's color follows the theme: the dark-theme hue (color_dark) while the page is dark
     var groups = index.ligand_groups.map(function(g, gi) {
-      return { key: g.key, n: g.n, color: g.color, index: gi };
+      var o = { key: g.key, n: g.n, index: gi };
+      Object.defineProperty(o, 'color', { enumerable: true, get: function() {
+        return document.documentElement.getAttribute('data-color-mode') === 'dark' && g.color_dark ? g.color_dark : g.color;
+      } });
+      return o;
     });
     var gIndex = {};
     groups.forEach(function(g) { gIndex[g.key] = g.index; });

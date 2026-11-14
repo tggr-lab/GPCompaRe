@@ -158,8 +158,12 @@ def test_ligand_groups(rec):
     assert other == {'Alicarboxylic acid receptors', 'Melatonin receptors', 'Steroid receptors'}
     assert 'families' not in rec, 'the families list had no reader; Kruskal-Wallis is rendered on the server'
     # no ligand hue is the signed blue or red, the predicted pathogenic crimson or the old Other indigo
-    colors = {g['color'].upper() for g in groups}
-    assert not colors & {'#2563EB', '#1D4ED8', '#B91C1C', '#DB2777', '#B4234B', '#4338CA'}
+    colors = {g['color'].upper() for g in groups} | {g['color_dark'].upper() for g in groups}
+    assert not colors & {'#2563EB', '#1D4ED8', '#B91C1C', '#DB2777', '#B4234B', '#4338CA', '#60A5FA', '#F87171',
+                         '#F48FB1'}
+    # no teal: the brand color counts recurrence on the same page
+    assert not colors & {'#0D9488', '#5EEAD4', '#2DD4BF', '#0F766E'}
+    assert len({g['color'] for g in groups}) == 8 and len({g['color_dark'] for g in groups}) == 8
     assert dict((g['key'], g['color']) for g in groups)['Other'] == '#6B7280'
 
 

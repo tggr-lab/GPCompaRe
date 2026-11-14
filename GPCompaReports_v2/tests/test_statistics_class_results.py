@@ -396,9 +396,9 @@ def test_built_payloads_and_csvs():
     assert not (STATS_DIR / 'figures').exists()
     assert not (STATS_DIR / 'conservation_by_residue.csv').exists()
     cov = (STATS_DIR / 'coverage.csv').read_text(encoding='utf-8')
-    assert 'GPR3, GPR4 and XCR1. ACKR5 (GP182), NPY6R, P2RY8 and TAAR3: no records in that query.' in cov
+    assert 'GPR3, GPR4 and XCR1. GPR182 (ACKR5), NPY6R, P2RY8 and TAAR3: no records in that query.' in cov
     assert 'NPY6R and TAAR3: no protein-coding missense records' in cov
-    assert cov.count('GP182') == 1 and cov.count('P2RY8') == 1
+    assert cov.count('GPR182') == 1 and cov.count('P2RY8') == 1
     cfr = json.loads((STATS_DIR / 'cfr_variants.json').read_text(encoding='utf-8'))
     assert cfr['coverage']['receptors_with_alleles'] == 281
     for name in ('class_variants.json', 'am_bands.csv', 'am_conservation_fifths.csv'):
@@ -494,7 +494,9 @@ def test_built_scaffold_csv_and_coverage():
     first = cov[0]
     assert 'GPCRdb generic numbering, fetched 2026-10-18' in first['data'] and 'positions' not in first['results'].split(',')[0]
     known = [r for r in cov if r['results'] == 'Known activation positions'][0]
-    assert known['receptors'].startswith('262 recurrent positions')
+    assert known['receptors'].startswith('262 structure positions')
+    mag = [r for r in cov if r['results'].startswith('Change per contact by segment')][0]
+    assert 'GPR4' in mag['data']   # the segment and interface tables carry the same GPR4 exception
     html = (BUILD / 'statistics.html').read_text(encoding='utf-8')
     assert 'class_A_all' not in html
     assert 'The list of 287 human Class A receptors also names' in re.sub(r'\s+', ' ', html)
