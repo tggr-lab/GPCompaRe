@@ -332,3 +332,18 @@ def test_without_javascript_no_dead_controls(browser, server):
             assert not loc.nth(i).is_visible(), sel
     assert page.locator('#cfr-table').is_visible()
     ctx.close()
+
+
+# ------------------------------------------------------------------------------------------- recurrent pairs
+@needs_build
+def test_most_recurrent_pairs_mark_the_followed_position(open_page):
+    page = open_page('/statistics.html?sel=pos:3.40x40', viewport=WIDE)
+    card = page.locator('[data-chart="chart-partners"]')
+    card.scroll_into_view_if_needed()
+    page.wait_for_timeout(600)
+    page.click('button[data-value="pairs"]')
+    page.wait_for_timeout(600)
+    marked = page.evaluate("[...document.querySelectorAll('#chart-partners rect[data-sel]')].map(r => r.nextElementSibling.textContent)")
+    assert marked and all('3.40x40' in t for t in marked), marked
+    assert page.evaluate("[...document.querySelectorAll('#chart-partners text')].filter(t => /3\\.40x40 · /.test(t.textContent)).length") == len(marked)
+    assert _errors(page) == []

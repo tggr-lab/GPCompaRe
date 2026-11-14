@@ -1914,11 +1914,13 @@
     draw: function (card, node, w, o) {
       var cp = card.D.class_positions, PI = positionIndex(cp), phone = isPhone() || w < 480;
       if (card.state.tab === 'pairs') {
-        var P = rows(cp.pairs.columns, cp.pairs.top), lab = phone ? 128 : 150, rh = 22;
+        var P = rows(cp.pairs.columns, cp.pairs.top), lab = phone ? 128 : 150, rh = 22, selP = StatsSel.get().pos;
         var s = svgIn(node, w, P.length * rh + 8, 'The most recurrent exact contact pairs');
         if (anim(o)) s.classList.add('draw-in');
         P.forEach(function (p, i) {
           var y = i * rh + 4, bw = (w - lab - 80) * p.n / NREC;
+          // the followed position: every pair that contains it is marked, as on the other tab
+          if (selP && (p.cfr_1 === selP || p.cfr_2 === selP)) el('rect', { x: 0, y: y, width: w, height: rh - 3, rx: 4, fill: C.brandSoft, stroke: C.fg, 'stroke-width': 1.2, 'data-sel': '1' }, s);
           el('text', { x: lab - 8, y: y + 12, 'text-anchor': 'end', 'font-size': 11.5, 'font-family': 'ui-monospace, Menlo, Consolas, monospace', fill: C.fg }, s, p.cfr_1 + ' · ' + p.cfr_2);
           el('rect', { x: lab, y: y + 3, width: bw, height: 11, rx: 2, fill: C.b3, class: 'grow' }, s);
           el('text', { x: lab + bw + 6, y: y + 12, 'font-size': 11, fill: C.muted }, s, p.n + ' (' + Math.round(p.pct) + '%)');
