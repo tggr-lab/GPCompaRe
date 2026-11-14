@@ -54,9 +54,11 @@
     if (/^[A-Za-z]{3}$/.test(n)) return n.charAt(0).toUpperCase() + n.slice(1).toLowerCase();
     return THREE[n.toUpperCase()] || n;
   }
+  var letters = cfg.aa || {};   // one-letter amino acid of every residue, for residues without a summary row
   function label(pos) {
     var r = byPos[pos];
-    return (r && r.amino_acid && THREE[r.amino_acid] ? THREE[r.amino_acid] : '') + pos;
+    var aa = (r && r.amino_acid) || letters[String(pos)] || '';
+    return (THREE[aa] || '') + pos;
   }
   function gnOf(pos) { var a = ann[String(pos)]; return (a && a[1]) || (byPos[pos] && (byPos[pos].display_number || byPos[pos].generic_number)) || ''; }
   function segOf(pos) { var a = ann[String(pos)]; return (a && a[0]) || (byPos[pos] && byPos[pos].protein_segment) || ''; }

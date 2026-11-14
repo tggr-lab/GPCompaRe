@@ -129,6 +129,22 @@ def residue_annotation(pack, annot_map):
     return out
 
 
+def residue_letters(pack, annot_map):
+    """{str(pos): one-letter amino acid} for every residue of the receptor (pack first, as
+    residue_annotation), so the drawer and selection bar name residues that have no contact pair."""
+    out = {}
+    if pack:
+        for r in pack.get('residues', []):
+            if len(r) > 1 and r[1]:
+                out[str(int(r[0]))] = str(r[1])
+        return out
+    for pos, a in (annot_map or {}).items():
+        aa = (a or {}).get('amino_acid') or ''
+        if aa:
+            out[str(pos)] = str(aa)
+    return out
+
+
 def segment_ranges(annotation):
     """{'TM1': [first, last], ...} from {str(pos): [segment, gn]}."""
     ranges = {}
@@ -401,6 +417,8 @@ def build_extras(gid, annot_map, residue_metrics, models_root, gene_name=''):
         'studio': STUDIO_URL.format(gid=gid),
         'segments': segment_ranges(annotation),
         'annotation': annotation,
+        # one-letter amino acid per residue, for the labels of residues without a contact pair
+        'aa': residue_letters(pack, annot_map),
         'clinvar': (clinvar['records'] if clinvar else []),
         # null when the build has no ClinVar data: the drawer then says nothing about ClinVar
         'clinvarLabel': clinvar_label(clinvar) if clinvar else None,

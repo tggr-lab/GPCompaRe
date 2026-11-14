@@ -34,6 +34,7 @@
   if (!drawer || !titleEl || !bodyEl) return;
 
   var annotation = cfg.annotation || {};
+  var letters = cfg.aa || {};          // one-letter amino acid of every residue (rx-config)
   var clinvar = cfg.clinvar || [];
   var summary = readJSON('residue-summary-data') || [];
   var snake = readJSON('snake-plot-data');
@@ -234,7 +235,7 @@
     var ann = annotation[String(pos)] || [];
     var gn = ann[1] || (row && (row.display_number || row.generic_number)) || '';
     var seg = ann[0] || (row && row.protein_segment) || '';
-    var aa = row && row.amino_acid ? row.amino_acid : '';
+    var aa = row && row.amino_acid ? row.amino_acid : (letters[String(pos)] || '');
     if (!aa) {
       var cv = clinvar.filter(function (r) { return r.pos === pos; })[0];
       if (cv) aa = cv.ref;
