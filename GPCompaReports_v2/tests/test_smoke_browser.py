@@ -771,7 +771,9 @@ def test_a_table_cell_and_a_res_link_open_the_drawer_and_a_section_link_does_not
         tail = t.split('AF ', 1)[1]
         if 'AlphaMissense' not in tail:
             assert not re.search(r'\b(benign|pathogenic|ambiguous)\b', tail, re.I), t
-    assert any('AlphaMissense: ' in t for t in am), am
+    assert any('AlphaMissense prediction: ' in t for t in am), am
+    # a prediction, worded like the snake plot's key: never the bare upper-case class
+    assert not any(re.search(r'prediction: (pathogenic|benign)\b', t) for t in am), am
     assert '\u2014' not in page.inner_text('#rx-drawer-body')
     page.click('#rx-drawer-close')
     expect(page.locator('#rx-drawer')).to_be_hidden()

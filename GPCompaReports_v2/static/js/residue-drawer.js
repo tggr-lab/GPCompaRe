@@ -84,11 +84,13 @@
     return variantIndex[pos] || [];
   }
 
-  // AlphaMissense class (and score, when the report has one), labelled
+  // AlphaMissense predicted class (and score, when the report has one), labelled as a prediction
+  var AM_CLASS = { PATHOGENIC: 'likely pathogenic', BENIGN: 'likely benign', AMBIGUOUS: 'ambiguous' };
   function amText(v) {
     var has = function (x) { return x && x !== '-'; };
     if (!has(v.amClass) && !has(v.amScore)) return '';
-    return ' · AlphaMissense: ' + (has(v.amClass) ? v.amClass.toLowerCase() : '') +
+    return ' · AlphaMissense prediction: ' +
+      (has(v.amClass) ? (AM_CLASS[v.amClass.toUpperCase()] || v.amClass.toLowerCase()) : '') +
       (has(v.amScore) ? (has(v.amClass) ? ' (' + v.amScore + ')' : v.amScore) : '');
   }
 

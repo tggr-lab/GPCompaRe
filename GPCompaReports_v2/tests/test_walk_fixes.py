@@ -320,19 +320,30 @@ def test_a_protein_change_cell_selects_the_rows_residue(open_report):
 @needs_build
 @pytest.mark.parametrize('dark', [False, True])
 def test_pathogenic_and_high_badges_are_neutral(open_report, dark):
+    """HIGH is neutral ink; the AlphaMissense badges take the pathogenicity palette (crimson / grey /
+    green, the --path-* tokens of the snake plot's key), never the active / inactive red or blue."""
     gid = _pick('badge-pathogenic', 'badge-high') or _pick('badge-high')
     page = open_report(gid, dark=dark)
     colours = page.evaluate("""(() => {
       var probe = c => { var s = document.createElement('span'); s.style.color = c; document.body.appendChild(s); var v = getComputedStyle(s).color; s.remove(); return v; };
       var cs = getComputedStyle(document.documentElement);
-      var sem = ['--semantic-active', '--semantic-inactive', '--semantic-active-soft', '--semantic-inactive-soft'].map(v => probe(cs.getPropertyValue(v).trim()));
+      var tok = v => probe(cs.getPropertyValue(v).trim());
+      var sem = ['--semantic-active', '--semantic-inactive', '--semantic-active-soft', '--semantic-inactive-soft'].map(tok);
       var out = [];
       document.querySelectorAll('.badge-pathogenic, .badge-high').forEach(b => { var s = getComputedStyle(b); out.push([s.color, s.backgroundColor]); });
-      return {sem: sem, badges: out};
+      var am = {};
+      ['pathogenic', 'ambiguous', 'benign'].forEach(k => {
+        var b = document.querySelector('.badge-' + k);
+        if (b) { var s = getComputedStyle(b); am[k] = [s.color, s.backgroundColor, tok('--path-' + k), tok('--path-' + k + '-fill')]; }
+      });
+      return {sem: sem, badges: out, am: am};
     })()""")
     assert colours['badges']
     for fg, bg in colours['badges']:
         assert fg not in colours['sem'] and bg not in colours['sem'], (fg, bg)
+    assert colours['am'], 'no AlphaMissense badge on the page'
+    for k, (fg, bg, tok_fg, tok_bg) in colours['am'].items():
+        assert (fg, bg) == (tok_fg, tok_bg), (k, fg, bg, tok_fg, tok_bg)
 
 
 @needs_build
