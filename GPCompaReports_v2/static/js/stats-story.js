@@ -8,7 +8,7 @@
    Shared selection (StatsSel): { rec: gid | null, pos: generic number | null, pair: [i, j] | null }. pos and
    pair are exclusive. It lives in the URL (?sel=rec:<gid>,pos:<gn> or pair:TM3-TM6, history.replaceState),
    starts empty, and every change dispatches 'gpc:stats-select' on document; each card redraws from the
-   payloads it already holds. Card footers: Table, Method, Export (PNG 2x, SVG with light-theme colors
+   payloads it already holds. Card footers: Table, Export (PNG 2x, SVG with light-theme colors
    resolved, CSV, Copy caption). Charts read the CSS tokens of .stats at draw time and redraw on
    'gpcrsynth-theme-change' (hidden ones when next shown).
 
@@ -604,43 +604,31 @@
   // a card made visible again (tab, details, Table off) redraws when it was marked dirty
   function revisit(card) { if (card && card.D && (card.dirty || !card.drawn)) draw(card, { first: !card.drawn }); }
 
-  // ---- footer: Table, Method, Export
+  // ---- footer: Table, Export
   function buildTools(card) {
     var slot = card.el.querySelector('[data-tools]');
     if (!slot || slot.childNodes.length) return;
-    var hasTable = slot.hasAttribute('data-table'), id = card.id, csv = card.meta.csv;
+    var hasTable = slot.hasAttribute('data-table'), csv = card.meta.csv;
     function btn(parent, cls, text, attrs) {
       var b = h('button', cls, parent, text); b.type = 'button';
       for (var k in attrs) b.setAttribute(k, attrs[k]);
       return b;
     }
-    if (hasTable) btn(slot, 'cc-btn foot-wide', 'Table', { 'data-table-toggle': '', 'aria-pressed': 'false' });
-    btn(slot, 'cc-btn foot-wide', 'Method', { 'data-method-toggle': '', 'aria-expanded': 'false', 'aria-controls': id + '-method' });
+    if (hasTable) btn(slot, 'cc-btn', 'Table', { 'data-table-toggle': '', 'aria-pressed': 'false' });
     var menu = h('span', 'xmenu', slot);
-    var t = btn(menu, 'cc-btn', null, { 'data-export-toggle': '', 'aria-expanded': 'false', 'aria-haspopup': 'true' });
-    h('span', 'foot-wide-text', t, 'Export'); h('span', 'foot-phone-text', t, 'Export and method');
+    btn(menu, 'cc-btn', 'Export', { 'data-export-toggle': '', 'aria-expanded': 'false', 'aria-haspopup': 'true' });
     var list = h('span', 'xmenu-list', menu); list.setAttribute('role', 'menu'); list.hidden = true;
     btn(list, '', 'PNG 2x', { role: 'menuitem', 'data-export': 'png' });
     btn(list, '', 'SVG', { role: 'menuitem', 'data-export': 'svg' });
     if (csv) { var a = h('a', '', list, 'CSV'); a.href = csv; a.setAttribute('role', 'menuitem'); a.setAttribute('data-export', 'csv'); a.setAttribute('download', 'gpcompare_' + card.meta.export + '.csv'); }
     btn(list, '', 'Copy caption', { role: 'menuitem', 'data-copy-caption': '' });
-    if (hasTable) btn(list, 'menu-phone', 'Table', { role: 'menuitem', 'data-menu-table': '' });
-    btn(list, 'menu-phone', 'Method', { role: 'menuitem', 'data-menu-method': '' });
   }
   function wireFoot(card) {
     buildTools(card);
     var a = card.el;
-    var tb = a.querySelector('[data-table-toggle]'), mt = a.querySelector('[data-method-toggle]');
+    var tb = a.querySelector('[data-table-toggle]');
     var xt = a.querySelector('[data-export-toggle]'), xl = a.querySelector('.xmenu-list');
-    var method = a.querySelector('.scard-method');
     if (tb) tb.addEventListener('click', function () { toggleTable(card); });
-    function toggleMethod() {
-      var open = method.hidden;
-      method.hidden = !open;
-      if (mt) mt.setAttribute('aria-expanded', open ? 'true' : 'false');
-      if (open) method.scrollIntoView({ block: 'nearest', behavior: SCROLL() });
-    }
-    if (mt && method) mt.addEventListener('click', toggleMethod);
     function closeMenu() { if (xl) { xl.hidden = true; xt.setAttribute('aria-expanded', 'false'); } }
     if (xt && xl) {
       xt.addEventListener('click', function (e) {
@@ -671,8 +659,6 @@
       });
       var cc = xl.querySelector('[data-copy-caption]');
       if (cc) cc.addEventListener('click', function () { copyCaption(card, cc); });
-      var mtab = xl.querySelector('[data-menu-table]'); if (mtab) mtab.addEventListener('click', function () { closeMenu(); toggleTable(card); });
-      var mm = xl.querySelector('[data-menu-method]'); if (mm && method) mm.addEventListener('click', function () { closeMenu(); toggleMethod(); });
     }
   }
   function closeAllMenus() {
@@ -742,15 +728,13 @@
     h('p', 'table-note', box, list.length > MAX ? 'The first ' + fmt(MAX) + ' of ' + fmt(list.length) + ' rows; the CSV has all of them.' : fmt(list.length) + ' rows.');
   }
 
-  // the full scope and source: the Method panel's scope line
   function scopeLine(card) {
-    var src = card.el.querySelector('[data-src]');
-    return src ? src.textContent.replace(/\s+/g, ' ').trim().replace(/^Scope:\s*/, '') : '';
+    var view = card.D && card.def.caption ? card.def.caption(card) : {};
+    return 'Scope: ' + (view.scope || card.meta.scope) + '. Units: ' + (view.units || card.meta.units)
+      + '. Source: ' + (view.source || card.meta.source) + '.';
   }
   function captionText(card) {
-    var scope = scopeLine(card).replace(/\.$/, '');
-    var title = card.el.querySelector('.scard-title').textContent.trim();
-    return title + '. ' + 'Scope: ' + scope + '. GPCompaRe database, ' + location.origin + location.pathname + '#card-' + card.id;
+    return card.meta.title + '. ' + scopeLine(card) + ' GPCompaRe database, ' + location.origin + location.pathname + '#card-' + card.id;
   }
   function copyCaption(card, btn) {
     var text = captionText(card);
@@ -855,7 +839,7 @@
       parts.push({ s: s, vb: vb, y: 0 });
     });
     if (card.def.vector) { var v = card.def.vector(card, w, L); if (v) parts = [{ s: v, vb: v.getAttribute('viewBox').split(/\s+/).map(Number) }]; }
-    var title = card.el.querySelector('.scard-title').textContent.trim();
+    var title = card.meta.title;
     var scope = scopeLine(card);
     var W = Math.max(w, maxOf(parts.map(function (p) { return p.vb[2]; })) || w);
     // title and scope wrap to the export width, so nothing runs past its right edge; the legend comes along
@@ -885,7 +869,7 @@
   // a canvas chart (the matrix) framed like the SVG exports: title, chart, legend, scope line
   function frameCanvas(card, chart, cw, ch) {
     var L = lightTokens(), W = cw;
-    var title = card.el.querySelector('.scard-title').textContent.trim();
+    var title = card.meta.title;
     var scope = scopeLine(card);
     var tl = wrapLines(title, W, 15, 600), sl = wrapLines(scope + ' GPCompaRe database, statistics.html#card-' + card.id, W, 11);
     var lay = legendLayout(legendItems(card), W);
@@ -1164,6 +1148,15 @@
       buildGroups();
       PHONE.addEventListener('change', buildGroups);
     },
+    caption: function (card) {
+      var st = card.state, hp = card.D.helix_pairs;
+      if (st.mode === 'magnitude') return { source: CFG.labels.scope_maps, units: 'mean |ΔRRCS| per contact and per endpoint' };
+      var group = hp.groups.find(function (g) { return g.key === st.group; }) || hp.groups[0];
+      return {
+        scope: group.key === 'all' ? card.meta.scope : group.n + ' receptors (' + group.label.replace(/ receptors$/, '').toLowerCase() + ')',
+        units: group.n < hp.min_receptors ? 'receptors carrying pair' : 'mean net ΔRRCS per receptor and carrier agreement (%)'
+      };
+    },
     suffix: function (card) { var st = card.state; return st.mode + (st.mode === 'magnitude' ? '' : '_' + st.group.replace(/ receptors$/, '')); },
     csv: function (card) { return card.state.mode === 'magnitude' ? CFG.csv_extra.helix_interfaces : card.meta.csv; },
     draw: function (card, node, w, o) {
@@ -1174,14 +1167,6 @@
       if (!o.exporting) {
         gbox.hidden = st.mode === 'magnitude';
         segBox.hidden = st.mode !== 'grid';
-        var scope = (st.group === 'all' || st.mode === 'magnitude') ? NREC + ' receptors.' : G.n + ' receptors (' + G.label.replace(/ receptors$/, '').toLowerCase() + ').';
-        // the Method panel's scope line (and so the copied caption) follows the group, its source the mode
-        var sScope = card.el.querySelector('[data-src-scope]'), sData = card.el.querySelector('[data-src-data]');
-        if (sScope) sScope.textContent = scope.replace(/\.$/, '');
-        if (sData) {
-          if (card.srcData === undefined) card.srcData = sData.textContent;
-          sData.textContent = st.mode === 'magnitude' && CFG.labels.scope_maps ? CFG.labels.scope_maps : card.srcData;
-        }
         ledger(card, hp, G, small);
         legendFor(card, st, small);
       }
@@ -1194,7 +1179,7 @@
     var L = card.legend;
     if (!L) return;
     if (st.mode === 'magnitude') {
-      L.innerHTML = '<span>Line: mean |ΔRRCS| per contact</span><span>Disc: mean |ΔRRCS| per endpoint</span>';
+      L.innerHTML = '<span>Line: mean |ΔRRCS| per contact</span><span>Disc/H8 size: mean |ΔRRCS| per endpoint</span>';
     } else if (small) {
       L.innerHTML = '<span>Receptors carrying pair</span><span>Direction requires ≥' + card.D.helix_pairs.min_receptors + ' receptors</span>';
     } else {
@@ -1935,6 +1920,9 @@
         });
       });
     },
+    caption: function (card) {
+      return card.state.tab === 'pairs' ? { units: 'receptors per exact CFR pair (count and %)' } : {};
+    },
     serverTable: function (card) { return card.state.tab === 'pairs' ? card.serverTable : null; },
     csv: function (card) { return card.state.tab === 'pairs' ? CFG.csv_extra.pairs : card.meta.csv; },
     suffix: function (card) { return card.state.tab; },
@@ -2087,6 +2075,10 @@
           draw(card, { fade: true });
         });
       });
+    },
+    caption: function (card) {
+      if (isPhone() || card.lastW < 560) return { units: 'receptors with CFR per ligand group (%)' };
+      return card.state.view === 'direction' ? { units: 'direction of summed CFR ΔRRCS' } : {};
     },
     suffix: function (card, ext) { return ext === 'csv' ? '' : isPhone() ? 'groups' : card.state.view; },   // the CSV is the full grid
     draw: function (card, node, w, o) {
@@ -2501,6 +2493,13 @@
       showTab();
     },
     csv: function (card) { return card.meta.csv; },
+    caption: function (card) {
+      if (card.state.tab === 'families') return { units: 'total |ΔRRCS| per receptor' };
+      if (card.state.tab !== 'scatter') return {};
+      var metrics = card.D.receptors.metrics;
+      function axis(key) { return metrics.find(function (m) { return m.key === key; }).label; }
+      return { units: 'x, ' + axis(card.state.x) + '. y, ' + axis(card.state.y) };
+    },
     visibleNode: function (card) { return card.state.tab === 'table' ? card.explorer : card.chart; },
     suffix: function (card) { return card.state.tab === 'scatter' ? card.state.x + '_' + card.state.y : card.state.tab; },
     draw: function (card, node, w, o) {
@@ -2526,7 +2525,7 @@
       var fig = scatterFigure(card, card.lastW, true), L = C;
       C = saved;
       // title and scope line, as in the other exports (Plotly title with a subtitle), wrapped to the width
-      var tw = card.lastW - 24, title = card.el.querySelector('.scard-title').textContent.trim();
+      var tw = card.lastW - 24, title = card.meta.title;
       var scope = scopeLine(card) + ' GPCompaRe database, statistics.html#card-' + card.id;
       var tl = wrapLines(title, tw, 15, 600), sl = wrapLines(scope, tw, 11), extra = 19 * tl.length + 15 * sl.length + 18;
       fig.layout.title = { text: tl.join('<br>'), x: 0.01, xanchor: 'left', y: 0.99, yanchor: 'top', yref: 'container', font: { size: 15, color: L.fg },

@@ -58,15 +58,15 @@ def test_the_recovery_curve_is_read_by_structure_position(open_page):
     page = open_page('/statistics.html?sel=pos:6.48x48')
     _settle(page, ['chart-recovery'])
     assert '6.48x48: rank 2 of 262, a known position' in page.locator('#chart-recovery').inner_text()
-    assert 'Structure positions numbered in at least half' in page.locator('#card-chart-recovery [data-src]').evaluate('e => e.textContent')
+    assert '262 structure positions' in page.locator('.cov-table').inner_text()
+    assert 'half' in page.locator('.cov-table').inner_text()
 
 
 @needs_build
 def test_the_segment_chart_names_the_segment_it_leaves_out(open_page):
     page = open_page()
     _settle(page, ['chart-segments'])
-    method = page.locator('#chart-segments-method').evaluate('e => e.textContent')   # the Method panel says it
-    assert 'ICL4 (35 endpoints) is not drawn: fewer than 50.' in method
+    assert 'ICL4 omitted: 35 endpoints (minimum 50)' in page.locator('#chart-segments').inner_text()
     labels = page.evaluate("Array.from(document.querySelectorAll('#chart-segments text')).map(t => t.textContent)")
     assert 'ICL4' not in labels and 'ECL2' in labels
 

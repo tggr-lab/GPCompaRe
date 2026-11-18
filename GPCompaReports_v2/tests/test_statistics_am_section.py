@@ -5,6 +5,7 @@ Section D must show the supplement's corrected analysis (Fig. S4, Fig. S5, Table
 data/supplement_2026-11-05b/, never the retired August figure3_enrichment.json (279 receptors, OR 2.58,
 adjusted 1.52, 7,445 vs 11,150). Every number on the page must equal the corrected summary rounded once.
 """
+import csv
 import hashlib
 import json
 import os
@@ -30,9 +31,6 @@ SUPPLEMENT_COPY = pathlib.Path(
     '/home/yamir/Documents/gpcr_synth/NEW_manuscript/GPCompaRe_Finishing_2026-10-31/deliverables/'
     '02_supplement/source_tables/FigS4_S7_summary_modelnum_2026-11-05b.json')
 
-INTRO = 'AlphaMissense predicted classes. Predictions, not clinical evidence. Conservation is an observation across species.'
-ALLELE_SET = ('Allele set: gnomAD v4.1.0 missense alleles, February 2026 query of residues in contacts with '
-              '|ΔRRCS| of 3.0 or more, 276 receptors.')
 RETIRED = ('2.58', '1.52', '7,445', '11,150', '6,312', '9,461', '67.0%', '44.1%', '2.42 to 2.76',
            '1.41 to 1.65', 'most recurrent', '279 receptors')
 
@@ -83,20 +81,21 @@ def test_section_d_shows_the_class_counts_and_no_test_statistic():
     or paper wording (owner, 2026-11-07: the page is a database, not a restatement of the paper)."""
     am = load_am_comparison()
     d = _text(_section_d(STATS.read_text(encoding='utf-8')))
-    assert INTRO in d
-    assert ALLELE_SET in d
-    groups = json.loads((BUILD_DIR / 'data/stats/class_variants.json').read_text())['groups']
-    assert [(g['label'], round(g['pct_predicted_pathogenic_of_decisive'], 1)) for g in groups] == [
-        ('Top 50 positions by CFR score', 66.9), ('Other generic-numbered positions', 43.6)]
-    for label in ('Top 50 positions by CFR score', 'Other generic-numbered positions'):
-        assert label in d
-    assert 'predicted pathogenic' in d and 'are pathogenic' not in d
-    for g in am['groups']:
-        line = ('%s: %s scored substitutions, %s decisive (%s predicted pathogenic, %s predicted benign) and %s '
-                'ambiguous.' % (g['label'], format(g['n'], ','), format(g['decisive'], ','),
-                                format(g['pathogenic_n'], ','), format(g['benign_n'], ','),
-                                format(g['ambiguous_n'], ',')))
-        assert line in d, line
+    html = STATS.read_text(encoding='utf-8')
+    assert 'Predictions only.' in html and 'Average cross-species scores' in html
+    assert 'contact |ΔRRCS| ≥3.0' in _text(html) and 'February 2026' in html
+    config = json.loads(re.search(r'id="stats-config">(.*?)</script>', html, re.S).group(1))
+    card = config['cards']['chart-pathogenicity']
+    assert card['scope'] == '276 receptors' and 'gnomAD v4.1.0' in card['source']
+    with (BUILD_DIR / card['csv']).open() as source:
+        rows = list(csv.DictReader(source))
+    for group, row in zip(am['groups'], rows, strict=True):
+        assert row['group'] == group['label']
+        for key, field in [('n', 'scored'), ('decisive', 'decisive'), ('pathogenic_n', 'predicted_pathogenic'),
+                           ('ambiguous_n', 'ambiguous'), ('benign_n', 'predicted_benign')]:
+            assert int(row[field]) == group[key]
+    assert [round(float(row['pct_predicted_pathogenic_of_decisive']), 1) for row in rows] == [66.9, 43.6]
+    assert 'predicted pathogenic' in d.lower() and 'are pathogenic' not in d
     low = d.lower()
     for bad in ('odds ratio', '95% ci', 'mantel', 'paper', 'supplementary', 'manuscript', 'corrected',
                 'mismatched', 'site layer', ' layer'):

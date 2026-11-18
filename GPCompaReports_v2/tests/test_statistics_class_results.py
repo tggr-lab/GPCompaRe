@@ -451,11 +451,9 @@ def test_built_cfr_atlas_groups_carry_counts():
 @needs_build
 def test_built_am_method_note_counts_the_unclassified():
     html = (BUILD / 'statistics.html').read_text(encoding='utf-8')
-    card = html[html.index('id="card-chart-pathogenicity"'):]
-    card = card[:card.index('</article>')]
-    # 49 receptors carry the 1,260; the 483 at the top 50 are a part of them (in 47 receptors)
-    assert ('1,260 substitutions in this set, in 49 receptors (483 of them at the top 50 positions), have no '
-            'AlphaMissense class in this comparison and are not counted') in re.sub(r'\s+', ' ', card)
+    note = re.search(r'<li id="note-chart-pathogenicity">(.*?)</li>', html, re.S).group(1)
+    assert '1,260 unclassified substitutions across 49 receptors (483 at top 50)' in note
+
 
 
 @needs_build

@@ -7,14 +7,12 @@
       {{ chart_body('chart-x') }}
     {% endcall %}
 
-  The Method panel supplies the scope and source for exported captions.
 #}
 {% macro story_card(card, static_prefix='', cls='') -%}
 <article class="scard{% if cls %} {{ cls }}{% endif %}" id="card-{{ card.id }}" data-card="{{ card.id }}" aria-labelledby="{{ card.id }}-title">
   <h3 class="scard-title" id="{{ card.id }}-title">{{ card.title }}</h3>
   {{ caller() }}
   <footer class="scard-foot"><span class="foot-tools" data-tools{% if card.table %} data-table{% endif %}></span></footer>
-  <div class="fine-print scard-method" id="{{ card.id }}-method" hidden>{{ card.method | safe }}</div>
 </article>
 {%- endmacro %}
 

@@ -179,4 +179,4 @@ def test_the_network_table_says_what_it_contains_and_how_much_it_shows():
     html = STATS.read_text(encoding='utf-8')
     assert 'The 20 most recurrent CFR contact pairs, of 2,231' in html
     assert 'Both residues top-ranked' in html
-    assert 'Partners are generic positions joined to the position by an above-threshold contact in which both residues are CFRs.' in html
+    assert 'Count each receptor once per exact above-threshold pair of generic-numbered CFRs.' in html

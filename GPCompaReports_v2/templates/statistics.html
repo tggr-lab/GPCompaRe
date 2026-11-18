@@ -258,6 +258,14 @@
         </p>
       </div>
 
+      <details class="fine-print chart-notes" id="chart-notes"><summary>Chart notes</summary>
+        <ul>
+          {% for card in cards.values() %}
+          <li id="note-{{ card.id }}"><strong>{{ card.label }}</strong> {{ card.note }}</li>
+          {% endfor %}
+        </ul>
+      </details>
+
       <nav class="methods-glossary" aria-label="Glossary terms">
         <strong>Glossary</strong>
         {% for anchor, term in [('delta', 'ΔRRCS'), ('threshold', 'Threshold'), ('cfr', 'CFR'), ('cfrscore', 'CFR score'), ('decisive-call', 'Decisive call')] %}

@@ -119,13 +119,6 @@
 .xmenu-list > * { font: inherit; font-size: 0.84rem; text-align: left; padding: 6px 10px; border: 0; border-radius: 6px; background: none; color: var(--st-fg); cursor: pointer; text-decoration: none; }
 .xmenu-list > *:hover, .xmenu-list > *:focus-visible { background: var(--st-brand-soft); text-decoration: none; color: var(--st-fg); }
 .xmenu-list .is-done { color: var(--st-brand); }
-.menu-phone, .foot-phone-text { display: none; }
-@media (max-width: 720px) {
-  .foot-wide { display: none; } .foot-wide-text { display: none; } .foot-phone-text { display: inline; }
-  .xmenu-list .menu-phone { display: block; }
-}
-.scard-method { margin: 10px 0 0; padding: 10px 12px; background: var(--st-surface-2); border-radius: 8px; }
-.scard-method p { margin: 0 0 6px; } .scard-method p:last-child { margin: 0; }
 .scard-table { overflow-x: auto; max-height: 560px; overflow-y: auto; }
 .scard-table table, .explorer-table table { width: 100%; border-collapse: collapse; font-size: 0.82rem; font-variant-numeric: tabular-nums; }
 .scard-table th, .scard-table td, .explorer-table th, .explorer-table td { padding: 5px 8px; border-bottom: 1px solid var(--st-line-soft); text-align: left; white-space: nowrap; }
@@ -268,6 +261,12 @@ details.more[open] > summary { margin-bottom: 8px; }
 .family-tests { font-size: .85rem; max-width: 100%; }
 .family-tests caption { text-align: left; font-weight: 600; }
 .family-tests th:first-child { white-space: normal; }
+
+/* chart reference */
+.chart-notes ul { margin: .5rem 0; padding-inline-start: 1.4rem; }
+.chart-notes li { margin-block: .3rem; }
+.chart-notes strong { margin-inline-end: .3em; }
+.chart-notes:not([open]) > ul { display: none; }
 
 /* methods */
 .methods-card .cov-table { width: 100%; font-size: .86rem; }

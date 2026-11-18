@@ -276,8 +276,19 @@ def test_a_small_group_shows_the_carried_by_state(open_page):
     assert 'carried by 2 of 2' in card.locator('[data-ledger]').inner_text()
     assert card.locator('[data-ledger] .group-chips-list button').count() == 2
     assert 'Direction requires ≥10 receptors' in card.locator('[data-legend]').inner_text()
-    card.locator('[data-method-toggle]').click()
-    expect(card.locator('[data-src-scope]')).to_have_text('2 receptors (melatonin)')
+    page.evaluate("navigator.clipboard.writeText = async text => { window.caption = text; }")
+    card.locator('[data-export-toggle]').click()
+    card.locator('[data-copy-caption]').click()
+    caption = page.evaluate('window.caption')
+    assert 'Scope: 2 receptors (melatonin)' in caption and 'Units: receptors carrying pair' in caption
+    page.keyboard.press('Escape')
+    card.locator('[data-ctl="mode"] [data-value="magnitude"]').click()
+    card.locator('[data-export-toggle]').click()
+    card.locator('[data-copy-caption]').click()
+    caption = page.evaluate('window.caption')
+    assert 'Scope: 283 receptors' in caption and 'per endpoint' in caption and 'GPR4' in caption
+    page.keyboard.press('Escape')
+    card.locator('[data-ctl="mode"] [data-value="direction"]').click()
     card.locator('[data-ledger] .group-chips-list button').first.click()
     assert 'sel=rec:' in page.url
 
@@ -377,7 +388,8 @@ def test_copied_caption_names_title_scope_and_source(open_page):
     page.wait_for_timeout(200)
     text = page.evaluate('window.__copied')
     assert text and text.startswith('AlphaMissense predictions by position group.')
-    assert 'Scope: 276 receptors' in text and 'gnomAD v4.1.0' in text
+    assert 'Scope: 276 receptors' in text and 'Source: gnomAD v4.1.0' in text
+    assert 'class % of scored, predicted pathogenic % of decisive' in text
     assert 'paper' not in text.lower() and 'layer' not in text.lower() and 'Supplementary' not in text
     assert 'statistics.html#card-chart-pathogenicity' in text
 

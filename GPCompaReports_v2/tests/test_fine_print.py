@@ -161,7 +161,7 @@ def test_statistics_text_is_untouched_by_the_presentation_changes():
     html = (BUILD_DIR / 'statistics.html').read_text(encoding='utf-8')
     # 2026-11-06: the box plots became the explorer's Families tab; the Kruskal-Wallis results moved with them
     for needle in ('Kruskal-Wallis · total', 'Core functional residue: in at least one above-threshold contact',
-                   'predicted models from GPCRdb', 'Predictions, not clinical evidence.'):
+                   'predicted models from GPCRdb', 'Predictions only.'):
         assert needle in html, needle
 
 
@@ -447,7 +447,11 @@ def test_the_help_examples_vary_across_receptors(open_page, scheme):
 @pytestmark_browser
 def test_statistics_methodology_reads_as_fine_print_without_losing_text(open_page):
     page = open_page('/statistics.html')
-    assert page.locator('#chart-pathogenicity-method').evaluate('e => e.classList.contains("fine-print")')   # counts recede
+    assert page.locator('.scard-method, [data-method-toggle], [data-menu-method]').count() == 0
+    notes = page.locator('#chart-notes')
+    assert not notes.evaluate('e => e.open')
+    assert notes.locator('li').count() == page.locator('article[data-card]').count()
+    assert all(len(line.split()) <= 20 for line in notes.locator('li').all_text_contents())
     reference = page.locator('.activation-reference')
     assert reference.locator('li').count() == 39
     assert 'Zhou et al. 2019' in reference.text_content()

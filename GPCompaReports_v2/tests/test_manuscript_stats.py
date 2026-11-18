@@ -10,6 +10,7 @@ therefore reads the submitted tables from data/manuscript_2026-08-24/.
 These tests pin the page to those tables, and pin the superseded numbers out.
 Report pages are covered separately by test_freeze.py and must not change.
 """
+import csv
 import json
 import os
 import pathlib
@@ -170,8 +171,9 @@ def test_the_enrichment_values_match_the_corrected_supplement():
     groups = json.loads((STATS.parent / 'data/stats/class_variants.json').read_text())['groups']
     for g, key in zip(groups, ('top', 'other'), strict=True):
         assert round(g['pct_predicted_pathogenic_of_decisive'], 1) == round(am['decisive_pct'][key], 1)
-    for g in am['groups']:
-        assert format(g['n'], ',') in html
+    config = json.loads(re.search(r'id="stats-config">(.*?)</script>', html, re.S)[1])
+    with (STATS.parent / config['cards']['chart-pathogenicity']['csv']).open() as source:
+        assert [int(row['scored']) for row in csv.DictReader(source)] == [g['n'] for g in am['groups']]
 
 
 @needs_build

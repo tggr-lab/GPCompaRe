@@ -311,139 +311,75 @@ def keep_abs_together(html):
     return ''.join(parts)
 
 
-def _card(cid, title, reading, scope_n, scope_rest, csv_name=None, method='', export=None, table=True):
-    """Keep the method, scope and data source available for display and export."""
-    about = '<p>%s</p>' % reading if reading else ''
-    source = '<p data-src>Scope: <span data-src-scope>%s</span>.%s</p>' % (
-        _esc(scope_n.rstrip('.')), (' <span data-src-data>%s</span>' % _esc(scope_rest)) if scope_rest else '')
-    return {'id': cid, 'title': title,
-            'csv': ('%s/%s' % (STATS_DIR, csv_name)) if csv_name else None,
-            'method': about + method + source,
-            'export': export or cid.replace('chart-', ''), 'table': table}
+def _cards(total, sc, hp, pos, cv, variants_n, sources):
+    """Per-chart export metadata and the short Methods reference."""
+    cohort = f'{total} receptors'
+    recurring = len(pos.get('ranking', []))
+    top = pos.get('top_n', CFR_TOP_N)
+    gene = (pos.get('scaffold') or {}).get('gene', 'ADRB2')
+    rec = pos.get('recovery') or {}
+    cons = pos.get('conservation') or {}
+    counts = pos.get('motif_counts') or {}
+    totals = cv.get('totals') or {}
+    un = cv.get('unclassified') or {}
+    am_n = f"{cv.get('receptors', 0)} receptors"
+    batch, maps, numbering, variants, scoring, conservation = sources
+    mapped_contacts = f'{batch} · {maps}'
+    contacts = (hp.get('magnitude_rule') or {}).get('min_contacts', 50)
+    carriers = hp.get('min_receptors', 10)
+    bands = totals.get('decisive_bands', 0)
+    scored = totals.get('decisive_groups', 0)
+    fifths = totals.get('decisive_fifths', 0)
 
+    def card(key, title, scope, units, source, csv_file, label, note):
+        return dict(id='chart-' + key, export=key, title=title, scope=scope, units=units, source=source,
+                    csv=f'{STATS_DIR}/{csv_file}.csv', table=key != 'receptors', label=label, note=note)
 
-def _cards(ctx):
-    """Chart titles, sources, downloads and Method notes, in page order."""
-    c = ctx
-    n = c['total']
-    cards = [
-        _card('chart-thresholds', 'Thresholds by receptor',
-              'A contact pair is above threshold when its |ΔRRCS| reaches its receptor\'s threshold: the mean '
-              'plus one standard deviation of that receptor\'s |ΔRRCS| values. Left: the threshold of each '
-              'receptor. Right: how many of every 100 contact pairs pass it.',
-              '%d receptors.' % n, c['rrcs'] + '.', 'thresholds.csv',
-              '<p>%s</p><p>Above-threshold pairs per 100 pairs: the receptor\'s above-threshold contact pairs '
-              'divided by all its contact pairs, times 100.</p>' % _esc(c['threshold_rule'])),
-        _card('chart-histogram', 'ΔRRCS of every contact pair', '',
-              '%s contact pairs, %d receptors.' % (format(c['pairs'], ','), n), '',
-              'histogram.csv',
-              '<p>ΔRRCS = RRCS in the active model minus RRCS in the inactive model, for every contact pair of '
-              'every receptor. Bins are 1 unit wide; the y axis is logarithmic.</p>'),
-        _card('chart-helix-pairs', 'Helix-pair contacts',
-              'Each line joins two helices that share above-threshold contacts. Color: mean net ΔRRCS per '
-              'receptor, <span class="t-up">red</span> stronger in the active model, '
-              '<span class="t-down">blue</span> stronger in the inactive model. Width: receptors that change in '
-              'the majority direction. Pairs carried by fewer than %d receptors are not drawn.' % c['min_receptors'],
-              '%d receptors.' % n, '%s; %s.' % (c['rrcs'], c['numbering']),
-              'helix_pairs.csv',
-              '<p>For each receptor, every contact pair at or above its threshold is assigned to the segment pair '
-              'of its two residues (GPCRdb segment annotation). Net ΔRRCS per receptor and helix pair is the '
-              'sum of signed ΔRRCS over those pairs. The line color is the mean of that net over all receptors '
-              'in the group (receptors without the pair count as 0); the share in agreement is over receptors '
-              'with the pair. Magnitude mode: mean |ΔRRCS| per contact over all contacts between two of TM1 to TM7, '
-              'above-threshold or not, for pairs with at least %d contacts (H8 pairs not included), on the %s; disc '
-              'size and the width of the H8 bar: mean |ΔRRCS| per contact endpoint on the helix, unsigned.</p>'
-              '<p>Grid: each cell shows the mean net ΔRRCS per receptor of the pair (bold) and the share of receptors '
-              'with the pair whose net has that sign; where cells are small, point at a cell for its values. Blank '
-              'cells: fewer than %d receptors carry the pair, and within-helix pairs. Loops and termini appear '
-              'under All segments.</p><p>A receptor group with fewer than %d receptors shows how many of its '
-              'receptors carry each pair, without a class direction; each receptor\'s own bundle is on its report. '
-              'The bars beside the bundle count the receptors carrying each pair, split by the sign of their net '
-              'change. Click a line, a row or a cell for the receptors behind it.</p>'
-              % (c['min_contacts'], c['maps'], c['min_receptors'], c['min_receptors'])),
-        _card('chart-segments', 'Change per contact, by segment', c['notes'].get('segments', ''),
-              '%d receptors.' % n, '%s.' % c['maps'], 'segments.csv',
-              '<p>Every contact endpoint counts once for the segment of its residue. Unsigned: how much contacts '
-              'change, not in which direction.</p>'),
-        _card('chart-scaffold', 'CFR recurrence on the %s scaffold' % c['scaffold_gene'],
-              'Each residue of the %s layout is colored by how many of the %d receptors have a CFR at its generic '
-              'position. Ringed residues mark activation motifs. Hover a residue for its position and count.'
-              % (c['scaffold_gene'], n),
-              '%d receptors.' % n, 'Layout: %s snake plot from GPCRdb.' % c['scaffold_gene'],
-              'scaffold.csv',
-              '<p>Residues are placed as in the GPCRdb snake plot of %s, from 6 residues before TM1 to 8 after H8. '
-              'The fill is the recurrence band of the generic position (the same bands as the recurrence groups in '
-              'Variant predictions). Residues without a GPCRdb generic number are hollow.</p>' % c['scaffold_gene']),
-        _card('chart-ranking', 'The %d top-ranked positions' % CFR_TOP_N,
-              'Ranked by CFR score, which weighs how many receptors have a CFR at the position together with the '
-              'mean |ΔRRCS| of those contacts. Bar: receptors with a CFR there, of %d. Last column: mean '
-              '|ΔRRCS|. Tags: activation motifs.' % n,
-              '%d receptors, %d positions.' % (n, c['recurrent']), '%s.' % c['maps'],
-              'ranking_368.csv',
-              '<p>CFR score: the mean of normalized recurrence (receptors in which the position is a CFR) and '
-              'normalized mean |ΔRRCS| of those contacts. %d generic positions are CFRs in three or more '
-              'receptors; the %d with the highest score are marked across the site. Recurrence is counted on the '
-              'full GPCRdb residue maps.</p><p>%s</p><p>%s</p>'
-              % (c['recurrent'], CFR_TOP_N, _esc(c['notes'].get('ranking_outlier', '')),
-                 _esc(c['notes'].get('motifs_in_top', '')))),
-        _card('chart-recovery', 'Activation position recovery', c['recovery_guide'],
-              '%d positions, %d known.' % (c['universe'], c['known']),
-              'Structure positions numbered in at least half of the %d receptors.' % n,
-              'activation_recovery.csv',
-              '<p>%s</p><p>Known positions: %s.</p>' % (_esc(c['recovery_rule']), _esc(c['reference_source']))),
-        _card('chart-partners', 'Position and pair recurrence', c['partners_guide'],
-              '%d receptors, %d positions, %s distinct pairs.' % (n, c['recurrent'], format(c['n_pairs'], ',')), '',
-              'partners.csv',
-              '<p>Partners are generic positions joined to the position by an above-threshold contact in which both '
-              'residues are CFRs. The pair counts are receptors in which that exact pair of generic positions is '
-              'above threshold.</p>'),
-        _card('chart-cfr-atlas', 'CFRs at the top %d positions' % CFR_TOP_N,
-              'One row per receptor, one column per top-ranked position. Rows grouped by ligand type and sorted by '
-              'how many of the %d are CFRs.' % CFR_TOP_N,
-              '%d receptors, %d positions.' % (n, CFR_TOP_N), '', 'cfr_atlas.csv',
-              '<p>Direction view: red, the net change of the CFR contacts is stronger in the active model; blue, '
-              'stronger in the inactive model. On a phone the grid folds into one row per ligand type (the share '
-              'with a CFR at each position); the full receptor-by-position grid is in the Table view.</p>'
-              '<p>A position is numbered in a receptor when the GPCRdb residue map assigns it that generic number. '
-              'It is a CFR there when at least one contact pair touching that residue is at or above the '
-              'receptor\'s threshold. Direction: the sign of the summed ΔRRCS of those contacts.</p>'),
-        _card('chart-pathogenicity', 'AlphaMissense predictions by position group', '',
-              '%d receptors.' % c['am_receptors'], '%s; AlphaMissense.' % c['batch_gnomad'],
-              'am_comparison.csv', c['am_method']),
-        _card('chart-am-bands', 'Predicted pathogenic share by recurrence',
-              'Share of decisive AlphaMissense calls that are predicted pathogenic, with positions grouped by the '
-              'number of receptors in which they are a CFR. Same allele set as above.',
-              '%d receptors, %d positions.' % (c['am_receptors'], c['band_positions']), '',
-              'am_bands.csv', '<p>%s</p>' % _esc(c['notes'].get('am_bands_method', ''))),
-        _card('chart-position-conservation', 'Conservation at top-ranked and other positions',
-              'Mean conservation of the residues at each generic position (VarSite, via ProtVar), for positions '
-              'with at least %d scored residues. Conservation is observed across species; the ranking does not '
-              'use it.' % c['min_residues'],
-              '%d positions.' % c['cons_positions'], '%s.' % c['conservation_label'],
-              'position_conservation.csv',
-              '<p>Per generic position, the mean conservation score of the residues numbered there, over the '
-              'receptors with a score. Rings: activation motif positions.</p>'),
-        _card('chart-am-quintiles', 'Predicted pathogenic share by conservation', c['fifths_guide'],
-              '%d receptors, %s decisive calls.' % (c['am_receptors'], format(c['decisive_fifths'], ',')), '',
-              'am_conservation_fifths.csv',
-              '<p>%s</p>' % _esc(c['notes'].get('am_fifths_method', ''))),
-        _card('chart-cfr-variants', 'Variants at each top-ranked position', c['variants_guide'],
-              '%d receptors.' % c['variants_receptors'], '%s; %s; AlphaMissense.' % (c['site_gnomad'], c['clinvar']),
-              'cfr_variants.csv',
-              '<p>Unique receptor, position, reference and alternate substitutions, pooled over the receptors in '
-              'which the position is numbered. Predicted pathogenic share: predicted pathogenic over predicted '
-              'pathogenic plus predicted benign.</p>'),
-        _card('chart-receptors', 'Receptor explorer',
-              'One dot per receptor. Color: ligand group. Dot size: top-ranked positions with a CFR in the receptor.',
-              '%d receptors.' % n, '', 'receptors.csv',
-              '<p>Above-threshold pairs per 100 pairs: above-threshold contact pairs over all contact pairs. Share '
-              'stronger in the active model: the fraction of above-threshold pairs with ΔRRCS above 0. Total '
-              '|ΔRRCS|: the sum over all contact pairs; it grows with receptor size. Similar receptors: cosine '
-              'similarity of the signed fingerprint over the %d top-ranked positions, a browsing aid.</p>'
-              % CFR_TOP_N, table=False),   # its own Table tab is the table view; the CSV stays in Export
+    items = [
+        card('thresholds', 'Thresholds by receptor', cohort, '|ΔRRCS| and pairs per 100', batch, 'thresholds',
+             'Thresholds', 'Include pairs at or above the receptor mean |ΔRRCS| plus one standard deviation, with a 0.2 minimum.'),
+        card('histogram', 'ΔRRCS of every contact pair', f"{sc.get('census', {}).get('pairs', 0):,} pairs, {cohort}",
+             'ΔRRCS and contact-pair counts', batch, 'histogram', 'Contact distribution', 'Bin width is one ΔRRCS unit.'),
+        card('helix-pairs', 'Helix-pair contacts', cohort, 'mean net ΔRRCS per receptor',
+             f'{batch} · {numbering}', 'helix_pairs', 'Helix pairs',
+             f'Direction: ≥{carriers} carriers, absent pairs zero, agreement among carriers. Omit within-helix pairs. Magnitude: all TM1–TM7 contacts (≥{contacts}/interface).'),
+        card('segments', 'Change per contact, by segment', cohort, 'mean |ΔRRCS| per contact endpoint', mapped_contacts,
+             'segments', 'Segments', 'Each endpoint counts once toward its residue’s segment, including contacts below threshold.'),
+        card('scaffold', f'CFR recurrence on the {gene} scaffold', cohort, 'receptors per generic position',
+             f'GPCRdb {gene} snake plot · {mapped_contacts}', 'scaffold', 'Scaffold',
+             f'GPCRdb {gene} layout spans six residues before TM1 through eight after H8. Bands match variant recurrence groups.'),
+        card('ranking', f'The {top} top-ranked positions', f'{cohort}, {recurring} positions',
+             'CFR score, receptors and mean |ΔRRCS|', mapped_contacts, 'ranking_368', 'CFR ranking',
+             f"{counts.get('in_top', 0)} of {counts.get('positions', 0)} activation motif positions rank in the top {top}."),
+        card('recovery', 'Activation position recovery', f"{rec.get('universe', 0)} positions, {rec.get('known', 0)} known",
+             'known positions per rank', mapped_contacts, 'activation_recovery', 'Recovery',
+             'Each structure position takes its highest generic CFR score. Chance equals rank × known/eligible positions.'),
+        card('partners', 'Position and pair recurrence', f"{cohort}, {recurring} positions, {pos.get('pairs', {}).get('n_distinct', 0):,} distinct pairs",
+             'receptor share (%) and distinct partners', mapped_contacts, 'partners', 'Partners',
+             'Count each receptor once per exact above-threshold pair of generic-numbered CFRs.'),
+        card('cfr-atlas', f'CFRs at the top {top} positions', f'{cohort}, {top} positions', 'CFR presence', f'{batch} · {numbering}',
+             'cfr_atlas', 'CFR matrix', 'Rows sort by CFR count within ligand type. Direction uses summed ΔRRCS. Phones show ligand-group shares.'),
+        card('pathogenicity', 'AlphaMissense predictions by position group', am_n,
+             'class % of scored, predicted pathogenic % of decisive', scoring, 'am_comparison', 'AlphaMissense',
+             (f"Missense sites: contact |ΔRRCS| ≥3.0. Exclude {un.get('substitutions', 0):,} unclassified substitutions "
+              f"across {un.get('receptors', 0)} receptors ({un.get('top50', 0)} at top {top}). Predictions only.")),
+        card('am-bands', 'Predicted pathogenic share by recurrence', f"{am_n}, {totals.get('positions_bands', 0)} positions",
+             'predicted pathogenic % of decisive', scoring, 'am_bands', 'Recurrence bands',
+             f'Modeled contacts cover {bands:,} of {scored:,} decisive calls. The other {scored - bands:,} lack modeled contacts.'),
+        card('position-conservation', 'Conservation at top-ranked and other positions',
+             f"{cons.get('n_top', 0) + cons.get('n_other', 0)} positions", 'mean residue conservation (0 to 1)',
+             conservation, 'position_conservation', 'Conservation',
+             'Average cross-species scores over numbered, scored residues. CFR ranking uses contact data alone.'),
+        card('am-quintiles', 'Predicted pathogenic share by conservation', f'{am_n}, {fifths:,} decisive calls',
+             'predicted pathogenic % of decisive', scoring + ' · ' + conservation, 'am_conservation_fifths',
+             'Conservation quintiles', f'Of {bands:,} decisive calls with modeled contacts, {bands - fifths:,} lack residue conservation scores.'),
+        card('cfr-variants', 'Variants at each top-ranked position', f'{variants_n} receptors',
+             'substitution count and predicted pathogenic % of decisive', variants, 'cfr_variants', 'Position variants',
+             'Pool numbered receptors. Count each receptor, position, reference and alternate amino acid combination once.'),
+        card('receptors', 'Receptor explorer', cohort, 'receptor counts and contact metrics', batch, 'receptors',
+             'Explorer', f'Similarity compares signed top-{top} fingerprints by cosine. Total |ΔRRCS| grows with receptor size.'),
     ]
-    return {cd['id']: cd for cd in cards}
-
+    return {item['id']: item for item in items}
 
 # ---------------------------------------------------------------------------- the page
 
@@ -495,20 +431,12 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
     pos = payloads.get('class_positions') or {}
     cv = payloads.get('class_variants') or {}
     hp = payloads.get('helix_pairs') or {}
-    have = bool(sc and pos and cv and hp and payloads.get('receptors'))
-    notes = class_results.computed_notes(payloads) if have else {}
     if pos:
         _write_text(stats_dir / 'scaffold.csv', scaffold_csv(pos))
 
     census = sc.get('census') or {}
-    rec = pos.get('recovery') or {}
-    cons = pos.get('conservation') or {}
-    totals = cv.get('totals') or {}
     v_cov = ((cfr_var or {}).get('summary', {}).get('coverage') or {})
     variants_receptors = v_cov.get('receptors_with_alleles') or (total - len(variants_none))
-    none_names = class_results.names_list([l for _, l in variants_none]) if variants_none else ''
-    month = _month(src.get('gnomad_batch', {}))
-    am_receptors = cv.get('receptors') or am.get('receptors') or 0
     numbering_short = 'GPCRdb numbering fetched %s' % numbering['fetched'] if numbering.get('fetched') else 'GPCRdb numbering'
     maps_src = src.get('gpcrdb_residue_maps') or {}
     maps_short = ('GPCRdb residue maps fetched %s' % maps_src['fetched']) if maps_src.get('fetched') else 'GPCRdb residue maps'
@@ -519,69 +447,10 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
     elif maps_src.get('exception'):
         maps_short += ' (%s)' % maps_src['exception']
 
-    ctx = {
-        'total': total, 'rrcs': _short(rrcs_label), 'numbering': numbering_short, 'maps': maps_short,
-        'pairs': census.get('pairs', 0), 'recurrent': census.get('recurrent_positions', 0),
-        'min_receptors': hp.get('min_receptors', 10),
-        'min_contacts': (hp.get('magnitude_rule') or {}).get('min_contacts', 50),
-        'threshold_rule': (sc.get('meta') or {}).get('threshold_rule', ''),
-        'scaffold_gene': (pos.get('scaffold') or {}).get('gene', 'ADRB2'),
-        'notes': notes, 'universe': rec.get('universe', 0), 'known': rec.get('known', 0),
-        'recovery_rule': rec.get('rule', ''), 'reference_source': pos.get('reference_source', ''),
-        'recovery_guide': (
-            'Reference: %d known activation positions (the common activation pathway of Zhou et al. 2019, plus '
-            'D2.50, DRY, PIF, CWxP, NPxxY, the sodium pocket and 6.30). The curve walks down the %d structure '
-            'positions (GPCRdb structure-based numbers such as 6x48) numbered in at least half of the receptors, in '
-            'CFR score order, and counts the known positions among the first N. A structure position takes the '
-            'highest CFR score of its generic numbers. Dashed line: the count expected if the order ignored '
-            'activation.'
-            % (rec.get('known', 0), rec.get('universe', 0))),
-        'n_pairs': (pos.get('pairs') or {}).get('n_distinct', 0),
-        'partners_guide': ('Filled dot: receptors with a CFR at the position. Open dot: receptors in which it '
-                           'contacts its most frequent partner, the same pair of generic positions. Right: how '
-                           'many different partner positions it has across the class.'),
-        'am_receptors': am_receptors, 'batch_gnomad': batch_gnomad, 'site_gnomad': site_gnomad, 'clinvar': clinvar,
-        'band_positions': totals.get('positions_bands', 0),
-        'min_residues': cons.get('min_residues', 20),
-        'cons_positions': cons.get('n_top', 0) + cons.get('n_other', 0),
-        'conservation_label': conservation_label,
-        'decisive_fifths': totals.get('decisive_fifths', 0),
-        'fifths_guide': ('Decisive calls split into five groups (Q1 to Q5) by the conservation of the residue, '
-                         'lowest first. '
-                         'In each group: predicted pathogenic share at the top %d positions (solid) and at other '
-                         'positions (light). %s' % (CFR_TOP_N, notes.get('am_fifths_guide_count', ''))),
-        'variants_receptors': variants_receptors,
-        'variants_guide': ('Every unique missense substitution in %s at each of the %d top-ranked positions, over '
-                           'all residues of %d receptors%s. Bar: AlphaMissense class of those substitutions. '
-                           'Number: predicted pathogenic share of decisive calls. A different allele set from the '
-                           'comparisons above, so the shares differ.'
-                           % (site_gnomad, CFR_TOP_N, variants_receptors,
-                              (' (%s have none)' % none_names) if none_names else '')),
-        'am_method': '',
-    }
+    sources = (_short(rrcs_label), maps_short, numbering_short, f'{site_gnomad} · {clinvar} · AlphaMissense',
+               f'{batch_gnomad} · AlphaMissense', conservation_label)
+    cards = _cards(total, sc, hp, pos, cv, variants_receptors, sources)
     groups = cv.get('groups') or []
-    ctx['am_method'] = (
-        '<p>AlphaMissense predicted classes. Predictions, not clinical evidence. Conservation is an observation '
-        'across species.</p><p>Allele set: %s missense alleles, %s query of residues in contacts with |ΔRRCS| of '
-        '3.0 or more, %d receptors. Residues compared: the %d top-ranked positions against all other positions '
-        'with a GPCRdb generic number.</p>' % (_esc(batch_gnomad), _esc(month), am_receptors, CFR_TOP_N))
-    if groups:
-        ctx['am_method'] += ''.join(
-            '<p>%s: %s scored substitutions, %s decisive (%s predicted pathogenic, %s predicted benign) and %s '
-            'ambiguous.</p>' % (_esc(g['label']), format(g['scored'], ','), format(g['decisive'], ','),
-                                format(g['predicted_pathogenic'], ','), format(g['predicted_benign'], ','),
-                                format(g['ambiguous'], ',')) for g in groups) + (
-            '<p>The comparison group is every other generic-numbered position, which includes recurrent positions '
-            'ranked below the top %d.</p>' % CFR_TOP_N)
-        un = cv.get('unclassified') or {}
-        if un.get('substitutions'):
-            ctx['am_method'] += (
-                '<p>%s substitutions in this set, in %d receptors (%s of them at the top %d positions), have no '
-                'AlphaMissense class in this comparison and are not counted, here or in the recurrence and '
-                'conservation groups below.</p>' % (format(un['substitutions'], ','), un['receptors'],
-                                                   format(un['top50'], ','), CFR_TOP_N))
-    cards = _cards(ctx)
-
     if groups:
         # The chart download includes the three existing shares of all scored calls.
         # Keep the versioned bulk tables and their size manifest reproducible.
@@ -619,11 +488,12 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
     config = {
         'urls': {k: '%s/%s.json' % (STATS_DIR, k) for k in CLASS_PAYLOADS},
         'stats_dir': STATS_DIR, 'top_n': CFR_TOP_N, 'n_receptors': total,
-        'cards': {cid: {'export': cd['export'], 'csv': cd['csv']} for cid, cd in cards.items()},
+        'cards': {cid: {k: cd[k] for k in ('title', 'scope', 'units', 'source', 'export', 'csv')}
+                  for cid, cd in cards.items()},
         'csv_extra': {'helix_interfaces': '%s/helix_interfaces.csv' % STATS_DIR,
                       'pairs': '%s/pairs.csv' % STATS_DIR},
         'labels': {'site_gnomad': site_gnomad, 'variants_none_gids': [g for g, _ in variants_none],
-                   'scope_maps': '%s; %s.' % (_short(rrcs_label), maps_short)},
+                   'scope_maps': '%s · %s' % (_short(rrcs_label), maps_short)},
     }
 
     # one zip of every table
@@ -666,7 +536,6 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
         cards=cards,
         census=census_items,
         sections=sections,
-        notes=notes,
         svg_thresholds=svg_threshold_strips(sc) if sc else '',
         cfr_table=cfr_table,
         cfr_network=cfr_network,
@@ -674,9 +543,6 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
         top_pairs_both_ranked=(pos.get('pairs') or {}).get('top_all_both_top50', False),
         cfr_top_n=CFR_TOP_N,
         cfr_total_positions=census.get('recurrent_positions') or paper.get('n_recurrent_positions', 0),
-        am_receptors=am_receptors,
-        am_allele_set=batch_gnomad,
-        am_month=month,
         coverage_display=coverage_display,
         reference=[dict(zip(pos.get('reference_columns', []), r)) for r in pos.get('reference', [])],
         reference_source=pos.get('reference_source', '').partition(', plus ')[0],
