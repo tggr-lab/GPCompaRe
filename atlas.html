@@ -1,0 +1,348 @@
+
+<!DOCTYPE html>
+<html lang="en" data-color-mode="light" data-light-theme="light" data-dark-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GPCRome Atlas · GPCompaRe</title>
+
+
+<meta name="description" content="An interactive map of all 283 human Class A GPCRs: how residue contacts change between the inactive and active model of each receptor, by helix and by generic position.">
+
+<link rel="canonical" href="https://tggr-lab.github.io/GPCompaRe/atlas.html">
+<meta property="og:url" content="https://tggr-lab.github.io/GPCompaRe/atlas.html">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="GPCompaRe database">
+<meta property="og:title" content="GPCRome Atlas · GPCompaRe">
+<meta property="og:description" content="An interactive map of all 283 human Class A GPCRs: how residue contacts change between the inactive and active model of each receptor, by helix and by generic position.">
+<meta property="og:image" content="https://tggr-lab.github.io/GPCompaRe/static/img/lablogo.png">
+<meta name="twitter:card" content="summary">
+
+<script>
+(function() {
+  var root = document.documentElement;
+  var stored = null;
+  try { stored = localStorage.getItem('gpcrsynth-theme'); } catch (e) {}
+  var mode;
+  if (stored === 'light' || stored === 'dark') {
+    mode = stored;
+  } else {
+    mode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  root.setAttribute('data-color-mode', mode);
+  root.setAttribute('data-light-theme', 'light');
+  root.setAttribute('data-dark-theme', 'dark');
+  if (!stored) root.setAttribute('data-theme-auto', '');
+})();
+</script>
+
+<link rel="icon" type="image/png" sizes="32x32" href="static/img/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="static/img/favicon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="static/img/apple-touch-icon.png">
+<link rel="stylesheet" href="static/css/fonts.css">
+<link rel="stylesheet" href="static/css/primer/primitives.css">
+<link rel="stylesheet" href="static/css/primer/primitives-dark.css">
+<link rel="stylesheet" href="static/css/site.css">
+<link rel="stylesheet" href="static/css/fine-print.css">
+<link rel="stylesheet" href="static/css/search-ui.css">
+
+<link rel="stylesheet" href="static/css/atlas.css">
+
+
+
+<!-- Analytics: GoatCounter, cookie-free, GDPR-safe. -->
+<script data-goatcounter="https://gpcompreports.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="index.html" class="wordmark" aria-label="GPCompaRe database home">
+      <img src="static/img/lablogo-128.png" width="128" height="113" alt="TGGR Laboratory" class="wordmark-logo">
+      <span class="wordmark-text">GPCompaRe</span>
+    </a>
+    <nav class="topnav" aria-label="Primary">
+      <a href="index.html">Home</a>
+      <a href="browse/index.html">Browse</a>
+      <a href="statistics.html">Statistics</a>
+      <a href="studio/">Studio</a>
+      <a href="glossary.html">Glossary</a>
+      <a href="downloads.html">Downloads</a>
+      <a href="contact.html">Contact</a>
+      <a href="atlas.html" class="nav-exp" title="The GPCRome Atlas is an experimental preview: views and measures may change" aria-current="page">Atlas <span class="nav-pill">Experimental preview</span></a>
+    </nav>
+    <form class="topbar-search" action="search/" method="get" role="search" data-search-index="search2/" data-suggest-host>
+      <input type="search" name="q" maxlength="300" class="topbar-search-input" placeholder="Gene or variant" aria-label="Search receptors, variants, residues and genome positions" spellcheck="false" autocapitalize="off" autocomplete="off">
+      <button type="submit" class="topbar-search-btn" aria-label="Search" title="Search receptors, variants, residues and genome positions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    </form>
+    <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle color theme" title="Toggle light / dark">
+      <svg class="icon icon-sun"  viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="2"  x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2"  y1="12" x2="5"  y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.5"  y1="4.5"  x2="6.5"  y2="6.5"/><line x1="17.5" y1="17.5" x2="19.5" y2="19.5"/><line x1="4.5"  y1="19.5" x2="6.5"  y2="17.5"/><line x1="17.5" y1="6.5"  x2="19.5" y2="4.5"/></g></svg>
+      <svg class="icon icon-moon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20 15A8 8 0 0 1 9 4a1 1 0 0 0-1.3-1.1A10 10 0 1 0 21.1 16.3 1 1 0 0 0 20 15z"/></svg>
+    </button>
+    <button type="button" class="topbar-mobile-toggle" id="mobile-nav-toggle" aria-label="Open menu" aria-controls="mobile-drawer" aria-expanded="false">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+  </div>
+</header>
+
+
+<div class="mobile-drawer" id="mobile-drawer" role="dialog" aria-modal="true" aria-label="Navigation menu" aria-hidden="true" inert>
+  <div class="mobile-drawer-backdrop" data-drawer-close></div>
+  <aside class="mobile-drawer-panel">
+    <div class="mobile-drawer-head">
+      <span class="mobile-drawer-title">Menu</span>
+      <button type="button" class="mobile-drawer-close" data-drawer-close aria-label="Close menu">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <form class="drawer-search" action="search/" method="get" role="search" data-search-index="search2/" data-suggest-host>
+      <input type="search" name="q" maxlength="300" class="v2-input" placeholder="Receptor, variant or position" aria-label="Search receptors, variants, residues and genome positions" spellcheck="false" autocapitalize="off" autocomplete="off">
+      <button type="submit" class="topbar-search-btn" aria-label="Search"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    </form>
+    <nav class="mobile-drawer-nav" aria-label="Primary">
+      <a href="index.html">Home</a>
+      <a href="browse/index.html">Browse</a>
+      <a href="statistics.html">Statistics</a>
+      <a href="studio/">Studio</a>
+      <a href="glossary.html">Glossary</a>
+      <a href="downloads.html">Downloads</a>
+      <a href="contact.html">Contact</a>
+      <a href="atlas.html" class="nav-exp" title="The GPCRome Atlas is an experimental preview: views and measures may change" aria-current="page">Atlas <span class="nav-pill">Experimental preview</span></a>
+    </nav>
+  </aside>
+</div>
+
+
+
+<main id="main">
+
+<section class="atlas" id="atlas" aria-labelledby="atlas-title"
+         data-index="atlas/index.json"
+         data-detail="atlas/r/"
+         data-rules="atlas/rules.json"
+         data-meta="search2/meta.json"
+         data-search="search/"
+         data-static="static/">
+  <div class="atlas-stage" id="atlas-stage">
+    <canvas class="atlas-canvas" id="atlas-canvas" tabindex="0" role="img"
+            aria-label="GPCRome Atlas: a zoomable map of 283 human Class A GPCRs. Each receptor is a glyph showing how its helix contacts change between the inactive and the active model."
+            aria-describedby="atlas-desc"></canvas>
+    <p class="atlas-sr" id="atlas-desc">Use the receptor search to open any receptor's details. With the map focused, arrow keys move the view, plus and minus zoom, 0 fits the view, and Escape clears the position lens. The position lens below the map accepts a generic residue number such as 3.50x50.</p>
+
+    <div class="atlas-loading" id="atlas-loading" role="status">Loading 283 receptors</div>
+
+    <div class="atlas-top">
+      <div class="atlas-card atlas-brand">
+        <h1 class="atlas-title" id="atlas-title">GPCRome Atlas <span class="atlas-pill">Preview</span></h1>
+        <p class="atlas-sub">283 human Class A GPCRs, inactive to active</p>
+        <p class="atlas-preview">The Atlas is an experimental preview. Views and measures may change.</p>
+        <div class="atlas-search" role="search">
+          <label class="atlas-sr" for="atlas-search-input">Find a receptor</label>
+          <input type="search" id="atlas-search-input" class="atlas-input" placeholder="Find a receptor" autocomplete="off" spellcheck="false" autocapitalize="off"
+                 role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="atlas-suggest">
+          <ul class="atlas-suggest" id="atlas-suggest" role="listbox" aria-label="Matching receptors" hidden></ul>
+        </div>
+      </div>
+
+      <div class="atlas-card atlas-views">
+        <div class="atlas-seg" role="group" aria-label="Layout">
+          <button type="button" class="atlas-seg-btn" data-view="families" aria-pressed="true">Families</button>
+          <button type="button" class="atlas-seg-btn" data-view="similarity" aria-pressed="false">Similarity</button>
+          <button type="button" class="atlas-seg-btn" data-view="tree" id="atlas-tree-btn" aria-pressed="false">Tree</button>
+          <button type="button" class="atlas-seg-btn" data-view="ranked" aria-pressed="false">Ranked</button>
+          <button type="button" class="atlas-seg-btn" data-view="fingerprints" aria-pressed="false">Fingerprints</button>
+        </div>
+        <p class="atlas-caption" id="atlas-caption" aria-live="polite"></p>
+        <div class="atlas-rule" id="atlas-rule-wrap" hidden>
+          <div class="atlas-rule-row">
+            <label class="atlas-rule-label" for="atlas-rule">Group by</label>
+            <select id="atlas-rule" class="atlas-select" aria-describedby="atlas-rule-desc">
+              <option value="pattern">Contact pattern</option>
+            </select>
+            <label class="atlas-rule-label" for="atlas-k">Groups</label>
+            <input type="range" id="atlas-k" class="atlas-k" min="4" max="40" step="1" value="12" disabled>
+            <output id="atlas-k-out" for="atlas-k" class="atlas-k-out">12</output>
+          </div>
+          <p class="atlas-rule-desc" id="atlas-rule-desc"></p>
+          <a class="atlas-newick" id="atlas-newick" href="atlas/sequence_tree.txt" download="gpcrome_sequence_tree.nwk" hidden>Download tree (Newick)</a>
+        </div>
+        <label class="atlas-metric" id="atlas-metric-wrap" hidden>
+          <span>Sort by</span>
+          <select id="atlas-metric" class="atlas-select">
+            <option value="n_above">Contacts above threshold</option>
+            <option value="share_active">Share stronger in active</option>
+            <option value="tm6_shift">TM6 displacement</option>
+            <option value="sum_abs_above">Total change</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="atlas-card atlas-colorcard">
+        <label class="atlas-colorby">
+          <span>Color by</span>
+          <select id="atlas-color" class="atlas-select">
+            <option value="activation">Activation pattern</option>
+            <option value="ligand">Ligand group</option>
+            <option value="group">Group (current rule)</option>
+            <option value="cons">Conservation at lens</option>
+            <option value="am">Predicted pathogenicity</option>
+            <option value="share">Share stronger in active</option>
+          </select>
+        </label>
+        <button type="button" class="atlas-btn atlas-help-btn" id="atlas-help-btn" aria-expanded="false" aria-controls="atlas-help">How to read this</button>
+      </div>
+    </div>
+
+    <div class="atlas-card atlas-help" id="atlas-help" hidden>
+      <div class="atlas-help-head">
+        <h2>How to read this</h2>
+        <button type="button" class="atlas-icon-btn" data-close-help aria-label="Close">&times;</button>
+      </div>
+      <p><strong>One glyph per receptor.</strong> Zoomed out, a glyph is a dot in its ligand group's color. Zoomed in, it shows the receptor's seven transmembrane helices as discs, laid out as the bundle is seen from the extracellular side (TM1 to TM7 counterclockwise, TM3 near the center), with helix 8 as a small bar. The layout is a schematic, the same for every receptor, not the model's coordinates.</p>
+      <p><strong>Discs and lines.</strong> Disc size is the summed |&Delta;RRCS| of the receptor's above-threshold contacts on that helix; disc color is their net sum. Lines join two helices that share above-threshold contacts, colored by the net sum and drawn thicker for larger sums. Every glyph uses the same scale, so glyphs can be compared directly.</p>
+      <p><strong>Sign.</strong> <span id="atlas-help-sign"></span> <span class="atlas-swatch atlas-swatch-act"></span> Red: stronger in the active model. <span class="atlas-swatch atlas-swatch-ina"></span> Blue: stronger in the inactive model.</p>
+      <p><strong>Threshold.</strong> <span id="atlas-help-threshold"></span></p>
+      <p><strong>Models.</strong> Each receptor has one predicted active model and one predicted inactive model from GPCRdb. The values describe these models, not measured structures.</p>
+      <p><strong>Layouts.</strong> Families follows GPCRdb's family classification, grouped by ligand type; it is not a phylogeny. Similarity places receptors that are alike under the chosen rule near each other, and Tree shows that rule's similarity tree; both are browsing aids, not classifications. Ranked sorts receptors by one number. Fingerprints shows every receptor's net &Delta;RRCS at each of the <span id="atlas-help-npos">298</span> generic positions shared by at least a quarter of the receptors.</p>
+      <p><strong>Similarity and groups.</strong> Contact-pattern similarity compares which residue contacts change between the two models, and in which direction, for every pair of generic positions (1 = the same contacts change the same way, 0 = unrelated). The intracellular and extracellular rules use only the contacts on that side; the sequence rule uses residue identity at the shared generic positions. Each rule has its own map, links, nearest neighbors and similarity tree, and the Groups slider cuts that tree into groups: a browsing aid, not a classification. Under the sequence rule the Tree layout shows a phylogenetic tree (maximum likelihood, FastTree, over the GPCRdb generic residue positions), downloadable in Newick format; under the contact rules it shows a similarity tree (hierarchical clustering), not a phylogeny.</p>
+      <p><strong>Preview.</strong> The Atlas is an experimental preview. Views and measures may change.</p>
+      <p><strong>Position lens.</strong> The bars under the map count, for each generic position, the receptors with an above-threshold contact change there: up (red) when the residue's net change is stronger in the active model, down (blue) when stronger in the inactive model. Hover or drag along it to color every receptor by that one position; click to keep it.</p>
+    </div>
+
+    <div class="atlas-hint" id="atlas-hint" hidden>
+      <span>Scroll to zoom, drag to move. Hover the bars at the bottom to light up one position. Click a receptor for details.</span>
+      <button type="button" class="atlas-icon-btn" id="atlas-hint-close" aria-label="Dismiss hint">&times;</button>
+    </div>
+
+    <div class="atlas-zoom atlas-card" role="group" aria-label="Zoom">
+      <button type="button" class="atlas-icon-btn" id="atlas-zoom-in" aria-label="Zoom in" title="Zoom in">+</button>
+      <button type="button" class="atlas-icon-btn" id="atlas-zoom-out" aria-label="Zoom out" title="Zoom out">&minus;</button>
+      <button type="button" class="atlas-icon-btn" id="atlas-fit" aria-label="Fit everything in view" title="Fit everything in view">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+      </button>
+    </div>
+
+    <div class="atlas-card atlas-legend" id="atlas-legend" aria-live="polite"></div>
+
+    <div class="atlas-tip" id="atlas-tip" role="tooltip" hidden></div>
+
+    <div class="atlas-card atlas-lens" id="atlas-lens">
+      <div class="atlas-lens-row">
+        <label class="atlas-lens-label" for="atlas-pos-input">Position lens</label>
+        <input type="text" id="atlas-pos-input" class="atlas-input atlas-pos-input" placeholder="e.g. 6.48x48" autocomplete="off" spellcheck="false" autocapitalize="off" aria-describedby="atlas-lens-readout">
+        <div class="atlas-chips" role="group" aria-label="Example positions">
+          <button type="button" class="atlas-chip" data-gn="3.50x50">3.50x50</button>
+          <button type="button" class="atlas-chip" data-gn="6.48x48">6.48x48</button>
+          <button type="button" class="atlas-chip" data-gn="7.53x53">7.53x53</button>
+          <button type="button" class="atlas-chip" data-gn="5.58x58">5.58x58</button>
+          <button type="button" class="atlas-chip" data-gn="2.50x50">2.50x50</button>
+        </div>
+        <span class="atlas-lens-readout" id="atlas-lens-readout" aria-live="polite"></span>
+        <button type="button" class="atlas-btn atlas-lens-clear" id="atlas-lens-clear" hidden>Clear</button>
+      </div>
+      <canvas class="atlas-ruler" id="atlas-ruler" tabindex="0" role="slider" aria-label="Generic position" aria-valuemin="1" aria-valuemax="298" aria-valuenow="1" aria-valuetext="none"></canvas>
+    </div>
+
+    <aside class="atlas-panel" id="atlas-panel" aria-labelledby="atlas-panel-title" hidden>
+      <div class="atlas-panel-grip" aria-hidden="true"></div>
+      <header class="atlas-panel-head">
+        <div>
+          <h2 class="atlas-panel-title" id="atlas-panel-title"></h2>
+          <p class="atlas-panel-name" id="atlas-panel-name"></p>
+        </div>
+        <button type="button" class="atlas-icon-btn" id="atlas-panel-close" aria-label="Close receptor details">&times;</button>
+      </header>
+      <div class="atlas-panel-body" id="atlas-panel-body">
+        <p class="atlas-panel-meta" id="atlas-panel-meta"></p>
+        <div class="atlas-panel-links">
+          <a class="atlas-btn atlas-btn-primary" id="atlas-panel-report" href="#">Open report</a>
+          <a class="atlas-btn" id="atlas-panel-search" href="#">Search this receptor</a>
+        </div>
+        <div class="atlas-panel-glyphrow">
+          <canvas class="atlas-panel-glyph" id="atlas-panel-glyph" aria-hidden="true"></canvas>
+          <p class="atlas-panel-note">Discs: TM1 to TM7, seen from the extracellular side; 8 is helix 8. Size: summed |&Delta;RRCS| on the helix. Color: net, <span class="is-act">red</span> stronger in the active model, <span class="is-ina">blue</span> in the inactive model. Same scale as the map.</p>
+        </div>
+        <dl class="atlas-stats" id="atlas-panel-stats"></dl>
+        <p class="atlas-panel-lens" id="atlas-panel-lens" hidden></p>
+
+        <section class="atlas-panel-sec" aria-labelledby="atlas-fp-h">
+          <h3 id="atlas-fp-h">Fingerprint</h3>
+          <canvas class="atlas-strip" id="atlas-panel-strip" aria-hidden="true"></canvas>
+          <p class="atlas-strip-readout" id="atlas-strip-readout">Net &Delta;RRCS at each generic position. Hover to read a position; click to set the lens.</p>
+        </section>
+
+        <section class="atlas-panel-sec" aria-labelledby="atlas-3d-h">
+          <h3 id="atlas-3d-h">3D models</h3>
+          <div class="atlas-3d" id="atlas-3d"></div>
+          <div class="atlas-3d-controls" id="atlas-3d-controls" hidden>
+            <button type="button" class="atlas-btn" id="atlas-3d-play" aria-pressed="false">Play</button>
+            <label class="atlas-morph">
+              <span>Inactive</span>
+              <input type="range" id="atlas-3d-morph" min="0" max="1000" value="0" aria-label="Morph from the inactive model (left) to the active model (right)">
+              <span>Active</span>
+            </label>
+            <label class="atlas-check"><input type="checkbox" id="atlas-3d-contacts" checked> Contacts</label>
+          </div>
+          <p class="atlas-3d-status" id="atlas-3d-status"></p>
+        </section>
+
+        <section class="atlas-panel-sec" aria-labelledby="atlas-sim-h">
+          <h3 id="atlas-sim-h">Most similar contact patterns</h3>
+          <p class="atlas-sim-rule" id="atlas-sim-rule">Rule: Contact pattern.</p>
+          <p class="atlas-sim-note" id="atlas-sim-note"></p>
+          <ul class="atlas-similar" id="atlas-panel-similar"></ul>
+        </section>
+      </div>
+    </aside>
+  </div>
+</section>
+
+</main>
+
+
+
+<footer class="site-footer">
+  <div class="section-inner footer-inner">
+    <div class="footer-brand">
+      <img src="static/img/lablogo-240.png" width="240" height="213" loading="lazy" decoding="async" alt="TGGR Laboratory" class="footer-logo">
+      <div class="footer-brand-text">
+        <strong>GPCompaRe database</strong>
+        <span>283 Class A GPCRs. Active vs inactive contact analysis.</span>
+      </div>
+    </div>
+    <div class="footer-lab">
+      <strong>TGGR Laboratory</strong>
+      <span>Translational Genetics and Genomics Research Lab<br>Genetics Institute, Tel Aviv Sourasky Medical Center</span>
+      <a href="https://www.tasmc.org.il/rd/en/next-unit/research-laboratories/genetics/the-translational-genetics-and-genomics-research-laboratory-prof-hagit-baris-feldman/" target="_blank" rel="noopener">tasmc.org.il · lab page</a>
+      <a href="https://github.com/tggr-lab" target="_blank" rel="noopener">github.com/tggr-lab</a>
+    </div>
+    <nav class="footer-links" aria-label="Site information">
+      <a href="glossary.html">Glossary</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+  </div>
+  
+  <div class="section-inner footer-versions"><aside class="fine-print fine-print--versions" data-data-versions>
+<span class="fine-print-title">Data versions:</span> <span class="fp-item">GPCompaRe database release 2026-11-05</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">GPCompaRe RRCS batch 2026-02-02</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">GPCRdb models (2024-05-15 build): AlphaFold-Multistate, with plain AlphaFold2 for some states</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">gnomAD v4.1.2</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">ClinVar 2026-10-11</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">AlphaMissense (Cheng et al. 2023)</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">UniProt 2026_04</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">Ensembl 116</span> <span class="fp-sep" aria-hidden="true">·</span> <span class="fp-item">HGNC 2026-10-30</span> <span class="fp-sep" aria-hidden="true">·</span> <a href="index.html#data-versions">Full list</a>
+</aside></div>
+  
+</footer>
+
+<script src="static/js/site.js" defer></script>
+<script src="static/js/search-box.js" defer></script>
+<script src="static/js/glossary-data.js" defer></script>
+<script src="static/js/glossary.js" defer></script>
+
+<script src="static/js/atlas/atlas-core.js" defer></script>
+<script src="static/js/atlas/atlas-render.js" defer></script>
+<script src="static/js/atlas/atlas.js" defer></script>
+
+
+</body>
+</html>

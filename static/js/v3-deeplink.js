@@ -115,6 +115,13 @@
       var el = document.getElementById(id);
       if (el) el.addEventListener('change', sync);
     });
+    // "Reset filters" puts the range and direction back to their defaults: drop them from the link
+    var reset = document.getElementById('snake-filter-reset');
+    if (reset) reset.addEventListener('click', function () { setTimeout(sync, 0); });
+    // the phone's "Color by" menu (snake-plus.js builds it later) names the view like the buttons
+    document.addEventListener('change', function (ev) {
+      if (ev.target && ev.target.id === 'sp-colour-by') setTimeout(sync, 0);
+    });
   }
 
   function startSnake() {
@@ -134,14 +141,23 @@
 
   // Charts above the target can still change height while the page finishes
   // loading; a search landing re-aims once at the end so it stays on target.
-  // A residue landing on the snake plot centres the residue itself.
+  // A residue landing on the snake plot centers the residue itself.
+  // A residue in a collapsed loop or terminus is opened first (report-select.js), so the link
+  // lands on a residue that can be seen.
   if (focused || parseHash().res) {
     window.addEventListener('load', function () {
       var h = parseHash();
-      var c = h.res && /^\d+$/.test(h.res) &&
-        document.querySelector('#snake-plot-container circle[id="' + h.res + '"]');
-      if (c && (!h.sec || h.sec === 'sec-snake')) c.scrollIntoView({ block: 'center' });
-      else applySectionHash();
+      // the selection hub lands the residue in the open band (above the sheet on a phone)
+      if (h.res && /^\d+$/.test(h.res) && (!h.sec || h.sec === 'sec-snake') && window.GPCSelect &&
+          window.GPCSelect.landOn && window.GPCSelect.landOn([parseInt(h.res, 10)])) return;
+      var c = h.res && /^\d+$/.test(h.res) && (window.GPCSelect && window.GPCSelect.revealOnPlot
+        ? window.GPCSelect.revealOnPlot(parseInt(h.res, 10))
+        : document.querySelector('#snake-plot-container circle[id="' + h.res + '"]'));
+      if (!h.sec || h.sec === 'sec-snake') {
+        if (c && c.getClientRects().length) c.scrollIntoView({ block: 'center' });
+        else if (c) { var s = document.getElementById('sec-snake'); if (s) s.scrollIntoView(); }
+        else applySectionHash();
+      } else applySectionHash();
     });
   }
 

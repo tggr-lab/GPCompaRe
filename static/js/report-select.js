@@ -54,9 +54,11 @@
     if (/^[A-Za-z]{3}$/.test(n)) return n.charAt(0).toUpperCase() + n.slice(1).toLowerCase();
     return THREE[n.toUpperCase()] || n;
   }
+  var letters = cfg.aa || {};   // one-letter amino acid of every residue, for residues without a summary row
   function label(pos) {
     var r = byPos[pos];
-    return (r && r.amino_acid && THREE[r.amino_acid] ? THREE[r.amino_acid] : '') + pos;
+    var aa = (r && r.amino_acid) || letters[String(pos)] || '';
+    return (THREE[aa] || '') + pos;
   }
   function gnOf(pos) { var a = ann[String(pos)]; return (a && a[1]) || (byPos[pos] && (byPos[pos].display_number || byPos[pos].generic_number)) || ''; }
   function segOf(pos) { var a = ann[String(pos)]; return (a && a[0]) || (byPos[pos] && byPos[pos].protein_segment) || ''; }
@@ -103,6 +105,92 @@
   function snakeCircle(pos) {
     var c = document.getElementById('snake-plot-container');
     return c ? c.querySelector('circle[id="' + pos + '"]') : null;
+  }
+  // The residue's circle, with its loop or terminus opened when the plot shows that segment
+  // collapsed (the circle is drawn but hidden until then); null when the plot has no circle.
+  function revealOnPlot(pos) {
+    var c = snakeCircle(pos);
+    if (!c || c.getClientRects().length) return c;
+    var cls = (c.getAttribute('class') || '').split(/\s+/);
+    var seg = cls.filter(function (k) { return k && !/^(long|short|rcircle|sp-.*|gpc-.*)$/.test(k); })[0];
+    if (seg && cls.indexOf('long') >= 0 && typeof window.toggleLoop === 'function') {
+      window.toggleLoop('.' + seg, 'short', false, null);
+    }
+    return c;
+  }
+  // The part of the window the page can be read in: under the sticky bars, above the selection
+  // bar, and on a phone above the residue sheet (a sheet spans the width; on a wide screen the
+  // drawer floats beside the plot and leaves it free).
+  // `below`: the top of what the page is about to scroll to; a sticky bar above it in the page's
+  // flow is counted where it will be stuck once the page has scrolled there.
+  function openBand(below) {
+    var top = 0, bottom = window.innerHeight;
+    ['.topbar', '.v3-secnav'].forEach(function (sel) {
+      // a sticky bar counts only while it is stuck (before that it is in the page's flow)
+      var n = document.querySelector(sel), cs = n && getComputedStyle(n);
+      if (!cs || cs.position !== 'sticky') return;
+      var r = n.getBoundingClientRect(), stuckTop = parseFloat(cs.top) || 0;
+      if (Math.abs(r.top - stuckTop) < 2) top = Math.max(top, r.bottom);
+      else if (below !== undefined && r.bottom <= below) top = Math.max(top, stuckTop + r.height);
+    });
+    [document.getElementById('rx-drawer'), document.getElementById('gpc-selbar')].forEach(function (n, i) {
+      if (!n || n.hidden || !n.getClientRects().length) return;
+      var r = n.getBoundingClientRect();
+      if (i === 0 && r.width < window.innerWidth * 0.9) return;
+      if (r.top > top) bottom = Math.min(bottom, r.top);
+    });
+    return { top: top, bottom: bottom };
+  }
+  // A link that lands on a residue or a pair (#res=, #pair=): open its loop or terminus, bring
+  // it into the plot when the plot is zoomed (a phone), and scroll the page so it sits in the
+  // open band. It aims again once the page has settled (the sheet and the charts take their
+  // final size a little later), only if the residue has left the band by then.
+  function landOn(ids) {
+    var cs = ids.map(revealOnPlot);
+    if (!cs[0]) return false;
+    function aim(force) {
+      if (window.SnakePlus && window.SnakePlus.centerOn) window.SnakePlus.centerOn(ids);
+      var rs = cs.filter(function (c) { return c && c.getClientRects().length; })
+        .map(function (c) { return c.getBoundingClientRect(); });
+      if (!rs.length) {
+        if (force) { var s = document.getElementById('sec-snake'); if (s) s.scrollIntoView(); }
+        return;
+      }
+      var top = Math.min.apply(null, rs.map(function (r) { return r.top; }));
+      var b = openBand(top), pad = 12;
+      var bottom = Math.max.apply(null, rs.map(function (r) { return r.bottom; }));
+      if (bottom - top > b.bottom - b.top - 2 * pad) { top = rs[0].top; bottom = rs[0].bottom; }
+      if (!force && top >= b.top + pad && bottom <= b.bottom - pad) return;
+      var dy = (top + bottom) / 2 - (b.top + b.bottom) / 2;
+      // the plot's control row above it stays clear of the sticky bars, as far as the residue still fits
+      var bar = document.getElementById('sp-bar');
+      if (bar && bar.getClientRects().length) {
+        var br = bar.getBoundingClientRect();
+        if (br.bottom <= top) {
+          var want = b.top + pad - (br.top - dy), room = b.bottom - pad - (bottom - dy);
+          if (want > 0) dy -= Math.min(want, Math.max(0, room));
+        }
+      }
+      window.scrollBy({ top: dy, behavior: 'auto' });
+    }
+    // the plot lays an opened loop out on the next tick
+    setTimeout(function () { aim(true); setTimeout(function () { aim(false); }, 500); }, 60);
+    return true;
+  }
+  // Scroll to a residue on the plot, or to the plot when the residue cannot be shown there.
+  // A zoomed plot (a phone) first pans to the residue, and to its partner for a pair, once an
+  // opened loop is laid out.
+  function scrollToPlot(pos, other) {
+    var c = revealOnPlot(pos);
+    if (other !== undefined && other !== null) revealOnPlot(other);
+    var go = function () {
+      if (c && window.SnakePlus && window.SnakePlus.centerOn) {
+        window.SnakePlus.centerOn(other !== undefined && other !== null ? [pos, other] : [pos]);
+      }
+      scrollTo(c && c.getClientRects().length ? c : document.getElementById('sec-snake'));
+    };
+    if (c && window.SnakePlus && window.SnakePlus.state && window.SnakePlus.state().zoom > 1) setTimeout(go, 60);
+    else go();
   }
 
   // ------------------------------------------------------------------ charts
@@ -529,10 +617,12 @@
     if (!node || !node.scrollIntoView) return;
     // a target inside a section folded by Compact view: open that section first
     if (window.V3Nav && window.V3Nav.reveal) window.V3Nav.reveal(node);
-    // on a phone the drawer is a bottom sheet over the page: close it so the target is seen
-    if (window.innerWidth <= 720 && window.ReportExtras && window.ReportExtras.close) {
-      var drawer = document.getElementById('rx-drawer');
-      if (drawer && !drawer.hidden) window.ReportExtras.close();
+    // on a phone the drawer is a bottom sheet over the page, and on a wide screen it floats over
+    // the right edge: close it when it would cover the target (a table row runs under it)
+    var drawer = document.getElementById('rx-drawer');
+    if (drawer && !drawer.hidden && window.ReportExtras && window.ReportExtras.close) {
+      var dr = drawer.getBoundingClientRect(), nr = node.getBoundingClientRect();
+      if (window.innerWidth <= 720 || (dr.width && nr.right > dr.left && nr.left < dr.right)) window.ReportExtras.close();
     }
     node.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' });
   }
@@ -585,11 +675,25 @@
     var r = panel.getBoundingClientRect();
     return r.height ? r : null;
   }
+  // Where the docked bar's top edge sits (.gpc-selbar--top in report-v3.css: under the top bar
+  // and the section nav).
+  function dockTop() {
+    var tb = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--topbar-height')) || 68;
+    return tb + (window.innerWidth <= 720 ? 48 : 56);
+  }
   function dock() {
     if (!bar || bar.hidden) return;
     var r = threeDRect();
     var h = bar.offsetHeight + 24;
     var top = !!r && r.bottom > window.innerHeight - h && r.top < window.innerHeight;
+    // ...but never over the 3D view's own controls: while they are in the band the docked bar
+    // would cover, the bar stays at the bottom (over the lower part of the view, which scrolls)
+    if (top) {
+      var tools = document.querySelector('#rx-3d-panel .rx-3d-tools');
+      var t = tools ? tools.getBoundingClientRect() : null;
+      var y0 = dockTop(), y1 = y0 + bar.offsetHeight + 8;
+      if (t && t.height && t.bottom > y0 && t.top < y1) top = false;
+    }
     if (top !== bar.classList.contains('gpc-selbar--top')) {
       bar.classList.toggle('gpc-selbar--top', top);
       syncBarHeight();
@@ -653,7 +757,9 @@
         else document.dispatchEvent(new CustomEvent('rx:show3d', { detail: { pos: res } }));
       }));
     }
-    actions.appendChild(button('Plot', 'Show on the snake plot', function () { scrollTo(snakeCircle(res) || document.getElementById('sec-snake')); }));
+    actions.appendChild(button('Plot', 'Show on the snake plot', function () {
+      scrollToPlot(res, pair ? pair.b : null);
+    }));
     actions.appendChild(button('Table', 'Show in the largest-changes table', function () { showInTable(res); }));
     if (gn && !pair) {
       var a = el('a', 'gpc-selbar-btn', 'All receptors');
@@ -775,7 +881,9 @@
     showBar: function () { dismissed = false; paintBar(); },
     hideBar: dismissBar,
     repaint: paintTables,
-    hover: function (pos, source) { hoverResidue(pos, source || 'page'); }
+    hover: function (pos, source) { hoverResidue(pos, source || 'page'); },
+    revealOnPlot: revealOnPlot,
+    landOn: landOn
   };
 
   // ------------------------------------------------------------------ start
@@ -793,8 +901,8 @@
       selectPair(p.a, p.b, undefined, 'hash');
       if (landing) {
         window.addEventListener('load', function () {
-          var c = snakeCircle(p.a);
-          if (c && !/sec=/.test(window.location.hash)) c.scrollIntoView({ block: 'center' });
+          if (/sec=/.test(window.location.hash)) return;
+          landOn([p.a, p.b]);
         });
       }
       return;

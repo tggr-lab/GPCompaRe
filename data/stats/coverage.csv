@@ -1,4 +1,8 @@
-view,receptors,source,note
-"Structural summaries (helix-pair atlas, receptor explorer)",283,database,Every receptor with an active and an inactive model.
-CFR atlas,283,database,283 receptors have at least one CFR position numbered.
-AlphaMissense class comparison,276,alphamissense,"GPR3, GPR4 and XCR1 are not included."
+results,receptors,data,not_included
+"Scale, helix bundle, every receptor at the top-ranked positions, receptor explorer",283,"GPCompaRe RRCS batch 2026-02-02; GPCRdb generic numbering, fetched 2026-10-18",
+"Ranked positions, scaffold, partners and pairs",283,"GPCompaRe RRCS batch 2026-02-02; GPCRdb residue maps, fetched 2026-08-12 (GPR4 on its own GPCRdb entry, fetched 2026-10-18)",
+Change per contact by segment and helix pair (Magnitude),283,"GPCompaRe RRCS batch 2026-02-02; GPCRdb residue maps, fetched 2026-08-12 (GPR4 on its own GPCRdb entry, fetched 2026-10-18)",
+Known activation positions,262 structure positions numbered in at least half of the receptors; 39 known,as the ranked positions,
+Conservation at top-ranked and other positions,352 positions with at least 20 scored residues,VarSite conservation via ProtVar; generic numbers from its own residue mapping (a position can count one residue more or fewer),positions with fewer scored residues
+"AlphaMissense comparison, recurrence groups, conservation groups",276,"gnomAD v4.1.0 (February 2026), AlphaMissense","GPR3, GPR4 and XCR1. GPR182 (ACKR5), NPY6R, P2RY8 and TAAR3P: no records in that query."
+Variants at each top-ranked position,281,"gnomAD v4.1.2, ClinVar 2026-10-11, AlphaMissense",NPY6R and TAAR3P: no protein-coding missense records

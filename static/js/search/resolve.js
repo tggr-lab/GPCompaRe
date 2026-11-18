@@ -171,6 +171,8 @@ export async function resolve(interps, loader, opts = {}) {
   const list = Array.isArray(interps) && interps.length ? interps : [{ kind: 'unrecognised', why: 'Nothing was typed.' }];
   const top = list[0];
   if (top.kind === 'unrecognised') return answer('unrecognised', [], { message: top.why, interpretation: top });
+  // a transcript or protein accession names its receptor through the accession index
+  if (!ctx.meta.txindex && list.some((i) => i.receptorId?.type === 'accession')) ctx.meta.txindex = (await ctx.S.txindex()) ?? {};
 
   // a bare integer: candidate identifiers, never a residue
   if (isBareInteger(list)) return resolveBareInteger(ctx, list);
@@ -256,6 +258,10 @@ function receptorsOf(meta, i) {
   const term = i.receptorTerm;
   if (!term && !i.receptorId) return { gids: [], status: 'absent', term: null };
   const rid = i.receptorId;
+  if (rid?.type === 'accession') {
+    const gids = [...new Set((meta.txindex?.[rid.value] ?? []).map((x) => meta.receptors[x]?.gid).filter(Boolean))];
+    return gids.length ? { gids, status: 'exact', term, rid } : { gids: [], status: 'none', term, rid };
+  }
   if (rid) {
     const field = { uniprot: 'uniprot', entry: 'entry', ensg: 'ensg', hgnc: 'hgnc', geneid: 'geneId' }[rid.type];
     const hit = meta.receptors.filter((r) => String(r[field] ?? '').toUpperCase() === String(rid.value).toUpperCase());
@@ -271,12 +277,23 @@ function receptorsOf(meta, i) {
 
 /** Why a receptor term names nothing: excluded receptor, a member number we do not know, or another gene. */
 function unknownReceptor(meta, term, i) {
+  const t = String(term).trim();
+  if (i?.receptorId?.type === 'accession') {
+    return answer('not_in_resource', [], { interpretation: i, message: `${t} is not a transcript or protein of the 283 receptors in the GPCompaRe database.` });
+  }
+  // "ADRB2 R131C R131H": a receptor and two changes; the search reads one change at a time
+  const words = t.split(/\s+/);
+  if (words.length >= 2 && meta.matchReceptor?.(words[0])?.some((x) => x.exact)) {
+    const rest = words.slice(1).join(' ');
+    if (VARIANT_KINDS.has(parse(rest)?.[0]?.kind)) {
+      return answer('unrecognised', [], { interpretation: i, message: `Could not read "${i?.query ?? t}": search one change at a time, like "${t}".` });
+    }
+  }
   const k = aliasKey(term);
   const ex = meta.excluded.find((e) => e.keys.includes(k));
   if (ex) {
     return answer('not_in_resource', [], { interpretation: i, message: `${ex.symbol} is a Class A receptor that is not in the GPCompaRe database (${ex.reason}); it holds 283 human Class A GPCRs.` });
   }
-  const t = String(term).trim();
   const fam = /^([A-Za-z]+)(\d+)$/.exec(t);
   if (fam) {
     const stem = fam[1].toUpperCase();
@@ -288,16 +305,44 @@ function unknownReceptor(meta, term, i) {
   if (/^[A-Z][A-Z0-9-]{1,14}$/.test(t) && /\d/.test(t)) {
     return answer('not_in_resource', [], { interpretation: i, message: `"${t}" is not one of the 283 human Class A GPCRs in the GPCompaRe database.` });
   }
-  return answer('unrecognised', [], { interpretation: i, message: `Could not read "${t}" as a receptor, variant or position.` });
+  const whole = i?.query && i.query !== t ? i.query : null;
+  return answer('unrecognised', [], { interpretation: i, message: whole ? `Could not read "${whole}": no receptor is called "${t}".` : `Could not read "${t}" as a receptor, variant or position.` });
 }
 
 function receptorResult(meta, gid, extraNotes = []) {
   return { type: 'receptor', gid, receptor: receptorInfo(meta, gid), pos: null, ref: null, alt: null, notes: extraNotes };
 }
 
+/**
+ * The receptor's own example residue for the "Search inside this receptor" chips: its residue at
+ * 3.50x50 (the arginine of the DRY motif in most receptors), else its residue at the best-ranked
+ * class-wide CFR position. {pos, aa, generic} or null (no residue map).
+ */
+export function exampleResidue(r) {
+  if (!r) return null;
+  let pos = r.findGeneric('3.50', '3x50')[0] ?? null;
+  if (pos === null) {
+    let best = Infinity;
+    for (let p = 1; p <= r.length; p++) {
+      const rank = r.residue(p)?.cfrRank;
+      if (rank && rank < best) { best = rank; pos = p; }
+    }
+  }
+  if (pos === null) return null;
+  const x = r.residue(pos);
+  return { pos, aa: x.aa, generic: x.generic || null };
+}
+
+/** A receptor result with its example residue (one small residues/ shard per receptor). */
+async function receptorCardResult(ctx, gid, r) {
+  const res = receptorResult(ctx.meta, gid);
+  res.example = exampleResidue(r === undefined ? await ctx.S.residues(gid) : r);
+  return res;
+}
+
 /** One receptor with every ClinVar record the index holds for it (`clinvarList` when the reader asked for them). */
 async function receptorWithClinvar(ctx, gid, i) {
-  const res = receptorResult(ctx.meta, gid);
+  const res = await receptorCardResult(ctx, gid);
   const vars = await ctx.S.variants(gid);
   if (vars) res.clinvar = vars.clinvar;
   if (i?.flags?.includes('clinvar-list')) res.clinvarList = true;
@@ -317,8 +362,8 @@ function hoodFor(res, det) {
 
 /** One receptor with its variants in the CFR neighbourhood ("ADRB2 CFR variants"); flag `cfr-list`. */
 async function receptorWithCfrList(ctx, gid) {
-  const res = receptorResult(ctx.meta, gid);
   const [r, vars, det] = await Promise.all([ctx.S.residues(gid), ctx.S.variants(gid), ctx.S.detail(gid)]);
+  const res = await receptorCardResult(ctx, gid, r);
   res.releases = { gnomad: ctx.meta.releases?.gnomad?.label, clinvar: ctx.meta.releases?.clinvar?.label };
   if (!r) { res.cfrList = null; return res; }
   const hood = hoodFor(r, det);
@@ -359,7 +404,7 @@ async function resolveReceptorQuery(ctx, list) {
     return answer('receptor', res, { interpretation: top });
   }
   if (r.status === 'prefix' && r.gids.length === 1) return answer('receptor', [await receptorWithClinvar(ctx, r.gids[0], top)], { interpretation: top });
-  const res = r.gids.map((g) => receptorResult(meta, g));
+  const res = await Promise.all(r.gids.map((g) => receptorCardResult(ctx, g)));
   const why = r.status === 'exact' ? `"${top.receptorTerm}" names ${r.gids.length} receptors.` : `${r.gids.length} receptor names start with "${top.receptorTerm}".`;
   return answer('ambiguous', res, { alternates, interpretation: top, message: why });
 }
@@ -383,7 +428,7 @@ async function resolveBareInteger(ctx, list) {
   const results = [];
   const gene = meta.receptors.find((r) => String(r.geneId) === String(n));
   if (gene) {
-    results.push(receptorResult(meta, gene.gid));
+    results.push(await receptorCardResult(ctx, gene.gid));
     alternates.splice(1, 1);
   }
   const rec = await clinvarRecord(ctx, n);
@@ -798,7 +843,7 @@ async function resolveChange(ctx, gid, ch, i, accession) {
   if (!gene.res) return answer('not_in_resource', [], { interpretation: i });
   const label = `${ctx.meta.byGid.get(gid)?.symbol ?? gid}`;
   if (ch.pos === null || ch.pos === undefined) {
-    const res = await makeResult(ctx, gid, null, { gene, type: 'not_in_resource', alt: ch.alt, kind: ch.kind, notes: [note('not_in_resource', `${ch.label ?? 'This variant'} is a ${ch.alt === 'del' ? 'deletion' : 'non-missense change'}; the database analyses single-residue missense changes only.`)] });
+    const res = await makeResult(ctx, gid, null, { gene, type: 'not_in_resource', alt: ch.alt, kind: ch.kind, notes: [note('not_in_resource', `${ch.label ?? 'This variant'} is a ${ch.alt === 'del' ? 'deletion' : 'non-missense change'}; the database analyzes single-residue missense changes only.`)] });
     return answer('not_in_resource', [res], { interpretation: i, message: res.notes[0].text });
   }
   const preNotes = [];
@@ -1652,8 +1697,11 @@ async function resolveRsid(ctx, i) {
   for (const idx of idxs) {
     const gid = ctx.meta.receptors[idx].gid;
     const gene = await loadGene(ctx, gid);
+    // one result per protein change: alleles of one rsID that give different amino acids at a codon
+    // (ADRB2 rs33973603: Asn15Ile and Asn15Ser) are different changes, each with its own frequency and score;
+    // alleles that give the same change (PAR2 rs115885685: two bases, both Met159Ile) stay together
     for (const a of gene.vars.alleles.filter((x) => x.rsids.includes(rs))) {
-      const k = `${gid}:${a.pos}`;
+      const k = `${gid}:${a.pos}:${a.ref}>${a.alt}`;
       let grp = groups.find((x) => x.k === k);
       if (!grp) { grp = { k, gid, gene, pos: a.pos, alleles: [] }; groups.push(grp); }
       grp.alleles.push(a);
@@ -1661,13 +1709,13 @@ async function resolveRsid(ctx, i) {
   }
   const results = [];
   for (const grp of groups) {
-    const alts = [...new Set(grp.alleles.map((a) => a.alt))];
     const a0 = grp.alleles[0];
     const notes = a0.conflict ? [note('model_conflict', `The model has ${three(grp.gene.res.seq[a0.pos - 1])} at ${a0.pos}; the reference genome transcript has ${three(a0.ref)}.`)] : [];
-    results.push(await makeResult(ctx, grp.gid, grp.pos, { gene: grp.gene, ref: a0.ref, alt: alts.length === 1 ? alts[0] : null, alts: alts.length > 1 ? alts : undefined, kind: 'missense', alleles: grp.alleles, notes }));
+    const others = groups.filter((x) => x !== grp && x.gid === grp.gid && x.pos === grp.pos);
+    if (others.length) notes.push(note('rsid_other_changes', `${rs} also gives ${others.map((x) => proteinText(x.alleles[0].ref, x.pos, x.alleles[0].alt)).join(' and ')} at this residue; each change is shown separately.`));
+    results.push(await makeResult(ctx, grp.gid, grp.pos, { gene: grp.gene, ref: a0.ref, alt: a0.alt, kind: 'missense', alleles: grp.alleles, notes }));
   }
-  const multi = results.length > 1 || results.some((x) => x.alts);
-  return answer(multi ? 'targets' : 'target', results, { interpretation: i });
+  return answer(results.length > 1 ? 'targets' : 'target', results, { interpretation: i });
 }
 
 // ============================================================================== ClinVar

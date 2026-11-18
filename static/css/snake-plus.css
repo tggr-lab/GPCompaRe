@@ -43,7 +43,7 @@
 .sp-btn:hover { border-color: var(--brand-primary); color: var(--brand-primary); }
 .sp-btn:disabled { opacity: 0.45; cursor: default; }
 .sp-btn:focus-visible { outline: 2px solid var(--fgColor-accent); outline-offset: 1px; }
-.sp-btn.is-on { background: var(--brand-primary); border-color: var(--brand-primary); color: #fff; }
+.sp-btn.is-on { background: var(--brand-primary); border-color: var(--brand-primary); color: var(--on-brand); }
 .sp-seg { display: inline-flex; }
 .sp-seg .sp-btn { border-radius: 0; margin-left: -1px; }
 .sp-seg .sp-btn:first-child { border-radius: var(--r-sm) 0 0 var(--r-sm); margin-left: 0; }
@@ -270,6 +270,12 @@ svg.sp-dim:not(.sp-focus) .sp-arc { opacity: 0.1; }
 #sec-snake.sp-phone #snake-plot-container { margin-top: var(--s-2); }
 .sp-colour-by { display: flex; align-items: center; gap: var(--s-2); margin: var(--s-3) 0 var(--s-2); }
 .sp-colour-by .sp-select { flex: 1 1 auto; min-width: 0; font-size: 0.9rem; padding: 7px 8px; }
+/* the colors of the chosen view, under the "Color by" menu (snake-plus.js phoneLayout) */
+.sp-viewkey { margin: 0 0 var(--s-2); }
+.sp-viewkey[hidden] { display: none; }
+.sp-viewkey .snake-legend-swatches { gap: 4px 12px; }
+.sp-viewkey .snake-legend-swatch { font-size: 0.78rem; }
+.sp-viewkey .snake-legend-labels { font-size: 0.72rem; }
 .sp-tools {
   margin: 0 0 var(--s-3);
   border: 1px solid var(--borderColor-muted);

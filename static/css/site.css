@@ -8,8 +8,11 @@
 /* ----------- 1. Brand & semantic token overrides ----------- */
 
 :root {
-  --brand-primary: #0D9488;
-  --brand-primary-hover: #0F766E;
+  /* Teal for text, links and filled buttons. #0B7A70 holds 4.5:1 or better on white, the page gray
+     and the pale teal badge ground; --on-brand is the text color to use on a --brand-primary fill. */
+  --brand-primary: #0B7A70;
+  --brand-primary-hover: #0A665E;
+  --on-brand: #fff;
   --brand-accent: #EA580C;
   --brand-accent-hover: #C2410C;
 
@@ -58,6 +61,7 @@
 [data-color-mode="dark"] {
   --brand-primary: #2DD4BF;
   --brand-primary-hover: #5EEAD4;
+  --on-brand: #04201c;
   --brand-accent: #FB923C;
   --brand-accent-hover: #FDBA74;
 
@@ -224,14 +228,32 @@ p  { margin: 0 0 var(--s-4); }
   margin-left: auto;
 }
 .topnav a {
+  white-space: nowrap;
   color: var(--fgColor-muted);
-  padding: var(--s-2) var(--s-3);
+  padding: var(--s-2) 0.5rem;
   border-radius: var(--r-sm);
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   font-weight: 500;
   transition: background-color var(--t-fast), color var(--t-fast);
 }
 .topnav a:hover { background: var(--bgColor-muted); color: var(--fgColor-default); }
+/* a quiet "Preview" tag on a nav link (the Atlas) */
+.nav-pill {
+  display: inline-block;
+  margin-left: 0.3em;
+  padding: 0 0.45em;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 999px;
+  font-size: 0.68em;
+  font-weight: 500;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+  color: var(--fgColor-attention);
+  background: var(--bgColor-attention-muted);
+  border-color: var(--borderColor-attention-emphasis);
+  vertical-align: 0.15em;
+  white-space: nowrap;
+}
 .topnav a[aria-current="page"] { color: var(--fgColor-default); background: var(--bgColor-muted); }
 
 .theme-toggle {
@@ -311,8 +333,12 @@ p  { margin: 0 0 var(--s-4); }
   flex-shrink: 0;
 }
 .topbar-search-btn:hover { background: var(--bgColor-muted); color: var(--fgColor-default); border-color: var(--borderColor-default); }
-@media (max-width: 1179px) {
+/* the search box folds to its button where the bar (1200 px wide with a scrollbar) does not fit */
+@media (max-width: 1229px) {
   .topbar-search-input { display: none; }
+}
+@media (min-width: 1230px) {
+  .topbar-search-input { width: 140px; }
 }
 .drawer-search { display: flex; gap: var(--s-2); }
 .drawer-search .v2-input { flex: 1 1 auto; min-width: 0; }
@@ -479,8 +505,8 @@ p  { margin: 0 0 var(--s-4); }
   text-decoration: none;
 }
 .btn:active { transform: scale(0.98); }
-.btn-primary { background: var(--brand-primary); color: #fff; }
-.btn-primary:hover { background: var(--brand-primary-hover); color: #fff; }
+.btn-primary { background: var(--brand-primary); color: var(--on-brand); }
+.btn-primary:hover { background: var(--brand-primary-hover); color: var(--on-brand); }
 .btn-ghost {
   background: transparent;
   color: var(--fgColor-default);
@@ -667,7 +693,7 @@ p  { margin: 0 0 var(--s-4); }
   transition: background-color var(--t-fast), border-color var(--t-fast);
 }
 .v2-pagination button:hover:not(:disabled) { background: var(--bgColor-muted); border-color: var(--borderColor-default); }
-.v2-pagination button[aria-current="page"] { background: var(--brand-primary); color: #fff; border-color: var(--brand-primary); }
+.v2-pagination button[aria-current="page"] { background: var(--brand-primary); color: var(--on-brand); border-color: var(--brand-primary); }
 .v2-pagination button:disabled { opacity: 0.4; cursor: default; }
 .v2-pagination .v2-pagination-info { color: var(--fgColor-muted); margin-left: auto; }
 
@@ -696,17 +722,18 @@ p  { margin: 0 0 var(--s-4); }
 }
 .badge-active   { background: var(--semantic-active-soft);   color: var(--semantic-active); }
 .badge-inactive { background: var(--semantic-inactive-soft); color: var(--semantic-inactive); }
-/* AlphaMissense "Pathogenic" and the HIGH / MED / LOW change badges are neutral (solid ink,
-   outlined grey, muted), never red or blue, which on these pages mean stronger in the
-   active / inactive model. Light and dark both follow the ink and canvas tokens. */
-.badge-pathogenic,
+/* The HIGH / MED / LOW change badges are neutral (solid ink, outlined grey, muted), never red
+   or blue, which on these pages mean stronger in the active / inactive model. Light and dark
+   both follow the ink and canvas tokens. */
 .badge-high { background: var(--fgColor-default); color: var(--bgColor-default); }
-.badge-benign     { background: color-mix(in srgb, #10B981 20%, transparent); color: #047857; }
-.badge-ambiguous  { background: color-mix(in srgb, #F59E0B 20%, transparent); color: #B45309; }
 .badge-med  { background: var(--bgColor-neutral-muted, var(--bgColor-muted)); color: var(--fgColor-default); box-shadow: inset 0 0 0 1px var(--fgColor-muted); }
 .badge-low  { background: var(--bgColor-muted); color: var(--fgColor-muted); }
-[data-color-mode="dark"] .badge-benign { color: #34D399; }
-[data-color-mode="dark"] .badge-ambiguous { color: #FCD34D; }
+/* AlphaMissense predicted classes take the site's pathogenicity palette (search-ui.css tokens,
+   light and dark): crimson likely pathogenic, grey ambiguous, green likely benign, the colors
+   of the snake plot's AlphaMissense key. */
+.badge-pathogenic { background: var(--path-pathogenic-fill, #FBE7EC); color: var(--path-pathogenic, #B4234B); box-shadow: inset 0 0 0 1px var(--path-pathogenic, #B4234B); }
+.badge-ambiguous  { background: var(--path-ambiguous-fill, #F1F2F4); color: var(--path-ambiguous, #555C68); box-shadow: inset 0 0 0 1px var(--path-ambiguous, #555C68); }
+.badge-benign     { background: var(--path-benign-fill, #E7F4E8); color: var(--path-benign, #2B6E2F); box-shadow: inset 0 0 0 1px var(--path-benign, #2B6E2F); }
 
 /* ----------- 11. Callouts ----------- */
 
@@ -793,19 +820,22 @@ p  { margin: 0 0 var(--s-4); }
   white-space: normal;
   max-width: 280px;
   width: max-content;
-  opacity: 0;
+  /* not rendered until shown: an invisible bubble near the right edge would still widen the page */
+  display: none;
   pointer-events: none;
-  transition: opacity var(--t-fast);
   z-index: 40;
   box-shadow: var(--shadow-floating-small);
 }
 [data-tooltip]:hover::after,
-[data-tooltip]:focus-visible::after { opacity: 1; }
+[data-tooltip]:focus-visible::after { display: block; animation: tooltip-in var(--t-fast) both; }
+@keyframes tooltip-in { from { opacity: 0; } }
 [data-tooltip-position="bottom"]::after { top: calc(100% + 6px); bottom: auto; }
 [data-tooltip-position="left"]::after  { left: auto; right: calc(100% + 6px); bottom: 50%; transform: translateY(50%); }
 [data-tooltip-position="right"]::after { left: calc(100% + 6px); bottom: 50%; transform: translateY(50%); }
 @media (max-width: 600px) {
-  [data-tooltip]::after { display: none; }
+  [data-tooltip]::after,
+  [data-tooltip]:hover::after,
+  [data-tooltip]:focus-visible::after { display: none; }
 }
 
 /* ----------- 14. Reveal animations ----------- */
@@ -846,7 +876,7 @@ p  { margin: 0 0 var(--s-4); }
 }
 .snake-btn.active {
   background: var(--brand-primary);
-  color: #ffffff;
+  color: var(--on-brand);
   border-color: var(--brand-primary);
 }
 .snake-links-toggle {
@@ -1004,7 +1034,7 @@ p  { margin: 0 0 var(--s-4); }
 .snake-dir-btn:hover { border-color: var(--brand-primary); color: var(--brand-primary); }
 .snake-dir-btn.active {
   background: var(--brand-primary);
-  color: #ffffff;
+  color: var(--on-brand);
   border-color: var(--brand-primary);
 }
 .snake-dir-btn.dir-active.active {
@@ -1045,6 +1075,11 @@ p  { margin: 0 0 var(--s-4); }
   margin: 0 0 var(--s-4);
 }
 .v2-chart-wide { min-height: 420px; }
+/* On a phone Plotly keeps its toolbar showing and it lies across the left-aligned chart title:
+   hide it there (the charts stay pannable and hoverable; the tables below carry the numbers). */
+@media (max-width: 600px) {
+  .v2-chart .modebar-container { display: none; }
+}
 
 /* ----------- 17. Contact page ----------- */
 
@@ -1062,7 +1097,7 @@ p  { margin: 0 0 var(--s-4); }
 }
 .form-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--s-4);
 }
 .form-group {
@@ -1079,6 +1114,9 @@ p  { margin: 0 0 var(--s-4); }
   color: var(--fgColor-danger);
   font-weight: 600;
 }
+/* fields take the column's width, never their own intrinsic one */
+.contact-form .v2-input,
+.contact-form .v2-select { width: 100%; min-width: 0; }
 .contact-form textarea.v2-input {
   min-height: 140px;
   resize: vertical;
@@ -1138,7 +1176,7 @@ p  { margin: 0 0 var(--s-4); }
 
 .downloads-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--s-6);
   align-items: start;
   margin-bottom: var(--s-6);
@@ -1164,6 +1202,8 @@ p  { margin: 0 0 var(--s-4); }
   color: var(--fgColor-attention);
   flex-shrink: 0;
 }
+/* long button labels wrap on a phone instead of widening the card */
+.downloads-block .btn { white-space: normal; max-width: 100%; line-height: 1.3; }
 .downloads-list {
   margin: 0 0 var(--s-4);
   padding-left: var(--s-5);
@@ -1178,11 +1218,15 @@ p  { margin: 0 0 var(--s-4); }
 /* ----------- 19. Responsive chrome ----------- */
 
 @media (max-width: 900px) {
-  .contact-grid { grid-template-columns: 1fr; }
+  .contact-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* the full bar needs 936 px with the search box folded, 1150 px with it open */
-@media (max-width: 959px) {
+/* the drawer belongs to the phone layout: never shown once the full bar is */
+@media (min-width: 1080px) {
+  .mobile-drawer { display: none; }
+}
+/* the full bar needs about 1060 px with the search box folded, 1215 px with it open */
+@media (max-width: 1079px) {
   .topnav { display: none; }
   .topbar-mobile-toggle { display: inline-flex; }
   .topbar-search { margin-left: auto; }
@@ -1195,7 +1239,7 @@ p  { margin: 0 0 var(--s-4); }
   .footer-logo { height: 72px; }
   .v2-table thead th,
   .v2-table tbody td { padding: var(--s-2) var(--s-3); font-size: 0.85rem; }
-  .form-row { grid-template-columns: 1fr; }
+  .form-row { grid-template-columns: minmax(0, 1fr); }
 }
 
 .downloads-name { font-size: 13px; color: var(--fgColor-muted); margin: 0 0 var(--s-3); font-variant-numeric: tabular-nums; }
@@ -1288,3 +1332,8 @@ p  { margin: 0 0 var(--s-4); }
 [data-seg-order="helices"] > [data-seg-group="helix"] { box-shadow: inset 2px 0 0 var(--borderColor-default); }
 /* a table split into the same groups: a rule above the first loop or terminus row */
 tr.seg-group-start > td { border-top: 2px solid var(--borderColor-default); }
+
+/* 404 page: one search box */
+.notfound-search { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: var(--s-4) 0; }
+.notfound-search label { flex-basis: 100%; font-weight: 600; }
+.notfound-search .v2-input { flex: 1 1 14rem; min-width: 0; }

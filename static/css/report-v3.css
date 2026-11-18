@@ -233,7 +233,9 @@
 @media (max-width: 600px) {
   .rx-drawer {
     left: 0; right: 0; width: auto;
-    max-height: min(60vh, calc(100vh - var(--gpc-selbar-h, 0px) - 96px));
+    /* about half the screen, so the tapped residue keeps a band of the plot above the sheet
+       (residue-drawer.js scrolls it there) */
+    max-height: min(44vh, calc(100vh - var(--gpc-selbar-h, 0px) - 96px));
   }
   .rx-drawer .rx-pairs th, .rx-drawer .rx-pairs td { padding-left: 4px; padding-right: 4px; }
   .rx-drawer .rx-pairs small { font-size: 0.72rem; }

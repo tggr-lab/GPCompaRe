@@ -1,0 +1,6 @@
+fifth,conservation_from,conservation_to,top50_predicted_pathogenic,top50_decisive,top50_pct,other_predicted_pathogenic,other_decisive,other_pct
+1,0.192,0.553,147,657,22.3744,324,2463,13.1547
+2,0.554,0.697,328,867,37.8316,694,2227,31.163
+3,0.698,0.85,685,1201,57.0358,941,1891,49.762
+4,0.851,0.969,1244,1581,78.6844,1066,1565,68.115
+5,0.97,1.0,1711,1843,92.8378,1059,1212,87.3762

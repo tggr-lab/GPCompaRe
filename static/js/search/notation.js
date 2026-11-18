@@ -93,7 +93,7 @@ export function parseProtein(s) {
   if (m) {
     const ref = aaOrStop(m[1]); const pos = posInt(m[2]); const ref2 = aaOrStop(m[3]); const pos2 = posInt(m[4]);
     const op = m[5].toLowerCase();
-    if (!ref || !pos || !ref2 || !pos2 || pos2 <= pos) return bad(`cannot read the range "${t}"`);
+    if (!ref || !pos || !ref2 || !pos2 || pos2 <= pos) return bad('cannot read the range');
     const out = { ref, pos, alt: op, kind: 'indel', hgvsPrefix, end: { ref: ref2, pos: pos2 } };
     if (op === 'ins' || op === 'delins') {
       const ins = aaSeq(m[6]);
@@ -104,7 +104,7 @@ export function parseProtein(s) {
   }
 
   m = new RegExp(`^${AA}(\\d+)(.*)$`).exec(t);
-  if (!m) return bad(`cannot read "${t}" as a protein change`);
+  if (!m) return bad('cannot read it as a protein change');
   const refTok = m[1];
   const ref = aaOrStop(refTok);
   if (!ref) return bad(`"${refTok}" is not an amino acid`);
@@ -115,7 +115,7 @@ export function parseProtein(s) {
   const r = restOf(ref, pos, rest, hgvsPrefix);
   if (r) return r;
   // a three-letter start that fails ('Met159Xyz') is an attempt at a change, not a gene symbol
-  if (hgvsPrefix || (refTok.length === 3 && /^[A-Za-z]{1,4}$/.test(rest))) return { malformed: `cannot read "${rest}" in "${t}"` };
+  if (hgvsPrefix || (refTok.length === 3 && /^[A-Za-z]{1,4}$/.test(rest))) return { malformed: `cannot read "${rest}"` };
   return null;
 }
 
@@ -260,17 +260,17 @@ export function parseCoding(s) {
   const coord = pm[1].toLowerCase();
   const body = pm[2];
   const m = new RegExp(`^${CPOS}(?:_${CPOS})?(.*)$`, 'i').exec(body);
-  if (!m) return { malformed: `cannot read the position in "${t}"` };
+  if (!m) return { malformed: 'cannot read the position' };
   const start = cpos(m[1], m[2], m[3], m[4]);
-  if (!start) return { malformed: `cannot read the position in "${t}"` };
+  if (!start) return { malformed: 'cannot read the position' };
   const out = { coord, ...start };
   if (m[6]) {
     const end = cpos(m[5], m[6], m[7], m[8]);
-    if (!end) return { malformed: `cannot read the range in "${t}"` };
+    if (!end) return { malformed: 'cannot read the range' };
     out.end = end;
   }
   const op = readOp(m[9]);
-  if (!op) return { malformed: `cannot read the change "${m[9] || '(missing)'}" in "${t}"` };
+  if (!op) return { malformed: m[9].trim() ? `cannot read the change "${m[9].trim()}"` : 'the change after the position is missing; write it like c.100A>G' };
   if (op.op === 'sub' && out.end) return { malformed: 'a substitution names one position, not a range' };
   return { ...out, ...op };
 }
@@ -368,5 +368,8 @@ export function parseReceptorId(s) {
   if (m) return { type: 'hgnc', value: `HGNC:${Number(m[1])}` };
   m = /^(?:NCBI\s*)?(?:gene\s*id|geneid|entrez(?:\s*gene)?(?:\s*id)?|ncbi\s*gene)\s*[:#]?\s*(\d{1,10})$/i.exec(t);
   if (m) return { type: 'geneid', value: String(Number(m[1])) };
+  // a bare transcript or protein accession (NM_000024.6, ENST00000305988, NP_000015): the receptor it belongs to
+  m = /^((?:NM|NR|XM|XR|NP|XP)_\d{6,9}|ENS[TP]\d{11})(?:\.(\d{1,3}))?$/i.exec(t);
+  if (m) return m[2] ? { type: 'accession', value: m[1].toUpperCase(), version: Number(m[2]) } : { type: 'accession', value: m[1].toUpperCase() };
   return null;
 }

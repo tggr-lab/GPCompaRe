@@ -61,33 +61,72 @@
     if (!trigger || !drawer) return;
 
     // Closed, the drawer is inert (set in the markup too) and hidden by the stylesheet, so
-    // its search box and links are not in the page's Tab order.
+    // its search box and links are not in the page's Tab order. Open, it is a modal dialog:
+    // everything else in the body is made inert, and Tab and Shift+Tab wrap inside it.
     drawer.setAttribute('inert', '');
+    var closeBtn = drawer.querySelector('.mobile-drawer-close');
+    var inerted = [];
+    function isOpen() { return drawer.getAttribute('aria-hidden') === 'false'; }
+    function setBackgroundInert(on) {
+      if (on) {
+        Array.prototype.forEach.call(document.body.children, function(el) {
+          if (el === drawer || el.tagName === 'SCRIPT' || el.hasAttribute('inert')) return;
+          el.setAttribute('inert', '');
+          inerted.push(el);
+        });
+      } else {
+        inerted.forEach(function(el) { el.removeAttribute('inert'); });
+        inerted = [];
+      }
+    }
+    function focusables() {
+      return Array.prototype.filter.call(
+        drawer.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])'),
+        function(el) { return el.offsetWidth || el.offsetHeight || el.getClientRects().length; });
+    }
     function open() {
+      setBackgroundInert(true);
       drawer.removeAttribute('inert');
       drawer.setAttribute('aria-hidden', 'false');
       trigger.setAttribute('aria-expanded', 'true');
       document.body.style.overflow = 'hidden';
-      var firstLink = drawer.querySelector('.mobile-drawer-nav a');
-      if (firstLink) firstLink.focus();
+      if (closeBtn) closeBtn.focus();
     }
-    function close() {
+    function close(returnFocus) {
+      var wasOpen = isOpen();
+      setBackgroundInert(false);
       drawer.setAttribute('aria-hidden', 'true');
       drawer.setAttribute('inert', '');
       trigger.setAttribute('aria-expanded', 'false');
       document.body.style.overflow = '';
-      trigger.focus();
+      if (wasOpen && returnFocus !== false) trigger.focus();
     }
     trigger.addEventListener('click', open);
     drawer.querySelectorAll('[data-drawer-close]').forEach(function(el) {
-      el.addEventListener('click', close);
+      el.addEventListener('click', function() { close(); });
     });
     drawer.querySelectorAll('.mobile-drawer-nav a').forEach(function(a) {
-      a.addEventListener('click', close);
+      a.addEventListener('click', function() { close(); });
     });
     document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape' && drawer.getAttribute('aria-hidden') === 'false') close();
+      if (!isOpen()) return;
+      if (e.key === 'Escape') { close(); return; }
+      if (e.key !== 'Tab') return;
+      var f = focusables();
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (!drawer.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+      else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     });
+    // Widened to the desktop bar (rotated phone, resized window): the toggle is gone, so close the
+    // drawer and release the scroll lock rather than leave an overlay nothing can dismiss.
+    try {
+      var wide = matchMedia('(min-width: 1080px)');
+      var onWide = function(e) { if (e.matches && isOpen()) close(false); };
+      if (wide.addEventListener) wide.addEventListener('change', onWide);
+      else if (wide.addListener) wide.addListener(onWide);
+    } catch (e) {}
   }
 
   // -------------------- Tooltips --------------------
@@ -214,7 +253,7 @@
       html += '<button type="button" data-page="' + totalPages + '">' + totalPages + '</button>';
     }
     html += '<button type="button" ' + (st.page >= totalPages ? 'disabled' : '') + ' data-page="next">Next →</button>';
-    html += '<select class="v2-select" data-page-size>';
+    html += '<select class="v2-select" data-page-size aria-label="Rows per page">';
     [25, 50, 100, 99999].forEach(function(ps) {
       html += '<option value="' + ps + '"' + (st.pageSize === ps ? ' selected' : '') + '>' +
               (ps === 99999 ? 'All' : (ps + ' per page')) + '</option>';
@@ -303,7 +342,7 @@
     }
     Array.from(table.tBodies[0].rows).forEach(function(r) {
       if (r.hasAttribute('data-search-hidden')) return;
-      var cells = Array.from(r.cells).map(function(c) { return csvCell(c.textContent); });
+      var cells = Array.from(r.cells).map(function(c) { return csvCell(visibleText(c)); });
       csv.push(cells.join(','));
     });
     var blob = new Blob([csv.join('\n')], { type: 'text/csv;charset=utf-8' });
@@ -315,6 +354,14 @@
     link.click();
     document.body.removeChild(link);
     setTimeout(function() { URL.revokeObjectURL(link.href); }, 1000);
+  }
+  // A cell's text without the parts the page keeps hidden (a second metric switched off by a
+  // toggle, for example), so the export holds what the reader sees.
+  function visibleText(cell) {
+    if (!cell.querySelector('[hidden]')) return cell.textContent;
+    var copy = cell.cloneNode(true);
+    copy.querySelectorAll('[hidden]').forEach(function(n) { n.parentNode.removeChild(n); });
+    return copy.textContent;
   }
   function csvCell(s) {
     var v = String(s || '').replace(/\s+/g, ' ').trim().replace(/"/g, '""');
@@ -373,8 +420,29 @@
       el.dataset.chartRendered = '1';
       var theme = currentTheme();
       var override = readOverride(el, theme);
-      if (override) Plotly.relayout(id, override);
+      return override ? Plotly.relayout(id, override) : null;
+    }).then(function() { fitAnnotations(el); });
+  }
+
+  // On a phone a subplot title can be wider than the chart and is cut at the chart's edges:
+  // shrink each such annotation's font until it fits around its own center. The text is unchanged.
+  function fitAnnotations(el) {
+    var full = el._fullLayout;
+    if (!full || !full.annotations || !full.annotations.length) return;
+    var box = el.getBoundingClientRect();
+    if (!box.width) return;
+    var update = {};
+    full.annotations.forEach(function(a, i) {
+      var node = el.querySelector('.annotation[data-index="' + i + '"] .annotation-text');
+      if (!node || !a.font) return;
+      var r = node.getBoundingClientRect();
+      if (!r.width) return;
+      var cx = r.left + r.width / 2;
+      var avail = 2 * Math.min(cx - box.left, box.right - cx) - 8;
+      if (r.width <= avail) return;
+      update['annotations[' + i + '].font.size'] = Math.max(9, Math.floor(a.font.size * avail / r.width));
     });
+    if (Object.keys(update).length) Plotly.relayout(el.id, update);
   }
 
   function relayoutCharts(theme) {

@@ -34,6 +34,7 @@
   if (!drawer || !titleEl || !bodyEl) return;
 
   var annotation = cfg.annotation || {};
+  var letters = cfg.aa || {};          // one-letter amino acid of every residue (rx-config)
   var clinvar = cfg.clinvar || [];
   var summary = readJSON('residue-summary-data') || [];
   var snake = readJSON('snake-plot-data');
@@ -84,11 +85,13 @@
     return variantIndex[pos] || [];
   }
 
-  // AlphaMissense class (and score, when the report has one), labelled
+  // AlphaMissense predicted class (and score, when the report has one), labelled as a prediction
+  var AM_CLASS = { PATHOGENIC: 'likely pathogenic', BENIGN: 'likely benign', AMBIGUOUS: 'ambiguous' };
   function amText(v) {
     var has = function (x) { return x && x !== '-'; };
     if (!has(v.amClass) && !has(v.amScore)) return '';
-    return ' · AlphaMissense: ' + (has(v.amClass) ? v.amClass.toLowerCase() : '') +
+    return ' · AlphaMissense prediction: ' +
+      (has(v.amClass) ? (AM_CLASS[v.amClass.toUpperCase()] || v.amClass.toLowerCase()) : '') +
       (has(v.amScore) ? (has(v.amClass) ? ' (' + v.amScore + ')' : v.amScore) : '');
   }
 
@@ -232,7 +235,7 @@
     var ann = annotation[String(pos)] || [];
     var gn = ann[1] || (row && (row.display_number || row.generic_number)) || '';
     var seg = ann[0] || (row && row.protein_segment) || '';
-    var aa = row && row.amino_acid ? row.amino_acid : '';
+    var aa = row && row.amino_acid ? row.amino_acid : (letters[String(pos)] || '');
     if (!aa) {
       var cv = clinvar.filter(function (r) { return r.pos === pos; })[0];
       if (cv) aa = cv.ref;
@@ -356,6 +359,32 @@
     drawer.classList.toggle('rx-drawer--left', left);
   }
 
+  // On a phone the drawer is a bottom sheet over the lower half of the screen, with the
+  // selection bar under it. A residue tapped on the snake plot is scrolled into the space left
+  // above the sheet, so it and its arcs stay in sight.
+  function keepInView(pos) {
+    if (window.innerWidth > 600) return;
+    var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var later = window.requestAnimationFrame || function (f) { return setTimeout(f, 16); };
+    later(function () { later(function () {
+      if (drawer.hidden || current !== pos) return;
+      var c = document.querySelector('#snake-plot-container circle[id="' + pos + '"]');
+      var r = c && c.getBoundingClientRect();
+      if (!r || !r.height) return;
+      var top = 0;
+      ['.topbar', '.v3-secnav'].forEach(function (sel) {
+        var n = document.querySelector(sel);
+        var cs = n && getComputedStyle(n), nr = n && n.getBoundingClientRect();
+        // only while stuck: before that the bar is in the page's flow
+        if (cs && cs.position === 'sticky' && Math.abs(nr.top - (parseFloat(cs.top) || 0)) < 2) top = Math.max(top, nr.bottom);
+      });
+      var bottom = drawer.getBoundingClientRect().top;
+      if (bottom - top < r.height + 24) return;
+      if (r.top >= top + 8 && r.bottom <= bottom - 8) return;
+      window.scrollBy({ top: (r.top + r.height / 2) - (top + bottom) / 2, behavior: reduce ? 'auto' : 'smooth' });
+    }); });
+  }
+
   function open(pos, opts) {
     opts = opts || {};
     current = pos;
@@ -416,6 +445,7 @@
     if (d.residue === current && !drawer.hidden) return;
     if (d.user || !drawer.hidden) open(d.residue);
     emit(d.residue, 'snake');
+    if (d.user) keepInView(d.residue);
   });
 
   // Report tables: the cells that name a residue. A fourth entry 'row' reads the residue from

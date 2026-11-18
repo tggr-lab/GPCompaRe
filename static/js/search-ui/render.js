@@ -169,18 +169,30 @@ function typedChange(i) {
  */
 export function readAsText(answer, query) {
   const i = answer.interpretation;
-  if (!i || i.kind === 'unrecognised') return null;
+  // a query read only in part ("ADRB2 R131C R131H") is not understood: no reading that the message contradicts
+  if (!i || i.kind === 'unrecognised' || answer.expect === 'unrecognised') return null;
   const rs = answer.results ?? [];
   const first = rs[0];
   const sameRec = first?.receptor && rs.every((r) => r.gid === first.gid);
   const rec = sameRec ? recShort(first.receptor) : null;
-  const where = !rec && rs.length > 1 ? `${rs.length} receptors` : null;
+  const nRec = new Set(rs.map((r) => r.gid)).size;
+  const where = !rec && rs.length > 1 ? `${nRec} receptors` : null;
+  // the change of each result when they differ (one rsID, two changes at a codon); null when one change fits all
+  const changes = [...new Set(rs.filter((r) => r.pos && r.alt && r.kind === 'missense').map((r) => `${three(r.ref)}${r.pos}${three(r.alt)}`))];
+  const changeText = (r) => {
+    if (changes.length > 1) return sameRec ? `protein changes ${changes.slice(0, -1).join(', ')} and ${changes[changes.length - 1]}` : null;
+    if (r?.alt && r.kind === 'missense') return `protein change ${three(r.ref)}${r.pos}${three(r.alt)}`;
+    return null;
+  };
   const parts = [];
   const asm = answer.assembly ? ` on ${answer.assembly}` : '';
   switch (i.kind) {
     case 'receptor': {
-      const t = i.receptorId ? `the ${({ uniprot: 'UniProt accession', entry: 'UniProt entry name', ensg: 'Ensembl gene ID', hgnc: 'HGNC ID', geneid: 'NCBI Gene ID' })[i.receptorId.type] ?? 'identifier'} ${i.receptorId.value}` : `the name “${i.receptorTerm ?? query}”`;
-      if (rs.length > 1) return `${rs.length} receptors whose names start with “${i.receptorTerm ?? query}”`;
+      const rid = i.receptorId;
+      const acc = rid?.type === 'accession' ? `${rid.value}${rid.version ? `.${rid.version}` : ''}` : null;
+      const t = acc ? `the ${/^(?:NP|XP)_|^ENSP/.test(acc) ? 'protein' : 'transcript'} ${acc}`
+        : rid ? `the ${({ uniprot: 'UniProt accession', entry: 'UniProt entry name', ensg: 'Ensembl gene ID', hgnc: 'HGNC ID', geneid: 'NCBI Gene ID' })[rid.type] ?? 'identifier'} ${rid.value}` : `the name “${i.receptorTerm ?? query}”`;
+      if (rs.length > 1) return acc ? `${rs.length} receptors, from ${t}` : `${rs.length} receptors whose names start with “${i.receptorTerm ?? query}”`;
       if (rec && first.clinvarList) return `every ClinVar record of ${rec}`;
       if (rec && first.cfrList !== undefined) return `the variants of ${rec} at, connected to or near its CFR positions`;
       return rec ? `the receptor ${rec}, from ${t}` : `a receptor, from ${t}`;
@@ -194,28 +206,36 @@ export function readAsText(answer, query) {
       break;
     }
     case 'cdna': {
-      parts.push(rec ?? where ?? 'a receptor');
-      if (first?.alt && first.kind === 'missense') parts.push(`protein change ${three(first.ref)}${first.pos}${three(first.alt)}`);
+      // in several receptors one c. change is a different protein change in each: name none of them here
+      if (!rec) return rs.length > 1 ? `${cdnaText(i.cdna)}${asm} in ${where}` : `${cdnaText(i.cdna)}${asm}`;
+      parts.push(rec);
+      const ch = changeText(first);
+      if (ch) parts.push(ch);
       else if (first?.pos) parts.push(`residue ${three(first.ref)}${first.pos}`);
       parts.push(`from ${cdnaText(i.cdna)}${asm}`);
       return parts.join(', ');
     }
     case 'genomic': {
       const g = i.genomic;
-      parts.push(rec ?? where ?? 'a receptor');
-      if (first?.alt && first.kind === 'missense') parts.push(`protein change ${three(first.ref)}${first.pos}${three(first.alt)}`);
-      else if (first?.alts?.length) parts.push(`residue ${three(first.ref)}${first.pos}`);
-      else if (first?.pos) parts.push(`residue ${three(first.ref)}${first.pos}`);
       const spot = i.ids?.gnomad ?? `chromosome ${g.chrom}, position ${g.pos}`;
+      if (!rs.length) return `${spot}${asm}`;
+      parts.push(rec ?? where);
+      const ch = changeText(first);
+      if (ch) parts.push(ch);
+      else if (first?.pos) parts.push(`residue ${three(first.ref)}${first.pos}`);
       parts.push(`from ${spot}${asm}`);
       return parts.join(', ');
     }
     case 'rsid':
     case 'clinvar': {
-      parts.push(rec ?? where ?? 'a receptor');
-      if (first?.alt && first.kind === 'missense') parts.push(`protein change ${three(first.ref)}${first.pos}${three(first.alt)}`);
+      const id = i.kind === 'rsid' ? i.ids.rsid : `ClinVar record ${i.ids.vcv ?? i.ids.rcv ?? i.ids.variationId}`;
+      // nothing matched: name the identifier only, never "a receptor"
+      if (!rs.length) return i.kind === 'rsid' ? `the rsID ${id}` : `the ${id}`;
+      parts.push(rec ?? where);
+      const ch = changeText(first);
+      if (ch) parts.push(ch);
       else if (first?.pos) parts.push(`${first.kind === 'residue' ? 'residue' : kindLabel(first.kind).toLowerCase()} ${three(first.ref)}${first.pos}`);
-      parts.push(i.kind === 'rsid' ? `from ${i.ids.rsid}` : `from ClinVar record ${i.ids.vcv ?? i.ids.variationId}`);
+      parts.push(`from ${id}`);
       return parts.join(', ');
     }
     case 'generic': {
@@ -1145,13 +1165,17 @@ function tiles(r, o, sub) {
   } else if (sub.mismatch) popBody = html`<span class="sr-na">not looked up</span>`;
   else if (missense) popBody = html`<span class="sr-na">not in ${gl}</span>`;
   else popBody = html`<span class="sr-big">${(r.residueAlleles ?? []).length}</span> <span class="sr-sub">missense allele${(r.residueAlleles ?? []).length === 1 ? '' : 's'} at this residue</span>`;
-  // ClinVar
-  const cv = sub.mismatch ? [] : (r.clinvar ?? []);
+  // ClinVar: on a residue card only missense records speak for the residue (a synonymous record's class is not
+  // the residue's); the other records are counted in the foot and listed under Clinical
+  const all = sub.mismatch ? [] : (r.clinvar ?? []);
+  const cv = headlineClinvar(r, all);
   const c0 = cv[0];
+  const others = all.length - cv.length;
+  const otherText = others ? otherClinvarText(all.filter((c) => !cv.includes(c))) : '';
   const cvBody = c0
     ? html`${pathChip(cvClassKey(c0.classification), c0.classification || 'no classification')} ${stars(c0.stars)}`
-    : html`<span class="sr-na">${sub.mismatch ? 'not looked up' : 'no record'}</span>`;
-  const cvFoot = c0 ? html`${c0.conditions?.length ? `${c0.conditions.slice(0, 2).join('; ')}${c0.conditions.length > 2 ? '; more' : ''}` : 'no condition given'}${cv.length > 1 ? `; ${cv.length} records` : ''}` : '';
+    : html`<span class="sr-na">${sub.mismatch ? 'not looked up' : others ? 'no missense record' : 'no record'}</span>`;
+  const cvFoot = c0 ? html`${c0.conditions?.length ? `${c0.conditions.slice(0, 2).join('; ')}${c0.conditions.length > 2 ? '; more' : ''}` : 'no condition given'}${cv.length > 1 ? `; ${cv.length} records` : ''}${otherText ? `; ${otherText}` : ''}` : otherText;
   return html`<ul class="sr-tiles">
     ${tile('structure', 'Structure', structHead, structFoot)}
     ${tile('predictions', 'AlphaMissense', html`${amBody}${amGauge(amVal, { cls: amCls })}`, html`<span class="sr-sub">prediction, not an observation</span>`)}
@@ -1159,6 +1183,23 @@ function tiles(r, o, sub) {
     ${tile('clinical', 'ClinVar', cvBody, cvFoot)}
     ${tile('conservation', 'Conservation', html`<span class="sr-big">${f.conservation === null ? html`<span class="sr-na">n/a</span>` : f.conservation.toFixed(2)}</span>${plainGauge(f.conservation, 'Conservation')}`, html`<span class="sr-sub">0 variable to 1 conserved</span>`)}
   </ul>`;
+}
+
+/**
+ * The ClinVar records that speak for a card's subject. A residue card keeps the missense records only: a
+ * synonymous, stop or frameshift record at the residue is not the residue's missense status.
+ */
+export function headlineClinvar(r, recs = r.clinvar ?? []) {
+  if (r.kind !== 'residue') return recs;
+  return recs.filter((c) => !c.kind || c.kind === 'missense');
+}
+
+/** "1 synonymous record" for the records a residue card's tile leaves out. */
+function otherClinvarText(recs) {
+  const by = new Map();
+  const word = { stop: 'nonsense', ext: 'extension', indel: 'insertion or deletion', synonymous: 'synonymous', frameshift: 'frameshift', noncoding: 'noncoding' };
+  for (const c of recs) { const k = word[c.kind] ?? 'other'; by.set(k, (by.get(k) ?? 0) + 1); }
+  return [...by].map(([k, n]) => `${n} ${k === 'other' ? '' : `${k} `}${n === 1 ? 'record' : 'records'}`).join(', ');
 }
 
 /** The compact identifier line under the title: c. on MANE, GRCh38 allele, rsID, ClinVar record, UniProt. */
@@ -1171,7 +1212,7 @@ function idLine(r, o, sub) {
   if (mane && !sub.mismatch) items.push(html`<span class="mono">${mane.transcript}:${mane.c}</span>`);
   for (const a of (r.alleles ?? []).slice(0, 2)) items.push(g38Link(a.id, rel));
   for (const rs of [...new Set((r.alleles ?? []).flatMap((a) => a.rsids ?? []))].slice(0, 2)) items.push(extLink(L.dbsnpUrl(rs), rs, SITE.dbsnp));
-  if (!sub.mismatch) for (const c of (r.clinvar ?? []).slice(0, 2)) items.push(extLink(c.url ?? L.clinvarUrl(c.variationId), c.accession, SITE.clinvar));
+  if (!sub.mismatch) for (const c of headlineClinvar(r).slice(0, 2)) items.push(extLink(c.url ?? L.clinvarUrl(c.variationId), c.accession, SITE.clinvar));
   if (r.receptor?.uniprot) items.push(extLink(L.uniprotUrl(r.receptor.uniprot), r.receptor.uniprot, 'UniProt'));
   if (!items.length) return '';
   return html`<p class="sr-idline">${items.map((it, i) => html`${i ? html`<span class="sr-dot" aria-hidden="true">·</span>` : ''}${it}`)}</p>`;
@@ -1930,7 +1971,7 @@ function receptorCard(r, o, idx) {
     ${receptorLinks(rec, o) ? html`<div class="sr-row"><h4>Records elsewhere</h4><div>${receptorLinks(rec, o)}</div></div>` : ''}
     ${r.clinvarList ? clinvarListSection(r, o) : ''}
     <div class="sr-row"><h4>Search inside this receptor</h4><div><ul class="sr-chips">
-      ${[`${rec.symbol} 3.50`, `${rec.symbol} 6.48`, `${rec.symbol} 159`, ...(r.cfrList !== undefined ? [] : [`${rec.symbol} CFR variants`])].map((q) => html`<li><a class="sr-chip" href="?q=${encodeURIComponent(q)}" data-q="${q}">${q}</a></li>`)}
+      ${[`${rec.symbol} 3.50`, `${rec.symbol} 6.48`, ...(r.example ? [`${rec.symbol} ${r.example.aa}${r.example.pos}`] : []), ...(r.cfrList !== undefined ? [] : [`${rec.symbol} CFR variants`])].map((q) => html`<li><a class="sr-chip" href="?q=${encodeURIComponent(q)}" data-q="${q}">${q}</a></li>`)}
     </ul>${finePrint(html`<p>Add a protein change, a residue number, a generic number or a coding change to the receptor name.</p>`)}</div></div>
     ${r.clinvarList ? '' : clinvarListSection(r, o)}
     <div class="sr-actions">${intLink(L.reportUrl(o, r.gid), 'Open report', { cls: 'btn btn-primary btn-sm' })}
@@ -1965,6 +2006,17 @@ export function renderReceptorList(rs, o) {
       <td data-label="Open">${intLink(L.reportUrl(o, r.gid), 'Report', { title: 'Report page' })}</td></tr>`)}</tbody></table></div>`;
 }
 
+/**
+ * What the rows of a cross-receptor table count: "283 receptors", or "849 residues in 283 receptors" when a
+ * receptor has several rows (a motif of three positions).
+ */
+export function rowsText(rows) {
+  const n = rows.length;
+  const k = new Set(rows.map((row) => row.gid ?? row.r?.gid)).size;
+  const rec = `${k} ${k === 1 ? 'receptor' : 'receptors'}`;
+  return n === k ? rec : `${n} ${n === 1 ? 'residue' : 'residues'} in ${rec}`;
+}
+
 /** A group label up to its colon: "R3.50 (3.50x50)" from "R3.50 (3.50x50): 269 of 283 receptors have Arg". */
 const groupShort = (g) => String(g.label).split(':')[0];
 const residueLabel = (r) => (r.pos ? `${three(r.summary?.aa ?? r.residue?.aa ?? r.ref)}${r.pos}` : '');
@@ -1992,8 +2044,10 @@ export function compareModel(answer, o = {}) {
       res: residueLabel(r),
       generic: f.generic ?? r.generic ?? '',
       segment: f.segment ?? '',
-      gnomad: obs ? num(obs.gnomad) : (r.alleles?.length ? r.alleles.length : null),
-      clinvar: obs ? num(obs.clinvar) : (r.clinvar?.length ? r.clinvar.length : null),
+      change: r.pos && r.alt && r.kind === 'missense' ? `${three(r.ref)}${r.pos}${three(r.alt)}` : '',
+      // a full result (not light) carries its own alleles and records, so an empty list is a real zero
+      gnomad: obs ? num(obs.gnomad) : (r.alleles?.length ? r.alleles.length : (!r.light && Array.isArray(r.alleles) && r.alt ? 0 : null)),
+      clinvar: obs ? num(obs.clinvar) : (r.clinvar?.length ? r.clinvar.length : (!r.light && Array.isArray(r.clinvar) && r.alt ? 0 : null)),
       query: queryFor(r, answer.interpretation),
       departs: false,
     };
@@ -2010,19 +2064,23 @@ export function compareModel(answer, o = {}) {
     { key: 'fam', label: 'Family', show: any((row) => row.family), sort: (row) => row.family.toLowerCase(), text: (row) => row.family },
     { key: 'grp', label: 'Group', show: !!groups && groups.length > 1, sort: (row) => row.gi, text: (row) => groupShort(groups[row.gi]) },
     { key: 'res', label: 'Residue', show: true, num: true, sort: (row) => row.r.pos ?? null, text: (row) => row.res },
+    // one typed c. or genomic change is a different protein change in each receptor: each row names its own
+    { key: 'chg', label: 'Protein change', show: new Set(rows.map((row) => row.change)).size > 1, sort: (row) => row.change, text: (row) => row.change },
     { key: 'gen', label: 'Generic number', show: any((row) => row.generic), sort: (row) => row.generic, text: (row) => row.generic },
     { key: 'net', label: 'Net ΔRRCS', show: any((row) => row.f.net), num: true, sort: (row) => row.f.net, text: (row) => (row.f.net === null ? '' : signed(row.f.net, 1)) },
     { key: 'dmax', label: 'Largest |ΔRRCS|', show: any((row) => row.f.dmax), num: true, sort: (row) => row.f.dmax, text: (row) => (row.f.dmax === null ? '' : row.f.dmax.toFixed(1)) },
     { key: 'nsig', label: 'Contacts above threshold', show: any((row) => row.f.nsig), num: true, sort: (row) => row.f.nsig, text: (row) => (row.f.nsig === null ? '' : String(row.f.nsig)) },
-    { key: 'cfr', label: 'CFR rank', show: any((row) => row.f.cfrRank), num: true, sort: (row) => row.f.cfrRank, text: (row) => (row.f.cfrRank === null ? '' : String(row.f.cfrRank)) },
+    { key: 'cfr', label: 'Rank by CFR score', show: any((row) => row.f.cfrRank), num: true, sort: (row) => row.f.cfrRank, text: (row) => (row.f.cfrRank === null ? '' : String(row.f.cfrRank)) },
     { key: 'cons', label: 'Conservation (0 to 1)', show: any((row) => row.f.conservation), num: true, sort: (row) => row.f.conservation, text: (row) => (row.f.conservation === null ? '' : row.f.conservation.toFixed(1)) },
     { key: 'gnomad', label: 'gnomAD alleles', show: any((row) => row.gnomad), num: true, sort: (row) => row.gnomad, text: (row) => (row.gnomad === null ? '' : String(row.gnomad)) },
     { key: 'clinvar', label: 'ClinVar records', show: any((row) => row.clinvar), num: true, sort: (row) => row.clinvar, text: (row) => (row.clinvar === null ? '' : String(row.clinvar)) },
   ].filter((c) => c.show);
-  const families = [...rows.reduce((m, row) => (row.family ? m.set(row.family, (m.get(row.family) ?? 0) + 1) : m), new Map())]
-    .sort((a, b) => a[0].localeCompare(b[0]));
+  // family counts are receptors, not rows (a motif gives three rows per receptor)
+  const famSets = rows.reduce((m, row) => (row.family ? m.set(row.family, (m.get(row.family) ?? new Set()).add(row.gid)) : m), new Map());
+  const families = [...famSets].map(([name, set]) => [name, set.size]).sort((a, b) => a[0].localeCompare(b[0]));
+  const receptorCount = new Set(rows.map((row) => row.gid)).size;
   return {
-    rows, cols, groups: groups ? groups.map((g) => ({ key: g.key, label: g.label, n: g.results.length })) : null, families,
+    rows, cols, groups: groups ? groups.map((g) => ({ key: g.key, label: g.label, n: g.results.length })) : null, families, receptorCount,
     filterNote: answer.filterNote ?? null, motif: answer.motif ?? null, hasSummary: rows.some((row) => row.r.summary),
     reports: o.reports,
   };
@@ -2055,6 +2113,7 @@ function cellHtml(col, row, o) {
   switch (col.key) {
     case 'rec': return html`<a href="?q=${encodeURIComponent(row.query)}" data-q="${row.query}" title="Details for ${row.query}">${recShort(row.r.receptor)}</a> ${intLink(L.residueUrl(o, row.gid, row.r.pos), 'report', { cls: 'sr-sub sr-reportlink', title: row.r.pos ? 'Report at this residue' : 'Report page' })}`;
     case 'gen': return row.generic ? html`<span class="mono">${row.generic}</span>` : html`<span class="sr-na">none</span>`;
+    case 'chg': return row.change ? html`<span class="mono">${row.change}</span>` : html`<span class="sr-na">none</span>`;
     case 'res': return html`<span class="mono">${row.res}</span>${row.departs ? html` <span class="sr-badge sr-badge--warn" title="This residue is not the one the motif name fixes">not the motif residue</span>` : ''}`;
     case 'net': return f.net === null ? html`<span class="sr-na">none</span>` : netHtml(f.net, { word: false });
     case 'dmax': {
@@ -2062,8 +2121,10 @@ function cellHtml(col, row, o) {
       const d = direction(f.dmaxSigned);
       return html`<span class="${d ? `sr-net sr-net--${d.cls}` : ''}">${f.dmax.toFixed(1)}</span>${d ? html`<span class="sr-sr-only"> (${d.word})</span>` : ''}${f.partner ? html` <span class="sr-sub">with <span class="sr-notation">${f.partner}</span></span>` : ''}`;
     }
-    case 'nsig': return f.nsig === null ? html`<span class="sr-na">none</span>` : String(f.nsig);
-    case 'cfr': return f.cfrRank === null ? html`<span class="sr-na">none</span>` : html`${f.cfrRank}${f.cfr ? html` <span class="sr-badge sr-badge--cfr" title="Core functional residue: ${cfrOneOf(o.cfrTop)}">CFR</span>` : ''}`;
+    // CFR here is receptor-level (a contact at this residue passes this receptor's threshold), as in Statistics'
+    // "CFR in N of 283"; the rank column is the position's, the same on every row of a generic number
+    case 'nsig': return f.nsig === null ? html`<span class="sr-na">none</span>` : html`<span class="sr-nowrap">${String(f.nsig)}${f.nsig > 0 ? html` <span class="sr-badge sr-badge--cfr" title="Receptor-level CFR: at least one contact here passes this receptor's threshold">CFR</span>` : ''}</span>`;
+    case 'cfr': return f.cfrRank === null ? html`<span class="sr-na">none</span>` : html`<span title="Rank of the generic position by CFR score${f.cfr ? `: ${cfrOneOf(o.cfrTop)}` : ''}">${f.cfrRank}</span>`;
     case 'cons': return f.conservation === null ? html`<span class="sr-na">none</span>` : f.conservation.toFixed(1);
     case 'gnomad': return row.gnomad === null ? html`<span class="sr-na">n/a</span>` : (row.gnomad ? String(row.gnomad) : html`<span class="sr-na">not seen</span>`);
     case 'clinvar': return row.clinvar === null ? html`<span class="sr-na">n/a</span>` : (row.clinvar ? String(row.clinvar) : html`<span class="sr-na">none</span>`);
@@ -2083,7 +2144,7 @@ export function renderCompare(model, state, o = {}) {
       ${model.motif && model.groups.some((g) => String(g.label).includes(':')) ? finePrint(html`<ul class="sr-motif-notes">${model.groups.map((g) => html`<li>${g.label}</li>`)}</ul>`, { summary: 'About these groups' }) : ''}` : ''}
     <div class="sr-cmp-controls">
       ${model.families.length > 1 ? html`<label class="sr-cmp-field">Family
-        <select class="v2-select" data-cmp-family><option value="">All families (${model.rows.length})</option>${model.families.map(([name, n]) => html`<option value="${name}"${state.family === name ? raw(' selected') : ''}>${name} (${n})</option>`)}</select></label>` : ''}
+        <select class="v2-select" data-cmp-family><option value="">All families (${model.receptorCount ?? model.rows.length})</option>${model.families.map(([name, n]) => html`<option value="${name}"${state.family === name ? raw(' selected') : ''}>${name} (${n})</option>`)}</select></label>` : ''}
       <div class="sr-cmp-sort"><label class="sr-cmp-field">Sort by
         <select class="v2-select" data-cmp-sortsel><option value="orig"${state.sort === 'orig' ? raw(' selected') : ''}>Original order</option>${sortable.map((c) => html`<option value="${c.key}"${state.sort === c.key ? raw(' selected') : ''}>${c.label}</option>`)}</select></label>
         <button type="button" class="btn btn-ghost btn-sm" data-cmp-dir${state.sort === 'orig' ? raw(' disabled') : ''} aria-label="Sort direction: ${state.dir === 'desc' ? 'high to low' : 'low to high'}. Press to reverse.">${state.dir === 'desc' ? 'High to low' : 'Low to high'}</button></div>
@@ -2112,7 +2173,7 @@ export function renderCompareBody(model, state, o = {}) {
           <button type="button" class="btn btn-ghost btn-sm" data-cmp-all="1">Show all ${total}</button>`}</div>`
     : html`<div class="sr-pager"><span class="sr-pager-info" role="status">${total === 1 ? '1 row' : `${total} rows`}</span></div>`;
   return html`${total ? html`<div class="sr-table-wrap"><table class="sr-table sr-table--multi sr-table--cmp">
-    <caption class="sr-sr-only">${total} receptors. Column headings are buttons that sort the table.</caption>
+    <caption class="sr-sr-only">${rowsText(rows)}. Column headings are buttons that sort the table.</caption>
     <thead><tr>${model.cols.map((c) => html`<th scope="col" aria-sort="${ariaSort(c)}" class="${c.num ? 'num' : ''}"><button type="button" data-cmp-sort="${c.key}">${c.label}</button></th>`)}</tr></thead>
     <tbody>${slice.map((row) => html`<tr>${model.cols.map((c) => html`<td data-label="${c.label}" class="sr-c-${c.key}${c.num ? ' num' : ''}">${cellHtml(c, row, { ...o, reports: o.reports ?? model.reports })}</td>`)}</tr>`)}</tbody></table></div>`
     : html`<p class="sr-message sr-message--info">No receptor matches these filters.</p>`}
@@ -2138,6 +2199,8 @@ export function compareCsv(model, state) {
   const head = ['receptor', 'gene_symbol', 'gpcr_id', 'uniprot', 'family'];
   if (model.groups?.length > 1) head.push('group');
   head.push('residue', 'residue_number', 'generic_number', 'segment');
+  const chg = model.cols.some((c) => c.key === 'chg');
+  if (chg) head.push('protein_change');
   if (model.motif?.canonical) head.push('departs_from_motif');
   const extra = {
     net: ['net_delta_rrcs', 'net_direction'],
@@ -2153,6 +2216,7 @@ export function compareCsv(model, state) {
     const v = [recShort(r.receptor), r.receptor?.symbol, row.gid, r.receptor?.uniprot, row.family];
     if (model.groups?.length > 1) v.push(model.groups[row.gi].label);
     v.push(row.res, r.pos, row.generic, row.segment);
+    if (chg) v.push(row.change ? `p.${row.change}` : '');
     if (model.motif?.canonical) v.push(row.departs ? 'yes' : 'no');
     if (have.has('net')) v.push(f.net === null ? '' : f.net.toFixed(1), direction(f.net)?.word ?? '');
     if (have.has('dmax')) v.push(f.dmax === null ? '' : f.dmax.toFixed(1), f.dmaxSigned === null ? '' : f.dmaxSigned.toFixed(1), f.partner ?? '', f.threshold === null ? '' : f.threshold.toFixed(2));
@@ -2248,7 +2312,7 @@ export function renderAnswer(answer, query, o) {
   // the card's own "Did you mean" button replaces the same link in the list at the top
   const fixes = new Set(rs.map((r) => mismatchFix(r, ro)?.query).filter(Boolean));
   if (reading && !(answer.interpretation?.kind === 'receptor' && !rs.length)) {
-    out += html`<section class="sr-read" aria-label="How the query was read"><p class="sr-read-line"><span class="sr-label">I read this as</span> <strong>${reading}</strong>${answer.assembly ? html` <span class="sr-badge">${answer.assembly}</span>` : ''}</p>
+    out += html`<section class="sr-read" aria-label="How the query was read"><p class="sr-read-line"><span class="sr-label">I read this as</span> <strong>${reading}</strong>${answer.assembly && !reading.includes(answer.assembly) ? html` <span class="sr-badge">${answer.assembly}</span>` : ''}</p>
       ${alternatesBlock(answer, o.symbolOf, base, fixes)}</section>`.s;
   } else if (answer.alternates?.length) {
     out += html`<section class="sr-read">${alternatesBlock(answer, o.symbolOf, base, fixes)}</section>`.s;
@@ -2273,9 +2337,9 @@ export function renderAnswer(answer, query, o) {
       out += html`<section class="sr-results" aria-label="Results"><h2 class="sr-h2">${rs.length} receptors</h2>${renderReceptorList(rs, o)}</section>`.s;
     } else if (crossReceptor) {
       compare = compareModel(answer, o);
-      const n = compare.rows.length;
-      statusBits.push(`${n} ${n === 1 ? 'receptor' : 'receptors'}`);
-      out += html`<section class="sr-results" aria-label="Results"><h2 class="sr-h2">${n} receptors</h2>${renderCompare(compare, compareDefaults(), o)}</section>`.s;
+      const n = rowsText(compare.rows);
+      statusBits.push(n);
+      out += html`<section class="sr-results" aria-label="Results"><h2 class="sr-h2">${n}</h2>${renderCompare(compare, compareDefaults(), o)}</section>`.s;
     } else {
       statusBits.push(`${rs.length} ${rs.length === 1 ? 'result' : 'results'}`);
       const motif = motifBlock(answer.motif);
@@ -2285,9 +2349,9 @@ export function renderAnswer(answer, query, o) {
     }
   } else if (groupedOnly) {
     compare = compareModel(answer, o);
-    const n = compare.rows.length;
-    statusBits.push(`No exact match, ${n} ${n === 1 ? 'receptor' : 'receptors'} listed`);
-    out += html`<section class="sr-results" aria-label="Results"><h2 class="sr-h2">${n} ${n === 1 ? 'receptor' : 'receptors'}</h2>${renderCompare(compare, compareDefaults(), o)}</section>`.s;
+    const n = rowsText(compare.rows);
+    statusBits.push(`No exact match, ${n} listed`);
+    out += html`<section class="sr-results" aria-label="Results"><h2 class="sr-h2">${n}</h2>${renderCompare(compare, compareDefaults(), o)}</section>`.s;
   } else {
     statusBits.push('No result');
   }

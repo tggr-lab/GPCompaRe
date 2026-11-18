@@ -1,0 +1,7 @@
+band,positions,substitutions,predicted_pathogenic,ambiguous,predicted_benign,pct_predicted_pathogenic_of_decisive
+fewer than 3,36,58,10,4,44,18.5185
+3 to 28,139,1489,431,199,859,33.4109
+29 to 70,107,4188,1268,640,2280,35.7384
+71 to 141,89,7383,3128,1211,3044,50.6805
+142 to 212,23,3368,1970,511,887,68.9534
+213 or more,8,1817,1395,219,203,87.2966

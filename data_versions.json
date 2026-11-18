@@ -12,7 +12,7 @@
       "label": "GPCompaRe RRCS batch 2026-02-02",
       "run_id": "batch_analysis_20260202_151051",
       "date": "2026-02-02",
-      "note": "RRCS, dRRCS, CFR ranking and every structural number."
+      "note": "RRCS, ΔRRCS, CFR ranking and every structural number."
     },
     "gpcrdb_models": {
       "label": "GPCRdb models (2024-05-15 build): AlphaFold-Multistate, with plain AlphaFold2 for some states",
@@ -28,6 +28,12 @@
       "fetched": "2026-10-18",
       "note": "Residue segments and generic numbers: GPCRdb API fetched 2026-10-18, with the batch annotation (GPCRdb, fetched 2026-02-02 to 2026-02-03) kept at the residues it covers; GPR3, GPR4 and XCR1 use the API numbering throughout. Snake-plot layouts come from the 2026 snapshot (data/snake_residues.json)."
     },
+    "gpcrdb_residue_maps": {
+      "label": "GPCRdb residue maps",
+      "fetched": "2026-08-12",
+      "exception": "GPR4 on its own GPCRdb entry, fetched 2026-10-18",
+      "note": "Segment and generic number of every residue. Used, with the GPR4 exception, by the ranked positions, pairs, partners, activation recovery and the change per contact by segment and helix pair."
+    },
     "gnomad": {
       "label": "gnomAD v4.1.2",
       "long_label": "gnomAD v4.1.2 (dataset gnomad_r4, accessed 18 October 2026)",
@@ -38,7 +44,7 @@
     },
     "gnomad_batch": {
       "label": "gnomAD v4.1.0",
-      "long_label": "gnomAD v4.1 (dataset gnomad_r4, accessed 2 February 2026)",
+      "long_label": "gnomAD v4.1.0 (dataset gnomad_r4, accessed 2 February 2026)",
       "release": "v4.1.0",
       "dataset": "gnomad_r4",
       "fetched": "2026-02-02/2026-02-03",
@@ -92,7 +98,7 @@
     "report_annotation": ["gpcrdb_numbering"],
     "report_clinvar": ["clinvar"],
     "search": ["gnomad", "clinvar", "alphamissense", "conservation", "uniprot", "ensembl", "refseq", "hgnc", "gpcrdb_numbering"],
-    "statistics_page": ["rrcs_batch", "gnomad_batch"],
+    "statistics_page": ["rrcs_batch", "gnomad_batch", "gpcrdb_residue_maps"],
     "structural_numbers": ["rrcs_batch", "gpcrdb_models"]
   }
 }

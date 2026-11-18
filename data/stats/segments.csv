@@ -1,0 +1,18 @@
+segment,block,mean_abs_drrcs,median_abs_drrcs,endpoints
+TM1,Helices,0.745035,0.326986,35706
+TM2,Helices,0.796744,0.384895,46579
+TM3,Helices,0.921303,0.439354,56587
+TM4,Helices,0.738608,0.325518,27487
+TM5,Helices,0.979233,0.446683,46198
+TM6,Helices,1.125996,0.549963,48796
+TM7,Helices,1.074721,0.524318,43512
+H8,Helices,1.213823,0.556296,14084
+ICL1,Loops and termini,1.10353,0.520143,4121
+ICL2,Loops and termini,1.111741,0.458907,6658
+ICL3,Loops and termini,1.211413,0.561938,7489
+ICL4,Loops and termini,1.343237,0.534051,35
+ECL1,Loops and termini,1.083923,0.572057,7781
+ECL2,Loops and termini,1.233853,0.563217,29158
+ECL3,Loops and termini,1.152592,0.485904,4421
+N-term,Loops and termini,1.060701,0.449071,32049
+C-term,Loops and termini,1.188023,0.572161,16251

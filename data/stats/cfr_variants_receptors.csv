@@ -1,5 +1,4 @@
-# gnomAD v4.1.2 missense alleles, ClinVar 2026-10-11, AlphaMissense per substitution, VarSite conservation via ProtVar, GPCRdb generic numbering fetched 2026-10-18.
-generic_number,gid,gene,residue,aa,alleles,substitutions,benign,ambiguous,pathogenic,unscored,allele_count,af_max,clinvar_missense,clinvar_plp_db,conservation,search_q,report_url
+generic_number,gid,gene,residue,aa,alleles,substitutions,am_benign,am_ambiguous,am_pathogenic,am_unscored,allele_count,af_max,clinvar_missense,clinvar_plp_db,conservation,search_q,report_url
 3.50x50,5ht1a_human,HTR1A,134,R,1,1,0,0,1,0,1,6.840853027009056e-07,0,0,1.0,HTR1A 3.50x50,reports/5ht1a_human.html
 3.50x50,5ht1b_human,HTR1B,147,R,3,3,0,0,3,0,4,1.3682211483206453e-06,0,0,0.988,HTR1B 3.50x50,reports/5ht1b_human.html
 3.50x50,5ht1d_human,HTR1D,136,R,3,3,0,0,3,0,10,4.104365813916263e-06,0,0,0.983,HTR1D 3.50x50,reports/5ht1d_human.html

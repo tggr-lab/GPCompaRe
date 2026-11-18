@@ -95,6 +95,11 @@ details.fine-print[open] > summary,
 
 @media (max-width: 720px) {
   .fine-print dl { grid-template-columns: minmax(0, 1fr); }
+  /* on a phone the label sits above its value, so the value gets the full width */
+  .fine-print .fp-versions, .fine-print .fp-versions tbody, .fine-print .fp-versions tr,
+  .fine-print .fp-versions th, .fine-print .fp-versions td { display: block; }
+  .fine-print .fp-versions th { white-space: normal; padding: var(--s-2) 0 0; }
+  .fine-print .fp-versions td { padding: 0 0 var(--s-2); }
   .fine-print--page { margin-top: var(--s-6); }
 }
 @media print { .fine-print { color: #444; } }
