@@ -221,7 +221,7 @@ def _coverage_rows(store, payloads, am, cfr_var, src, total, rrcs_label, numberi
     if maps.get('exception'):
         map_source.append(maps['exception'].replace(' on its own GPCRdb entry, fetched ', ' own entry · '))
     minimum = cons['min_residues']
-    excluded_am = ['Annotation mismatch', ', '.join(labels[g] for g in dropped)] if dropped else []
+    excluded_am = [', '.join(labels[g] for g in dropped)] if dropped else []
     if no_records:
         excluded_am += ['No query records', ', '.join(labels[g] for g in no_records)]
     display = [

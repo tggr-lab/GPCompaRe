@@ -259,10 +259,14 @@ def test_statistics_scroll_is_not_smooth_with_reduced_motion(browser, server):
     page.evaluate("window.__sc = []; const o = Element.prototype.scrollIntoView;"
                   " Element.prototype.scrollIntoView = function (a) { window.__sc.push(a && a.behavior);"
                   " return o.call(this, a); }; 0")
-    btn = page.query_selector('[data-method-toggle]')
-    assert btn
-    btn.scroll_into_view_if_needed()
-    btn.click()
+    # a ledger row of the helix bundle opens the receptor panel and scrolls it into view
+    row = page.locator('#card-chart-helix-pairs .lrow[data-pair="TM3-TM6"]')
+    row.scroll_into_view_if_needed(timeout=15000)
     page.wait_for_timeout(300)
-    assert page.evaluate("window.__sc") == ['auto']
+    page.evaluate("window.__sc = []")
+    row.click()
+    page.locator('#card-chart-helix-pairs .chart-card-side h4').wait_for(timeout=15000)
+    page.wait_for_timeout(300)
+    sc = page.evaluate("window.__sc")
+    assert sc and all(b == 'auto' for b in sc), sc
     ctx.close()

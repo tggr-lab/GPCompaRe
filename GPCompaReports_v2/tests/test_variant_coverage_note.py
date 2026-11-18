@@ -76,7 +76,7 @@ def test_the_comparison_names_the_seven_exclusions_by_reason():
     key, = [k for k in _coverage() if k.startswith('AlphaMissense comparison')]
     included, source, excluded = _coverage()[key]
     assert included == '276 receptors' and 'gnomAD v4.1.0' in source
-    assert 'Annotation mismatch GPR3, GPR4, XCR1' in excluded
+    assert excluded.startswith('GPR3, GPR4, XCR1 ')
     assert 'No query records GPR182 (ACKR5), NPY6R, P2RY8, TAAR3P' in excluded
 
 
