@@ -549,7 +549,8 @@ def test_built_scaffold_csv_and_coverage():
     assert 'GPR4' in mag['data']   # the segment and interface tables carry the same GPR4 exception
     html = (BUILD / 'statistics.html').read_text(encoding='utf-8')
     assert 'class_A_all' not in html
-    assert 'The list of 287 human Class A receptors also names' in re.sub(r'\s+', ' ', html)
+    assert '287 human Class A receptors' in html
+    assert 'Incomplete pairs: GPR26, LGR5, OPSX and RXFP1' in html
 
 
 def csv_rows(path):

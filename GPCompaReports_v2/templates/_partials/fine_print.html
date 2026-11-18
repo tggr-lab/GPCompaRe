@@ -57,7 +57,7 @@
 {%- endmacro %}
 
 {# every entry, with its fetch date and note #}
-{% macro data_versions_table(dv) -%}
+{% macro data_versions_table(dv, links=none) -%}
 {%- if dv is mapping and dv -%}
 {%- set src = dv.get('sources') if dv.get('sources') is mapping else {} -%}
 <table class="fp-versions" data-data-versions-table>
@@ -65,7 +65,7 @@
 {%- if dv.get('database') %}{% set t = dv_text(dv['database'])|trim %}{% if t %}
 <tr><th scope="row">{{ DV_NAMES['database'] }}</th><td>{{ t }}</td></tr>{% endif %}{% endif %}
 {%- for k, v in src.items() %}{% set t = dv_text(v, True)|trim %}{% if t %}
-<tr><th scope="row">{{ DV_NAMES.get(k) or (k|replace('_', ' ')|capitalize) }}</th><td>{{ t }}{% if v is mapping and (v.get('fetched') or v.get('date')) %}<br><span class="fp-detail">{{ 'Fetched ' ~ v['fetched'] if v.get('fetched') else 'Run ' ~ v['date'] }}</span>{% endif %}{% if v is mapping and v.get('note') %}<br><span class="fp-detail">{{ v['note'] }}</span>{% endif %}</td></tr>{% endif %}{% endfor %}
+<tr><th scope="row">{{ DV_NAMES.get(k) or (k|replace('_', ' ')|capitalize) }}</th><td>{{ t }}{% if v is mapping and (v.get('fetched') or v.get('date')) %}<br><span class="fp-detail">{{ 'Fetched ' ~ v['fetched'] if v.get('fetched') else 'Run ' ~ v['date'] }}</span>{% endif %}{% if v is mapping and v.get('note') %}<br><span class="fp-detail">{{ v['note'] }}</span>{% endif %}{% if links and links.get(k) %}<div class="release-links">{% for label, href in links[k] %}<a href="{{ href }}" target="_blank" rel="noopener">{{ label }}</a>{% endfor %}</div>{% endif %}</td></tr>{% endif %}{% endfor %}
 </tbody>
 </table>
 {%- endif -%}

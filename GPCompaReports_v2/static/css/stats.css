@@ -270,13 +270,31 @@ details.more[open] > summary { margin-bottom: 8px; }
 .family-tests th:first-child { white-space: normal; }
 
 /* methods */
-.methods-card .cov-table { width: 100%; font-size: 0.86rem; }
-.methods-card .cov-table td { white-space: normal; vertical-align: top; }
-@media (max-width: 720px) { .methods-card .hide-phone { display: none; } }
+.methods-card .cov-table { width: 100%; font-size: .86rem; }
+.cov-table td { white-space: normal; vertical-align: top; }
+.cov-table td span { display: block; }
+.model-scope { margin: .35rem 0; }
+.model-exclusions, .reference-source, .methods-glossary, .release-links {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem 1rem;
+}
+.model-exclusions { margin: 0 0 .8rem; font-size: .83rem; color: var(--st-muted); }
+.methods-glossary { margin: .8rem 0; font-size: .88rem; }
+.activation-reference ul { display: flex; flex-wrap: wrap; gap: .35rem 1rem; list-style: none; padding: 0; }
+.activation-reference li { min-width: 7ch; }
+.reference-source { margin: .5rem 0; }
+.release-links { margin-block-start: .25rem; }
+#sec-methods details:not([open]) > :not(summary) { display: none; }
 .downloads { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 4px; }
-.methods-notes { margin: 8px 0 16px; max-width: 92ch; }
-.defs-list { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 8px 0 12px; }
-.defs-list dt { font-weight: 600; } .defs-list dd { margin: 0; }
+@media (max-width: 720px) {
+  .cov-table thead { position: absolute; inline-size: 1px; block-size: 1px; clip-path: inset(50%); overflow: hidden; }
+  .cov-table tbody, .cov-table { display: block; }
+  .cov-table tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .4rem 1rem; border-top: 1px solid var(--st-line); padding: .7rem 0; }
+  .cov-table tbody td { border: 0; padding: 0; overflow-wrap: anywhere; }
+  .cov-table td::before { content: attr(data-label); display: block; color: var(--st-muted); font-size: .75rem; }
+  .cov-table td:first-child { font-weight: 600; }
+  .cov-table td:nth-child(n+3) { grid-column: 1 / -1; }
+  .cov-table td.coverage-empty { display: none; }
+}
 .seg-order-row { margin-bottom: 4px; }
 
 /* selection marks inside HTML parts */

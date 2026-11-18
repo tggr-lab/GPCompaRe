@@ -4,7 +4,7 @@ The Statistics page has two allele sets (2026-11-13 page rewrite):
 
   * the AlphaMissense comparison, recurrence groups and conservation groups use the February batch query
     (276 receptors): GPR3, GPR4 and XCR1 are left out, and GPR182 (ACKR5), NPY6R, P2RY8 and TAAR3P had no
-    records in that query. The Methods row "What each result covers" names all seven, in two sentences;
+    records in that query. The Coverage table names all seven, grouped by reason;
   * the per-position variants use the report variant layer (281 receptors): NPY6R and TAAR3P have no
     protein-coding missense records (pseudogene loci), which the card guide says.
 
@@ -15,6 +15,7 @@ variant layer (conservation scatter) is gone from the page. Receptors are named 
 import os
 import pathlib
 import re
+from xml.etree import ElementTree
 
 import pytest
 
@@ -56,34 +57,36 @@ def _text():
     return _CACHE['text']
 
 
-@needs_build
-def test_the_per_position_card_names_its_281_receptors_and_the_two_without_records():
-    text = _text()
-    assert '281 receptors (NPY6R and TAAR3P have none)' in text
-
-
-@needs_build
-def test_the_methods_row_names_the_seven_receptors_in_two_sentences():
+def _coverage():
     html = STATS.read_text(encoding='utf-8')
-    rows = re.findall(r'<tr>(.*?)</tr>', html[html.index('cov-table'):], re.S)
-    am = [r for r in rows if 'AlphaMissense comparison' in r]
-    assert len(am) == 1, 'no Methods row for the AlphaMissense comparison'
-    cells = [re.sub(r'<[^>]+>', '', c).strip() for c in re.findall(r'<td[^>]*>(.*?)</td>', am[0], re.S)]
-    assert cells[1] == '276'
-    assert 'GPR3, GPR4 and XCR1.' in cells[3]
-    assert 'GPR182 (ACKR5), NPY6R, P2RY8 and TAAR3P: no records in that query.' in cells[3]
-    v = [r for r in rows if 'Variants at each top-ranked position' in r]
-    assert len(v) == 1 and 'NPY6R and TAAR3P: no protein-coding missense records' in v[0]
+    table = ElementTree.fromstring(re.search(r'<table class="v2-table cov-table".*?</table>', html, re.S)[0])
+    cells = [[' '.join(td.itertext()).strip() for td in row] for row in table.findall('./tbody/tr')]
+    return {row[0]: row[1:] for row in cells}
+
+
+@needs_build
+def test_the_per_position_row_names_its_receptors_and_exclusions():
+    included, source, excluded = _coverage()['Variants per top-ranked position']
+    assert included == '281 receptors' and 'gnomAD v4.1.2' in source
+    assert excluded == 'NPY6R, TAAR3P No protein-coding missense records'
+
+
+@needs_build
+def test_the_comparison_names_the_seven_exclusions_by_reason():
+    key, = [k for k in _coverage() if k.startswith('AlphaMissense comparison')]
+    included, source, excluded = _coverage()[key]
+    assert included == '276 receptors' and 'gnomAD v4.1.0' in source
+    assert 'Annotation mismatch GPR3, GPR4, XCR1' in excluded
+    assert 'No query records GPR182 (ACKR5), NPY6R, P2RY8, TAAR3P' in excluded
 
 
 @needs_build
 def test_gp182_and_p2ry8_appear_only_in_the_methods_row():
-    html = STATS.read_text(encoding='utf-8')
     text = _text()
     for name in UNRESOLVED:
         assert text.count(name) == 1, (name, text.count(name))
-    row = re.search(r'<tr><td>AlphaMissense comparison.*?</tr>', html, re.S).group(0)
-    assert all(n in row for n in UNRESOLVED)
+    key, = [k for k in _coverage() if k.startswith('AlphaMissense comparison')]
+    assert all(name in _coverage()[key][-1] for name in UNRESOLVED)
 
 
 @needs_build

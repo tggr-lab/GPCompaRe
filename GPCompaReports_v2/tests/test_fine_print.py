@@ -161,7 +161,7 @@ def test_statistics_text_is_untouched_by_the_presentation_changes():
     html = (BUILD_DIR / 'statistics.html').read_text(encoding='utf-8')
     # 2026-11-06: the box plots became the explorer's Families tab; the Kruskal-Wallis results moved with them
     for needle in ('Kruskal-Wallis · total', 'Core functional residue: in at least one above-threshold contact',
-                   'Where these cross-receptor numbers come from.', 'Predictions, not clinical evidence.'):
+                   'predicted models from GPCRdb', 'Predictions, not clinical evidence.'):
         assert needle in html, needle
 
 
@@ -227,10 +227,11 @@ def test_landing_methods_text_and_glossary_show_the_registry_release():
 @needs_build
 def test_statistics_page_labels_its_variant_layer_as_the_february_batch():
     html = (BUILD_DIR / 'statistics.html').read_text(encoding='utf-8')
-    refs = re.search(r'<p class="stats-refs.*?</p>', html, re.S).group(0)
-    assert SRC['gnomad_batch']['label'] in refs and 'AlphaMissense class comparison' in refs
-    assert SRC['gnomad']['label'] in refs and 'per-position variants' in refs   # each release named with its use
-    assert 'paper' not in refs and 'layer' not in refs
+    coverage = re.search(r'<table class="v2-table cov-table".*?</table>', html, re.S)[0]
+    rows = re.findall(r'<tr role="row">(.*?)</tr>', coverage, re.S)
+    assert any('AlphaMissense comparison' in row and SRC['gnomad_batch']['label'] in row for row in rows)
+    assert any('Variants per top-ranked position' in row and SRC['gnomad']['label'] in row for row in rows)
+    assert 'paper' not in coverage and 'layer' not in coverage
 
 
 @needs_build
@@ -447,6 +448,25 @@ def test_the_help_examples_vary_across_receptors(open_page, scheme):
 def test_statistics_methodology_reads_as_fine_print_without_losing_text(open_page):
     page = open_page('/statistics.html')
     assert page.locator('#chart-pathogenicity-method').evaluate('e => e.classList.contains("fine-print")')   # counts recede
-    assert page.locator('#sec-methods .stats-refs').evaluate('e => e.classList.contains("fine-print")')
+    reference = page.locator('.activation-reference')
+    assert reference.locator('li').count() == 39
+    assert 'Zhou et al. 2019' in reference.text_content()
+    releases = page.locator('#sec-methods .stats-provenance')
+    assert releases.evaluate('e => e.classList.contains("fine-print")')
+    links = releases.locator('table a').evaluate_all("links => links.map(a => a.href)")
+    assert set(links) == {
+        'https://github.com/huhlim/alphafold-multistate', 'https://doi.org/10.1038/s41586-021-03819-2',
+        'https://pmc.ncbi.nlm.nih.gov/articles/PMC6954041/', 'https://gnomad.broadinstitute.org/',
+        'https://zenodo.org/records/10813168', 'https://creativecommons.org/licenses/by/4.0/',
+        'https://www.ncbi.nlm.nih.gov/clinvar/', 'https://gpcrdb.org/', 'https://www.uniprot.org/',
+        'https://www.ebi.ac.uk/ProtVar/',
+    }
+    anchors = page.locator('.methods-glossary a').evaluate_all("links => links.map(a => a.hash)")
+    assert anchors == ['#delta', '#threshold', '#cfr', '#cfrscore', '#decisive-call']
+    page.locator('.methods-glossary a').last.click()
+    for anchor in anchors:
+        assert page.locator(anchor).count() == 1
+    assert 'predicted pathogenic or predicted benign' in page.locator('#decisive-call').inner_text()
+    page.go_back()
     # the Kruskal-Wallis lines sit in the Families tab of the explorer (#sec-e), shown with that tab
     assert 'Kruskal-Wallis' in page.locator('#sec-e').evaluate('e => e.textContent')

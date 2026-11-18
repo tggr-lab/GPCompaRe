@@ -237,17 +237,20 @@
       <h2 id="sec-methods-q">{{ sections['sec-methods'] }}</h2>
 
       <div class="scard methods-card">
-        <h3 class="scard-title">What each result covers</h3>
-        <div class="v2-table-scroll">
-          <table class="v2-table cov-table">
-            <thead><tr><th>Results</th><th>Receptors</th><th class="hide-phone">Data</th><th>Not included</th></tr></thead>
-            <tbody>
-            {% for c in coverage_rows %}
-              <tr><td>{{ c.results }}</td><td>{{ c.receptors }}</td><td class="hide-phone">{{ c.data }}</td><td>{{ c.not_included }}</td></tr>
+        <h3 class="scard-title">Coverage</h3>
+        <p class="model-scope">Active and inactive predicted models from GPCRdb</p>
+        {% if exclusions %}
+        <p class="model-exclusions"><span>{{ exclusions.listed }} human Class A receptors</span><span>Incomplete pairs: {{ exclusions.names }}</span></p>
+        {% endif %}
+        {% set columns = ['Analysis', 'Included', 'Source', 'Not included'] %}
+        <table class="v2-table cov-table" aria-label="Analysis coverage" role="table">
+          <thead><tr>{% for column in columns %}<th scope="col">{{ column }}</th>{% endfor %}</tr></thead>
+          <tbody>
+            {% for row in coverage_display %}
+            <tr role="row">{% for cell in row %}<td role="cell" data-label="{{ columns[loop.index0] }}"{% if not cell %} class="coverage-empty"{% endif %}>{% for line in cell %}<span>{{ line|e }}</span>{% else %}<span class="sr-only">None listed</span>{% endfor %}</td>{% endfor %}</tr>
             {% endfor %}
-            </tbody>
-          </table>
-        </div>
+          </tbody>
+        </table>
         <p class="downloads">
           <a class="btn btn-primary btn-sm" href="{{ static_prefix }}{{ zip_href }}" download>Download all tables (zip, {{ n_tables }} CSV files)</a>
           <a class="btn btn-ghost btn-sm" href="{{ static_prefix }}{{ stats_dir }}/coverage.csv" download>coverage.csv</a>
@@ -255,39 +258,30 @@
         </p>
       </div>
 
-      <details class="fine-print methods-notes"><summary>Definitions, scope and the activation reference</summary>
-        <p><strong>Where these cross-receptor numbers come from.</strong>
-          Cross-receptor recurrence analyses are limited to residues assigned GPCRdb generic numbers. Residues without
-          one, largely in loops and terminal regions, cannot be aligned to a shared position across receptors and take
-          no part in these statistics. Recurrence is counted on the full GPCRdb residue maps of all {{ total_gpcrs }}
-          receptors.{% if exclusions %} The list of {{ exclusions.listed }} human Class A receptors also names
-          {{ exclusions.names }}, which lack a complete active and inactive model pair and are not in the
-          database.{% endif %}</p>
-        <dl class="defs-list">
-          <dt>Models</dt><dd>Each of the {{ total_gpcrs }} receptors is compared between its active and inactive predicted models from GPCRdb.</dd>
-          <dt>ΔRRCS</dt><dd>RRCS (residue-residue contact score) of a residue contact pair in the active model minus that in the inactive model. Positive: stronger in the active model.</dd>
-          <dt>Threshold</dt><dd>Per receptor: the mean plus one standard deviation of its |ΔRRCS| values. A pair at or above it is above threshold.</dd>
-          <dt>CFR</dt><dd>Core Functional Residue: a residue in at least one above-threshold contact of its receptor.</dd>
-          <dt>Positions</dt><dd>Compared across receptors by GPCRdb generic number. A recurrent position is a CFR in three or more receptors ({{ cfr_total_positions }} positions); the {{ cfr_top_n }} top-ranked positions have the highest CFR score.</dd>
-          <dt>Decisive call</dt><dd>An AlphaMissense prediction that is predicted pathogenic or predicted benign (not ambiguous). AlphaMissense classes are predictions, not clinical evidence; conservation is an observation across species.</dd>
-        </dl>
-        <p><strong>Known activation positions</strong> ({{ reference|length }}): {{ reference_source }}.
-          {% for r in reference %}<span class="mono">{{ r.gn }}</span>{% if not loop.last %}, {% endif %}{% endfor %}.</p>
+      <nav class="methods-glossary" aria-label="Glossary terms">
+        <strong>Glossary</strong>
+        {% for anchor, term in [('delta', 'ΔRRCS'), ('threshold', 'Threshold'), ('cfr', 'CFR'), ('cfrscore', 'CFR score'), ('decisive-call', 'Decisive call')] %}
+        <a href="{{ static_prefix }}glossary.html#{{ anchor }}">{{ term }}</a>
+        {% endfor %}
+      </nav>
+      <details class="fine-print activation-reference">
+        <summary>Activation reference ({{ reference|length }} positions)</summary>
+        <div>
+          <p class="reference-source"><strong>{{ reference_source }}</strong>{% for source in reference_additions if source %}<span>{{ source }}</span>{% endfor %}</p>
+          <ul aria-label="Known activation positions">{% for r in reference %}<li class="mono">{{ r.gn }}</li>{% endfor %}</ul>
+        </div>
       </details>
-      {% call fine_print(summary="Data releases and sources", cls="stats-provenance") %}
-        {{ data_versions_table(data_versions) }}
-      <p class="stats-refs fine-print">
-        Data &amp; methods:
-        <a href="https://github.com/huhlim/alphafold-multistate" target="_blank" rel="noopener">AlphaFold multistate</a> ·
-        <a href="https://doi.org/10.1038/s41586-021-03819-2" target="_blank" rel="noopener">AlphaFold2</a> (some states) ·
-        <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6954041/" target="_blank" rel="noopener">RRCS</a> ·
-        <a href="https://gnomad.broadinstitute.org/" target="_blank" rel="noopener">gnomAD</a> ({{ data_versions.sources.gnomad_batch.label }} for the AlphaMissense class comparison, {{ data_versions.sources.gnomad.label }} for the per-position variants) ·
-        <a href="https://zenodo.org/records/10813168" target="_blank" rel="noopener">AlphaMissense</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>) ·
-        <a href="https://www.ncbi.nlm.nih.gov/clinvar/" target="_blank" rel="noopener">{{ data_versions.sources.clinvar.label }}</a> ·
-        <a href="https://gpcrdb.org/" target="_blank" rel="noopener">GPCRdb</a> ·
-        <a href="https://www.uniprot.org/" target="_blank" rel="noopener">UniProt</a> ·
-        <a href="https://www.ebi.ac.uk/ProtVar/" target="_blank" rel="noopener">ProtVar</a> (VarSite conservation)
-      </p>
+      {% set release_links = {
+        'gpcrdb_models': [('AlphaFold multistate', 'https://github.com/huhlim/alphafold-multistate'), ('AlphaFold2', 'https://doi.org/10.1038/s41586-021-03819-2'), ('GPCRdb', 'https://gpcrdb.org/')],
+        'rrcs_batch': [('RRCS', 'https://pmc.ncbi.nlm.nih.gov/articles/PMC6954041/')],
+        'gnomad': [('gnomAD', 'https://gnomad.broadinstitute.org/')],
+        'alphamissense': [('AlphaMissense', 'https://zenodo.org/records/10813168'), ('CC BY 4.0', 'https://creativecommons.org/licenses/by/4.0/')],
+        'clinvar': [('ClinVar', 'https://www.ncbi.nlm.nih.gov/clinvar/')],
+        'uniprot': [('UniProt', 'https://www.uniprot.org/')],
+        'conservation': [('ProtVar', 'https://www.ebi.ac.uk/ProtVar/')]
+      } %}
+      {% call fine_print(summary="Data releases", cls="stats-provenance") %}
+        {{ data_versions_table(data_versions, release_links) }}
       {% endcall %}
     </section>
     </div>

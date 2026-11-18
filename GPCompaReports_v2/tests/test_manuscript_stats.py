@@ -202,7 +202,7 @@ def test_no_non_cfr_label_on_either_page():
 @needs_build
 def test_the_page_says_where_the_cross_receptor_numbers_come_from():
     html = STATS.read_text(encoding='utf-8')
-    assert 'full GPCRdb residue maps' in html, (
+    assert 'Full GPCRdb residue maps' in html, (
         'the statistics page does not explain that cross-receptor recurrence '
         'uses the full GPCRdb residue maps')
     assert 'Individual receptor reports are unchanged' not in html   # process history, not page content
@@ -241,7 +241,6 @@ def test_the_methods_note_states_the_generic_numbering_limitation():
     html = STATS.read_text(encoding='utf-8')
     text = re.sub(r'<[^>]+>', ' ', html)
     text = re.sub(r'\s+', ' ', text)
-    assert ('Cross-receptor recurrence analyses are limited to residues '
-            'assigned GPCRdb generic numbers.') in text, (
+    assert 'GPCRdb generic numbers only' in text and 'Unnumbered residues Mostly loops and termini' in text, (
         'the statistics methods note does not state that cross-receptor '
         'recurrence is limited to residues with GPCRdb generic numbers')

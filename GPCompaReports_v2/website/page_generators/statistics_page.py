@@ -183,7 +183,7 @@ def _coverage_rows(store, payloads, am, cfr_var, src, total, rrcs_label, numberi
     data_versions.json, every name from the store (receptor_labels)."""
     pos = payloads.get('class_positions') or {}
     if not pos or not am:
-        return [], []
+        return [], [], []
     gids = list(store.gpcr_ids)
     rj = payloads.get('receptors') or {}
     sym_col = (rj.get('columns') or []).index('symbol') if 'symbol' in (rj.get('columns') or []) else None
@@ -213,7 +213,34 @@ def _coverage_rows(store, payloads, am, cfr_var, src, total, rrcs_label, numberi
         variants_none=[labels[g] for g in v_none],
         maps_label=('%s, fetched %s' % (maps['label'], maps['fetched'])) if maps.get('fetched') else maps.get('label'),
         maps_exception=maps.get('exception'))
-    return rows, [(g, labels[g]) for g in v_none]
+    # The downloadable coverage CSV keeps its release schema. Cells on the page have short, separate lines.
+    rec, cons = pos['recovery'], pos['conservation']
+    receptor_count = [f'{total} receptors']
+    batch = _short(rrcs_label)
+    map_source = [batch, 'Full GPCRdb residue maps' + (f" · {maps['fetched']}" if maps.get('fetched') else '')]
+    if maps.get('exception'):
+        map_source.append(maps['exception'].replace(' on its own GPCRdb entry, fetched ', ' own entry · '))
+    minimum = cons['min_residues']
+    excluded_am = ['Annotation mismatch', ', '.join(labels[g] for g in dropped)] if dropped else []
+    if no_records:
+        excluded_am += ['No query records', ', '.join(labels[g] for g in no_records)]
+    display = [
+        (['Thresholds, histogram, helix direction', 'CFR matrix, receptor explorer'], receptor_count,
+         [batch, 'GPCRdb numbering' + (' · ' + src['gpcrdb_numbering']['fetched'] if src.get('gpcrdb_numbering', {}).get('fetched') else '')], []),
+        (['Ranking, scaffold, partners and pairs'], [*receptor_count, 'GPCRdb generic numbers only'], map_source,
+         ['Unnumbered residues', 'Mostly loops and termini']),
+        (['Segments and helix magnitude'], receptor_count, ['Same as ranking'], []),
+        (['Activation recovery'], [f"{rec['universe']} structure positions", f"{rec['known']} known",
+                                   f'Numbered in at least half ({(total + 1) // 2}/{total})'], ['Same as ranking'], []),
+        (['Conservation by position'], [f"{cons['n_top'] + cons['n_other']} positions", f'≥{minimum} scored residues/position'],
+         [lab('conservation', 'VarSite via ProtVar'), 'Source-specific mapping (±1 residue/position)'], [f'Fewer than {minimum} scored residues']),
+        (['AlphaMissense comparison', 'Recurrence bands, conservation quintiles'], [f"{am['receptors']} receptors"],
+         [lab('gnomad_batch', 'gnomAD'), _month(src.get('gnomad_batch', {})), 'AlphaMissense'], excluded_am),
+        (['Variants per top-ranked position'], [f"{v_n if v_n is not None else len(gids) - len(v_none)} receptors"],
+         [lab('gnomad', 'gnomAD'), lab('clinvar', 'ClinVar'), 'AlphaMissense'],
+         [', '.join(labels[g] for g in v_none), 'No protein-coding missense records'] if v_none else []),
+    ]
+    return rows, [(g, labels[g]) for g in v_none], display
 
 
 def _month(source):
@@ -460,8 +487,8 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
     clinvar = src.get('clinvar', {}).get('label', 'ClinVar')
     conservation_label = src.get('conservation', {}).get('label', 'conservation')
 
-    coverage_rows, variants_none = _coverage_rows(store, payloads, am, cfr_var, src, total, rrcs_label,
-                                                  numbering_label)
+    coverage_rows, variants_none, coverage_display = _coverage_rows(
+        store, payloads, am, cfr_var, src, total, rrcs_label, numbering_label)
     _write_text(stats_dir / 'coverage.csv', class_results.coverage_csv(coverage_rows))
 
     sc = payloads.get('class_scale') or {}
@@ -650,9 +677,10 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
         am_receptors=am_receptors,
         am_allele_set=batch_gnomad,
         am_month=month,
-        coverage_rows=coverage_rows,
+        coverage_display=coverage_display,
         reference=[dict(zip(pos.get('reference_columns', []), r)) for r in pos.get('reference', [])],
-        reference_source=pos.get('reference_source', ''),
+        reference_source=pos.get('reference_source', '').partition(', plus ')[0],
+        reference_additions=pos.get('reference_source', '').partition(', plus ')[2].replace(' and ', ', ').split(', '),
         family_tests=family_tests,
         exclusions=exclusions,
         kruskal=kruskal,
