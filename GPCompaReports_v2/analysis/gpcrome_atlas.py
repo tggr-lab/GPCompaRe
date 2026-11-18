@@ -471,14 +471,12 @@ def build(stage, batch, models, out):
 
     sim_all = unit(pf) @ unit(pf).T
     specs = [
-        ('pattern', 'Contact pattern', 'Which contacts change between the two models, and in which direction, '
-         'over the whole receptor.', pf, None),
-        ('inner', 'Intracellular side', 'The same measure, restricted to contacts on the intracellular half '
-         'of the helices, the intracellular loops and helix 8.', pf[:, k_in], np.nonzero(k_in)[0]),
-        ('outer', 'Extracellular side', 'The same measure, restricted to contacts on the extracellular half '
-         'of the helices and the extracellular loops.', pf[:, k_out], np.nonzero(k_out)[0]),
-        ('sequence', 'Sequence', 'Residue identity over the GPCRdb generic positions both receptors have.',
-         None, None),
+        ('pattern', 'Contact pattern', 'Direction of contact changes across the receptor', pf, None),
+        ('inner', 'Intracellular contacts', 'Contact changes in intracellular helix halves, loops and helix 8',
+         pf[:, k_in], np.nonzero(k_in)[0]),
+        ('outer', 'Extracellular contacts', 'Contact changes in extracellular helix halves and loops',
+         pf[:, k_out], np.nonzero(k_out)[0]),
+        ('sequence', 'Sequence', 'Residue identity at shared GPCRdb generic positions', None, None),
     ]
     rules = []
     for rid, label, desc, x, kmap in specs:

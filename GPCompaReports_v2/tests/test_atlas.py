@@ -70,7 +70,8 @@ def test_the_atlas_is_marked_as_a_preview_in_the_nav_and_on_the_page():
     assert '.nav-pill' in (STATIC / 'css' / 'site.css').read_text(encoding='utf-8')
     html = _render()
     assert '<span class="atlas-pill">Preview</span>' in html
-    assert 'The Atlas is an experimental preview. Views and measures may change.' in html
+    atlas = html.split('<section class="atlas"', 1)[1].split('</aside>', 1)[0]
+    assert atlas.lower().count('preview') == 1
 
 
 def test_atlas_page_renders_with_its_nav_link_active_and_no_other():
@@ -164,13 +165,13 @@ def test_the_page_has_the_grouping_controls_and_the_tree_layout():
     html = _render()
     for needle in ('data-view="tree"', 'id="atlas-rule"', 'id="atlas-k"', 'min="4" max="40"', 'value="12"',
                    '<option value="group">', 'data-rules="atlas/rules.json"', 'href="atlas/sequence_tree.txt"',
-                   'Download tree (Newick)'):
+                   'Download Newick'):
         assert needle in html, needle
     js = (STATIC / 'js' / 'atlas' / 'atlas.js').read_text(encoding='utf-8')
     # the contact-rule trees are similarity trees, never a phylogeny; groups stay browsing aids
-    assert 'Similarity tree (hierarchical clustering)' in js and 'not a phylogeny' in js
-    assert 'maximum likelihood' in js
-    assert 'a browsing aid, not a classification' in js
+    assert 'similarity tree (hierarchical clustering), not a phylogeny' in html
+    assert 'Maximum-likelihood sequence tree' in js
+    assert 'Browsing aid, not a classification' in js
     assert not re.search(r'evolutionary tree', ' '.join([html, js]), re.I)
 
 

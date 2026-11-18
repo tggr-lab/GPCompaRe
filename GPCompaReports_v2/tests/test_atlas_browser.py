@@ -53,7 +53,9 @@ def test_rules_load_after_first_paint_and_the_slider_cuts_the_tree(atlas):
     page.wait_for_function("window.__atlas.rulesState === 'ready'", timeout=20000)
     s = _state(page)
     assert (s['rule'], s['k'], s['groups']) == ('pattern', 12, 12)
-    assert page.locator('#atlas-rule option').count() == 4
+    assert page.locator('#atlas-rule option').all_text_contents() == [
+        'Contact pattern', 'Intracellular contacts', 'Extracellular contacts', 'Sequence',
+    ]
     for k in (6, 30, 4, 40):
         page.locator('#atlas-k').fill(str(k))
         page.locator('#atlas-k').dispatch_event('input')
@@ -69,16 +71,16 @@ def test_rule_tree_and_neighbors_follow_the_rule(atlas):
     page.wait_for_function('window.__atlas.sel >= 0')
     s = _state(page)
     assert (s['rule'], s['k'], s['groups']) == ('sequence', 8, 8)
-    assert 'maximum likelihood' in page.locator('#atlas-caption').inner_text()
+    assert page.locator('#atlas-rule-note').inner_text() == 'Maximum-likelihood sequence tree'
     assert page.locator('#atlas-newick').is_visible()
     assert page.locator('#atlas-sim-rule').inner_text() == 'Rule: Sequence.'
     assert page.locator('#atlas-panel-similar li').count() == 8
     assert page.locator('#atlas-panel-similar .sm-chip').count() == 0          # no contact pairs for sequence
     page.select_option('#atlas-rule', 'inner')
     page.wait_for_function("window.__atlas.rule === 'inner'")
-    assert 'not a phylogeny' in page.locator('#atlas-caption').inner_text()
+    assert page.locator('#atlas-rule-note').inner_text() == 'Browsing aid, not a classification'
     assert not page.locator('#atlas-newick').is_visible()
-    assert page.locator('#atlas-sim-rule').inner_text() == 'Rule: Intracellular side.'
+    assert page.locator('#atlas-sim-rule').inner_text() == 'Rule: Intracellular contacts.'
     assert page.locator('#atlas-panel-similar .sm-chip').count() > 0
     assert page.errors == []
 
@@ -88,9 +90,13 @@ def test_preview_pill_and_controls_fit_a_phone(atlas):
     page = atlas('#view=similarity', viewport=PHONE_390, scheme='dark')
     page.wait_for_function("window.__atlas.rulesState === 'ready'", timeout=20000)
     assert page.locator('.atlas-pill').is_visible()
+    note = page.locator('#atlas-rule-note')
+    assert note.is_visible() and note.inner_text() == 'Browsing aid, not a classification'
     width = page.evaluate('() => document.documentElement.scrollWidth')
     assert width <= 390
-    assert page.locator('#atlas-k').is_visible()
+    slider = page.locator('#atlas-k').bounding_box()
+    count = page.locator('#atlas-k-out').bounding_box()
+    assert slider and count and count['y'] <= slider['y'] + slider['height'] / 2 <= count['y'] + count['height']
     assert page.errors == []
 
 

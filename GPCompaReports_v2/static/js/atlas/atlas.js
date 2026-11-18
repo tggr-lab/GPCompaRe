@@ -18,7 +18,6 @@
   var COLORS = ['activation', 'ligand', 'group', 'cons', 'am', 'share'];
   var K_MIN = 4, K_MAX = 40, K_DEFAULT = 12;
   var FONT = (getComputedStyle(document.body).fontFamily || 'system-ui, sans-serif');
-  var SERIF = (getComputedStyle(root).getPropertyValue('--font-serif') || 'Georgia, serif').trim();
 
   var st = {
     data: null, P: null, n: 0, m: 0,
@@ -69,17 +68,7 @@
     viewKey = viewKey || st.view;
     var round = viewKey === 'families' || viewKey === 'similarity' || viewKey === 'tree';
     var r = stage.getBoundingClientRect(), ins = { l: 16, r: 16, t: 16, b: 16 };
-    var top = root.querySelector('.atlas-top');
-    if (top) {
-      var cards = top.children, mb = 0;
-      for (var i = 0; i < cards.length; i++) {
-        var cr = cards[i].getBoundingClientRect();
-        var central = !round || (cr.right > r.left + r.width * 0.3 && cr.left < r.left + r.width * 0.7);
-        if (cr.height && central) mb = Math.max(mb, cr.bottom - r.top);
-      }
-      if (st.W < 700) mb = Math.max(mb, top.getBoundingClientRect().bottom - r.top);
-      ins.t = mb + 12;
-    }
+    ins.t = root.querySelector('.atlas-top').getBoundingClientRect().bottom - r.top + 12;
     var lens = $('atlas-lens').getBoundingClientRect();
     ins.b = r.bottom - lens.top + 12;
     if (st.W < 700 && legendEl.offsetHeight) ins.b = Math.max(ins.b, r.bottom - legendEl.getBoundingClientRect().top + 8);
@@ -106,10 +95,8 @@
       var b = el.getBoundingClientRect();
       obs.push([b.left - r.left, b.top - r.top, b.right - r.left, b.bottom - r.top]);
     }
-    Array.prototype.forEach.call(root.querySelectorAll('.atlas-top > .atlas-card'), add);
+    add(root.querySelector('.atlas-top'));
     add(legendEl); add(root.querySelector('.atlas-zoom'));
-    var hd = $('atlas-hint');
-    if (hd.classList.contains('is-docked') && !hd.classList.contains('is-leaving')) add(hd);
     if (panelOpen()) add(panel);
     var x0 = 6, x1 = st.W - 6, y0 = 6, y1 = $('atlas-lens').getBoundingClientRect().top - r.top - 6;
     function radius(cx, cy) {
@@ -127,7 +114,9 @@
         var cx = pass ? bx + (i - nx / 2) * stepX : x0 + i * stepX;
         var cy = pass ? by + (j - ny / 2) * stepY : y0 + j * stepY;
         var rr = radius(cx, cy);
-        if (rr > best.r) best = { r: rr, x: cx, y: cy };
+        if (rr > best.r || (rr === best.r && Math.abs(cx - st.W / 2) < Math.abs(best.x - st.W / 2))) {
+          best = { r: rr, x: cx, y: cy };
+        }
       }
       stepX /= 4; stepY /= 4;
     }
@@ -258,14 +247,16 @@
     opts = opts || {};
     if (VIEWS.indexOf(view) < 0) view = 'families';
     if (view === 'tree' && !st.layouts.tree) {
-      $('atlas-caption').textContent = 'Loading the trees';
-      loadRules().then(function(ok) { if (ok && st.layouts.tree) setView('tree', opts); });
+      $('atlas-view-status').textContent = 'Loading trees';
+      loadRules().then(function(ok) {
+        if (ok && st.layouts.tree) setView('tree', opts);
+        else $('atlas-view-status').textContent = 'Trees unavailable';
+      });
       return;
     }
     var prev = st.view;
     st.view = view;
     syncViewUI();
-    if (view !== 'families' && !$('atlas-hint').hidden) dockHint();
     positionOverlays();
     if (view === 'ranked') st.layouts.ranked = A.layoutRanked(st.data, st.metric, freeAspect());
     var L = st.layouts[view], n = st.n, ord = glyphOrder(L);
@@ -387,7 +378,7 @@
       return true;
     }).catch(function(err) {
       st.rulesState = 'failed';
-      $('atlas-rule-desc').textContent = 'The grouping rules could not be loaded; the map shows the contact-pattern layout.';
+      syncRuleUI();
       if (window.console) console.error(err);
       return false;
     });
@@ -428,9 +419,17 @@
     $('atlas-rule').value = st.rule;
     $('atlas-k').value = String(st.k);
     $('atlas-k-out').textContent = String(st.k);
-    if (st.rulesState !== 'failed') $('atlas-rule-desc').textContent = r && r.description ? r.description : '';
-    $('atlas-caption').textContent = caption();
-    $('atlas-newick').hidden = !(st.view === 'tree' && st.rule === 'sequence');
+    var sequenceTree = st.view === 'tree' && st.rule === 'sequence';
+    var note = '';
+    if (sequenceTree) {
+      note = /^Neighbor-joining/i.test(r.treeMethod) ? 'Neighbor-joining sequence tree' : 'Maximum-likelihood sequence tree';
+    } else if (st.view === 'similarity' || st.view === 'tree') {
+      note = 'Browsing aid, not a classification';
+    }
+    $('atlas-rule-note').textContent = note;
+    $('atlas-rule-summary').textContent = r ? r.description : '';
+    $('atlas-view-status').textContent = show && st.rulesState === 'failed' ? 'Contact pattern only' : '';
+    $('atlas-newick').hidden = !sequenceTree;
     st.legendKey = '';
   }
 
@@ -539,66 +538,12 @@
     }
     var placed = [];
     if (st.decoA.similarity > 0.004 && st.cut && st.layouts.similarity.rule === st.rule) drawGroupLabels(st.decoA.similarity, placed);
+    st.uiRects = null;
     if (st.decoA.tree > 0.004 && st.cut && st.layouts.tree) drawTreeLabels(st.decoA.tree);
     drawGlyphLabels(placed);
     if (st.decoA.fingerprints > 0.004) drawHeatOverlay(st.decoA.fingerprints);
     if (st.decoA.families > 0.004) drawFamiliesLabels(st.decoA.families);
     if (!st.trans) maybeLegend();
-    placeHint();
-  }
-
-  // The first-visit hint sits in the empty middle of the wheel, under the center caption, and only
-  // while the Families view is shown; any interaction dismisses it.
-  var hintPos = '';
-  // Where the wheel's middle is too small for it, the hint is docked into the controls instead, so it
-  // never covers the map.
-  function dockHint() {
-    var hint = $('atlas-hint');
-    if (hint.classList.contains('is-docked')) return;
-    hint.classList.add('is-docked');
-    hint.style.left = hint.style.top = hint.style.width = ''; hint.style.visibility = '';
-    var host = st.W < 700 ? root.querySelector('.atlas-top') : root.querySelector('.atlas-brand');
-    host.appendChild(hint);
-  }
-
-  function placeHint() {
-    var hint = $('atlas-hint');
-    if (hint.hidden || hint.classList.contains('is-docked')) return;
-    if (st.view !== 'families' || st.decoA.families < 0.5 || st.trans) { hint.style.visibility = 'hidden'; hintPos = ''; return; }
-    var L = st.layouts.families, k = st.cam.k, cx = sx(0), cy = sy(0);
-    var key = Math.round(cx) + ',' + Math.round(cy) + ',' + k.toFixed(3);
-    if (key === hintPos) return;
-    hintPos = key;
-    var ri = (L.R0 - 2.4) * k - 8, boxes = (st.glBoxes || []).slice();
-    if (st.capBox) boxes.push(st.capBox);
-    function fits(x0, y0, x1, y1) {
-      var corners = [[x0, y0], [x1, y0], [x0, y1], [x1, y1]];
-      for (var c = 0; c < 4; c++) if (Math.hypot(corners[c][0] - cx, corners[c][1] - cy) > ri) return false;
-      for (var q = 0; q < boxes.length; q++) {
-        var b2 = boxes[q];
-        if (x0 < b2[2] + 4 && x1 > b2[0] - 4 && y0 < b2[3] + 4 && y1 > b2[1] - 4) return false;
-      }
-      return true;
-    }
-    var widths = [280, 240, 200], found = null;
-    for (var wi = 0; wi < widths.length && !found; wi++) {
-      var w = widths[wi];
-      hint.style.width = w + 'px';
-      var h = hint.offsetHeight;
-      var tops = st.capBox ? [st.capBox[3] + 8, st.capBox[1] - 8 - h] : [cy - h / 2, cy + 10, cy - h - 10];
-      for (var t = 0; t < tops.length; t++) {
-        if (fits(cx - w / 2, tops[t], cx + w / 2, tops[t] + h)) { found = { w: w, top: tops[t] }; break; }
-      }
-    }
-    if (!found) {
-      dockHint();
-      if (!st.userMoved && st.sel < 0) fit(700);
-      return;
-    }
-    hint.style.width = found.w + 'px';
-    hint.style.left = Math.round(cx) + 'px';
-    hint.style.top = Math.round(found.top) + 'px';
-    hint.style.visibility = '';
   }
 
   function groupText(g) { return st.groupText[g]; }
@@ -634,6 +579,19 @@
     // the names already placed (larger groups first): it starts just inside its arc and moves along
     // the arc and inward toward the center until nothing is under it; if no spot is free it is left out.
     var fs = A.clamp(11 + (k - 5) * 0.25, 11, 15), placed = [];
+    // Reserve the wheel center before placing the ligand group labels.
+    ctx.font = '600 12px ' + FONT;
+    var lines = ['GPCRdb families by ligand type'], inner = (L.R0 - 2.4) * k;
+    if (ctx.measureText(lines[0]).width > inner) lines = ['GPCRdb families', 'by ligand type'];
+    var halfWidth = ctx.measureText(lines[0]).width / 2 + 4, halfHeight = lines.length * 8;
+    if (Math.hypot(halfWidth, halfHeight) < inner) {
+      placed.push([cx - halfWidth, cy - halfHeight, cx + halfWidth, cy + halfHeight]);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = P.fgCss;
+      lines.forEach(function(line, i) { ctx.fillText(line, cx, cy - halfHeight + 8 + i * 16); });
+    }
     var order = L.deco.groups.slice().sort(function(a, b) { return b.n - a.n; });
     function clearOfGlyphs(bx) {
       for (var i = 0; i < st.n; i++) {
@@ -672,21 +630,6 @@
       ctx.globalAlpha = alpha * 0.9;
       A.haloText(ctx, g.n + ' receptors', spot.x, spot.y + fs * 0.7, P, P.mutedCss);
     });
-    st.glBoxes = placed; st.capBox = null;
-    // center caption
-    var R0px = L.R0 * k;
-    if (R0px > 170 && cx > -R0px && cx < W + R0px && cy > -R0px && cy < H + R0px) {
-      ctx.globalAlpha = alpha * A.clamp((R0px - 170) / 60, 0, 1);
-      ctx.textAlign = 'center';
-      ctx.font = '600 ' + A.clamp(R0px * 0.11, 22, 40) + 'px ' + SERIF;
-      ctx.fillStyle = P.fgCss;
-      ctx.fillText(String(st.n), cx, cy - 12);
-      ctx.font = '12px ' + FONT;
-      ctx.fillStyle = P.mutedCss;
-      ctx.fillText('human Class A GPCRs', cx, cy + 16);
-      ctx.fillText('GPCRdb families, by ligand type', cx, cy + 33);
-      st.capBox = [cx - 105, cy - 40, cx + 105, cy + 40];
-    }
     // family names, radial, once there is room
     var fa = alpha * A.clamp((k - 8) / 3, 0, 1);
     if (fa > 0.01) {
@@ -1132,17 +1075,16 @@
     c2.restore();
   }
 
-  // the floating cards and the lens bar as rectangles in stage coordinates (cached briefly)
+  // the floating cards and the lens bar as rectangles in stage coordinates (cached for this draw)
   function uiRects() {
-    var now = performance.now();
-    if (st.uiRects && now - st.uiRectsT < 300) return st.uiRects;
+    if (st.uiRects) return st.uiRects;
     var r = stage.getBoundingClientRect(), out = [];
-    Array.prototype.forEach.call(root.querySelectorAll('.atlas-top > .atlas-card, .atlas-legend, .atlas-zoom, .atlas-lens, .atlas-panel, .atlas-hint'), function(el) {
+    Array.prototype.forEach.call(root.querySelectorAll('.atlas-top, .atlas-legend, .atlas-zoom, .atlas-lens, .atlas-panel'), function(el) {
       if (el.hidden || !el.offsetWidth) return;
       var b = el.getBoundingClientRect();
       out.push([b.left - r.left, b.top - r.top, b.right - r.left, b.bottom - r.top]);
     });
-    st.uiRects = out; st.uiRectsT = now;
+    st.uiRects = out;
     return out;
   }
   function underUI(x, y) {
@@ -1517,7 +1459,6 @@
     function px(e) { return e.clientX - rulerCv.getBoundingClientRect().left; }
     rulerCv.addEventListener('pointerdown', function(e) {
       down = true;
-      dismissHint();
       try { rulerCv.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
       var j = rulerCol(px(e));
       st.lensHover = j; lensChanged();
@@ -1547,12 +1488,10 @@
       else if (e.key === 'Escape') j = -1;
       else return;
       e.preventDefault(); e.stopPropagation();
-      dismissHint();
       pinLens(j);
     });
     var inp = $('atlas-pos-input');
     function apply() {
-      dismissHint();
       var t = inp.value.trim();
       if (!t) { pinLens(-1); return; }
       var j = A.parseGn(st.data, t);
@@ -1567,7 +1506,6 @@
     Array.prototype.forEach.call(root.querySelectorAll('.atlas-chip'), function(b) {
       b.addEventListener('click', function() {
         var j = A.parseGn(st.data, b.getAttribute('data-gn'));
-        dismissHint();
         pinLens(st.lensPin === j ? -1 : j);
       });
     });
@@ -1718,11 +1656,11 @@
 
   // ================================================================== selection + panel
 
-  // The panel and the help card sit below the color card on wide screens, so that control stays usable.
+  // The panel and the help card sit below the toolbar on wide screens.
   function positionOverlays() {
     var help = $('atlas-help');
     if (st.W < 700) { panel.style.top = ''; help.style.top = ''; return; }
-    var cc = root.querySelector('.atlas-colorcard').getBoundingClientRect(), r = stage.getBoundingClientRect();
+    var cc = root.querySelector('.atlas-top').getBoundingClientRect(), r = stage.getBoundingClientRect();
     var topPx = Math.round(cc.bottom - r.top + 10), top = topPx + 'px';
     panel.style.top = top; help.style.top = top;
     var lensTop = $('atlas-lens').getBoundingClientRect().top - r.top;
@@ -1746,24 +1684,11 @@
     flyTo({ k: k, x: x - (tx0 - st.W / 2) / k, y: y - (ty0 - st.H / 2) / k });
   }
 
-  function userMoved() { st.userMoved = true; dismissHint(); }
-
-  function dismissHint() {
-    var hint = $('atlas-hint');
-    if (hint.hidden || hint.classList.contains('is-leaving')) return;
-    try { localStorage.setItem('gpcrsynth-atlas-hint', '1'); } catch (e) { /* ignore */ }
-    hint.classList.add('is-leaving');
-    var docked = hint.classList.contains('is-docked');
-    setTimeout(function() {
-      hint.hidden = true;
-      if (docked && !st.userMoved && st.sel < 0 && st.view === 'families') fit(800);
-    }, reduced ? 0 : 400);
-  }
+  function userMoved() { st.userMoved = true; }
 
   function select(i, opts) {
     opts = opts || {};
     st.sel = i;
-    if (i >= 0) dismissHint();
     if (i < 0) { closePanel(); writeHash(); invalidate(); return; }
     openPanel(i);
     // let the panel take its place before the camera computes the free area
@@ -2111,32 +2036,10 @@
 
   // ================================================================== view + color controls
 
-  var CAPTIONS = {
-    families: 'GPCRdb family classification, grouped by ligand type. Not a phylogeny.',
-    similarity: 'Receptors whose residue contacts change alike sit close. A browsing aid, not a classification.',
-    ranked: 'One number per receptor, highest first, read left to right.',
-    fingerprints: 'One row per receptor, one column per generic position.'
-  };
-
-  function caption() {
-    var r = rule(), lbl = r ? r.label.toLowerCase() : 'contact pattern';
-    if (st.view === 'similarity') {
-      return (st.rule === 'sequence' ? 'Placed by sequence identity at the shared generic positions.' :
-              'Placed by ' + lbl + ' similarity.') + ' Lines join mutual nearest neighbors; colors mark groups. A browsing aid, not a classification.';
-    }
-    if (st.view === 'tree') {
-      return st.rule === 'sequence'
-        ? 'Phylogenetic tree of the sequences (maximum likelihood, GPCRdb generic residue positions). Colors: the current groups, a browsing aid, not a classification.'
-        : 'Similarity tree (hierarchical clustering) of the ' + lbl + ' measure, not a phylogeny. Colors: the current groups, a browsing aid, not a classification.';
-    }
-    return CAPTIONS[st.view];
-  }
-
   function syncViewUI() {
     Array.prototype.forEach.call(root.querySelectorAll('.atlas-seg-btn'), function(b) {
       b.setAttribute('aria-pressed', b.getAttribute('data-view') === st.view ? 'true' : 'false');
     });
-    $('atlas-caption').textContent = caption();
     syncRuleUI();
     $('atlas-metric-wrap').hidden = st.view !== 'ranked';
     $('atlas-metric').value = st.metric;
@@ -2187,15 +2090,6 @@
       if (st.lensPin >= 0) { pinLens(-1); return; }
       if (st.sel >= 0) select(-1);
     });
-    var hint = $('atlas-hint'), seen = false;
-    try { seen = localStorage.getItem('gpcrsynth-atlas-hint') === '1'; } catch (e) { seen = false; }
-    if (!seen) {
-      if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) {
-        hint.querySelector('span').textContent = 'Pinch to zoom, drag to move. Touch the bars at the bottom to light up one position. Tap a receptor for details.';
-      }
-      hint.hidden = false;
-    }
-    $('atlas-hint-close').addEventListener('click', dismissHint);
   }
 
   // ================================================================== hash
@@ -2319,7 +2213,7 @@
     // the default rule (contact pattern) ships in index.json; the other rules and every tree load later
     st.rules.pattern = A.prepareRule(D, { id: 'pattern', label: 'Contact pattern', xy: D.receptors.map(function(r) { return r.sim_xy; }),
                                           links: index.links || [], similar: D.receptors.map(function(r) { return r.similar || []; }) });
-    st.rules.pattern.description = 'Which contacts change between the two models, and in which direction, over the whole receptor.';
+    st.rules.pattern.description = 'Direction of contact changes across the receptor';
     st.layouts.similarity = ruleSimilarity('pattern');
     st.layouts.ranked = A.layoutRanked(D, st.metric);
     var fp = A.layoutFingerprints(D);
@@ -2341,11 +2235,6 @@
     st.cam.x = f.x; st.cam.y = f.y; st.cam.k = f.k;
     initControls(); initRuler(); initPointer(); initPanel(); initSearch();
     st.meanS = 0; maybeLegend();
-    var hintEl = $('atlas-hint');
-    if (!hintEl.hidden) {
-      var fc = fitCircle(st.layouts.families);
-      if ((st.layouts.families.R0 - 2.4) * fc.k < 215 || VIEWS.indexOf(readHash().view) > 0) dockHint();
-    }
     var hh = readHash();
     var needRules = hh.view === 'tree' || (hh.rule && hh.rule !== 'pattern') || hh.color === 'group' || hh.k;
     if (needRules) loadRules().then(function() { applyHash(true); });

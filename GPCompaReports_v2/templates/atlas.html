@@ -23,10 +23,8 @@
     <div class="atlas-loading" id="atlas-loading" role="status">Loading {{ total_gpcrs }} receptors</div>
 
     <div class="atlas-top">
-      <div class="atlas-card atlas-brand">
+      <div class="atlas-brand">
         <h1 class="atlas-title" id="atlas-title">GPCRome Atlas <span class="atlas-pill">Preview</span></h1>
-        <p class="atlas-sub">{{ total_gpcrs }} human Class A GPCRs, inactive to active</p>
-        <p class="atlas-preview">The Atlas is an experimental preview. Views and measures may change.</p>
         <div class="atlas-search" role="search">
           <label class="atlas-sr" for="atlas-search-input">Find a receptor</label>
           <input type="search" id="atlas-search-input" class="atlas-input" placeholder="Find a receptor" autocomplete="off" spellcheck="false" autocapitalize="off"
@@ -35,28 +33,33 @@
         </div>
       </div>
 
-      <div class="atlas-card atlas-views">
+      <div class="atlas-views">
         <div class="atlas-seg" role="group" aria-label="Layout">
-          <button type="button" class="atlas-seg-btn" data-view="families" aria-pressed="true">Families</button>
+          <button type="button" class="atlas-seg-btn" data-view="families" aria-describedby="atlas-family-label" aria-pressed="true">Families</button>
           <button type="button" class="atlas-seg-btn" data-view="similarity" aria-pressed="false">Similarity</button>
           <button type="button" class="atlas-seg-btn" data-view="tree" id="atlas-tree-btn" aria-pressed="false">Tree</button>
           <button type="button" class="atlas-seg-btn" data-view="ranked" aria-pressed="false">Ranked</button>
-          <button type="button" class="atlas-seg-btn" data-view="fingerprints" aria-pressed="false">Fingerprints</button>
+          <button type="button" class="atlas-seg-btn" data-view="fingerprints" aria-describedby="atlas-fp-label" aria-pressed="false">Fingerprints</button>
         </div>
-        <p class="atlas-caption" id="atlas-caption" aria-live="polite"></p>
+        <span class="atlas-sr" id="atlas-family-label">GPCRdb families by ligand type</span>
+        <span class="atlas-sr" id="atlas-fp-label">Rows are receptors. Columns are generic positions.</span>
         <div class="atlas-rule" id="atlas-rule-wrap" hidden>
           <div class="atlas-rule-row">
-            <label class="atlas-rule-label" for="atlas-rule">Group by</label>
-            <select id="atlas-rule" class="atlas-select" aria-describedby="atlas-rule-desc">
+            <label class="atlas-rule-label" for="atlas-rule">Similarity by</label>
+            <select id="atlas-rule" class="atlas-select" aria-describedby="atlas-rule-summary">
               <option value="pattern">Contact pattern</option>
             </select>
-            <label class="atlas-rule-label" for="atlas-k">Groups</label>
-            <input type="range" id="atlas-k" class="atlas-k" min="4" max="40" step="1" value="12" disabled>
-            <output id="atlas-k-out" for="atlas-k" class="atlas-k-out">12</output>
+            <span class="atlas-sr" id="atlas-rule-summary"></span>
+            <div class="atlas-groups-control">
+              <label class="atlas-rule-label" for="atlas-k">Groups</label>
+              <input type="range" id="atlas-k" class="atlas-k" min="4" max="40" step="1" value="12" disabled>
+              <output id="atlas-k-out" for="atlas-k" class="atlas-k-out">12</output>
+            </div>
           </div>
-          <p class="atlas-rule-desc" id="atlas-rule-desc"></p>
-          <a class="atlas-newick" id="atlas-newick" href="{{ static_prefix }}atlas/sequence_tree.txt" download="gpcrome_sequence_tree.nwk" hidden>Download tree (Newick)</a>
+          <span class="atlas-view-note" id="atlas-rule-note" aria-live="polite"></span>
+          <a class="atlas-newick" id="atlas-newick" href="{{ static_prefix }}atlas/sequence_tree.txt" download="gpcrome_sequence_tree.nwk" hidden>Download Newick</a>
         </div>
+        <div class="atlas-view-status" id="atlas-view-status" role="status"></div>
         <label class="atlas-metric" id="atlas-metric-wrap" hidden>
           <span>Sort by</span>
           <select id="atlas-metric" class="atlas-select">
@@ -65,10 +68,11 @@
             <option value="tm6_shift">TM6 displacement</option>
             <option value="sum_abs_above">Total change</option>
           </select>
+          <span>Highest first &rarr;</span>
         </label>
       </div>
 
-      <div class="atlas-card atlas-colorcard">
+      <div class="atlas-colorcard">
         <label class="atlas-colorby">
           <span>Color by</span>
           <select id="atlas-color" class="atlas-select">
@@ -96,13 +100,7 @@
       <p><strong>Models.</strong> Each receptor has one predicted active model and one predicted inactive model from GPCRdb. The values describe these models, not measured structures.</p>
       <p><strong>Layouts.</strong> Families follows GPCRdb's family classification, grouped by ligand type; it is not a phylogeny. Similarity places receptors that are alike under the chosen rule near each other, and Tree shows that rule's similarity tree; both are browsing aids, not classifications. Ranked sorts receptors by one number. Fingerprints shows every receptor's net &Delta;RRCS at each of the <span id="atlas-help-npos">298</span> generic positions shared by at least a quarter of the receptors.</p>
       <p><strong>Similarity and groups.</strong> Contact-pattern similarity compares which residue contacts change between the two models, and in which direction, for every pair of generic positions (1 = the same contacts change the same way, 0 = unrelated). The intracellular and extracellular rules use only the contacts on that side; the sequence rule uses residue identity at the shared generic positions. Each rule has its own map, links, nearest neighbors and similarity tree, and the Groups slider cuts that tree into groups: a browsing aid, not a classification. Under the sequence rule the Tree layout shows a phylogenetic tree (maximum likelihood, FastTree, over the GPCRdb generic residue positions), downloadable in Newick format; under the contact rules it shows a similarity tree (hierarchical clustering), not a phylogeny.</p>
-      <p><strong>Preview.</strong> The Atlas is an experimental preview. Views and measures may change.</p>
       <p><strong>Position lens.</strong> The bars under the map count, for each generic position, the receptors with an above-threshold contact change there: up (red) when the residue's net change is stronger in the active model, down (blue) when stronger in the inactive model. Hover or drag along it to color every receptor by that one position; click to keep it.</p>
-    </div>
-
-    <div class="atlas-hint" id="atlas-hint" hidden>
-      <span>Scroll to zoom, drag to move. Hover the bars at the bottom to light up one position. Click a receptor for details.</span>
-      <button type="button" class="atlas-icon-btn" id="atlas-hint-close" aria-label="Dismiss hint">&times;</button>
     </div>
 
     <div class="atlas-zoom atlas-card" role="group" aria-label="Zoom">
