@@ -1,0 +1,3 @@
+group,scored,decisive,predicted_pathogenic,ambiguous,predicted_benign,pct_predicted_pathogenic_of_decisive,pct_predicted_pathogenic_of_scored,pct_ambiguous_of_scored,pct_predicted_benign_of_scored
+Top 50 positions by CFR score,7268,6155,4117,1113,2038,66.8887,56.64556962025316,15.313703907539901,28.040726472206934
+Other generic-numbered positions,11040,9369,4085,1671,5284,43.6012,37.0018115942029,15.13586956521739,47.86231884057971

@@ -229,94 +229,51 @@ async src="//gc.zgo.at/count.js"></script>
 <main id="main">
 
 <div class="stats" id="top" data-plotly-on-demand>
-<script type="application/json" id="stats-config">{"urls":{"class_scale":"data/stats/class_scale.json","helix_pairs":"data/stats/helix_pairs.json","helix_pair_cells":"data/stats/helix_pair_cells.json","helix_receptor_cells":"data/stats/helix_receptor_cells.json","class_positions":"data/stats/class_positions.json","cfr_atlas":"data/stats/cfr_atlas.json","class_variants":"data/stats/class_variants.json","cfr_variants":"data/stats/cfr_variants.json","receptors":"data/stats/receptors.json","atlas_map":"data/stats/atlas_map.json"},"stats_dir":"data/stats","top_n":50,"n_receptors":283,"cards":{"chart-thresholds":{"export":"thresholds","csv":"data/stats/thresholds.csv"},"chart-histogram":{"export":"histogram","csv":"data/stats/histogram.csv"},"chart-helix-pairs":{"export":"helix-pairs","csv":"data/stats/helix_pairs.csv"},"chart-segments":{"export":"segments","csv":"data/stats/segments.csv"},"chart-scaffold":{"export":"scaffold","csv":"data/stats/scaffold.csv"},"chart-ranking":{"export":"ranking","csv":"data/stats/ranking_368.csv"},"chart-recovery":{"export":"recovery","csv":"data/stats/activation_recovery.csv"},"chart-partners":{"export":"partners","csv":"data/stats/partners.csv"},"chart-cfr-atlas":{"export":"cfr-atlas","csv":"data/stats/cfr_atlas.csv"},"chart-pathogenicity":{"export":"pathogenicity","csv":"data/stats/am_comparison.csv"},"chart-am-bands":{"export":"am-bands","csv":"data/stats/am_bands.csv"},"chart-position-conservation":{"export":"position-conservation","csv":"data/stats/position_conservation.csv"},"chart-am-quintiles":{"export":"am-quintiles","csv":"data/stats/am_conservation_fifths.csv"},"chart-cfr-variants":{"export":"cfr-variants","csv":"data/stats/cfr_variants.csv"},"chart-receptors":{"export":"receptors","csv":"data/stats/receptors.csv"}},"csv_extra":{"helix_interfaces":"data/stats/helix_interfaces.csv","pairs":"data/stats/pairs.csv"},"labels":{"site_gnomad":"gnomAD v4.1.2","variants_none_gids":["npy6r_human","taar3_human"],"scope_maps":"RRCS batch 2026-02-02; GPCRdb residue maps fetched 2026-08-12 (GPR4: own entry, 2026-10-18)."}}</script>
-<div class="stats-wrap">
-<aside class="stats-rail" aria-label="On this page">
-<nav><ol class="rail-list">
-<li><a href="#sec-scale" data-rail="sec-scale"><i aria-hidden="true">1</i>What changes</a></li><li><a href="#sec-a" data-rail="sec-a"><i aria-hidden="true">2</i>Where in the bundle</a></li><li><a href="#sec-c" data-rail="sec-c"><i aria-hidden="true">3</i>Which positions</a></li><li><a href="#sec-d" data-rail="sec-d"><i aria-hidden="true">4</i>Variants</a></li><li><a href="#sec-e" data-rail="sec-e"><i aria-hidden="true">5</i>Receptors and families</a></li><li><a href="#sec-methods" data-rail="sec-methods"><i aria-hidden="true">•</i>Methods and downloads</a></li>
-</ol></nav>
-<div class="sel-slot" data-sel-slot="rail"></div>
-</aside>
-
+<script type="application/json" id="stats-config">{"urls":{"class_scale":"data/stats/class_scale.json","helix_pairs":"data/stats/helix_pairs.json","helix_pair_cells":"data/stats/helix_pair_cells.json","helix_receptor_cells":"data/stats/helix_receptor_cells.json","class_positions":"data/stats/class_positions.json","cfr_atlas":"data/stats/cfr_atlas.json","class_variants":"data/stats/class_variants.json","cfr_variants":"data/stats/cfr_variants.json","receptors":"data/stats/receptors.json"},"stats_dir":"data/stats","top_n":50,"n_receptors":283,"cards":{"chart-thresholds":{"title":"Thresholds by receptor","scope":"283 receptors","units":"|ΔRRCS| and pairs per 100","source":"RRCS batch 2026-02-02","export":"thresholds","csv":"data/stats/thresholds.csv"},"chart-histogram":{"title":"ΔRRCS of every contact pair","scope":"213,456 pairs, 283 receptors","units":"ΔRRCS and contact-pair counts","source":"RRCS batch 2026-02-02","export":"histogram","csv":"data/stats/histogram.csv"},"chart-helix-pairs":{"title":"Helix-pair contacts","scope":"283 receptors","units":"mean net ΔRRCS per receptor","source":"RRCS batch 2026-02-02 · GPCRdb numbering fetched 2026-10-18","export":"helix-pairs","csv":"data/stats/helix_pairs.csv"},"chart-segments":{"title":"Change per contact, by segment","scope":"283 receptors","units":"mean |ΔRRCS| per contact endpoint","source":"RRCS batch 2026-02-02 · GPCRdb residue maps fetched 2026-08-12 (GPR4: own entry, 2026-10-18)","export":"segments","csv":"data/stats/segments.csv"},"chart-scaffold":{"title":"CFR recurrence on the ADRB2 scaffold","scope":"283 receptors","units":"receptors per generic position","source":"GPCRdb ADRB2 snake plot · RRCS batch 2026-02-02 · GPCRdb residue maps fetched 2026-08-12 (GPR4: own entry, 2026-10-18)","export":"scaffold","csv":"data/stats/scaffold.csv"},"chart-ranking":{"title":"The 50 top-ranked positions","scope":"283 receptors, 368 positions","units":"CFR score, receptors and mean |ΔRRCS|","source":"RRCS batch 2026-02-02 · GPCRdb residue maps fetched 2026-08-12 (GPR4: own entry, 2026-10-18)","export":"ranking","csv":"data/stats/ranking_368.csv"},"chart-recovery":{"title":"Activation position recovery","scope":"262 positions, 39 known","units":"known positions per rank","source":"RRCS batch 2026-02-02 · GPCRdb residue maps fetched 2026-08-12 (GPR4: own entry, 2026-10-18)","export":"recovery","csv":"data/stats/activation_recovery.csv"},"chart-partners":{"title":"Position and pair recurrence","scope":"283 receptors, 368 positions, 2,231 distinct pairs","units":"receptor share (%) and distinct partners","source":"RRCS batch 2026-02-02 · GPCRdb residue maps fetched 2026-08-12 (GPR4: own entry, 2026-10-18)","export":"partners","csv":"data/stats/partners.csv"},"chart-cfr-atlas":{"title":"CFRs at the top 50 positions","scope":"283 receptors, 50 positions","units":"CFR presence","source":"RRCS batch 2026-02-02 · GPCRdb numbering fetched 2026-10-18","export":"cfr-atlas","csv":"data/stats/cfr_atlas.csv"},"chart-pathogenicity":{"title":"AlphaMissense predictions by position group","scope":"276 receptors","units":"class % of scored, predicted pathogenic % of decisive","source":"gnomAD v4.1.0 · AlphaMissense","export":"pathogenicity","csv":"data/stats/chart/am_comparison_scored.csv"},"chart-am-bands":{"title":"Predicted pathogenic share by recurrence","scope":"276 receptors, 402 positions","units":"predicted pathogenic % of decisive","source":"gnomAD v4.1.0 · AlphaMissense","export":"am-bands","csv":"data/stats/am_bands.csv"},"chart-position-conservation":{"title":"Conservation at top-ranked and other positions","scope":"352 positions","units":"mean residue conservation (0 to 1)","source":"VarSite conservation via ProtVar","export":"position-conservation","csv":"data/stats/position_conservation.csv"},"chart-am-quintiles":{"title":"Predicted pathogenic share by conservation","scope":"276 receptors, 15,507 decisive calls","units":"predicted pathogenic % of decisive","source":"gnomAD v4.1.0 · AlphaMissense · VarSite conservation via ProtVar","export":"am-quintiles","csv":"data/stats/am_conservation_fifths.csv"},"chart-cfr-variants":{"title":"Variants at each top-ranked position","scope":"281 receptors","units":"substitution count and predicted pathogenic % of decisive","source":"gnomAD v4.1.2 · ClinVar 2026-10-11 · AlphaMissense","export":"cfr-variants","csv":"data/stats/cfr_variants.csv"},"chart-receptors":{"title":"Receptor explorer","scope":"283 receptors","units":"receptor counts and contact metrics","source":"RRCS batch 2026-02-02","export":"receptors","csv":"data/stats/receptors.csv"}},"csv_extra":{"helix_interfaces":"data/stats/helix_interfaces.csv","pairs":"data/stats/pairs.csv"},"labels":{"site_gnomad":"gnomAD v4.1.2","variants_none_gids":["npy6r_human","taar3_human"],"scope_maps":"RRCS batch 2026-02-02 · GPCRdb residue maps fetched 2026-08-12 (GPR4: own entry, 2026-10-18)"}}</script>
 <div class="stats-main">
 <header class="stats-head">
 <h1>Database statistics</h1>
-<p class="stats-lede">How contacts change between the inactive and active models of 283 human Class A GPCRs.</p>
 <p class="stats-census"><a href="#sec-e"><b>283</b> receptors</a><span class="sep" aria-hidden="true"> · </span><a href="#sec-e"><b>60</b> families</a><span class="sep" aria-hidden="true"> · </span><a href="#sec-e"><b>10</b> ligand types</a><span class="sep" aria-hidden="true"> · </span><a href="#sec-scale"><b>213,456</b> contact pairs</a><span class="sep" aria-hidden="true"> · </span><a href="#sec-c"><b>368</b> recurrent positions</a><span class="sep" aria-hidden="true"> · </span><a href="#sec-c"><b>50</b> top-ranked positions</a></p>
-
-<ul class="glance" aria-label="At a glance">
-
-<li><a class="glance-fact glance-scale" href="#sec-scale">
-<span class="glance-big">10.8%</span>
-<span class="glance-line">of contact pairs pass threshold</span>
-<svg class="g-draw" viewBox="0 0 120 10" aria-hidden="true"><rect class="g-track" width="120" height="10" rx="5"/><rect class="g-teal" width="12.9" height="10" rx="5"/></svg>
-</a></li>
-
-<li><a class="glance-fact glance-bundle" href="#sec-a">
-<span class="glance-big">TM3-TM6</span>
-<span class="glance-line">weaker in the active model</span>
-<svg class="g-draw" viewBox="0 0 118 24" aria-hidden="true"><g><title>TM3-TM6: mean net ΔRRCS −5.90</title><rect class="g-down" x="0" y="0" width="56" height="24" rx="5"/><text class="g-cell" x="28" y="16.5" text-anchor="middle">−5.90</text></g><g><title>TM3-TM7: mean net ΔRRCS +4.67</title><rect class="g-up" x="62" y="0" width="56" height="24" rx="5"/><text class="g-cell" x="90" y="16.5" text-anchor="middle">+4.67</text></g></svg>
-</a></li>
-
-<li><a class="glance-fact glance-positions" href="#sec-c">
-<span class="glance-big">274 of 283</span>
-<span class="glance-line">have a CFR at 3.50x50</span>
-<svg class="g-draw" viewBox="0 0 120 10" aria-hidden="true"><rect class="g-track" width="120" height="10" rx="5"/><rect class="g-teal" width="116.2" height="10" rx="5"/></svg>
-</a></li>
-
-<li><a class="glance-fact glance-variants" href="#sec-d">
-<span class="glance-big">66.9% vs 43.6%</span>
-<span class="glance-line">predicted pathogenic, top-ranked vs other</span>
-<svg class="g-draw" viewBox="0 0 120 22" aria-hidden="true"><rect class="g-path" width="80.3" height="8" rx="2"/><rect class="g-path-soft" y="13" width="51.3" height="8" rx="2"/></svg>
-</a></li>
-
-</ul>
-
-<div class="sel-slot" data-sel-slot="main">
+</header>
+<div class="stats-wrap">
+<aside class="stats-rail">
+<nav aria-label="On this page"><ul class="rail-list">
+<li><a href="#sec-scale" data-rail="sec-scale">Contact changes</a></li><li><a href="#sec-a" data-rail="sec-a">Helix contacts</a></li><li><a href="#sec-c" data-rail="sec-c">Recurrent positions</a></li><li><a href="#sec-d" data-rail="sec-d">Variant predictions</a></li><li><a href="#sec-e" data-rail="sec-e">Receptors and families</a></li><li><a href="#sec-methods" data-rail="sec-methods">Methods and data</a></li>
+</ul></nav>
 <div class="sel" id="stats-sel" hidden>
-<label class="sel-label" for="sel-input">Follow a receptor, position or helix pair</label>
+<label class="sel-label" for="sel-input">Highlight across charts</label>
 <div class="sel-field">
 <input id="sel-input" type="text" autocomplete="off" spellcheck="false" role="combobox"
 aria-expanded="false" aria-controls="sel-list" aria-autocomplete="list"
-placeholder="Gene symbol, UniProt name, 6.48x48 or TM3-TM6">
+placeholder="Gene, position or helix pair">
 <ul class="sel-list" id="sel-list" role="listbox" hidden></ul>
 </div>
 <div class="sel-chips" data-sel-chips></div>
-<p class="sel-summary" data-sel-summary aria-live="polite">Nothing selected.</p>
+<p class="sel-summary sr-only" data-sel-summary aria-live="polite">Nothing selected.</p>
 </div>
-</div>
-
-<ol class="stats-toc">
-<li><a href="#sec-scale"><i aria-hidden="true">1</i>What changes</a></li><li><a href="#sec-a"><i aria-hidden="true">2</i>Where in the bundle</a></li><li><a href="#sec-c"><i aria-hidden="true">3</i>Which positions</a></li><li><a href="#sec-d"><i aria-hidden="true">4</i>Variants</a></li><li><a href="#sec-e"><i aria-hidden="true">5</i>Receptors and families</a></li><li><a href="#sec-methods"><i aria-hidden="true">•</i>Methods and downloads</a></li>
-</ol>
-</header>
-
+</aside>
+<div class="stats-sections">
 
 <section class="story" id="sec-scale" aria-labelledby="sec-scale-q">
-<div class="sec-head"><span class="sec-num" aria-hidden="true">1</span>
-<h2 id="sec-scale-q">What changes between the inactive and the active model?</h2>
-<p class="finding"><b>23,025 of 213,456</b> contact pairs (<b>10.8%</b>) pass their receptor's threshold.</p></div>
+<h2 id="sec-scale-q">Contact changes</h2>
 
 <article class="scard" id="card-chart-thresholds" data-card="chart-thresholds" aria-labelledby="chart-thresholds-title">
-<h3 class="scard-title" id="chart-thresholds-title">Each receptor has its own threshold</h3>
-<p class="scard-guide" data-guide>One dot per receptor.</p>
+<h3 class="scard-title" id="chart-thresholds-title">Thresholds by receptor</h3>
 
 <div class="scard-body">
-<div class="schart strip-host" id="chart-thresholds" data-chart="chart-thresholds"><svg class="strip-svg" viewBox="0 0 1080 180" role="img" aria-label="One dot per receptor: its |ΔRRCS| threshold, and its above-threshold pairs per 100 contact pairs" preserveAspectRatio="xMinYMin meet"><g transform="translate(0 0)"><text class="s-title" x="0" y="13">Threshold |ΔRRCS|</text><text class="s-note" x="520.0" y="13" text-anchor="end">range 1.23 to 3.78, median 2.40</text><path class="s-dots" d="M46.2 89.4h0m92.4 0h0m0 6.6h0m6.6-19.8h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-13.2h0m0 6.6h0m6.6-13.2h0m0 6.6h0m0 6.6h0m6.6-13.2h0m0 6.6h0m0 6.6h0m6.6-33h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-33h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-39.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-46.2h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-46.2h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-39.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-66h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-92.4h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-99h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-99h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-99h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-72.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-52.8h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-52.8h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-52.8h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-66h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-66h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-79.2h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-79.2h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-52.8h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-33h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-46.2h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-52.8h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-33h0m6.6-6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-19.8h0m0 6.6h0m0 6.6h0m6.6-13.2h0m0 6.6h0m0 6.6h0m6.6-6.6h0m6.6 0h0m0 6.6h0m6.6-6.6h0m0 6.6h0m6.6-6.6h0m6.6-6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-19.8h0m0 6.6h0m0 6.6h0m13.2-6.6h0m19.8 0h0m19.8 0h0m39.6 0h0" stroke-width="6.0"/><line class="s-median" x1="242.9" x2="242.9" y1="26.0" y2="150.8"/><line class="s-axis" x1="8" x2="512.0" y1="154.8" y2="154.8"/><text class="s-tick" x="8.0" y="169.8" text-anchor="middle">1</text><text class="s-tick" x="92.0" y="169.8" text-anchor="middle">1.5</text><text class="s-tick" x="176.0" y="169.8" text-anchor="middle">2</text><text class="s-tick" x="260.0" y="169.8" text-anchor="middle">2.5</text><text class="s-tick" x="344.0" y="169.8" text-anchor="middle">3</text><text class="s-tick" x="428.0" y="169.8" text-anchor="middle">3.5</text><text class="s-tick" x="512.0" y="169.8" text-anchor="middle">4</text></g><g transform="translate(560 0)"><text class="s-title" x="0" y="13">Above-threshold pairs per 100 pairs</text><text class="s-note" x="520.0" y="13" text-anchor="end">median 10.84 per receptor</text><path class="s-dots" d="M59.4 89.4h0m19.8 0h0m6.6 0h0m33 0h0m6.6 0h0m6.6 0h0m0 6.6h0m13.2-6.6h0m13.2 0h0m0 6.6h0m6.6-13.2h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-13.2h0m0 6.6h0m6.6-6.6h0m0 6.6h0m6.6-6.6h0m0 6.6h0m6.6-6.6h0m0 6.6h0m6.6-13.2h0m0 6.6h0m0 6.6h0m6.6-19.8h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-19.8h0m0 6.6h0m0 6.6h0m6.6-13.2h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-26.4h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-26.4h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-26.4h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-33h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-39.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-59.4h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-59.4h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-46.2h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-52.8h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-52.8h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-39.6h0m0 6.6h0m0 6.6h0m6.6-26.4h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-46.2h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-52.8h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-33h0m0 6.6h0m0 6.6h0m6.6-39.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-59.4h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-46.2h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-52.8h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-59.4h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-66h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-66h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-66h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-59.4h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-39.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-39.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-33h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-33h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-33h0m0 6.6h0m0 6.6h0m6.6-6.6h0m0 6.6h0m6.6-6.6h0m0 6.6h0m6.6-19.8h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-26.4h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m19.8-13.2h0m13.2 0h0m6.6 0h0m13.2 0h0m6.6 0h0" stroke-width="6.0"/><line class="s-median" x1="312.9" x2="312.9" y1="26.0" y2="150.8"/><line class="s-axis" x1="8" x2="512.0" y1="154.8" y2="154.8"/><text class="s-tick" x="8.0" y="169.8" text-anchor="middle">6</text><text class="s-tick" x="71.0" y="169.8" text-anchor="middle">7</text><text class="s-tick" x="134.0" y="169.8" text-anchor="middle">8</text><text class="s-tick" x="197.0" y="169.8" text-anchor="middle">9</text><text class="s-tick" x="260.0" y="169.8" text-anchor="middle">10</text><text class="s-tick" x="323.0" y="169.8" text-anchor="middle">11</text><text class="s-tick" x="386.0" y="169.8" text-anchor="middle">12</text><text class="s-tick" x="449.0" y="169.8" text-anchor="middle">13</text><text class="s-tick" x="512.0" y="169.8" text-anchor="middle">14</text></g></svg></div>
+<div class="schart strip-host" id="chart-thresholds" data-chart="chart-thresholds"><svg class="strip-svg" viewBox="0 0 1080 214" role="img" aria-label="One dot per receptor: its |ΔRRCS| threshold, and its above-threshold pairs per 100 contact pairs" preserveAspectRatio="xMinYMin meet"><g transform="translate(0 0)"><text class="s-title" x="0" y="13">Threshold |ΔRRCS|</text><text class="s-note" x="520.0" y="13" text-anchor="end">● One receptor</text><path class="s-axis" fill="none" d="M46.1 189.8v4H475.7v-4"/><text class="s-note" x="46.1" y="207.8">Min 1.23</text><text class="s-note" x="475.7" y="207.8" text-anchor="end">Max 3.78</text><path class="s-dots" d="M46.2 101.4h0m92.4 0h0m0 6.6h0m6.6-19.8h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-13.2h0m0 6.6h0m6.6-13.2h0m0 6.6h0m0 6.6h0m6.6-13.2h0m0 6.6h0m0 6.6h0m6.6-33h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-33h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-39.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-46.2h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-46.2h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-39.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-66h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-92.4h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-99h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-99h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-99h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-72.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-52.8h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-52.8h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-52.8h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-66h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-66h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-79.2h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-79.2h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-52.8h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-33h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-46.2h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-52.8h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-33h0m6.6-6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-19.8h0m0 6.6h0m0 6.6h0m6.6-13.2h0m0 6.6h0m0 6.6h0m6.6-6.6h0m6.6 0h0m0 6.6h0m6.6-6.6h0m0 6.6h0m6.6-6.6h0m6.6-6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-19.8h0m0 6.6h0m0 6.6h0m13.2-6.6h0m19.8 0h0m19.8 0h0m39.6 0h0" stroke-width="6.0"/><text class="s-note" x="242.9" y="33.0" text-anchor="middle">Median 2.40</text><line class="s-median" x1="242.9" x2="242.9" y1="38.0" y2="162.8"/><line class="s-axis" x1="8" x2="512.0" y1="166.8" y2="166.8"/><text class="s-tick" x="8.0" y="181.8" text-anchor="middle">1</text><text class="s-tick" x="92.0" y="181.8" text-anchor="middle">1.5</text><text class="s-tick" x="176.0" y="181.8" text-anchor="middle">2</text><text class="s-tick" x="260.0" y="181.8" text-anchor="middle">2.5</text><text class="s-tick" x="344.0" y="181.8" text-anchor="middle">3</text><text class="s-tick" x="428.0" y="181.8" text-anchor="middle">3.5</text><text class="s-tick" x="512.0" y="181.8" text-anchor="middle">4</text></g><g transform="translate(560 0)"><text class="s-title" x="0" y="13">Above-threshold pairs per 100 pairs</text><text class="s-note" x="520.0" y="13" text-anchor="end"></text><path class="s-dots" d="M59.4 101.4h0m19.8 0h0m6.6 0h0m33 0h0m6.6 0h0m6.6 0h0m0 6.6h0m13.2-6.6h0m13.2 0h0m0 6.6h0m6.6-13.2h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-13.2h0m0 6.6h0m6.6-6.6h0m0 6.6h0m6.6-6.6h0m0 6.6h0m6.6-6.6h0m0 6.6h0m6.6-13.2h0m0 6.6h0m0 6.6h0m6.6-19.8h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-19.8h0m0 6.6h0m0 6.6h0m6.6-13.2h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-26.4h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-26.4h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-26.4h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-33h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-39.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-59.4h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-59.4h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-46.2h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-52.8h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-52.8h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-39.6h0m0 6.6h0m0 6.6h0m6.6-26.4h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-46.2h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-52.8h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-33h0m0 6.6h0m0 6.6h0m6.6-39.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-59.4h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-46.2h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-52.8h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-59.4h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-66h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-66h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-66h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-59.4h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-39.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-39.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-33h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-33h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-33h0m0 6.6h0m0 6.6h0m6.6-6.6h0m0 6.6h0m6.6-6.6h0m0 6.6h0m6.6-19.8h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m6.6-26.4h0m0 6.6h0m0 6.6h0m0 6.6h0m0 6.6h0m19.8-13.2h0m13.2 0h0m6.6 0h0m13.2 0h0m6.6 0h0" stroke-width="6.0"/><text class="s-note" x="312.9" y="33.0" text-anchor="middle">Median 10.84</text><line class="s-median" x1="312.9" x2="312.9" y1="38.0" y2="162.8"/><line class="s-axis" x1="8" x2="512.0" y1="166.8" y2="166.8"/><text class="s-tick" x="8.0" y="181.8" text-anchor="middle">6</text><text class="s-tick" x="71.0" y="181.8" text-anchor="middle">7</text><text class="s-tick" x="134.0" y="181.8" text-anchor="middle">8</text><text class="s-tick" x="197.0" y="181.8" text-anchor="middle">9</text><text class="s-tick" x="260.0" y="181.8" text-anchor="middle">10</text><text class="s-tick" x="323.0" y="181.8" text-anchor="middle">11</text><text class="s-tick" x="386.0" y="181.8" text-anchor="middle">12</text><text class="s-tick" x="449.0" y="181.8" text-anchor="middle">13</text><text class="s-tick" x="512.0" y="181.8" text-anchor="middle">14</text></g></svg></div>
 <div class="scard-table" hidden></div>
 <aside class="chart-card-side" hidden></aside>
 </div>
 <div class="legend" data-legend></div>
 
-<footer class="scard-foot"><span class="scope" data-scope><b>283 receptors.</b></span><span class="pill" data-pill>Follows receptor</span><span class="foot-sp"></span><span class="foot-tools" data-tools data-table></span></footer>
-<div class="fine-print scard-method" id="chart-thresholds-method" hidden><p>A contact pair is above threshold when its <span class="nw">|ΔRRCS|</span> reaches its receptor's threshold: the mean plus one standard deviation of that receptor's <span class="nw">|ΔRRCS|</span> values. Left: the threshold of each receptor. Right: how many of every 100 contact pairs pass it.</p><p>Per receptor, contact pairs with <span class="nw">|ΔRRCS|</span> at or above mean + SD of <span class="nw">|ΔRRCS|</span> (at least 0.2), the threshold each report uses.</p><p>Above-threshold pairs per 100 pairs: the receptor's above-threshold contact pairs divided by all its contact pairs, times 100.</p><p data-src>Scope: <span data-src-scope>283 receptors</span>. <span data-src-data>RRCS batch 2026-02-02.</span></p></div>
+<footer class="scard-foot"><span class="foot-tools" data-tools data-table></span></footer>
 </article>
 
 <details class="more" id="more-histogram">
 <summary>ΔRRCS of every contact pair</summary>
 <article class="scard" id="card-chart-histogram" data-card="chart-histogram" aria-labelledby="chart-histogram-title">
 <h3 class="scard-title" id="chart-histogram-title">ΔRRCS of every contact pair</h3>
-<p class="scard-guide" data-guide>Each bar counts contact pairs by ΔRRCS (active minus inactive). 111,035 of 213,456 pairs (52.0%) are stronger in the inactive model. 25 pairs beyond ±20 are not drawn.</p>
 
 <div class="scard-body">
 <div class="schart" id="chart-histogram" data-chart="chart-histogram"><p class="nojs-note">Interactive chart (needs JavaScript).</p></div>
@@ -325,21 +282,17 @@ placeholder="Gene symbol, UniProt name, 6.48x48 or TM3-TM6">
 </div>
 <div class="legend" data-legend></div>
 
-<footer class="scard-foot"><span class="scope" data-scope><b>213,456 contact pairs.</b></span><span class="pill" data-pill>Follows receptor</span><span class="foot-sp"></span><span class="foot-tools" data-tools data-table></span></footer>
-<div class="fine-print scard-method" id="chart-histogram-method" hidden><p>ΔRRCS = RRCS in the active model minus RRCS in the inactive model, for every contact pair of every receptor. Bins are 1 unit wide; the y axis is logarithmic.</p><p data-src>Scope: <span data-src-scope>213,456 contact pairs, 283 receptors</span>.</p></div>
+<footer class="scard-foot"><span class="foot-tools" data-tools data-table></span></footer>
 </article>
 </details>
 </section>
 
 
 <section class="story" id="sec-a" aria-labelledby="sec-a-q">
-<div class="sec-head"><span class="sec-num" aria-hidden="true">2</span>
-<h2 id="sec-a-q">Where in the helix bundle does it happen?</h2>
-<p class="finding">TM3-TM6 weaker in <b>210 of 264,</b> TM3-TM7 stronger in <b>208 of 222</b>.</p></div>
+<h2 id="sec-a-q">Helix contacts</h2>
 
 <article class="scard" id="card-chart-helix-pairs" data-card="chart-helix-pairs" aria-labelledby="chart-helix-pairs-title">
-<h3 class="scard-title" id="chart-helix-pairs-title">The helix bundle, seen from the extracellular side</h3>
-<p class="scard-guide" data-guide>Lines join helices with above-threshold contacts. Width: receptors that agree in direction.</p>
+<h3 class="scard-title" id="chart-helix-pairs-title">Helix-pair contacts</h3>
 
 <div class="controls">
 <span class="seg" role="group" aria-label="Mode" data-ctl="mode">
@@ -363,16 +316,14 @@ placeholder="Gene symbol, UniProt name, 6.48x48 or TM3-TM6">
 </div>
 <div class="legend" data-legend></div>
 
-<footer class="scard-foot"><span class="scope" data-scope><b>283 receptors.</b></span><span class="pill" data-pill>Follows receptor and helix pair</span><span class="foot-sp"></span><span class="foot-tools" data-tools data-table></span></footer>
-<div class="fine-print scard-method" id="chart-helix-pairs-method" hidden><p>Each line joins two helices that share above-threshold contacts. Color: mean net ΔRRCS per receptor, <span class="t-up">red</span> stronger in the active model, <span class="t-down">blue</span> stronger in the inactive model. Width: receptors that change in the majority direction. Pairs carried by fewer than 10 receptors are not drawn.</p><p>For each receptor, every contact pair at or above its threshold is assigned to the segment pair of its two residues (GPCRdb segment annotation). Net ΔRRCS per receptor and helix pair is the sum of signed ΔRRCS over those pairs. The line color is the mean of that net over all receptors in the group (receptors without the pair count as 0); the share in agreement is over receptors with the pair. Magnitude mode: mean <span class="nw">|ΔRRCS|</span> per contact over all contacts between two of TM1 to TM7, above-threshold or not, for pairs with at least 50 contacts (H8 pairs not included), on the GPCRdb residue maps fetched 2026-08-12 (GPR4: own entry, 2026-10-18); disc size and the width of the H8 bar: mean <span class="nw">|ΔRRCS|</span> per contact endpoint on the helix, unsigned.</p><p>Grid: each cell shows the mean net ΔRRCS per receptor of the pair (bold) and the share of receptors with the pair whose net has that sign; where cells are small, point at a cell for its values. Blank cells: fewer than 10 receptors carry the pair, and within-helix pairs. Loops and termini appear under All segments.</p><p>A receptor group with fewer than 10 receptors shows how many of its receptors carry each pair, without a class direction; each receptor's own bundle is on its report. The bars beside the bundle count the receptors carrying each pair, split by the sign of their net change. Click a line, a row or a cell for the receptors behind it.</p><p data-src>Scope: <span data-src-scope>283 receptors</span>. <span data-src-data>RRCS batch 2026-02-02; GPCRdb numbering fetched 2026-10-18.</span></p></div>
+<footer class="scard-foot"><span class="foot-tools" data-tools data-table></span></footer>
 </article>
 
 <article class="scard" id="card-chart-segments" data-card="chart-segments" aria-labelledby="chart-segments-title">
 <h3 class="scard-title" id="chart-segments-title">Change per contact, by segment</h3>
-<p class="scard-guide" data-guide></p>
 
 <div class="controls seg-order-row"><span class="seg-order-slot" data-seg-order-slot></span>
-<span class="ctl-note">Segment order for every chart on this page.</span></div>
+</div>
 <div class="scard-body">
 <div class="schart" id="chart-segments" data-chart="chart-segments"><p class="nojs-note">Interactive chart (needs JavaScript).</p></div>
 <div class="scard-table" hidden></div>
@@ -380,29 +331,22 @@ placeholder="Gene symbol, UniProt name, 6.48x48 or TM3-TM6">
 </div>
 <div class="legend" data-legend></div>
 
-<footer class="scard-foot"><span class="scope" data-scope><b>283 receptors.</b></span><span class="pill" data-pill>Follows position and helix pair</span><span class="foot-sp"></span><span class="foot-tools" data-tools data-table></span></footer>
-<div class="fine-print scard-method" id="chart-segments-method" hidden><p>Mean <span class="nw">|ΔRRCS|</span> per contact endpoint, over all contacts with full GPCRdb residue maps. Highest in the bundle: H8 1.21 and TM6 1.13; lowest: TM4 0.74. Loops and termini: 1.06 to 1.23. ICL4 (35 endpoints) is not drawn: fewer than 50.</p><p>Every contact endpoint counts once for the segment of its residue. Unsigned: how much contacts change, not in which direction.</p><p data-src>Scope: <span data-src-scope>283 receptors</span>. <span data-src-data>GPCRdb residue maps fetched 2026-08-12 (GPR4: own entry, 2026-10-18).</span></p></div>
+<footer class="scard-foot"><span class="foot-tools" data-tools data-table></span></footer>
 </article>
 </section>
 
 
 <section class="story" id="sec-c" aria-labelledby="sec-c-q">
-<div class="sec-head"><span class="sec-num" aria-hidden="true">3</span>
-<h2 id="sec-c-q">Which positions change in most receptors?</h2>
-<p class="finding"><b>3.50x50</b> (R of DRY) is a CFR in <b>274 of 283</b> receptors.</p></div>
-
-<details class="fine-print cfr-def"><summary>What are Core Functional Residues (CFRs)?</summary>
-<ul class="defs" aria-label="Definitions">
-<li><b>CFR (Core Functional Residue)</b>: a residue in at least one above-threshold contact of its receptor.</li>
-<li><b>368 recurrent positions</b>: generic positions that are CFRs in three or more receptors.</li>
-<li><b>50 top-ranked positions</b>: the highest CFR score, which weighs how many receptors have a CFR at the position together with the mean <span class="nw">|ΔRRCS|</span> of those contacts. They are highlighted across the site.</li>
-</ul>
-<p>Cross-receptor recurrence analyses are limited to residues assigned GPCRdb generic numbers.</p>
-</details>
+<div class="cfr-heading">
+<h2 id="sec-c-q">Recurrent positions</h2>
+<div class="cfr-term" data-glossary-skip>
+<a class="cfr-link" href="glossary.html#cfr" aria-describedby="cfr-definition">CFR</a>
+<span id="cfr-definition" role="tooltip">Core functional residue: in at least one above-threshold contact</span>
+</div>
+</div>
 
 <article class="scard" id="card-chart-scaffold" data-card="chart-scaffold" aria-labelledby="chart-scaffold-title">
-<h3 class="scard-title" id="chart-scaffold-title">Recurrence on the receptor scaffold</h3>
-<p class="scard-guide" data-guide>ADRB2 snake layout. Point at a residue for its position and count.</p>
+<h3 class="scard-title" id="chart-scaffold-title">CFR recurrence on the ADRB2 scaffold</h3>
 
 <div class="scard-body">
 <div class="schart" id="chart-scaffold" data-chart="chart-scaffold"><p class="nojs-note">Interactive chart (needs JavaScript).</p></div>
@@ -411,16 +355,14 @@ placeholder="Gene symbol, UniProt name, 6.48x48 or TM3-TM6">
 </div>
 <div class="legend" data-legend></div>
 
-<footer class="scard-foot"><span class="scope" data-scope><b>283 receptors.</b></span><span class="pill" data-pill>Follows position</span><span class="foot-sp"></span><span class="foot-tools" data-tools data-table></span></footer>
-<div class="fine-print scard-method" id="chart-scaffold-method" hidden><p>Each residue of the ADRB2 layout is colored by how many of the 283 receptors have a CFR at its generic position. Ringed residues mark activation motifs. Hover a residue for its position and count.</p><p>Residues are placed as in the GPCRdb snake plot of ADRB2, from 6 residues before TM1 to 8 after H8. The fill is the recurrence band of the generic position (the same bands as the recurrence groups in section 4). Residues without a GPCRdb generic number are hollow.</p><p data-src>Scope: <span data-src-scope>283 receptors</span>. <span data-src-data>Layout: ADRB2 snake plot from GPCRdb.</span></p></div>
+<footer class="scard-foot"><span class="foot-tools" data-tools data-table></span></footer>
 </article>
 
 <article class="scard has-server-table" id="card-chart-ranking" data-card="chart-ranking" aria-labelledby="chart-ranking-title">
 <h3 class="scard-title" id="chart-ranking-title">The 50 top-ranked positions</h3>
-<p class="scard-guide" data-guide></p>
 
 <div class="chips" role="group" aria-label="Order" data-ctl="sort">
-<button type="button" data-value="score" aria-pressed="true">CFR score</button>
+<button type="button" data-value="score" data-tip="Mean of normalized CFR recurrence and normalized mean |ΔRRCS|" aria-pressed="true">CFR score</button>
 <button type="button" data-value="receptors" aria-pressed="false">Receptors</button>
 <button type="button" data-value="segment" aria-pressed="false">Segment order</button>
 </div>
@@ -487,17 +429,15 @@ placeholder="Gene symbol, UniProt name, 6.48x48 or TM3-TM6">
 </div>
 <aside class="chart-card-side" hidden></aside>
 </div>
-<h4 class="sub-head">All 368 recurrent positions, in CFR score order</h4>
+<h4 class="sub-head">368 recurrent positions</h4>
 <div class="schart-sub" data-strip368></div>
 
-<footer class="scard-foot"><span class="scope" data-scope><b>283 receptors.</b></span><span class="pill" data-pill>Follows position</span><span class="foot-sp"></span><span class="foot-tools" data-tools data-table></span></footer>
-<div class="fine-print scard-method" id="chart-ranking-method" hidden><p>Ranked by CFR score, which weighs how many receptors have a CFR at the position together with the mean <span class="nw">|ΔRRCS|</span> of those contacts. Bar: receptors with a CFR there, of 283. Last column: mean <span class="nw">|ΔRRCS|</span>. Tags: activation motifs.</p><p>CFR score: the mean of normalized recurrence (receptors in which the position is a CFR) and normalized mean <span class="nw">|ΔRRCS|</span> of those contacts. 368 generic positions are CFRs in three or more receptors; the 50 with the highest score are marked across the site. Recurrence is counted on the full GPCRdb residue maps.</p><p>3.19x19 is a CFR in only 6 receptors and ranks 18 by CFR score because its mean <span class="nw">|ΔRRCS|</span> (10.09) is the largest of the 50.</p><p>9 of the 16 motif positions are in the top 50.</p><p data-src>Scope: <span data-src-scope>283 receptors, 368 positions</span>. <span data-src-data>GPCRdb residue maps fetched 2026-08-12 (GPR4: own entry, 2026-10-18).</span></p></div>
+<footer class="scard-foot"><span class="foot-tools" data-tools data-table></span></footer>
 </article>
 
 <div class="grid2">
 <article class="scard" id="card-chart-recovery" data-card="chart-recovery" aria-labelledby="chart-recovery-title">
-<h3 class="scard-title" id="chart-recovery-title">Known activation positions down the ranking</h3>
-<p class="scard-guide" data-guide>Known activation positions found walking down the ranking. Dashed: chance.</p>
+<h3 class="scard-title" id="chart-recovery-title">Activation position recovery</h3>
 
 <div class="scard-body">
 <div class="schart" id="chart-recovery" data-chart="chart-recovery"><p class="nojs-note">Interactive chart (needs JavaScript).</p></div>
@@ -506,24 +446,21 @@ placeholder="Gene symbol, UniProt name, 6.48x48 or TM3-TM6">
 </div>
 <div class="legend" data-legend></div>
 
-<footer class="scard-foot"><span class="scope" data-scope><b>262 positions.</b></span><span class="pill" data-pill>Follows position</span><span class="foot-sp"></span><span class="foot-tools" data-tools data-table></span></footer>
-<div class="fine-print scard-method" id="chart-recovery-method" hidden><p>Reference: 39 known activation positions (the common activation pathway of Zhou et al. 2019, plus D2.50, DRY, PIF, CWxP, NPxxY, the sodium pocket and 6.30). The curve walks down the 262 structure positions (GPCRdb structure-based numbers such as 6x48) numbered in at least half of the receptors, in CFR score order, and counts the known positions among the first N. A structure position takes the highest CFR score of its generic numbers. Dashed line: the count expected if the order ignored activation.</p><p>The 262 structure positions (GPCRdb structure-based numbers) numbered in at least 142 of the 283 receptors, in CFR score order. A structure position takes the highest CFR score among its generic numbers (gn = that one); expected = rank x known / universe.</p><p>Known positions: Zhou et al. 2019 common activation pathway, plus D2.50, DRY, PIF, CWxP, NPxxY, the sodium pocket and 6.30.</p><p data-src>Scope: <span data-src-scope>262 positions, 39 known</span>. <span data-src-data>Structure positions numbered in at least half of the 283 receptors.</span></p></div>
+<footer class="scard-foot"><span class="foot-tools" data-tools data-table></span></footer>
 </article>
 
 <article class="scard has-server-table" id="card-chart-partners" data-card="chart-partners" aria-labelledby="chart-partners-title">
-<h3 class="scard-title" id="chart-partners-title">Positions recur in more receptors than their exact contacts do</h3>
-<p class="scard-guide" data-guide></p>
+<h3 class="scard-title" id="chart-partners-title">Position and pair recurrence</h3>
 
 <div class="tabs" role="group" aria-label="View" data-ctl="tab">
 <button type="button" data-value="partners" aria-pressed="true">Positions and partners</button>
 <button type="button" data-value="pairs" aria-pressed="false">Most recurrent pairs</button>
 </div>
-<p class="scard-guide tab-guide" data-tab-guide="pairs" hidden>The 20 exact contact pairs (both residues CFRs) that recur in the most receptors, of 2,231 distinct pairs. All 20 join two top-ranked positions.</p>
 <div class="scard-body">
 <div class="schart" id="chart-partners" data-chart="chart-partners"><p class="nojs-note">Interactive chart (needs JavaScript).</p></div>
 <div class="scard-table server-table" data-server-table="pairs">
 <table class="v2-table" id="cfr-pairs-table">
-<caption>The 20 most recurrent CFR contact pairs, of 2,231</caption>
+<caption>The 20 most recurrent CFR contact pairs, of 2,231 · Both residues top-ranked</caption>
 <thead><tr><th>Position 1</th><th>Position 2</th><th class="num">Receptors</th><th class="num">% of receptors</th></tr></thead>
 <tbody>
 <tr><td><strong>3.49x49</strong></td><td><strong>3.50x50</strong></td><td class="num">169</td><td class="num">59.7%</td></tr>
@@ -554,14 +491,12 @@ placeholder="Gene symbol, UniProt name, 6.48x48 or TM3-TM6">
 </div>
 <div class="legend" data-legend></div>
 
-<footer class="scard-foot"><span class="scope" data-scope><b>283 receptors.</b></span><span class="pill" data-pill>Follows position</span><span class="foot-sp"></span><span class="foot-tools" data-tools data-table></span></footer>
-<div class="fine-print scard-method" id="chart-partners-method" hidden><p>Filled dot: receptors with a CFR at the position. Open dot: receptors in which it contacts its most frequent partner, the same pair of generic positions. Right: how many different partner positions it has across the class.</p><p>Partners are generic positions joined to the position by an above-threshold contact in which both residues are CFRs. The pair counts are receptors in which that exact pair of generic positions is above threshold.</p><p data-src>Scope: <span data-src-scope>283 receptors, 368 positions, 2,231 distinct pairs</span>.</p></div>
+<footer class="scard-foot"><span class="foot-tools" data-tools data-table></span></footer>
 </article>
 </div>
 
 <article class="scard" id="card-chart-cfr-atlas" data-card="chart-cfr-atlas" aria-labelledby="chart-cfr-atlas-title">
-<h3 class="scard-title" id="chart-cfr-atlas-title">Every receptor at the 50 top-ranked positions</h3>
-<p class="scard-guide" data-guide>Rows: receptors, grouped by ligand type. Columns: the top-ranked positions.</p>
+<h3 class="scard-title" id="chart-cfr-atlas-title">CFRs at the top 50 positions</h3>
 
 <div class="controls">
 <span class="seg" role="group" aria-label="Cells" data-ctl="view">
@@ -576,20 +511,16 @@ placeholder="Gene symbol, UniProt name, 6.48x48 or TM3-TM6">
 </div>
 <div class="legend" data-legend></div>
 
-<footer class="scard-foot"><span class="scope" data-scope><b>283 receptors.</b></span><span class="pill" data-pill>Follows receptor and position</span><span class="foot-sp"></span><span class="foot-tools" data-tools data-table></span></footer>
-<div class="fine-print scard-method" id="chart-cfr-atlas-method" hidden><p>One row per receptor, one column per top-ranked position. Rows grouped by ligand type and sorted by how many of the 50 are CFRs.</p><p>Direction view: red, the net change of the CFR contacts is stronger in the active model; blue, stronger in the inactive model. On a phone the grid folds into one row per ligand type (the share with a CFR at each position); the full receptor-by-position grid is in the Table view.</p><p>A position is numbered in a receptor when the GPCRdb residue map assigns it that generic number. It is a CFR there when at least one contact pair touching that residue is at or above the receptor's threshold. Direction: the sign of the summed ΔRRCS of those contacts.</p><p data-src>Scope: <span data-src-scope>283 receptors, 50 positions</span>.</p></div>
+<footer class="scard-foot"><span class="foot-tools" data-tools data-table></span></footer>
 </article>
 </section>
 
 
 <section class="story" id="sec-d" aria-labelledby="sec-d-q">
-<div class="sec-head"><span class="sec-num" aria-hidden="true">4</span>
-<h2 id="sec-d-q">What does it mean for variants?</h2>
-<p class="finding"><b>66.9%</b> predicted pathogenic at the <b>50</b> top-ranked positions, <b>43.6%</b> at others.</p></div>
+<h2 id="sec-d-q">Variant predictions</h2>
 
 <article class="scard" id="card-chart-pathogenicity" data-card="chart-pathogenicity" aria-labelledby="chart-pathogenicity-title">
-<h3 class="scard-title" id="chart-pathogenicity-title">Predicted class of the substitutions seen in people</h3>
-<p class="scard-guide" data-guide>Missense substitutions seen in gnomAD at strongly changing contacts.</p>
+<h3 class="scard-title" id="chart-pathogenicity-title">AlphaMissense predictions by position group</h3>
 
 <div class="scard-body">
 <div class="schart" id="chart-pathogenicity" data-chart="chart-pathogenicity"><p class="nojs-note">Interactive chart (needs JavaScript).</p></div>
@@ -597,33 +528,13 @@ placeholder="Gene symbol, UniProt name, 6.48x48 or TM3-TM6">
 <aside class="chart-card-side" hidden></aside>
 </div>
 <div class="legend" data-legend></div>
-<details class="am-classes" id="am-classes">
-<summary>All three classes, including ambiguous</summary>
-<div class="am-comp">
 
-<div class="am-comp-row">
-<span class="am-comp-label">Top 50 positions by CFR score</span>
-<span class="am-comp-bar" aria-hidden="true"><i class="c-path" style="width:56.65%"></i><i class="c-amb" style="width:15.31%"></i><i class="c-ben" style="width:28.04%"></i></span>
-<span class="am-comp-text">56.6% predicted pathogenic, 15.3% ambiguous, 28.0% predicted benign of 7,268 scored (6,155 decisive calls; 1,113 ambiguous)</span>
-</div>
-
-<div class="am-comp-row">
-<span class="am-comp-label">Other generic-numbered positions</span>
-<span class="am-comp-bar" aria-hidden="true"><i class="c-path" style="width:37.00%"></i><i class="c-amb" style="width:15.14%"></i><i class="c-ben" style="width:47.86%"></i></span>
-<span class="am-comp-text">37.0% predicted pathogenic, 15.1% ambiguous, 47.9% predicted benign of 11,040 scored (9,369 decisive calls; 1,671 ambiguous)</span>
-</div>
-
-</div>
-</details>
-
-<footer class="scard-foot"><span class="scope" data-scope><b>276 receptors.</b></span><span class="pill" data-pill>Follows position</span><span class="foot-sp"></span><span class="foot-tools" data-tools data-table></span></footer>
-<div class="fine-print scard-method" id="chart-pathogenicity-method" hidden><p>Unique missense substitutions observed in gnomAD v4.1.0 (accessed February 2026) at residues in contacts with <span class="nw">|ΔRRCS|</span> of 3.0 or more, at generic-numbered positions of 276 receptors. Bars: decisive calls (predicted pathogenic or predicted benign); ambiguous calls are counted beside them and left out of the share.</p><p>AlphaMissense predicted classes. Predictions, not clinical evidence. Conservation is an observation across species.</p><p>Allele set: gnomAD v4.1.0 missense alleles, February 2026 query of residues in contacts with <span class="nw">|ΔRRCS|</span> of 3.0 or more, 276 receptors. Residues compared: the 50 top-ranked positions against all other positions with a GPCRdb generic number.</p><p>Top 50 positions by CFR score: 7,268 scored substitutions, 6,155 decisive (4,117 predicted pathogenic, 2,038 predicted benign) and 1,113 ambiguous.</p><p>Other generic-numbered positions: 11,040 scored substitutions, 9,369 decisive (4,085 predicted pathogenic, 5,284 predicted benign) and 1,671 ambiguous.</p><p>The comparison group is every other generic-numbered position, which includes recurrent positions ranked below the top 50.</p><p>1,260 substitutions in this set, in 49 receptors (483 of them at the top 50 positions), have no AlphaMissense class in this comparison and are not counted, here or in the recurrence and conservation groups below.</p><p data-src>Scope: <span data-src-scope>276 receptors</span>. <span data-src-data>gnomAD v4.1.0; AlphaMissense.</span></p></div>
+<footer class="scard-foot"><span class="foot-tools" data-tools data-table></span></footer>
 </article>
 
 <div class="grid2">
 <article class="scard" id="card-chart-am-bands" data-card="chart-am-bands" aria-labelledby="chart-am-bands-title">
 <h3 class="scard-title" id="chart-am-bands-title">Predicted pathogenic share by recurrence</h3>
-<p class="scard-guide" data-guide>Positions grouped by how many receptors have a CFR there.</p>
 
 <div class="scard-body">
 <div class="schart" id="chart-am-bands" data-chart="chart-am-bands"><p class="nojs-note">Interactive chart (needs JavaScript).</p></div>
@@ -632,12 +543,10 @@ placeholder="Gene symbol, UniProt name, 6.48x48 or TM3-TM6">
 </div>
 <div class="legend" data-legend></div>
 
-<footer class="scard-foot"><span class="scope" data-scope><b>276 receptors.</b></span><span class="pill" data-pill>Follows position</span><span class="foot-sp"></span><span class="foot-tools" data-tools data-table></span></footer>
-<div class="fine-print scard-method" id="chart-am-bands-method" hidden><p>Share of decisive AlphaMissense calls that are predicted pathogenic, with positions grouped by the number of receptors in which they are a CFR. Same allele set as above.</p><p>Same substitutions as above, on residues with a modeled contact. The six groups hold 15,519 decisive calls; the comparison above counts 15,524, because 5 calls sit on generic-numbered residues without a modeled contact.</p><p data-src>Scope: <span data-src-scope>276 receptors, 402 positions</span>.</p></div>
+<footer class="scard-foot"><span class="foot-tools" data-tools data-table></span></footer>
 </article>
 <article class="scard" id="card-chart-position-conservation" data-card="chart-position-conservation" aria-labelledby="chart-position-conservation-title">
 <h3 class="scard-title" id="chart-position-conservation-title">Conservation at top-ranked and other positions</h3>
-<p class="scard-guide" data-guide>Mean conservation per position. The ranking does not use it.</p>
 
 <div class="scard-body">
 <div class="schart" id="chart-position-conservation" data-chart="chart-position-conservation"><p class="nojs-note">Interactive chart (needs JavaScript).</p></div>
@@ -646,14 +555,12 @@ placeholder="Gene symbol, UniProt name, 6.48x48 or TM3-TM6">
 </div>
 <div class="legend" data-legend></div>
 
-<footer class="scard-foot"><span class="scope" data-scope><b>352 positions.</b></span><span class="pill" data-pill>Follows position</span><span class="foot-sp"></span><span class="foot-tools" data-tools data-table></span></footer>
-<div class="fine-print scard-method" id="chart-position-conservation-method" hidden><p>Mean conservation of the residues at each generic position (VarSite, via ProtVar), for positions with at least 20 scored residues. Conservation is observed across species; the ranking does not use it.</p><p>Per generic position, the mean conservation score of the residues numbered there, over the receptors with a score. Rings: activation motif positions.</p><p data-src>Scope: <span data-src-scope>352 positions</span>. <span data-src-data>VarSite conservation via ProtVar.</span></p></div>
+<footer class="scard-foot"><span class="foot-tools" data-tools data-table></span></footer>
 </article>
 </div>
 
 <article class="scard" id="card-chart-am-quintiles" data-card="chart-am-quintiles" aria-labelledby="chart-am-quintiles-title">
-<h3 class="scard-title" id="chart-am-quintiles-title">Within groups of similar conservation</h3>
-<p class="scard-guide" data-guide>Residues grouped by conservation, Q1 lowest.</p>
+<h3 class="scard-title" id="chart-am-quintiles-title">Predicted pathogenic share by conservation</h3>
 
 <div class="scard-body">
 <div class="schart" id="chart-am-quintiles" data-chart="chart-am-quintiles"><p class="nojs-note">Interactive chart (needs JavaScript).</p></div>
@@ -662,13 +569,11 @@ placeholder="Gene symbol, UniProt name, 6.48x48 or TM3-TM6">
 </div>
 <div class="legend" data-legend></div>
 
-<footer class="scard-foot"><span class="scope" data-scope><b>276 receptors.</b></span><span class="pill" data-pill>Class-wide</span><span class="foot-sp"></span><span class="foot-tools" data-tools data-table></span></footer>
-<div class="fine-print scard-method" id="chart-am-quintiles-method" hidden><p>Decisive calls split into five groups (Q1 to Q5) by the conservation of the residue, lowest first. In each group: predicted pathogenic share at the top 50 positions (solid) and at other positions (light). 15,507 decisive calls on residues with a conservation score and a modeled contact.</p><p>12 decisive calls without a conservation score fall outside the five groups (15,519 − 15,507).</p><p data-src>Scope: <span data-src-scope>276 receptors, 15,507 decisive calls</span>.</p></div>
+<footer class="scard-foot"><span class="foot-tools" data-tools data-table></span></footer>
 </article>
 
 <article class="scard" id="card-chart-cfr-variants" data-card="chart-cfr-variants" aria-labelledby="chart-cfr-variants-title">
 <h3 class="scard-title" id="chart-cfr-variants-title">Variants at each top-ranked position</h3>
-<p class="scard-guide" data-guide>All gnomAD missense substitutions at each top-ranked position: a separate allele set.</p>
 
 <div class="chips" role="group" aria-label="Order" data-ctl="order">
 <button type="button" data-value="share" aria-pressed="false">Predicted pathogenic share <span data-dir></span></button>
@@ -681,20 +586,16 @@ placeholder="Gene symbol, UniProt name, 6.48x48 or TM3-TM6">
 </div>
 <div class="legend" data-legend></div>
 
-<footer class="scard-foot"><span class="scope" data-scope><b>281 receptors.</b></span><span class="pill" data-pill>Follows position</span><span class="foot-sp"></span><span class="foot-tools" data-tools data-table></span></footer>
-<div class="fine-print scard-method" id="chart-cfr-variants-method" hidden><p>Every unique missense substitution in gnomAD v4.1.2 at each of the 50 top-ranked positions, over all residues of 281 receptors (NPY6R and TAAR3P have none). Bar: AlphaMissense class of those substitutions. Number: predicted pathogenic share of decisive calls. A different allele set from the comparisons above, so the shares differ.</p><p>Unique receptor, position, reference and alternate substitutions, pooled over the receptors in which the position is numbered. Predicted pathogenic share: predicted pathogenic over predicted pathogenic plus predicted benign.</p><p data-src>Scope: <span data-src-scope>281 receptors</span>. <span data-src-data>gnomAD v4.1.2; ClinVar 2026-10-11; AlphaMissense.</span></p></div>
+<footer class="scard-foot"><span class="foot-tools" data-tools data-table></span></footer>
 </article>
 </section>
 
 
 <section class="story" id="sec-e" aria-labelledby="sec-e-q">
-<div class="sec-head"><span class="sec-num" aria-hidden="true">5</span>
-<h2 id="sec-e-q">Where does my receptor sit, and which are like it?</h2>
-<p class="finding">Median total <span class="nw">|ΔRRCS|</span> from <b>619</b> in nucleotide to <b>845</b> in sensory receptors.</p></div>
+<h2 id="sec-e-q">Receptors and families</h2>
 
 <article class="scard" id="card-chart-receptors" data-card="chart-receptors" aria-labelledby="chart-receptors-title">
 <h3 class="scard-title" id="chart-receptors-title">Receptor explorer</h3>
-<p class="scard-guide" data-guide></p>
 
 <div class="tabs" role="group" aria-label="View" data-ctl="tab">
 <button type="button" data-value="scatter" aria-pressed="true">Scatter</button>
@@ -710,53 +611,59 @@ placeholder="Gene symbol, UniProt name, 6.48x48 or TM3-TM6">
 </div>
 <div class="legend" data-legend></div>
 <div class="explorer-table" hidden></div>
-<p class="small-note families-text" data-families-text hidden>The Families tab compares groups with a Kruskal-Wallis test on total <span class="nw">|ΔRRCS|</span>. Across all 10 ligand types: H = 27.9, p = 0.001 (283 receptors). Across the 16 families with at least 5 receptors: H = 27.4, p = 0.026 (192 receptors). A test of spread across groups, not between two chosen groups. The total grows with receptor size.</p>
+<div data-families-text hidden>
 
-<footer class="scard-foot"><span class="scope" data-scope><b>283 receptors.</b></span><span class="pill" data-pill>Follows receptor, position and helix pair</span><span class="foot-sp"></span><span class="foot-tools" data-tools></span></footer>
-<div class="fine-print scard-method" id="chart-receptors-method" hidden><p>One dot per receptor. Color: ligand group. Dot size: top-ranked positions with a CFR in the receptor.</p><p>Above-threshold pairs per 100 pairs: above-threshold contact pairs over all contact pairs. Share stronger in the active model: the fraction of above-threshold pairs with ΔRRCS above 0. Total <span class="nw">|ΔRRCS|</span>: the sum over all contact pairs; it grows with receptor size. Similar receptors: cosine similarity of the signed fingerprint over the 50 top-ranked positions, a browsing aid.</p><p data-src>Scope: <span data-src-scope>283 receptors</span>.</p></div>
+<table class="v2-table family-tests">
+<caption>Kruskal-Wallis · total <span class="nw">|ΔRRCS|</span></caption>
+<thead><tr><th>Groups</th><th>Receptors</th><th>H</th><th>p</th></tr></thead>
+<tbody>
+
+<tr><th scope="row">10 ligand types</th><td>283</td><td>27.9</td><td>0.001</td></tr>
+
+<tr><th scope="row">16 families (≥5 receptors)</th><td>192</td><td>27.4</td><td>0.026</td></tr>
+
+</tbody>
+</table>
+
+</div>
+
+<footer class="scard-foot"><span class="foot-tools" data-tools></span></footer>
 </article>
 
-<article class="scard atlas-teaser" id="card-atlas-teaser" aria-labelledby="atlas-teaser-title">
-<div class="teaser-grid">
-<div>
-<h3 class="scard-title" id="atlas-teaser-title">Receptors with similar change patterns</h3>
-<p class="scard-guide" title="A browsing aid, not a classification. The GPCRome Atlas shows every receptor's helix bundle, a sequence tree and other groupings.">Receptors whose contacts change alike sit together. An experimental preview.</p>
-<a class="btn btn-primary btn-sm" href="atlas.html">Open the GPCRome Atlas (Preview)</a>
-</div>
-<div class="teaser-map" id="atlas-teaser-map" data-chart="atlas-teaser"><p class="nojs-note">Interactive chart (needs JavaScript).</p></div>
-</div>
-</article>
+<a href="atlas.html">GPCRome Atlas</a>
 </section>
 
 
 <section class="story" id="sec-methods" aria-labelledby="sec-methods-q">
-<div class="sec-head"><span class="sec-num" aria-hidden="true">•</span>
-<h2 id="sec-methods-q">Methods, sources and downloads</h2></div>
+<h2 id="sec-methods-q">Methods and data</h2>
 
 <div class="scard methods-card">
-<h3 class="scard-title">What each result covers</h3>
-<div class="v2-table-scroll">
-<table class="v2-table cov-table">
-<thead><tr><th>Results</th><th>Receptors</th><th class="hide-phone">Data</th><th>Not included</th></tr></thead>
+<h3 class="scard-title">Coverage</h3>
+<p class="model-scope">Active and inactive predicted models from GPCRdb</p>
+
+<p class="model-exclusions"><span>287 human Class A receptors</span><span>Incomplete pairs: GPR26, LGR5, OPSX and RXFP1</span></p>
+
+
+<table class="v2-table cov-table" aria-label="Analysis coverage" role="table">
+<thead><tr><th scope="col">Analysis</th><th scope="col">Included</th><th scope="col">Source</th><th scope="col">Not included</th></tr></thead>
 <tbody>
 
-<tr><td>Scale, helix bundle, every receptor at the top-ranked positions, receptor explorer</td><td>283</td><td class="hide-phone">GPCompaRe RRCS batch 2026-02-02; GPCRdb generic numbering, fetched 2026-10-18</td><td></td></tr>
+<tr role="row"><td role="cell" data-label="Analysis"><span>Thresholds, histogram, helix direction</span><span>CFR matrix, receptor explorer</span></td><td role="cell" data-label="Included"><span>283 receptors</span></td><td role="cell" data-label="Source"><span>RRCS batch 2026-02-02</span><span>GPCRdb numbering · 2026-10-18</span></td><td role="cell" data-label="Not included" class="coverage-empty"><span class="sr-only">None listed</span></td></tr>
 
-<tr><td>Ranked positions, scaffold, partners and pairs</td><td>283</td><td class="hide-phone">GPCompaRe RRCS batch 2026-02-02; GPCRdb residue maps, fetched 2026-08-12 (GPR4 on its own GPCRdb entry, fetched 2026-10-18)</td><td></td></tr>
+<tr role="row"><td role="cell" data-label="Analysis"><span>Ranking, scaffold, partners and pairs</span></td><td role="cell" data-label="Included"><span>283 receptors</span><span>GPCRdb generic numbers only</span></td><td role="cell" data-label="Source"><span>RRCS batch 2026-02-02</span><span>Full GPCRdb residue maps · 2026-08-12</span><span>GPR4 own entry · 2026-10-18</span></td><td role="cell" data-label="Not included"><span>Unnumbered residues</span><span>Mostly loops and termini</span></td></tr>
 
-<tr><td>Change per contact by segment and helix pair (Magnitude)</td><td>283</td><td class="hide-phone">GPCompaRe RRCS batch 2026-02-02; GPCRdb residue maps, fetched 2026-08-12 (GPR4 on its own GPCRdb entry, fetched 2026-10-18)</td><td></td></tr>
+<tr role="row"><td role="cell" data-label="Analysis"><span>Segments and helix magnitude</span></td><td role="cell" data-label="Included"><span>283 receptors</span></td><td role="cell" data-label="Source"><span>Same as ranking</span></td><td role="cell" data-label="Not included" class="coverage-empty"><span class="sr-only">None listed</span></td></tr>
 
-<tr><td>Known activation positions</td><td>262 structure positions numbered in at least half of the receptors; 39 known</td><td class="hide-phone">as the ranked positions</td><td></td></tr>
+<tr role="row"><td role="cell" data-label="Analysis"><span>Activation recovery</span></td><td role="cell" data-label="Included"><span>262 structure positions</span><span>39 known</span><span>Numbered in at least half (142/283)</span></td><td role="cell" data-label="Source"><span>Same as ranking</span></td><td role="cell" data-label="Not included" class="coverage-empty"><span class="sr-only">None listed</span></td></tr>
 
-<tr><td>Conservation at top-ranked and other positions</td><td>352 positions with at least 20 scored residues</td><td class="hide-phone">VarSite conservation via ProtVar; generic numbers from its own residue mapping (a position can count one residue more or fewer)</td><td>positions with fewer scored residues</td></tr>
+<tr role="row"><td role="cell" data-label="Analysis"><span>Conservation by position</span></td><td role="cell" data-label="Included"><span>352 positions</span><span>≥20 scored residues/position</span></td><td role="cell" data-label="Source"><span>VarSite conservation via ProtVar</span><span>Source-specific mapping (±1 residue/position)</span></td><td role="cell" data-label="Not included"><span>Fewer than 20 scored residues</span></td></tr>
 
-<tr><td>AlphaMissense comparison, recurrence groups, conservation groups</td><td>276</td><td class="hide-phone">gnomAD v4.1.0 (February 2026), AlphaMissense</td><td>GPR3, GPR4 and XCR1. GPR182 (ACKR5), NPY6R, P2RY8 and TAAR3P: no records in that query.</td></tr>
+<tr role="row"><td role="cell" data-label="Analysis"><span>AlphaMissense comparison</span><span>Recurrence bands, conservation quintiles</span></td><td role="cell" data-label="Included"><span>276 receptors</span></td><td role="cell" data-label="Source"><span>gnomAD v4.1.0</span><span>February 2026</span><span>AlphaMissense</span></td><td role="cell" data-label="Not included"><span>GPR3, GPR4, XCR1</span><span>No query records</span><span>GPR182 (ACKR5), NPY6R, P2RY8, TAAR3P</span></td></tr>
 
-<tr><td>Variants at each top-ranked position</td><td>281</td><td class="hide-phone">gnomAD v4.1.2, ClinVar 2026-10-11, AlphaMissense</td><td>NPY6R and TAAR3P: no protein-coding missense records</td></tr>
+<tr role="row"><td role="cell" data-label="Analysis"><span>Variants per top-ranked position</span></td><td role="cell" data-label="Included"><span>281 receptors</span></td><td role="cell" data-label="Source"><span>gnomAD v4.1.2</span><span>ClinVar 2026-10-11</span><span>AlphaMissense</span></td><td role="cell" data-label="Not included"><span>NPY6R, TAAR3P</span><span>No protein-coding missense records</span></td></tr>
 
 </tbody>
 </table>
-</div>
 <p class="downloads">
 <a class="btn btn-primary btn-sm" href="data/stats/gpcompare_statistics_tables.zip" download>Download all tables (zip, 19 CSV files)</a>
 <a class="btn btn-ghost btn-sm" href="data/stats/coverage.csv" download>coverage.csv</a>
@@ -764,58 +671,86 @@ placeholder="Gene symbol, UniProt name, 6.48x48 or TM3-TM6">
 </p>
 </div>
 
-<details class="fine-print methods-notes"><summary>Definitions, scope and the activation reference</summary>
-<p><strong>Where these cross-receptor numbers come from.</strong>
-Cross-receptor recurrence analyses are limited to residues assigned GPCRdb generic numbers. Residues without
-one, largely in loops and terminal regions, cannot be aligned to a shared position across receptors and take
-no part in these statistics. Recurrence is counted on the full GPCRdb residue maps of all 283
-receptors. The list of 287 human Class A receptors also names
-GPR26, LGR5, OPSX and RXFP1, which lack a complete active and inactive model pair and are not in the
-database.</p>
-<dl class="defs-list">
-<dt>Models</dt><dd>Each of the 283 receptors is compared between its active and inactive predicted models from GPCRdb.</dd>
-<dt>ΔRRCS</dt><dd>RRCS (residue-residue contact score) of a residue contact pair in the active model minus that in the inactive model. Positive: stronger in the active model.</dd>
-<dt>Threshold</dt><dd>Per receptor: the mean plus one standard deviation of its <span class="nw">|ΔRRCS|</span> values. A pair at or above it is above threshold.</dd>
-<dt>CFR</dt><dd>Core Functional Residue: a residue in at least one above-threshold contact of its receptor.</dd>
-<dt>Positions</dt><dd>Compared across receptors by GPCRdb generic number. A recurrent position is a CFR in three or more receptors (368 positions); the 50 top-ranked positions have the highest CFR score.</dd>
-<dt>Decisive call</dt><dd>An AlphaMissense prediction that is predicted pathogenic or predicted benign (not ambiguous). AlphaMissense classes are predictions, not clinical evidence; conservation is an observation across species.</dd>
-</dl>
-<p><strong>Known activation positions</strong> (39): Zhou et al. 2019 common activation pathway, plus D2.50, DRY, PIF, CWxP, NPxxY, the sodium pocket and 6.30.
-<span class="mono">3.50x50</span>, <span class="mono">6.48x48</span>, <span class="mono">7.53x53</span>, <span class="mono">3.49x49</span>, <span class="mono">5.58x58</span>, <span class="mono">6.44x44</span>, <span class="mono">8.50x50</span>, <span class="mono">7.54x54</span>, <span class="mono">8.51x51</span>, <span class="mono">7.45x45</span>, <span class="mono">6.30x30</span>, <span class="mono">7.55x55</span>, <span class="mono">3.40x40</span>, <span class="mono">7.49x49</span>, <span class="mono">7.50x50</span>, <span class="mono">3.43x43</span>, <span class="mono">2.43x43</span>, <span class="mono">2.50x50</span>, <span class="mono">6.37x37</span>, <span class="mono">5.62x62</span>, <span class="mono">5.51x51</span>, <span class="mono">6.40x40</span>, <span class="mono">7.51x51</span>, <span class="mono">3.53x53</span>, <span class="mono">6.47x47</span>, <span class="mono">7.46x46</span>, <span class="mono">6.41x41</span>, <span class="mono">3.51x51</span>, <span class="mono">1.49x49</span>, <span class="mono">3.46x46</span>, <span class="mono">3.39x39</span>, <span class="mono">1.53x53</span>, <span class="mono">7.52x52</span>, <span class="mono">6.49x49</span>, <span class="mono">5.57x57</span>, <span class="mono">2.46x46</span>, <span class="mono">5.55x55</span>, <span class="mono">5.50x50</span>, <span class="mono">6.50x50</span>.</p>
+<details class="fine-print chart-notes" id="chart-notes"><summary>Chart notes</summary>
+<ul>
+
+<li id="note-chart-thresholds"><strong>Thresholds</strong> Include pairs at or above the receptor mean <span class="nw">|ΔRRCS|</span> plus one standard deviation, with a 0.2 minimum.</li>
+
+<li id="note-chart-histogram"><strong>Contact distribution</strong> Bin width is one ΔRRCS unit.</li>
+
+<li id="note-chart-helix-pairs"><strong>Helix pairs</strong> Direction: ≥10 carriers, absent pairs zero, agreement among carriers. Omit within-helix pairs. Magnitude: all TM1–TM7 contacts (≥50/interface).</li>
+
+<li id="note-chart-segments"><strong>Segments</strong> Each endpoint counts once toward its residue’s segment, including contacts below threshold.</li>
+
+<li id="note-chart-scaffold"><strong>Scaffold</strong> GPCRdb ADRB2 layout spans six residues before TM1 through eight after H8. Bands match variant recurrence groups.</li>
+
+<li id="note-chart-ranking"><strong>CFR ranking</strong> 9 of 16 activation motif positions rank in the top 50.</li>
+
+<li id="note-chart-recovery"><strong>Recovery</strong> Each structure position takes its highest generic CFR score. Chance equals rank × known/eligible positions.</li>
+
+<li id="note-chart-partners"><strong>Partners</strong> Count each receptor once per exact above-threshold pair of generic-numbered CFRs.</li>
+
+<li id="note-chart-cfr-atlas"><strong>CFR matrix</strong> Rows sort by CFR count within ligand type. Direction uses summed ΔRRCS. Phones show ligand-group shares.</li>
+
+<li id="note-chart-pathogenicity"><strong>AlphaMissense</strong> Missense sites: contact <span class="nw">|ΔRRCS|</span> ≥3.0. Exclude 1,260 unclassified substitutions across 49 receptors (483 at top 50). Predictions only.</li>
+
+<li id="note-chart-am-bands"><strong>Recurrence bands</strong> Modeled contacts cover 15,519 of 15,524 decisive calls. The other 5 lack modeled contacts.</li>
+
+<li id="note-chart-position-conservation"><strong>Conservation</strong> Average cross-species scores over numbered, scored residues. CFR ranking uses contact data alone.</li>
+
+<li id="note-chart-am-quintiles"><strong>Conservation quintiles</strong> Of 15,519 decisive calls with modeled contacts, 12 lack residue conservation scores.</li>
+
+<li id="note-chart-cfr-variants"><strong>Position variants</strong> Pool numbered receptors. Count each receptor, position, reference and alternate amino acid combination once.</li>
+
+<li id="note-chart-receptors"><strong>Explorer</strong> Similarity compares signed top-50 fingerprints by cosine. Total <span class="nw">|ΔRRCS|</span> grows with receptor size.</li>
+
+</ul>
 </details>
-<details class="fine-print stats-provenance"><summary>Data releases and sources</summary>
+
+<nav class="methods-glossary" aria-label="Glossary terms">
+<strong>Glossary</strong>
+
+<a href="glossary.html#delta">ΔRRCS</a>
+
+<a href="glossary.html#threshold">Threshold</a>
+
+<a href="glossary.html#cfr">CFR</a>
+
+<a href="glossary.html#cfrscore">CFR score</a>
+
+<a href="glossary.html#decisive-call">Decisive call</a>
+
+</nav>
+<details class="fine-print activation-reference">
+<summary>Activation reference (39 positions)</summary>
+<div>
+<p class="reference-source"><strong>Zhou et al. 2019 common activation pathway</strong><span>D2.50</span><span>DRY</span><span>PIF</span><span>CWxP</span><span>NPxxY</span><span>the sodium pocket</span><span>6.30</span></p>
+<ul aria-label="Known activation positions"><li class="mono">3.50x50</li><li class="mono">6.48x48</li><li class="mono">7.53x53</li><li class="mono">3.49x49</li><li class="mono">5.58x58</li><li class="mono">6.44x44</li><li class="mono">8.50x50</li><li class="mono">7.54x54</li><li class="mono">8.51x51</li><li class="mono">7.45x45</li><li class="mono">6.30x30</li><li class="mono">7.55x55</li><li class="mono">3.40x40</li><li class="mono">7.49x49</li><li class="mono">7.50x50</li><li class="mono">3.43x43</li><li class="mono">2.43x43</li><li class="mono">2.50x50</li><li class="mono">6.37x37</li><li class="mono">5.62x62</li><li class="mono">5.51x51</li><li class="mono">6.40x40</li><li class="mono">7.51x51</li><li class="mono">3.53x53</li><li class="mono">6.47x47</li><li class="mono">7.46x46</li><li class="mono">6.41x41</li><li class="mono">3.51x51</li><li class="mono">1.49x49</li><li class="mono">3.46x46</li><li class="mono">3.39x39</li><li class="mono">1.53x53</li><li class="mono">7.52x52</li><li class="mono">6.49x49</li><li class="mono">5.57x57</li><li class="mono">2.46x46</li><li class="mono">5.55x55</li><li class="mono">5.50x50</li><li class="mono">6.50x50</li></ul>
+</div>
+</details>
+
+<details class="fine-print stats-provenance"><summary>Data releases</summary>
 <table class="fp-versions" data-data-versions-table>
 <tbody>
 <tr><th scope="row">Database</th><td>GPCompaRe database release 2026-11-05</td></tr>
-<tr><th scope="row">RRCS batch</th><td>GPCompaRe RRCS batch 2026-02-02<br><span class="fp-detail">Run 2026-02-02</span><br><span class="fp-detail">RRCS, ΔRRCS, CFR ranking and every structural number.</span></td></tr>
-<tr><th scope="row">GPCRdb models</th><td>GPCRdb models (2024-05-15 build): AlphaFold-Multistate, with plain AlphaFold2 for 165 inactive and 26 active models<br><span class="fp-detail">GPCRdb ran standard AlphaFold2 with all templates, classed the best model as active or inactive, and built the other state with AlphaFold-Multistate on state-filtered templates (Herrera et al., NAR 2025). The method of each model is GPCRdb's own label (model list read 2026-10-20), kept in data/model_methods.json; MCHR1 has none recorded.</span></td></tr>
+<tr><th scope="row">RRCS batch</th><td>GPCompaRe RRCS batch 2026-02-02<br><span class="fp-detail">Run 2026-02-02</span><br><span class="fp-detail">RRCS, ΔRRCS, CFR ranking and every structural number.</span><div class="release-links"><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6954041/" target="_blank" rel="noopener">RRCS</a></div></td></tr>
+<tr><th scope="row">GPCRdb models</th><td>GPCRdb models (2024-05-15 build): AlphaFold-Multistate, with plain AlphaFold2 for 165 inactive and 26 active models<br><span class="fp-detail">GPCRdb ran standard AlphaFold2 with all templates, classed the best model as active or inactive, and built the other state with AlphaFold-Multistate on state-filtered templates (Herrera et al., NAR 2025). The method of each model is GPCRdb's own label (model list read 2026-10-20), kept in data/model_methods.json; MCHR1 has none recorded.</span><div class="release-links"><a href="https://github.com/huhlim/alphafold-multistate" target="_blank" rel="noopener">AlphaFold multistate</a><a href="https://doi.org/10.1038/s41586-021-03819-2" target="_blank" rel="noopener">AlphaFold2</a><a href="https://gpcrdb.org/" target="_blank" rel="noopener">GPCRdb</a></div></td></tr>
 <tr><th scope="row">GPCRdb numbering</th><td>GPCRdb generic numbering<br><span class="fp-detail">Fetched 2026-10-18</span><br><span class="fp-detail">Residue segments and generic numbers: GPCRdb API fetched 2026-10-18, with the batch annotation (GPCRdb, fetched 2026-02-02 to 2026-02-03) kept at the residues it covers; GPR3, GPR4 and XCR1 use the API numbering throughout. Snake-plot layouts come from the 2026 snapshot (data/snake_residues.json).</span></td></tr>
 <tr><th scope="row">GPCRdb residue maps</th><td>GPCRdb residue maps<br><span class="fp-detail">Fetched 2026-08-12</span><br><span class="fp-detail">Segment and generic number of every residue. Used, with the GPR4 exception, by the ranked positions, pairs, partners, activation recovery and the change per contact by segment and helix pair.</span></td></tr>
-<tr><th scope="row">gnomAD, search and reports</th><td>gnomAD v4.1.2 (dataset gnomad_r4, accessed 18 October 2026)<br><span class="fp-detail">Fetched 2026-10-18</span><br><span class="fp-detail">One transcript per gene (MANE Select or the transcript whose protein equals the model), positions mapped onto the model; exome counts where present, else genome. v4.1.2 variant data equal v4.1.1; neither changed allele counts or the variant set.</span></td></tr>
+<tr><th scope="row">gnomAD, search and reports</th><td>gnomAD v4.1.2 (dataset gnomad_r4, accessed 18 October 2026)<br><span class="fp-detail">Fetched 2026-10-18</span><br><span class="fp-detail">One transcript per gene (MANE Select or the transcript whose protein equals the model), positions mapped onto the model; exome counts where present, else genome. v4.1.2 variant data equal v4.1.1; neither changed allele counts or the variant set.</span><div class="release-links"><a href="https://gnomad.broadinstitute.org/" target="_blank" rel="noopener">gnomAD</a></div></td></tr>
 <tr><th scope="row">gnomAD, statistics comparison</th><td>gnomAD v4.1.0 (dataset gnomad_r4, accessed 2 February 2026)<br><span class="fp-detail">Fetched 2026-02-02/2026-02-03</span><br><span class="fp-detail">Variant query of the RRCS batch run, made before v4.1.1 (2026-03-30). Used by the AlphaMissense class comparison on the Statistics page.</span></td></tr>
-<tr><th scope="row">ClinVar</th><td>ClinVar 2026-10-11<br><span class="fp-detail">Fetched 2026-10-19</span></td></tr>
-<tr><th scope="row">AlphaMissense</th><td>AlphaMissense (Cheng et al. 2023)<br><span class="fp-detail">One score per substitution from the Zenodo table (the same file as Zenodo 8208688).</span></td></tr>
-<tr><th scope="row">Conservation</th><td>VarSite conservation via ProtVar<br><span class="fp-detail">Fetched 2026-04-22</span><br><span class="fp-detail">ProtVar CONSERV per residue, cached 2026-04-22 (GPR3, GPR4 and XCR1 fetched 2026-10-18), placed on model residue numbering.</span></td></tr>
-<tr><th scope="row">UniProt</th><td>UniProt 2026_04<br><span class="fp-detail">Fetched 2026-11-04</span></td></tr>
+<tr><th scope="row">ClinVar</th><td>ClinVar 2026-10-11<br><span class="fp-detail">Fetched 2026-10-19</span><div class="release-links"><a href="https://www.ncbi.nlm.nih.gov/clinvar/" target="_blank" rel="noopener">ClinVar</a></div></td></tr>
+<tr><th scope="row">AlphaMissense</th><td>AlphaMissense (Cheng et al. 2023)<br><span class="fp-detail">One score per substitution from the Zenodo table (the same file as Zenodo 8208688).</span><div class="release-links"><a href="https://zenodo.org/records/10813168" target="_blank" rel="noopener">AlphaMissense</a><a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></div></td></tr>
+<tr><th scope="row">Conservation</th><td>VarSite conservation via ProtVar<br><span class="fp-detail">Fetched 2026-04-22</span><br><span class="fp-detail">ProtVar CONSERV per residue, cached 2026-04-22 (GPR3, GPR4 and XCR1 fetched 2026-10-18), placed on model residue numbering.</span><div class="release-links"><a href="https://www.ebi.ac.uk/ProtVar/" target="_blank" rel="noopener">ProtVar</a></div></td></tr>
+<tr><th scope="row">UniProt</th><td>UniProt 2026_04<br><span class="fp-detail">Fetched 2026-11-04</span><div class="release-links"><a href="https://www.uniprot.org/" target="_blank" rel="noopener">UniProt</a></div></td></tr>
 <tr><th scope="row">Ensembl</th><td>Ensembl 116<br><span class="fp-detail">Fetched 2026-11-04</span><br><span class="fp-detail">Search transcripts and coordinates. The gnomAD transcript of each gene was chosen from Ensembl on 2026-10-18.</span></td></tr>
 <tr><th scope="row">RefSeq</th><td>NCBI RefSeq (Ensembl otherfeatures GRCh38; UCSC hg19.ncbiRefSeq 2024-09-18)<br><span class="fp-detail">Fetched 2026-11-04</span></td></tr>
 <tr><th scope="row">HGNC</th><td>HGNC 2026-10-30<br><span class="fp-detail">Fetched 2026-11-04</span></td></tr>
 </tbody>
 </table>
-<p class="stats-refs fine-print">
-Data &amp; methods:
-<a href="https://github.com/huhlim/alphafold-multistate" target="_blank" rel="noopener">AlphaFold multistate</a> ·
-<a href="https://doi.org/10.1038/s41586-021-03819-2" target="_blank" rel="noopener">AlphaFold2</a> (some states) ·
-<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6954041/" target="_blank" rel="noopener">RRCS</a> ·
-<a href="https://gnomad.broadinstitute.org/" target="_blank" rel="noopener">gnomAD</a> (gnomAD v4.1.0 for the AlphaMissense class comparison, gnomAD v4.1.2 for the per-position variants) ·
-<a href="https://zenodo.org/records/10813168" target="_blank" rel="noopener">AlphaMissense</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>) ·
-<a href="https://www.ncbi.nlm.nih.gov/clinvar/" target="_blank" rel="noopener">ClinVar 2026-10-11</a> ·
-<a href="https://gpcrdb.org/" target="_blank" rel="noopener">GPCRdb</a> ·
-<a href="https://www.uniprot.org/" target="_blank" rel="noopener">UniProt</a> ·
-<a href="https://www.ebi.ac.uk/ProtVar/" target="_blank" rel="noopener">ProtVar</a> (VarSite conservation)
-</p>
 </details>
 </section>
+</div>
 </div>
 </div>
 </div>
@@ -836,6 +771,7 @@ Data &amp; methods:
 <div class="footer-lab">
 <strong>TGGR Laboratory</strong>
 <span>Translational Genetics and Genomics Research Lab<br>Genetics Institute, Tel Aviv Sourasky Medical Center</span>
+<a href="https://tggr-lab.github.io/" target="_blank" rel="noopener">tggr-lab.github.io · lab website</a>
 <a href="https://www.tasmc.org.il/rd/en/next-unit/research-laboratories/genetics/the-translational-genetics-and-genomics-research-laboratory-prof-hagit-baris-feldman/" target="_blank" rel="noopener">tasmc.org.il · lab page</a>
 <a href="https://github.com/tggr-lab" target="_blank" rel="noopener">github.com/tggr-lab</a>
 </div>

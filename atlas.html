@@ -137,10 +137,8 @@
     <div class="atlas-loading" id="atlas-loading" role="status">Loading 283 receptors</div>
 
     <div class="atlas-top">
-      <div class="atlas-card atlas-brand">
+      <div class="atlas-brand">
         <h1 class="atlas-title" id="atlas-title">GPCRome Atlas <span class="atlas-pill">Preview</span></h1>
-        <p class="atlas-sub">283 human Class A GPCRs, inactive to active</p>
-        <p class="atlas-preview">The Atlas is an experimental preview. Views and measures may change.</p>
         <div class="atlas-search" role="search">
           <label class="atlas-sr" for="atlas-search-input">Find a receptor</label>
           <input type="search" id="atlas-search-input" class="atlas-input" placeholder="Find a receptor" autocomplete="off" spellcheck="false" autocapitalize="off"
@@ -149,28 +147,34 @@
         </div>
       </div>
 
-      <div class="atlas-card atlas-views">
+      <div class="atlas-views">
         <div class="atlas-seg" role="group" aria-label="Layout">
-          <button type="button" class="atlas-seg-btn" data-view="families" aria-pressed="true">Families</button>
+          <button type="button" class="atlas-seg-btn" data-view="families" aria-describedby="atlas-family-label" aria-pressed="true">Families</button>
           <button type="button" class="atlas-seg-btn" data-view="similarity" aria-pressed="false">Similarity</button>
-          <button type="button" class="atlas-seg-btn" data-view="tree" id="atlas-tree-btn" aria-pressed="false">Tree</button>
+          <button type="button" class="atlas-seg-btn" data-view="tree" id="atlas-tree-btn" aria-describedby="atlas-tree-label" aria-pressed="false">Tree</button>
           <button type="button" class="atlas-seg-btn" data-view="ranked" aria-pressed="false">Ranked</button>
-          <button type="button" class="atlas-seg-btn" data-view="fingerprints" aria-pressed="false">Fingerprints</button>
+          <button type="button" class="atlas-seg-btn" data-view="fingerprints" aria-describedby="atlas-fp-label" aria-pressed="false">Fingerprints</button>
         </div>
-        <p class="atlas-caption" id="atlas-caption" aria-live="polite"></p>
+        <span class="atlas-sr" id="atlas-family-label">GPCRdb families by ligand type</span>
+        <span class="atlas-sr" id="atlas-tree-label">Contact trees use hierarchical clustering. Choose Sequence for a phylogenetic tree.</span>
+        <span class="atlas-sr" id="atlas-fp-label">Rows are receptors. Columns are generic positions.</span>
         <div class="atlas-rule" id="atlas-rule-wrap" hidden>
           <div class="atlas-rule-row">
-            <label class="atlas-rule-label" for="atlas-rule">Group by</label>
-            <select id="atlas-rule" class="atlas-select" aria-describedby="atlas-rule-desc">
+            <label class="atlas-rule-label" for="atlas-rule">Similarity by</label>
+            <select id="atlas-rule" class="atlas-select" aria-describedby="atlas-rule-summary">
               <option value="pattern">Contact pattern</option>
             </select>
-            <label class="atlas-rule-label" for="atlas-k">Groups</label>
-            <input type="range" id="atlas-k" class="atlas-k" min="4" max="40" step="1" value="12" disabled>
-            <output id="atlas-k-out" for="atlas-k" class="atlas-k-out">12</output>
+            <span class="atlas-sr" id="atlas-rule-summary"></span>
+            <div class="atlas-groups-control">
+              <label class="atlas-rule-label" for="atlas-k">Groups</label>
+              <input type="range" id="atlas-k" class="atlas-k" min="4" max="40" step="1" value="12" disabled>
+              <output id="atlas-k-out" for="atlas-k" class="atlas-k-out">12</output>
+            </div>
           </div>
-          <p class="atlas-rule-desc" id="atlas-rule-desc"></p>
-          <a class="atlas-newick" id="atlas-newick" href="atlas/sequence_tree.txt" download="gpcrome_sequence_tree.nwk" hidden>Download tree (Newick)</a>
+          <span class="atlas-view-note" id="atlas-rule-note" aria-live="polite"></span>
+          <a class="atlas-newick" id="atlas-newick" href="atlas/sequence_tree.txt" download="gpcrome_sequence_tree.nwk" hidden>Download Newick</a>
         </div>
+        <div class="atlas-view-status" id="atlas-view-status" role="status"></div>
         <label class="atlas-metric" id="atlas-metric-wrap" hidden>
           <span>Sort by</span>
           <select id="atlas-metric" class="atlas-select">
@@ -179,10 +183,11 @@
             <option value="tm6_shift">TM6 displacement</option>
             <option value="sum_abs_above">Total change</option>
           </select>
+          <span>Highest first &rarr;</span>
         </label>
       </div>
 
-      <div class="atlas-card atlas-colorcard">
+      <div class="atlas-colorcard">
         <label class="atlas-colorby">
           <span>Color by</span>
           <select id="atlas-color" class="atlas-select">
@@ -194,30 +199,40 @@
             <option value="share">Share stronger in active</option>
           </select>
         </label>
-        <button type="button" class="atlas-btn atlas-help-btn" id="atlas-help-btn" aria-expanded="false" aria-controls="atlas-help">How to read this</button>
+        <button type="button" class="atlas-btn atlas-help-btn" id="atlas-help-btn" aria-expanded="false" aria-controls="atlas-help">Key</button>
       </div>
     </div>
 
-    <div class="atlas-card atlas-help" id="atlas-help" hidden>
+    <section class="atlas-card atlas-help" id="atlas-help" aria-labelledby="atlas-key-title" hidden>
       <div class="atlas-help-head">
-        <h2>How to read this</h2>
-        <button type="button" class="atlas-icon-btn" data-close-help aria-label="Close">&times;</button>
+        <h2 id="atlas-key-title">Key</h2>
+        <span class="atlas-key-example" id="atlas-key-example"></span>
+        <button type="button" class="atlas-icon-btn" data-close-help aria-label="Close key">&times;</button>
       </div>
-      <p><strong>One glyph per receptor.</strong> Zoomed out, a glyph is a dot in its ligand group's color. Zoomed in, it shows the receptor's seven transmembrane helices as discs, laid out as the bundle is seen from the extracellular side (TM1 to TM7 counterclockwise, TM3 near the center), with helix 8 as a small bar. The layout is a schematic, the same for every receptor, not the model's coordinates.</p>
-      <p><strong>Discs and lines.</strong> Disc size is the summed |&Delta;RRCS| of the receptor's above-threshold contacts on that helix; disc color is their net sum. Lines join two helices that share above-threshold contacts, colored by the net sum and drawn thicker for larger sums. Every glyph uses the same scale, so glyphs can be compared directly.</p>
-      <p><strong>Sign.</strong> <span id="atlas-help-sign"></span> <span class="atlas-swatch atlas-swatch-act"></span> Red: stronger in the active model. <span class="atlas-swatch atlas-swatch-ina"></span> Blue: stronger in the inactive model.</p>
-      <p><strong>Threshold.</strong> <span id="atlas-help-threshold"></span></p>
-      <p><strong>Models.</strong> Each receptor has one predicted active model and one predicted inactive model from GPCRdb. The values describe these models, not measured structures.</p>
-      <p><strong>Layouts.</strong> Families follows GPCRdb's family classification, grouped by ligand type; it is not a phylogeny. Similarity places receptors that are alike under the chosen rule near each other, and Tree shows that rule's similarity tree; both are browsing aids, not classifications. Ranked sorts receptors by one number. Fingerprints shows every receptor's net &Delta;RRCS at each of the <span id="atlas-help-npos">298</span> generic positions shared by at least a quarter of the receptors.</p>
-      <p><strong>Similarity and groups.</strong> Contact-pattern similarity compares which residue contacts change between the two models, and in which direction, for every pair of generic positions (1 = the same contacts change the same way, 0 = unrelated). The intracellular and extracellular rules use only the contacts on that side; the sequence rule uses residue identity at the shared generic positions. Each rule has its own map, links, nearest neighbors and similarity tree, and the Groups slider cuts that tree into groups: a browsing aid, not a classification. Under the sequence rule the Tree layout shows a phylogenetic tree (maximum likelihood, FastTree, over the GPCRdb generic residue positions), downloadable in Newick format; under the contact rules it shows a similarity tree (hierarchical clustering), not a phylogeny.</p>
-      <p><strong>Preview.</strong> The Atlas is an experimental preview. Views and measures may change.</p>
-      <p><strong>Position lens.</strong> The bars under the map count, for each generic position, the receptors with an above-threshold contact change there: up (red) when the residue's net change is stronger in the active model, down (blue) when stronger in the inactive model. Hover or drag along it to color every receptor by that one position; click to keep it.</p>
-    </div>
-
-    <div class="atlas-hint" id="atlas-hint" hidden>
-      <span>Scroll to zoom, drag to move. Hover the bars at the bottom to light up one position. Click a receptor for details.</span>
-      <button type="button" class="atlas-icon-btn" id="atlas-hint-close" aria-label="Dismiss hint">&times;</button>
-    </div>
+      <figure class="atlas-key-figure">
+        <div class="atlas-key-diagram" id="atlas-key-diagram">
+          <canvas id="atlas-key-glyph" role="img" aria-labelledby="atlas-key-example atlas-key-view" aria-describedby="atlas-key-desc"></canvas>
+          <svg aria-hidden="true" focusable="false">
+            <path id="atlas-leader-h8"/><path id="atlas-leader-size"/>
+            <path id="atlas-leader-helix"/><path id="atlas-leader-contact"/>
+          </svg>
+          <span id="atlas-callout-h8">Helix 8</span>
+          <span id="atlas-callout-size">Size: summed |ΔRRCS|</span>
+          <span id="atlas-callout-helix">Helix (TM1 to TM7)</span>
+          <span id="atlas-callout-contact">Line: shared contacts</span>
+        </div>
+        <figcaption id="atlas-key-view">Extracellular view</figcaption>
+        <p class="atlas-sr" id="atlas-key-desc">Each receptor is shown from outside the cell. The numbered discs represent its seven transmembrane helices. The short bar represents helix 8. Larger discs indicate a greater sum of absolute contact-score changes on that helix. A line joins helices that share contacts. A thicker line indicates a larger net change in those contacts, in either direction. Color gives the net direction on each helix or connection. Blue marks are stronger in the inactive model and red marks are stronger in the active model. Only contacts meeting the receptor's threshold contribute. All receptors use the same scale.</p>
+      </figure>
+      <div class="atlas-key-scale" id="atlas-key-scale"></div>
+      <ul class="atlas-key-notes">
+        <li>ΔRRCS = active minus inactive contact score</li>
+        <li>Above-threshold contacts only</li>
+        <li>Same scale for every receptor</li>
+        <li>Predicted models from GPCRdb</li>
+      </ul>
+      <a class="atlas-key-glossary" href="glossary.html">Glossary</a>
+    </section>
 
     <div class="atlas-zoom atlas-card" role="group" aria-label="Zoom">
       <button type="button" class="atlas-icon-btn" id="atlas-zoom-in" aria-label="Zoom in" title="Zoom in">+</button>
@@ -245,7 +260,13 @@
         <span class="atlas-lens-readout" id="atlas-lens-readout" aria-live="polite"></span>
         <button type="button" class="atlas-btn atlas-lens-clear" id="atlas-lens-clear" hidden>Clear</button>
       </div>
-      <canvas class="atlas-ruler" id="atlas-ruler" tabindex="0" role="slider" aria-label="Generic position" aria-valuemin="1" aria-valuemax="298" aria-valuenow="1" aria-valuetext="none"></canvas>
+      <div class="atlas-ruler-row">
+        <div class="atlas-ruler-axis" id="atlas-ruler-axis">
+          <span class="is-act">↑ Active stronger</span>
+          <span class="is-ina">↓ Inactive stronger</span>
+        </div>
+        <canvas class="atlas-ruler" id="atlas-ruler" tabindex="0" role="slider" aria-label="Generic position" aria-describedby="atlas-ruler-axis atlas-lens-readout" aria-valuemin="1" aria-valuemax="298" aria-valuenow="1" aria-valuetext="none"></canvas>
+      </div>
     </div>
 
     <aside class="atlas-panel" id="atlas-panel" aria-labelledby="atlas-panel-title" hidden>
@@ -264,20 +285,22 @@
           <a class="atlas-btn" id="atlas-panel-search" href="#">Search this receptor</a>
         </div>
         <div class="atlas-panel-glyphrow">
-          <canvas class="atlas-panel-glyph" id="atlas-panel-glyph" aria-hidden="true"></canvas>
-          <p class="atlas-panel-note">Discs: TM1 to TM7, seen from the extracellular side; 8 is helix 8. Size: summed |&Delta;RRCS| on the helix. Color: net, <span class="is-act">red</span> stronger in the active model, <span class="is-ina">blue</span> in the inactive model. Same scale as the map.</p>
+          <figure class="atlas-bundle">
+            <figcaption>Extracellular view</figcaption>
+            <canvas class="atlas-panel-glyph" id="atlas-panel-glyph" role="img" aria-label="Helix contacts, TM1 to TM7 and H8"></canvas>
+            <div class="atlas-panel-ramp" id="atlas-panel-ramp"></div>
+          </figure>
+          <dl class="atlas-stats" id="atlas-panel-stats"></dl>
         </div>
-        <dl class="atlas-stats" id="atlas-panel-stats"></dl>
         <p class="atlas-panel-lens" id="atlas-panel-lens" hidden></p>
 
-        <section class="atlas-panel-sec" aria-labelledby="atlas-fp-h">
-          <h3 id="atlas-fp-h">Fingerprint</h3>
-          <canvas class="atlas-strip" id="atlas-panel-strip" aria-hidden="true"></canvas>
-          <p class="atlas-strip-readout" id="atlas-strip-readout">Net &Delta;RRCS at each generic position. Hover to read a position; click to set the lens.</p>
+        <section class="atlas-panel-sec" aria-label="Fingerprint">
+          <h3 class="atlas-strip-readout" id="atlas-strip-readout">Net ΔRRCS by position</h3>
+          <canvas class="atlas-strip" id="atlas-panel-strip" role="slider" tabindex="0" aria-label="Fingerprint position" aria-valuemin="1" aria-valuemax="298" aria-valuenow="1" aria-describedby="atlas-strip-readout"></canvas>
         </section>
 
         <section class="atlas-panel-sec" aria-labelledby="atlas-3d-h">
-          <h3 id="atlas-3d-h">3D models</h3>
+          <h3 id="atlas-3d-h">Predicted models from GPCRdb</h3>
           <div class="atlas-3d" id="atlas-3d"></div>
           <div class="atlas-3d-controls" id="atlas-3d-controls" hidden>
             <button type="button" class="atlas-btn" id="atlas-3d-play" aria-pressed="false">Play</button>
@@ -288,13 +311,14 @@
             </label>
             <label class="atlas-check"><input type="checkbox" id="atlas-3d-contacts" checked> Contacts</label>
           </div>
-          <p class="atlas-3d-status" id="atlas-3d-status"></p>
+          <p class="atlas-3d-status" id="atlas-3d-status" role="status"></p>
         </section>
 
         <section class="atlas-panel-sec" aria-labelledby="atlas-sim-h">
-          <h3 id="atlas-sim-h">Most similar contact patterns</h3>
-          <p class="atlas-sim-rule" id="atlas-sim-rule">Rule: Contact pattern.</p>
-          <p class="atlas-sim-note" id="atlas-sim-note"></p>
+          <h3 id="atlas-sim-h">Nearest receptors · <span id="atlas-sim-rule">Contact pattern</span></h3>
+          <div class="atlas-neighbor-head">
+            <span>Receptor</span><span id="atlas-sim-primary">Similarity</span><span id="atlas-sim-companion">Sequence identity</span>
+          </div>
           <ul class="atlas-similar" id="atlas-panel-similar"></ul>
         </section>
       </div>
@@ -318,6 +342,7 @@
     <div class="footer-lab">
       <strong>TGGR Laboratory</strong>
       <span>Translational Genetics and Genomics Research Lab<br>Genetics Institute, Tel Aviv Sourasky Medical Center</span>
+      <a href="https://tggr-lab.github.io/" target="_blank" rel="noopener">tggr-lab.github.io · lab website</a>
       <a href="https://www.tasmc.org.il/rd/en/next-unit/research-laboratories/genetics/the-translational-genetics-and-genomics-research-laboratory-prof-hagit-baris-feldman/" target="_blank" rel="noopener">tasmc.org.il · lab page</a>
       <a href="https://github.com/tggr-lab" target="_blank" rel="noopener">github.com/tggr-lab</a>
     </div>

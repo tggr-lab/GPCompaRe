@@ -1134,7 +1134,7 @@
           abortCtl = null;
           model = null; fade = null;
           requestRender();
-          showMsg('The 3D model for this receptor could not be loaded.');
+          showMsg('Model unavailable');
           throw err;
         });
     }

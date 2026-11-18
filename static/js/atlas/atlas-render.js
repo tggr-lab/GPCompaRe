@@ -193,7 +193,7 @@
     var cv = document.createElement('canvas');
     cv.width = m; cv.height = n;
     var cx = cv.getContext('2d'), img = cx.createImageData(m, n), px = img.data;
-    var base = P.dark ? [30, 37, 49, 1] : [232, 235, 239, 1];
+    var base = P.heatBase;
     var act = P.act, ina = P.ina;
     for (var row = 0; row < n; row++) {
       var i = rows ? rows[row] : row;
@@ -267,7 +267,8 @@
     quad(l8, X + (c8[0] - ca * L) * sc, Y - (c8[1] - sa * L) * sc, X + (c8[0] + ca * L) * sc, Y - (c8[1] + sa * L) * sc, r._h8 * sc);
     ctx.fillStyle = P.fill[r._hc[7]];
     ctx.beginPath(); ctx.moveTo(l8[0], l8[1]); ctx.lineTo(l8[2], l8[3]); ctx.lineTo(l8[4], l8[5]); ctx.lineTo(l8[6], l8[7]); ctx.fill();
-    ctx.font = '600 11px ' + (getComputedStyle(document.body).fontFamily || 'system-ui');
+    var fontSize = Math.max(11, Math.min(15, Math.round(S * 0.14)));
+    ctx.font = '600 ' + fontSize + 'px ' + (getComputedStyle(document.body).fontFamily || 'system-ui');
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (var k = 0; k < 7; k++) {
       var x = X + HXY[k][0] * sc, y = Y - HXY[k][1] * sc, rr = r._dr[k] * sc;
@@ -282,14 +283,29 @@
       var lx = big ? x : x + (HXY[k][0] * sc) / (Math.hypot(HXY[k][0], HXY[k][1]) * sc || 1) * (rr + 9);
       var ly = big ? y : y - (HXY[k][1] * sc) / (Math.hypot(HXY[k][0], HXY[k][1]) * sc || 1) * (rr + 9);
       if (k === 2 && !big) { lx = x; ly = y - rr - 8; }
-      A.haloText(ctx, String(k + 1), lx, ly, P, big ? '#fff' : P.mutedCss, big ? 0 : 3);
+      if (big) {
+        // Use the higher-contrast ink on the actual disc fill in either theme.
+        var rgb = P.colors[r._hc[k]].slice(0, 3).map(function(channel) {
+          var v = channel / 255;
+          return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+        });
+        ctx.fillStyle = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2] > 0.179 ? '#000' : '#fff';
+        ctx.fillText(String(k + 1), lx, ly);
+      } else {
+        A.haloText(ctx, String(k + 1), lx, ly, P, P.mutedCss);
+      }
     }
     var hx = X + c8[0] * sc, hy = Y - c8[1] * sc;
-    A.haloText(ctx, '8', hx + 12, hy - 8, P, P.mutedCss);
+    // label beyond the bar's outer end, clear of its thickness, so it never sits on the bar
+    var ex = X + (c8[0] + ca * L) * sc, ey = Y - (c8[1] + sa * L) * sc, fx = X + (c8[0] - ca * L) * sc, fy = Y - (c8[1] - sa * L) * sc;
+    if (Math.hypot(fx - X, fy - Y) > Math.hypot(ex - X, ey - Y)) { ex = fx; ey = fy; }
+    var od = Math.hypot(ex - hx, ey - hy) || 1, gap = r._h8 * sc / 2 + fontSize * 0.75;
+    A.haloText(ctx, '8', ex + (ex - hx) / od * gap, ey + (ey - hy) / od * gap, P, P.mutedCss);
     if (lensHelix === 7) {
       ctx.strokeStyle = P.fgCss; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(hx, hy, r._h8 * sc + 8, 0, TAU); ctx.stroke();
     }
+    return { x: X, y: Y, scale: sc };
   };
 
   // ------------------------------------------------------------------ fingerprint strip (panel)
@@ -415,7 +431,7 @@
       var x = X + HXY[k][0] * sc, y = Y - HXY[k][1] * sc;
       ctx.fillStyle = P.fill[P.neutralId];
       ctx.beginPath(); ctx.arc(x, y, 0.2 * sc, 0, TAU); ctx.fill();
-      ctx.fillStyle = P.dark ? '#0b0f16' : '#fff';
+      ctx.fillStyle = P.fgCss;
       ctx.fillText(String(k + 1), x, y + 0.5);
     }
   };
