@@ -296,7 +296,11 @@
       }
     }
     var hx = X + c8[0] * sc, hy = Y - c8[1] * sc;
-    A.haloText(ctx, '8', hx + 12, hy - 8, P, P.mutedCss);
+    // label beyond the bar's outer end, clear of its thickness, so it never sits on the bar
+    var ex = X + (c8[0] + ca * L) * sc, ey = Y - (c8[1] + sa * L) * sc, fx = X + (c8[0] - ca * L) * sc, fy = Y - (c8[1] - sa * L) * sc;
+    if (Math.hypot(fx - X, fy - Y) > Math.hypot(ex - X, ey - Y)) { ex = fx; ey = fy; }
+    var od = Math.hypot(ex - hx, ey - hy) || 1, gap = r._h8 * sc / 2 + fontSize * 0.75;
+    A.haloText(ctx, '8', ex + (ex - hx) / od * gap, ey + (ey - hy) / od * gap, P, P.mutedCss);
     if (lensHelix === 7) {
       ctx.strokeStyle = P.fgCss; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(hx, hy, r._h8 * sc + 8, 0, TAU); ctx.stroke();
