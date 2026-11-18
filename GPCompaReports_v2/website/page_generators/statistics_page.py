@@ -457,7 +457,10 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
         source = stats_dir / 'am_comparison.csv'
         by_label = {g['label']: g['pct_of_scored'] for g in groups}
         classes = ('predicted_pathogenic', 'ambiguous', 'predicted_benign')
-        chart_csv = 'data/am_comparison_scored.csv'
+        # Under data/stats/ so the stage publishes it; in a subfolder so the 19 bulk tables, their count and
+        # the zip stay unchanged.
+        chart_csv = STATS_DIR + '/chart/am_comparison_scored.csv'
+        (output_dir / chart_csv).parent.mkdir(parents=True, exist_ok=True)
         with source.open(encoding='utf-8', newline='') as src_csv, (output_dir / chart_csv).open(
                 'w', encoding='utf-8', newline='') as out_csv:
             reader = csv.DictReader(src_csv)
