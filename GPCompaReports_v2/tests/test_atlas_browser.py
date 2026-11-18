@@ -73,14 +73,16 @@ def test_rule_tree_and_neighbors_follow_the_rule(atlas):
     assert (s['rule'], s['k'], s['groups']) == ('sequence', 8, 8)
     assert page.locator('#atlas-rule-note').inner_text() == 'Maximum-likelihood sequence tree'
     assert page.locator('#atlas-newick').is_visible()
-    assert page.locator('#atlas-sim-rule').inner_text() == 'Rule: Sequence.'
+    assert page.locator('#atlas-sim-h').inner_text() == 'Nearest receptors · Sequence'
+    assert page.locator('.atlas-neighbor-head span').all_text_contents() == ['Receptor', 'Sequence identity', 'Contact pattern']
     assert page.locator('#atlas-panel-similar li').count() == 8
     assert page.locator('#atlas-panel-similar .sm-chip').count() == 0          # no contact pairs for sequence
     page.select_option('#atlas-rule', 'inner')
     page.wait_for_function("window.__atlas.rule === 'inner'")
     assert page.locator('#atlas-rule-note').inner_text() == 'Browsing aid, not a classification'
     assert not page.locator('#atlas-newick').is_visible()
-    assert page.locator('#atlas-sim-rule').inner_text() == 'Rule: Intracellular contacts.'
+    assert page.locator('#atlas-sim-h').inner_text() == 'Nearest receptors · Intracellular contacts'
+    assert page.locator('.atlas-neighbor-head span').all_text_contents() == ['Receptor', 'Similarity', 'Sequence identity']
     assert page.locator('#atlas-panel-similar .sm-chip').count() > 0
     assert page.errors == []
 
@@ -159,9 +161,40 @@ def test_phone_lens_row_cues_the_chips_and_shows_the_whole_readout(atlas):
     page.click('.atlas-chip[data-gn="6.48x48"]')
     page.wait_for_function("document.getElementById('atlas-lens').classList.contains('has-lens')")
     box = page.evaluate("""() => { const e = document.getElementById('atlas-lens-readout');
-      return {clipped: e.scrollHeight > e.clientHeight + 1, text: e.textContent, title: e.title}; }""")
+      return {clipped: e.scrollHeight > e.clientHeight + 1, text: e.textContent}; }""")
     assert not box['clipped'], box
-    assert 'stronger active' in box['text'] and 'stronger inactive' in box['text']
-    assert box['title'] == box['text']
+    p = page.evaluate("window.__atlas.data.positions.find(p => p.gn === '6.48x48')")
+    assert box['text'] == f"6.48x48 · TM6 · ↑ {p['n_up']} ↓ {p['n_down']}"
+    assert page.locator('#atlas-ruler-axis span').all_text_contents() == ['↑ Active stronger', '↓ Inactive stronger']
+    accessible = page.locator('#atlas-ruler').get_attribute('aria-valuetext')
+    assert f"{p['n_up']} active stronger" in accessible and f"{p['n_down']} inactive stronger" in accessible
     assert page.evaluate('document.documentElement.scrollWidth') <= 390
+    assert page.errors == []
+
+
+@needs_build
+def test_fingerprint_score_and_missing_cells_follow_the_layer(atlas):
+    page = atlas('#view=fingerprints')
+    legend = page.locator('#atlas-legend')
+    assert 'No contact' in legend.inner_text() and 'Absent' in legend.inner_text()
+    page.select_option('#atlas-color', 'am')
+    page.wait_for_function("document.querySelector('#atlas-legend').innerText.includes('No score')")
+    assert legend.locator('.lg-ends span').all_text_contents() == [
+        '0 · predicted benign', 'ambiguous', '1 · predicted pathogenic',
+    ]
+    assert 'Absent' in legend.inner_text() and 'No contact' not in legend.inner_text()
+
+
+@needs_build
+def test_panel_strip_keyboard_pin_and_pointer_leave(atlas):
+    page = atlas('#receptor=adrb2_human')
+    strip = page.get_by_role('slider', name='Fingerprint position')
+    strip.focus()
+    strip.press('ArrowRight')
+    strip.press('Enter')
+    assert strip.get_attribute('aria-valuenow') == '2'
+    assert page.evaluate('window.__atlas.lensPin') == 1
+    strip.hover()
+    page.mouse.move(0, 0)
+    assert page.locator('#atlas-strip-readout').inner_text() == 'Net ΔRRCS by position'
     assert page.errors == []

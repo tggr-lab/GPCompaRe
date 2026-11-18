@@ -1292,14 +1292,14 @@
     var h = '<div class="tp-head"><span class="tp-sym">' + esc(r.symbol) + '</span><span class="tp-name">' + esc(r.family) + '</span></div>';
     var cell = A.cell(st.data, c.i, c.j), p = st.data.positions[c.j];
     h += '<div class="tp-meta">' + p.gn + ' · ' + p.segment + '</div>';
-    if (!cell.present) return h + '<div>The receptor has no residue at this position.</div>';
+    if (!cell.present) return h + '<div>Position absent</div>';
     h += '<dl class="tp-grid">';
     h += '<dt>Residue</dt><dd>' + cell.aa + cell.resnum + '</dd>';
     h += '<dt>Net ΔRRCS</dt><dd class="' + signClass(cell.net) + '">' + (cell.clipped ? (cell.net > 0 ? '≥ ' : '≤ ') : '') + fmtNum(cell.net) + '</dd>';
     h += '<dt>Above-threshold contacts</dt><dd>' + cell.hit + '</dd>';
     h += '<dt>Conservation</dt><dd>' + (cell.cons == null ? 'n/a' : cell.cons.toFixed(2)) + '</dd>';
     h += '<dt>Predicted pathogenicity (mean)</dt><dd>' + (cell.am == null ? 'n/a' : cell.am.toFixed(2)) + '</dd>';
-    h += '</dl><div class="tp-hint">Click to open ' + esc(r.symbol) + ' at this position</div>';
+    h += '</dl>';
     return h;
   }
 
@@ -1329,8 +1329,21 @@
   function bar(stops) {
     return '<div class="lg-bar" style="background:linear-gradient(90deg,' + stops.map(function(c) { return A.css(c); }).join(',') + ')"></div>';
   }
-  var AM_ENDS = '<div class="lg-ends"><span>0, benign</span><span>1, pathogenic</span></div>';
-  function divBar() { var P = st.P; return bar([P.ina, P.neutral, P.act]); }
+  function scale(stops, labels) {
+    return bar(stops) + '<div class="lg-ends">' + labels.map(function(label) {
+      return '<span>' + label + '</span>';
+    }).join('') + '</div>';
+  }
+
+  function signedScale() {
+    var P = st.P;
+    return scale([P.ina, P.neutral, P.act], ['Inactive stronger', 'Active stronger']);
+  }
+
+  function sample(kind, label, fill) {
+    var style = fill ? ' style="background-color:' + fill + '"' : '';
+    return '<span class="lg-sample"><i aria-hidden="true" class="lg-' + kind + '"' + style + '></i>' + label + '</span>';
+  }
 
   function maybeLegend() {
     var lod = st.meanS < 5.2 ? 'dots' : 'bundle';
@@ -1341,60 +1354,40 @@
 
   function buildLegend(lod) {
     var P = st.P, j = lens(), gn = j >= 0 ? st.data.positions[j].gn : null, h = '';
-    var groupsHtml = '<ul class="lg-groups">' + st.data.groups.map(function(g) {
-      return '<li><span class="lg-dot" style="background:' + g.color + '"></span>' + esc(g.key.replace(' receptors', '')) + '</li>';
-    }).join('') + '</ul>';
-    if (st.view === 'fingerprints') {
-      var layer = heatLayer();
-      if (layer === 'net') {
-        h += '<p class="lg-title">Net ΔRRCS per residue</p>' + divBar();
-        h += '<div class="lg-ends"><span>stronger inactive</span><span>stronger active</span></div>';
-        h += '<p class="lg-note">Pale: no above-threshold contact at that residue. Blank: the receptor lacks the position.</p>';
-      } else if (layer === 'cons') {
-        h += '<p class="lg-title">Conservation per residue</p>' + bar(P.consStops) + '<div class="lg-ends"><span>0</span><span>1</span></div>';
-      } else {
-        h += '<p class="lg-title">Mean predicted pathogenicity (AlphaMissense) per residue</p>' + bar(P.amStops) + AM_ENDS;
-      }
-    } else if (st.color === 'group') {
-      var rr = rule();
-      h += '<p class="lg-title">Group: ' + esc(rr ? rr.label.toLowerCase() : '') + (st.cut ? ', ' + st.cut.groups.length + ' groups' : '') + '</p>';
-      h += '<div class="lg-hues">' + (st.P.colors.slice(st.P.grpBase, st.P.grpBase + st.P.nGroupHues).map(function(c) {
-        return '<span class="lg-dot" style="background:' + A.css(c) + '"></span>'; }).join('')) + '</div>';
-      h += '<p class="lg-note">Groups are cut from the similarity tree of the chosen rule; colors repeat. A browsing aid, not a classification.</p>';
-    } else if (st.color === 'ligand') {
-      h += '<p class="lg-title">Ligand group</p>' + groupsHtml;
-    } else if (st.color === 'share') {
-      h += '<p class="lg-title">Share of above-threshold contacts stronger in active</p>' + divBar();
-      h += '<div class="lg-ends"><span>25% or less</span><span>50%</span><span>75% or more</span></div>';
-    } else if (st.color === 'cons' || st.color === 'am') {
-      var isC = st.color === 'cons';
-      h += '<p class="lg-title">' + (isC ? 'Conservation' : 'Mean predicted pathogenicity (AlphaMissense)') + ' at ' + (gn || 'the lens position') + '</p>';
-      h += bar(isC ? P.consStops : P.amStops) + (isC ? '<div class="lg-ends"><span>0</span><span>1</span></div>' : AM_ENDS);
-      h += '<p class="lg-note">Faded: the receptor lacks this position. ' + (isC ? 'Gray' : P.dark ? 'Dark gray' : 'Pale gray') + ': no value.</p>';
-    } else if (gn) {
-      h += '<p class="lg-title">Net ΔRRCS at ' + gn + '</p>' + divBar();
-      h += '<div class="lg-ends"><span>stronger inactive</span><span>stronger active</span></div>';
-      h += '<p class="lg-note">Paler: no above-threshold contact at that residue. Faded: the receptor lacks the position. The outlined disc is the helix that holds it.</p>';
-    } else if (lod === 'dots') {
-      h += '<p class="lg-title">Dots: ligand group</p>' + groupsHtml;
-      h += '<div class="lg-sizes"><span class="lg-sz" style="width:7px;height:7px"></span><span class="lg-sz" style="width:15px;height:15px"></span>';
-      h += '<span class="lg-long">Dot area: total change, the sum of <span class="nw">|ΔRRCS|</span> over above-threshold contacts</span><span class="lg-short">Dot area: total change</span></div>';
-      h += '<p class="lg-note">Zoom in to see each receptor’s helix bundle.</p>';
+    var matrix = st.view === 'fingerprints', dots = !matrix && lod === 'dots';
+    var layer = matrix ? heatLayer() : st.color;
+    var keys = '';
+    if (layer === 'cons' || layer === 'am') {
+      var cons = layer === 'cons';
+      h += '<p class="lg-title">' + (cons ? 'Conservation' : 'Mean AlphaMissense') +
+        (!matrix && gn ? ' · ' + gn : '') + '</p>';
+      h += cons ? scale(P.consStops, ['0', '1']) :
+        scale(P.amStops, ['0 · predicted benign', 'ambiguous', '1 · predicted pathogenic']);
+      keys += sample('cell', 'No score', matrix ? A.css(P.heatBase) : P.fill[P.missingId]);
+    } else if (matrix || (layer === 'activation' && gn)) {
+      h += '<p class="lg-title">Net ΔRRCS' + (!matrix ? ' · ' + gn : '') + '</p>' + signedScale();
+      keys += sample('cell', 'No contact', matrix ? A.css(P.heatBase) : P.fill[P.neutralId]);
+    } else if (layer === 'share') {
+      h += '<p class="lg-title">Active stronger (%)</p>' +
+        scale([P.ina, P.neutral, P.act], ['≤ 25%', '50%', '≥ 75%']);
+    } else if (layer === 'group') {
+      h += '<p class="lg-title">' + (st.cut ? st.cut.groups.length + ' groups' : 'Group') + '</p>';
+      h += '<div class="lg-hues" aria-hidden="true">' + P.fill.slice(P.grpBase, P.grpBase + P.nGroupHues).map(function(color) {
+        return '<i class="lg-dot" style="background:' + color + '"></i>';
+      }).join('') + '</div>';
+    } else if (layer === 'ligand' || dots) {
+      h += '<p class="lg-title">Ligand group</p><ul class="lg-groups">' + st.data.groups.map(function(g) {
+        return '<li>' + sample('dot', esc(g.key.replace(' receptors', '')), g.color) + '</li>';
+      }).join('') + '</ul>';
     } else {
-      h += '<div class="lg-row"><canvas class="lg-key" id="atlas-lg-key" aria-hidden="true"></canvas><div>';
-      h += '<p class="lg-title">Helix bundle, top view</p>';
-      h += '<span class="lg-desc">Disc size: summed |ΔRRCS| on the helix. Color: net. Lines: contacts between helices.</span></div></div>';
-      h += divBar() + '<div class="lg-ends"><span>stronger inactive</span><span>stronger active</span></div>';
-      h += '<p class="lg-note">One scale for every receptor.</p>';
+      h += '<div class="lg-bundle"><canvas class="lg-key" id="atlas-lg-key" role="img" aria-label="Extracellular view of TM1 to TM7 and H8"></canvas>' +
+        '<div>' + signedScale() + '</div></div>';
     }
-    if (st.view === 'similarity' || st.view === 'tree') {
-      h += '<p class="lg-note lg-viewnote">' + (st.view === 'similarity'
-        ? 'Lines: each receptor is among the other\u2019s nearest under the rule. Colored halos: the current groups.'
-        : 'Branches: the ' + (st.rule === 'sequence' ? 'sequence tree' : 'similarity tree') + ', colored by the current groups; the dashed ring is the cut.') + '</p>';
-    }
-    if (lod === 'dots' && st.view !== 'fingerprints' && h.indexOf('lg-sizes') < 0) {
-      h += '<p class="lg-note lg-dotnote">Zoomed out, dot area shows total change (sum of |ΔRRCS| above threshold).</p>';
-    }
+    if (matrix || gn) keys += sample(matrix ? 'blank' : 'faded', 'Absent');
+    if (dots) keys += '<span class="lg-sample"><i class="lg-size-sm"></i><i class="lg-size-lg"></i>Total |ΔRRCS|<span class="atlas-sr"> over above-threshold pairs, encoded by dot area</span></span>';
+    if (st.view === 'similarity') keys += sample('line', 'Mutual neighbors') + sample('halo', 'Group');
+    if (st.view === 'tree') keys += sample('branch', 'Group branch') + sample('cut', 'Group cut');
+    if (keys) h += '<div class="lg-samples">' + keys + '</div>';
     legendEl.innerHTML = h;
     var kc = $('atlas-lg-key');
     if (kc) A.drawKeyGlyph(kc, P);
@@ -1407,8 +1400,8 @@
 
   function lensReadout(j) {
     var p = st.data.positions[j];
-    return '<strong>' + p.gn + '</strong> ' + p.segment + ' · present in ' + p.n + ' · above-threshold change in ' + p.n_hit +
-      ': <span class="is-act">' + p.n_up + ' stronger active</span>, <span class="is-ina">' + p.n_down + ' stronger inactive</span>';
+    return '<strong>' + p.gn + '</strong> · ' + p.segment +
+      ' · <span class="is-act">↑ ' + p.n_up + '</span> <span class="is-ina">↓ ' + p.n_down + '</span>';
   }
 
   // A soft fade on the chip row's clipped side(s), so a phone user can tell the row scrolls.
@@ -1422,12 +1415,13 @@
 
   function lensChanged() {
     var j = lens(), out = $('atlas-lens-readout');
-    out.innerHTML = j >= 0 ? lensReadout(j) : (st.color === 'cons' || st.color === 'am' ? 'Choose a position' : 'Hover the bars, or type a generic number');
-    out.title = out.textContent;
+    out.innerHTML = j >= 0 ? lensReadout(j) : '';
+    var pos = st.data.positions[j];
+    rulerCv.setAttribute('aria-valuetext', pos ? pos.gn + ', ' + pos.segment + ', ' + pos.n_up + ' active stronger, ' +
+      pos.n_down + ' inactive stronger, ' + pos.n_hit + ' above threshold, ' + pos.n + ' present' : 'none');
     $('atlas-lens').classList.toggle('has-lens', j >= 0);
     $('atlas-lens-clear').hidden = st.lensPin < 0;
-    rulerCv.setAttribute('aria-valuenow', String((st.lensPin >= 0 ? st.lensPin : 0) + 1));
-    rulerCv.setAttribute('aria-valuetext', st.lensPin >= 0 ? st.data.positions[st.lensPin].gn : 'none');
+    rulerCv.setAttribute('aria-valuenow', String(j >= 0 ? j + 1 : 1));
     Array.prototype.forEach.call(root.querySelectorAll('.atlas-chip'), function(b) {
       b.setAttribute('aria-pressed', st.lensPin >= 0 && b.getAttribute('data-gn') === st.data.positions[st.lensPin].gn ? 'true' : 'false');
     });
@@ -1496,7 +1490,7 @@
       if (!t) { pinLens(-1); return; }
       var j = A.parseGn(st.data, t);
       if (j >= 0) { pinLens(j); inp.value = st.data.positions[j].gn; }
-      else $('atlas-lens-readout').textContent = t + ' is not on the shared position axis (generic positions present in at least a quarter of receptors).';
+      else $('atlas-lens-readout').textContent = 'Unknown generic position';
     }
     inp.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') { e.preventDefault(); apply(); }
@@ -1708,13 +1702,16 @@
     $('atlas-panel-report').href = r.report;
     $('atlas-panel-search').href = root.getAttribute('data-search') + '?q=' + encodeURIComponent(r.symbol);
     var dl = '';
-    function row(label, value, title) { dl += '<div' + (title ? ' title="' + esc(title) + '"' : '') + '><dt>' + label + '</dt><dd>' + value + '</dd></div>'; }
-    row('Contacts above threshold', r.n_above + ' <small>of ' + r.n_pairs + '</small>', 'Contact pairs whose |ΔRRCS| is at or above this receptor’s threshold');
-    row('Threshold', '|ΔRRCS| ≥ ' + r.threshold.toFixed(2), 'Mean plus one standard deviation of |ΔRRCS| over all contact pairs, at least 0.2');
-    row('Stronger in active', Math.round(r.share_active * 100) + '%', 'Share of above-threshold contacts that are stronger in the active model');
-    row('Total change', r.sum_abs_above.toFixed(0) + ' <small>sum |ΔRRCS|</small>', 'Sum of |ΔRRCS| over the above-threshold contacts');
-    row('TM6 displacement', r.tm6_shift.toFixed(1) + ' Å', 'Mean C-alpha distance of TM6 between the two models after superposition');
-    row('Length', r.length + ' <small>residues</small>');
+    function row(label, value, description) {
+      dl += '<div><dt>' + label + '</dt><dd>' + value +
+        (description ? '<span class="atlas-sr"> ' + description + '</span>' : '') + '</dd></div>';
+    }
+    row('Pairs above threshold', r.n_above + ' of ' + r.n_pairs);
+    row('Threshold', '|ΔRRCS| ≥ ' + r.threshold.toFixed(2), 'Mean plus one standard deviation, at least 0.2');
+    row('Active stronger', Math.round(r.share_active * 100) + '%', 'of above-threshold pairs');
+    row('Sum |ΔRRCS|', r.sum_abs_above.toFixed(0), 'over above-threshold pairs');
+    row('TM6 shift', r.tm6_shift.toFixed(1) + ' Å', 'Mean C-alpha displacement after superposition');
+    row('Length', r.length + ' residues');
     $('atlas-panel-stats').innerHTML = dl;
     fillNeighbors(i);
     positionOverlays();
@@ -1730,31 +1727,33 @@
 
   // the panel's neighbor list follows the current grouping rule
   function fillNeighbors(i) {
-    var r = st.data.receptors[i], R = st.data.receptors, ru = rule(), seqRule = st.rule === 'sequence';
+    var R = st.data.receptors, seqRule = st.rule === 'sequence';
     var sim = $('atlas-panel-similar');
-    $('atlas-sim-h').textContent = seqRule ? 'Most similar sequences' : 'Most similar contact patterns';
-    $('atlas-sim-rule').textContent = 'Rule: ' + (ru ? ru.label : 'Contact pattern') + (st.rulesState === 'ready' ? '' : '') + '.';
-    $('atlas-sim-note').innerHTML = seqRule
-      ? 'Bar: sequence identity. Pattern: whole-receptor contact-pattern similarity.'
-      : 'Bar: similarity under this rule (0 to 1). Seq.: sequence identity. Chips: the contacts that weigh most in the match, <span class="is-act">red</span> stronger in the active model, <span class="is-ina">blue</span> in the inactive model.';
+    $('atlas-sim-rule').textContent = rule().label;
+    $('atlas-sim-primary').textContent = seqRule ? 'Sequence identity' : 'Similarity';
+    $('atlas-sim-companion').textContent = seqRule ? 'Contact pattern' : 'Sequence identity';
     sim.innerHTML = '';
     neighbors(i).forEach(function(nb) {
       var o = R[nb.j], pat = nb.sim, comp = nb.comp;
       var li = document.createElement('li'), b = document.createElement('button');
       b.type = 'button';
       var chips = (nb.pairs || []).map(function(pp) {
-        return '<span class="sm-chip ' + (pp[2] > 0 ? 'is-act' : 'is-ina') + '" title="Contact ' + pp[0] + ' to ' + pp[1] + ': stronger in the ' +
-          (pp[2] > 0 ? 'active' : 'inactive') + ' model of ' + esc(r.symbol) + '">' + pp[0] + '\u2013' + pp[1] + '</span>';
+        var active = pp[2] > 0;
+        return '<span class="sm-chip ' + (active ? 'is-act' : 'is-ina') + '">' +
+          (active ? '↑' : '↓') + pp[0] + '–' + pp[1] + '</span>';
       }).join('');
-      var compTxt = seqRule ? 'pattern ' + comp.toFixed(2) : 'seq. ' + Math.round(comp * 100) + '%';
-      var contrast = !seqRule && pat >= 0.3 && comp <= 0.22;
-      b.innerHTML = '<span class="sm-top"><span class="sm-dot" style="background:' + st.data.groups[o.group].color + '"></span>' +
-        '<span class="sm-sym">' + esc(o.symbol) + '</span><span class="sm-fam">' + esc(o.family) + '</span>' +
-        '<span class="sm-bar" aria-hidden="true"><span style="width:' + Math.round(A.clamp(pat, 0, 1) * 100) + '%"></span></span>' +
-        '<span class="sm-val">' + pat.toFixed(2) + '</span></span>' +
-        '<span class="sm-sub"><span class="sm-seq">' + compTxt + '</span>' +
-        (contrast ? '<span class="sm-flag">similar pattern, low sequence identity</span>' : '') + chips + '</span>';
-      b.setAttribute('aria-label', o.symbol + ', ' + o.family + ': ' + (seqRule ? 'sequence identity ' : 'similarity ') + pat.toFixed(2) + ', ' + compTxt);
+      var compTxt = seqRule ? comp.toFixed(2) : Math.round(comp * 100) + '%';
+      b.innerHTML = '<span class="sm-top"><span class="sm-name"><i class="sm-dot" style="background:' + st.data.groups[o.group].color +
+        '"></i><span><strong>' + esc(o.symbol) + '</strong><span class="sm-family">' + esc(o.family) + '</span></span></span>' +
+        '<span class="sm-score"><span class="sm-bar" aria-hidden="true"><span style="width:' + Math.round(A.clamp(pat, 0, 1) * 100) +
+        '%"></span></span>' + pat.toFixed(2) + '</span><span class="sm-comp">' + compTxt + '</span></span>' +
+        (chips ? '<span class="sm-contacts">' + chips + '</span>' : '');
+      var description = o.symbol + ', ' + o.family + ', ' + $('atlas-sim-primary').textContent + ' ' + pat.toFixed(2) +
+        ', ' + $('atlas-sim-companion').textContent + ' ' + compTxt;
+      (nb.pairs || []).forEach(function(pp) {
+        description += ', ' + pp[0] + ' to ' + pp[1] + (pp[2] > 0 ? ' active stronger' : ' inactive stronger');
+      });
+      b.setAttribute('aria-label', description);
       b.addEventListener('click', function() { st.rowHover = -1; select(o.index, { fly: true }); });
       b.addEventListener('mouseenter', function() { st.rowHover = o.index; invalidate(); });
       b.addEventListener('mouseleave', function() { st.rowHover = -1; invalidate(); });
@@ -1812,19 +1811,37 @@
       var r = strip.getBoundingClientRect();
       return A.clamp(Math.floor((e.clientX - r.left) / r.width * st.m), 0, st.m - 1);
     }
-    strip.addEventListener('pointermove', function(e) {
+    function showPosition(j) {
       if (st.sel < 0) return;
-      var j = col(e);
       st.stripHover = j;
       var c = A.cell(st.data, st.sel, j), p = st.data.positions[j];
-      $('atlas-strip-readout').innerHTML = !c.present ? p.gn + ': not present'
+      $('atlas-strip-readout').innerHTML = !c.present ? p.gn + ' · Absent'
         : '<strong>' + p.gn + '</strong> ' + c.aa + c.resnum + ' · net ΔRRCS <span class="' + signClass(c.net) + '">' + fmtNum(c.net) + '</span> · ' + c.hit + ' above-threshold';
+      strip.setAttribute('aria-valuenow', String(j + 1));
+      strip.setAttribute('aria-valuetext', $('atlas-strip-readout').textContent);
       refreshPanelDrawings();
-    });
-    strip.addEventListener('pointerleave', function() {
+    }
+    function clearPosition() {
       st.stripHover = null;
-      $('atlas-strip-readout').textContent = 'Net ΔRRCS at each generic position. Hover to read a position; click to set the lens.';
+      $('atlas-strip-readout').textContent = 'Net ΔRRCS by position';
+      strip.removeAttribute('aria-valuetext');
+      strip.setAttribute('aria-valuenow', String((st.lensPin >= 0 ? st.lensPin : 0) + 1));
       refreshPanelDrawings();
+    }
+    strip.addEventListener('pointermove', function(e) { showPosition(col(e)); });
+    strip.addEventListener('pointerleave', clearPosition);
+    strip.addEventListener('focus', function() { showPosition(st.lensPin >= 0 ? st.lensPin : 0); });
+    strip.addEventListener('blur', clearPosition);
+    strip.addEventListener('keydown', function(e) {
+      var j = st.stripHover == null ? Math.max(0, st.lensPin) : st.stripHover;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowUp') j = Math.min(st.m - 1, j + 1);
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') j = Math.max(0, j - 1);
+      else if (e.key === 'Home') j = 0;
+      else if (e.key === 'End') j = st.m - 1;
+      else if (e.key === 'Enter' || e.key === ' ') pinLens(j);
+      else return;
+      e.preventDefault();
+      showPosition(j);
     });
     strip.addEventListener('click', function(e) { pinLens(col(e)); });
   }
@@ -1880,13 +1897,6 @@
           gid: gid,
           labelFor: function(g) { var r = st.data.byGid[g]; return r ? r.symbol : g; },
           onMorph: function(t) { $('atlas-3d-morph').value = String(Math.round(t * 1000)); },
-          onResidueHover: function(res) {
-            if (st.sel < 0) return;
-            if (res == null) { status.textContent = T.baseStatus || ''; return; }
-            var j = residueColumn(st.sel, res), aa = '';
-            if (j >= 0) aa = A.cell(st.data, st.sel, j).aa;
-            status.textContent = 'Residue ' + aa + res + (j >= 0 ? ' (' + st.data.positions[j].gn + '), click to set the lens' : '');
-          },
           onResidueClick: function(res) {
             if (st.sel < 0) return;
             var j = residueColumn(st.sel, res);
@@ -1920,8 +1930,7 @@
       T.handle.setMorph(+$('atlas-3d-morph').value / 1000);
       T.handle.setContactsVisible($('atlas-3d-contacts').checked);
     } catch (e) { /* ignore */ }
-    T.baseStatus = 'Drag to rotate; click in the view to zoom with the wheel. The slider morphs the inactive model (left) into the active model (right).';
-    $('atlas-3d-status').textContent = T.baseStatus;
+    $('atlas-3d-status').textContent = '';
     refreshPanelLens();
   }
 
@@ -2152,6 +2161,7 @@
 
   function rebuildPalette() {
     st.P = A.buildPalette(stage, st.data.groups);
+    $('atlas-panel-ramp').innerHTML = signedScale();
     A.prepareColors(st.data, st.P);
     st.heat = {}; st.heatIdx = null;
     st.halos = A.buildHalos(st.data.groups, st.P);
@@ -2228,6 +2238,7 @@
     $('atlas-help-threshold').textContent = index.threshold_rule || '';
     $('atlas-help-npos').textContent = String(st.m);
     rulerCv.setAttribute('aria-valuemax', String(st.m));
+    $('atlas-panel-strip').setAttribute('aria-valuemax', String(st.m));
     measureTop();
     rebuildPalette();
     resize();

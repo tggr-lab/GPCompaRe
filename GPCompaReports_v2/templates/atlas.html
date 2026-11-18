@@ -129,7 +129,13 @@
         <span class="atlas-lens-readout" id="atlas-lens-readout" aria-live="polite"></span>
         <button type="button" class="atlas-btn atlas-lens-clear" id="atlas-lens-clear" hidden>Clear</button>
       </div>
-      <canvas class="atlas-ruler" id="atlas-ruler" tabindex="0" role="slider" aria-label="Generic position" aria-valuemin="1" aria-valuemax="298" aria-valuenow="1" aria-valuetext="none"></canvas>
+      <div class="atlas-ruler-row">
+        <div class="atlas-ruler-axis" id="atlas-ruler-axis">
+          <span class="is-act">↑ Active stronger</span>
+          <span class="is-ina">↓ Inactive stronger</span>
+        </div>
+        <canvas class="atlas-ruler" id="atlas-ruler" tabindex="0" role="slider" aria-label="Generic position" aria-describedby="atlas-ruler-axis atlas-lens-readout" aria-valuemin="1" aria-valuemax="298" aria-valuenow="1" aria-valuetext="none"></canvas>
+      </div>
     </div>
 
     <aside class="atlas-panel" id="atlas-panel" aria-labelledby="atlas-panel-title" hidden>
@@ -148,20 +154,22 @@
           <a class="atlas-btn" id="atlas-panel-search" href="#">Search this receptor</a>
         </div>
         <div class="atlas-panel-glyphrow">
-          <canvas class="atlas-panel-glyph" id="atlas-panel-glyph" aria-hidden="true"></canvas>
-          <p class="atlas-panel-note">Discs: TM1 to TM7, seen from the extracellular side; 8 is helix 8. Size: summed |&Delta;RRCS| on the helix. Color: net, <span class="is-act">red</span> stronger in the active model, <span class="is-ina">blue</span> in the inactive model. Same scale as the map.</p>
+          <figure class="atlas-bundle">
+            <figcaption>Extracellular view</figcaption>
+            <canvas class="atlas-panel-glyph" id="atlas-panel-glyph" role="img" aria-label="Helix contacts, TM1 to TM7 and H8"></canvas>
+            <div class="atlas-panel-ramp" id="atlas-panel-ramp"></div>
+          </figure>
+          <dl class="atlas-stats" id="atlas-panel-stats"></dl>
         </div>
-        <dl class="atlas-stats" id="atlas-panel-stats"></dl>
         <p class="atlas-panel-lens" id="atlas-panel-lens" hidden></p>
 
-        <section class="atlas-panel-sec" aria-labelledby="atlas-fp-h">
-          <h3 id="atlas-fp-h">Fingerprint</h3>
-          <canvas class="atlas-strip" id="atlas-panel-strip" aria-hidden="true"></canvas>
-          <p class="atlas-strip-readout" id="atlas-strip-readout">Net &Delta;RRCS at each generic position. Hover to read a position; click to set the lens.</p>
+        <section class="atlas-panel-sec" aria-label="Fingerprint">
+          <h3 class="atlas-strip-readout" id="atlas-strip-readout">Net ΔRRCS by position</h3>
+          <canvas class="atlas-strip" id="atlas-panel-strip" role="slider" tabindex="0" aria-label="Fingerprint position" aria-valuemin="1" aria-valuemax="298" aria-valuenow="1" aria-describedby="atlas-strip-readout"></canvas>
         </section>
 
         <section class="atlas-panel-sec" aria-labelledby="atlas-3d-h">
-          <h3 id="atlas-3d-h">3D models</h3>
+          <h3 id="atlas-3d-h">Predicted models from GPCRdb</h3>
           <div class="atlas-3d" id="atlas-3d"></div>
           <div class="atlas-3d-controls" id="atlas-3d-controls" hidden>
             <button type="button" class="atlas-btn" id="atlas-3d-play" aria-pressed="false">Play</button>
@@ -172,13 +180,14 @@
             </label>
             <label class="atlas-check"><input type="checkbox" id="atlas-3d-contacts" checked> Contacts</label>
           </div>
-          <p class="atlas-3d-status" id="atlas-3d-status"></p>
+          <p class="atlas-3d-status" id="atlas-3d-status" role="status"></p>
         </section>
 
         <section class="atlas-panel-sec" aria-labelledby="atlas-sim-h">
-          <h3 id="atlas-sim-h">Most similar contact patterns</h3>
-          <p class="atlas-sim-rule" id="atlas-sim-rule">Rule: Contact pattern.</p>
-          <p class="atlas-sim-note" id="atlas-sim-note"></p>
+          <h3 id="atlas-sim-h">Nearest receptors · <span id="atlas-sim-rule">Contact pattern</span></h3>
+          <div class="atlas-neighbor-head">
+            <span>Receptor</span><span id="atlas-sim-primary">Similarity</span><span id="atlas-sim-companion">Sequence identity</span>
+          </div>
           <ul class="atlas-similar" id="atlas-panel-similar"></ul>
         </section>
       </div>

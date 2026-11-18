@@ -193,7 +193,7 @@
     var cv = document.createElement('canvas');
     cv.width = m; cv.height = n;
     var cx = cv.getContext('2d'), img = cx.createImageData(m, n), px = img.data;
-    var base = P.dark ? [30, 37, 49, 1] : [232, 235, 239, 1];
+    var base = P.heatBase;
     var act = P.act, ina = P.ina;
     for (var row = 0; row < n; row++) {
       var i = rows ? rows[row] : row;
@@ -415,7 +415,7 @@
       var x = X + HXY[k][0] * sc, y = Y - HXY[k][1] * sc;
       ctx.fillStyle = P.fill[P.neutralId];
       ctx.beginPath(); ctx.arc(x, y, 0.2 * sc, 0, TAU); ctx.fill();
-      ctx.fillStyle = P.dark ? '#0b0f16' : '#fff';
+      ctx.fillStyle = P.fgCss;
       ctx.fillText(String(k + 1), x, y + 0.5);
     }
   };

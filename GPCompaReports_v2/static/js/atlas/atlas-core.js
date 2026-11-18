@@ -213,7 +213,7 @@
     var colors = [];           // rgba arrays
     function add(c) { colors.push(c); return colors.length - 1; }
     var P = { dark: dark, act: act, ina: ina, fg: fg, muted: muted, accent: accent, bg: bg, neutral: neutral,
-              consStops: consStops, amStops: amStops };
+              heatBase: dark ? [30, 37, 49, 1] : [232, 235, 239, 1], consStops: consStops, amStops: amStops };
     // diverging: id DIV is neutral; DIV+k (k=1..DIV) toward active; DIV-k toward inactive
     P.divBase = colors.length;
     for (var k = -DIV; k <= DIV; k++) {
