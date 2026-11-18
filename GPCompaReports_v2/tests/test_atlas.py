@@ -169,7 +169,8 @@ def test_the_page_has_the_grouping_controls_and_the_tree_layout():
         assert needle in html, needle
     js = (STATIC / 'js' / 'atlas' / 'atlas.js').read_text(encoding='utf-8')
     # the contact-rule trees are similarity trees, never a phylogeny; groups stay browsing aids
-    assert 'similarity tree (hierarchical clustering), not a phylogeny' in html
+    assert 'aria-describedby="atlas-tree-label"' in html
+    assert 'Contact trees use hierarchical clustering. Choose Sequence for a phylogenetic tree.' in html
     assert 'Maximum-likelihood sequence tree' in js
     assert 'Browsing aid, not a classification' in js
     assert not re.search(r'evolutionary tree', ' '.join([html, js]), re.I)

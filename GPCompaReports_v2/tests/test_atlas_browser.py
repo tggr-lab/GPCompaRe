@@ -118,11 +118,22 @@ def test_help_card_sits_above_an_open_receptor_panel(atlas, viewport, scheme):
     page = atlas('#receptor=drd2_human', viewport=viewport, scheme=scheme)
     page.wait_for_function('window.__atlas.sel >= 0')
     page.wait_for_timeout(300)
-    page.click('#atlas-help-btn')
+    key = page.get_by_role('button', name='Key', exact=True)
+    key.click()
+    assert key.get_attribute('aria-expanded') == 'true'
     assert page.locator('#atlas-help').is_visible()
+    assert page.locator('#atlas-help').get_by_role('heading', name='Key').is_visible()
+    assert page.locator('#atlas-key-example').inner_text() == 'ADRB2'
+    assert page.locator('#atlas-key-glyph').bounding_box()['width'] >= 220
+    leaders = page.locator('#atlas-key-diagram path')
+    assert leaders.count() == 4 and leaders.evaluate_all('paths => paths.every(p => p.getTotalLength() > 0)')
+    assert page.locator('#atlas-key-scale span').all_text_contents() == ['Inactive stronger', 'Active stronger']
+    assert page.locator('#atlas-help').get_by_role('link', name='Glossary').get_attribute('href') == 'glossary.html'
     assert _help_fully_on_top(page)
     page.keyboard.press('Escape')
     assert not page.locator('#atlas-help').is_visible()
+    assert key.get_attribute('aria-expanded') == 'false'
+    assert key.evaluate('button => document.activeElement === button')
     assert page.errors == []
 
 

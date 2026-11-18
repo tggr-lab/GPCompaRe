@@ -1272,33 +1272,27 @@
   }
 
   function receptorTip(i) {
-    var r = st.data.receptors[i], g = st.data.groups[r.group];
-    var h = '<div class="tp-head"><span class="tp-sym">' + esc(r.symbol) + '</span><span class="tp-name">' + esc(r.fullName || r.name) + '</span></div>';
-    h += '<div class="tp-meta">' + esc(r.family) + ' · <span style="color:' + groupText(r.group) + '">' + esc(g.key) + '</span></div>';
-    h += '<dl class="tp-grid">';
-    h += '<dt>Contacts above threshold</dt><dd>' + r.n_above + '</dd>';
-    h += '<dt>Stronger in active</dt><dd>' + Math.round(r.share_active * 100) + '%</dd>';
-    h += '<dt>TM6 displacement</dt><dd>' + r.tm6_shift.toFixed(1) + ' Å</dd>';
-    if (st.view === 'ranked' && st.metric === 'sum_abs_above') h += '<dt>Total change</dt><dd>' + Math.round(r.sum_abs_above) + '</dd>';
-    h += '</dl>';
-    var j = lens();
-    if (j >= 0) h += '<div class="tp-lens">' + lensLine(i, j) + '</div>';
-    h += '<div class="tp-hint">Click for details</div>';
-    return h;
+    var r = st.data.receptors[i], j = lens();
+    var h = '<div class="tp-head"><span class="tp-sym">' + esc(r.symbol) + '</span></div>';
+    if (j >= 0) return h + '<div class="tp-lens">' + lensLine(i, j) + '</div>';
+    h += '<dl class="tp-grid"><dt>Pairs above threshold</dt><dd>' + r.n_above + '</dd>';
+    h += '<dt>Active stronger</dt><dd>' + Math.round(r.share_active * 100) + '%</dd>';
+    h += '<dt>TM6 shift</dt><dd>' + r.tm6_shift.toFixed(1) + ' Å</dd>';
+    if (st.view === 'ranked' && st.metric === 'sum_abs_above') h += '<dt>Sum |ΔRRCS|</dt><dd>' + Math.round(r.sum_abs_above) + '</dd>';
+    return h + '</dl>';
   }
 
   function cellTip(c) {
     var r = st.data.receptors[c.i];
-    var h = '<div class="tp-head"><span class="tp-sym">' + esc(r.symbol) + '</span><span class="tp-name">' + esc(r.family) + '</span></div>';
+    var h = '<div class="tp-head"><span class="tp-sym">' + esc(r.symbol) + '</span></div>';
     var cell = A.cell(st.data, c.i, c.j), p = st.data.positions[c.j];
-    h += '<div class="tp-meta">' + p.gn + ' · ' + p.segment + '</div>';
+    h += '<div class="tp-meta">' + p.gn + ' ' + p.segment + (cell.present ? ' ' + cell.aa + cell.resnum : '') + '</div>';
     if (!cell.present) return h + '<div>Position absent</div>';
     h += '<dl class="tp-grid">';
-    h += '<dt>Residue</dt><dd>' + cell.aa + cell.resnum + '</dd>';
-    h += '<dt>Net ΔRRCS</dt><dd class="' + signClass(cell.net) + '">' + (cell.clipped ? (cell.net > 0 ? '≥ ' : '≤ ') : '') + fmtNum(cell.net) + '</dd>';
+    h += '<dt>Net ΔRRCS</dt><dd class="' + signClass(cell.net) + '">' + (cell.clipped ? (cell.net > 0 ? '≥' : '≤') : '') + fmtNum(cell.net) + '</dd>';
     h += '<dt>Above-threshold contacts</dt><dd>' + cell.hit + '</dd>';
     h += '<dt>Conservation</dt><dd>' + (cell.cons == null ? 'n/a' : cell.cons.toFixed(2)) + '</dd>';
-    h += '<dt>Predicted pathogenicity (mean)</dt><dd>' + (cell.am == null ? 'n/a' : cell.am.toFixed(2)) + '</dd>';
+    h += '<dt>Mean AlphaMissense</dt><dd>' + (cell.am == null ? 'n/a' : cell.am.toFixed(2)) + '</dd>';
     h += '</dl>';
     return h;
   }
@@ -2068,6 +2062,32 @@
     writeHash();
   }
 
+  function drawHelpKey() {
+    if ($('atlas-help').hidden) return;
+    var r = st.data.byGid.adrb2_human || st.data.receptors[0];
+    var glyph = $('atlas-key-glyph'), plot = $('atlas-key-diagram').getBoundingClientRect();
+    var frame = A.drawBigGlyph(glyph, r, st.P, -1);
+    var bounds = glyph.getBoundingClientRect();
+    var cx = bounds.left - plot.left + frame.x, cy = bounds.top - plot.top + frame.y;
+    function lead(name, x, y, above) {
+      var label = $('atlas-callout-' + name).getBoundingClientRect();
+      var sx = label.left + label.width / 2 - plot.left;
+      var sy = (above ? label.bottom + 2 : label.top - 2) - plot.top;
+      var ex = cx + x * frame.scale, ey = cy - y * frame.scale;
+      $('atlas-leader-' + name).setAttribute('d', 'M' + sx + ' ' + sy + ' L' + ex + ' ' +
+        (sy + (above ? 10 : -10)) + ' V' + ey);
+    }
+    var h = A.HELIX_XY;
+    lead('h8', h[7][0], h[7][1], true);
+    lead('size', h[5][0] + r._dr[5] * 0.6, h[5][1] + r._dr[5] * 0.8, true);
+    lead('helix', h[1][0] - r._dr[1] * 0.6, h[1][1] - r._dr[1] * 0.8, false);
+    // Approach the TM4/TM5 contact from below, between the two discs.
+    var pair = r.helix_pairs.find(function(p) { return p[0] === 3 && p[1] === 4; }) || r.helix_pairs[0];
+    $('atlas-callout-contact').hidden = !pair;
+    if (pair) lead('contact', (h[pair[0]][0] + h[pair[1]][0]) / 2, (h[pair[0]][1] + h[pair[1]][1]) / 2, false);
+    $('atlas-key-example').textContent = r.symbol;
+  }
+
   function initControls() {
     Array.prototype.forEach.call(root.querySelectorAll('.atlas-seg-btn'), function(b) {
       b.addEventListener('click', function() {
@@ -2087,6 +2107,7 @@
     function toggleHelp(on) {
       positionOverlays();
       help.hidden = !on;
+      if (on) drawHelpKey();
       helpBtn.setAttribute('aria-expanded', on ? 'true' : 'false');
     }
     helpBtn.addEventListener('click', function() { toggleHelp(help.hidden); });
@@ -2095,7 +2116,7 @@
       if (e.key !== 'Escape') return;
       var t = e.target, tag = t && t.tagName;
       if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
-      if (!help.hidden) { toggleHelp(false); return; }
+      if (!help.hidden) { toggleHelp(false); helpBtn.focus(); return; }
       if (st.lensPin >= 0) { pinLens(-1); return; }
       if (st.sel >= 0) select(-1);
     });
@@ -2162,7 +2183,9 @@
   function rebuildPalette() {
     st.P = A.buildPalette(stage, st.data.groups);
     $('atlas-panel-ramp').innerHTML = signedScale();
+    $('atlas-key-scale').innerHTML = signedScale();
     A.prepareColors(st.data, st.P);
+    drawHelpKey();
     st.heat = {}; st.heatIdx = null;
     st.halos = A.buildHalos(st.data.groups, st.P);
     st.haloField = null;
@@ -2234,9 +2257,6 @@
     st.layouts.fingerprints = fp;
     // every glyph starts at the center, small, for the opening
     for (i = 0; i < n; i++) { gx[i] = 0; gy[i] = 0; gs[i] = 0.15; }
-    $('atlas-help-sign').textContent = 'Each value is a ΔRRCS: the contact score in the active model minus the inactive model.';
-    $('atlas-help-threshold').textContent = index.threshold_rule || '';
-    $('atlas-help-npos').textContent = String(st.m);
     rulerCv.setAttribute('aria-valuemax', String(st.m));
     $('atlas-panel-strip').setAttribute('aria-valuemax', String(st.m));
     measureTop();
@@ -2258,6 +2278,7 @@
     ld.classList.add('is-done');
     setTimeout(function() { ld.hidden = true; }, 500);
     window.addEventListener('hashchange', function() { applyHash(false); });
+    if (window.ResizeObserver) new ResizeObserver(drawHelpKey).observe($('atlas-key-diagram'));
     new MutationObserver(function() { rebuildPalette(); if (st.three && st.three.handle) { /* the 3D view re-reads colors itself */ } })
       .observe(document.documentElement, { attributes: true, attributeFilter: ['data-color-mode'] });
     if (window.ResizeObserver) new ResizeObserver(function() { measureTop(); resize(); }).observe(stage);
@@ -2303,7 +2324,7 @@
     .then(boot)
     .catch(function(err) {
       var ld = $('atlas-loading');
-      ld.textContent = 'The atlas data could not be loaded.';
+      ld.textContent = 'Atlas data unavailable';
       ld.classList.add('is-error');
       if (window.console) console.error(err);
     });

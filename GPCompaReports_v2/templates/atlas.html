@@ -37,11 +37,12 @@
         <div class="atlas-seg" role="group" aria-label="Layout">
           <button type="button" class="atlas-seg-btn" data-view="families" aria-describedby="atlas-family-label" aria-pressed="true">Families</button>
           <button type="button" class="atlas-seg-btn" data-view="similarity" aria-pressed="false">Similarity</button>
-          <button type="button" class="atlas-seg-btn" data-view="tree" id="atlas-tree-btn" aria-pressed="false">Tree</button>
+          <button type="button" class="atlas-seg-btn" data-view="tree" id="atlas-tree-btn" aria-describedby="atlas-tree-label" aria-pressed="false">Tree</button>
           <button type="button" class="atlas-seg-btn" data-view="ranked" aria-pressed="false">Ranked</button>
           <button type="button" class="atlas-seg-btn" data-view="fingerprints" aria-describedby="atlas-fp-label" aria-pressed="false">Fingerprints</button>
         </div>
         <span class="atlas-sr" id="atlas-family-label">GPCRdb families by ligand type</span>
+        <span class="atlas-sr" id="atlas-tree-label">Contact trees use hierarchical clustering. Choose Sequence for a phylogenetic tree.</span>
         <span class="atlas-sr" id="atlas-fp-label">Rows are receptors. Columns are generic positions.</span>
         <div class="atlas-rule" id="atlas-rule-wrap" hidden>
           <div class="atlas-rule-row">
@@ -84,24 +85,40 @@
             <option value="share">Share stronger in active</option>
           </select>
         </label>
-        <button type="button" class="atlas-btn atlas-help-btn" id="atlas-help-btn" aria-expanded="false" aria-controls="atlas-help">How to read this</button>
+        <button type="button" class="atlas-btn atlas-help-btn" id="atlas-help-btn" aria-expanded="false" aria-controls="atlas-help">Key</button>
       </div>
     </div>
 
-    <div class="atlas-card atlas-help" id="atlas-help" hidden>
+    <section class="atlas-card atlas-help" id="atlas-help" aria-labelledby="atlas-key-title" hidden>
       <div class="atlas-help-head">
-        <h2>How to read this</h2>
-        <button type="button" class="atlas-icon-btn" data-close-help aria-label="Close">&times;</button>
+        <h2 id="atlas-key-title">Key</h2>
+        <span class="atlas-key-example" id="atlas-key-example"></span>
+        <button type="button" class="atlas-icon-btn" data-close-help aria-label="Close key">&times;</button>
       </div>
-      <p><strong>One glyph per receptor.</strong> Zoomed out, a glyph is a dot in its ligand group's color. Zoomed in, it shows the receptor's seven transmembrane helices as discs, laid out as the bundle is seen from the extracellular side (TM1 to TM7 counterclockwise, TM3 near the center), with helix 8 as a small bar. The layout is a schematic, the same for every receptor, not the model's coordinates.</p>
-      <p><strong>Discs and lines.</strong> Disc size is the summed |&Delta;RRCS| of the receptor's above-threshold contacts on that helix; disc color is their net sum. Lines join two helices that share above-threshold contacts, colored by the net sum and drawn thicker for larger sums. Every glyph uses the same scale, so glyphs can be compared directly.</p>
-      <p><strong>Sign.</strong> <span id="atlas-help-sign"></span> <span class="atlas-swatch atlas-swatch-act"></span> Red: stronger in the active model. <span class="atlas-swatch atlas-swatch-ina"></span> Blue: stronger in the inactive model.</p>
-      <p><strong>Threshold.</strong> <span id="atlas-help-threshold"></span></p>
-      <p><strong>Models.</strong> Each receptor has one predicted active model and one predicted inactive model from GPCRdb. The values describe these models, not measured structures.</p>
-      <p><strong>Layouts.</strong> Families follows GPCRdb's family classification, grouped by ligand type; it is not a phylogeny. Similarity places receptors that are alike under the chosen rule near each other, and Tree shows that rule's similarity tree; both are browsing aids, not classifications. Ranked sorts receptors by one number. Fingerprints shows every receptor's net &Delta;RRCS at each of the <span id="atlas-help-npos">298</span> generic positions shared by at least a quarter of the receptors.</p>
-      <p><strong>Similarity and groups.</strong> Contact-pattern similarity compares which residue contacts change between the two models, and in which direction, for every pair of generic positions (1 = the same contacts change the same way, 0 = unrelated). The intracellular and extracellular rules use only the contacts on that side; the sequence rule uses residue identity at the shared generic positions. Each rule has its own map, links, nearest neighbors and similarity tree, and the Groups slider cuts that tree into groups: a browsing aid, not a classification. Under the sequence rule the Tree layout shows a phylogenetic tree (maximum likelihood, FastTree, over the GPCRdb generic residue positions), downloadable in Newick format; under the contact rules it shows a similarity tree (hierarchical clustering), not a phylogeny.</p>
-      <p><strong>Position lens.</strong> The bars under the map count, for each generic position, the receptors with an above-threshold contact change there: up (red) when the residue's net change is stronger in the active model, down (blue) when stronger in the inactive model. Hover or drag along it to color every receptor by that one position; click to keep it.</p>
-    </div>
+      <figure class="atlas-key-figure">
+        <div class="atlas-key-diagram" id="atlas-key-diagram">
+          <canvas id="atlas-key-glyph" role="img" aria-labelledby="atlas-key-example atlas-key-view" aria-describedby="atlas-key-desc"></canvas>
+          <svg aria-hidden="true" focusable="false">
+            <path id="atlas-leader-h8"/><path id="atlas-leader-size"/>
+            <path id="atlas-leader-helix"/><path id="atlas-leader-contact"/>
+          </svg>
+          <span id="atlas-callout-h8">Helix 8</span>
+          <span id="atlas-callout-size">Size: summed |ΔRRCS|</span>
+          <span id="atlas-callout-helix">Helix (TM1 to TM7)</span>
+          <span id="atlas-callout-contact">Line: shared contacts</span>
+        </div>
+        <figcaption id="atlas-key-view">Extracellular view</figcaption>
+        <p class="atlas-sr" id="atlas-key-desc">Each receptor is shown from outside the cell. The numbered discs represent its seven transmembrane helices. The short bar represents helix 8. Larger discs indicate a greater sum of absolute contact-score changes on that helix. A line joins helices that share contacts. A thicker line indicates a larger net change in those contacts, in either direction. Color gives the net direction on each helix or connection. Blue marks are stronger in the inactive model and red marks are stronger in the active model. Only contacts meeting the receptor's threshold contribute. All receptors use the same scale.</p>
+      </figure>
+      <div class="atlas-key-scale" id="atlas-key-scale"></div>
+      <ul class="atlas-key-notes">
+        <li>ΔRRCS = active minus inactive contact score</li>
+        <li>Above-threshold contacts only</li>
+        <li>Same scale for every receptor</li>
+        <li>Predicted models from GPCRdb</li>
+      </ul>
+      <a class="atlas-key-glossary" href="{{ static_prefix }}glossary.html">Glossary</a>
+    </section>
 
     <div class="atlas-zoom atlas-card" role="group" aria-label="Zoom">
       <button type="button" class="atlas-icon-btn" id="atlas-zoom-in" aria-label="Zoom in" title="Zoom in">+</button>
