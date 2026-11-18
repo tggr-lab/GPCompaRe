@@ -105,10 +105,13 @@ def test_every_card_draws_once_without_errors_or_sideways_scroll(open_page, sche
     for cid in CARDS:
         assert page.locator('#' + cid).get_attribute('data-chart-rendered') == '1', cid
         assert page.locator('#%s .load-note' % cid).count() == 0, cid
+    chart = page.locator('#chart-pathogenicity svg')
+    expect(chart.get_by_text('66.9%', exact=True)).to_be_visible()
+    expect(chart.get_by_text('43.6%', exact=True)).to_be_visible()
     assert page.locator('#chart-receptors .plot-container').count() == 1
     assert _errors(page) == []
     assert _no_horizontal_scroll(page)
-    over = page.evaluate("""() => Array.from(document.querySelectorAll('.scard-title, .scard-foot, .chips, .seg, .glance-fact'))
+    over = page.evaluate("""() => Array.from(document.querySelectorAll('.scard-title, .scard-foot, .chips, .seg, .rail-list'))
         .filter(e => e.getClientRects().length && e.getBoundingClientRect().right > document.documentElement.clientWidth + 1)
         .map(e => e.className)""")
     assert over == [], over
@@ -120,6 +123,7 @@ def test_no_selection_on_load_and_nothing_par_specific(open_page):
     assert 'sel=' not in page.url
     assert page.locator('.pos-profile').count() == 0
     assert page.locator('#sel-input').input_value() == ''
+    assert 'sr-only' in page.locator('[data-sel-summary]').get_attribute('class').split()
     assert 'Nothing selected' in page.locator('[data-sel-summary]').inner_text()
     html = STATS.read_text(encoding='utf-8')
     for bad in ('par1_human', 'par2_human', 'par3_human', 'par4_human', 'f2r_human', 'Met159'):
@@ -222,7 +226,8 @@ def test_a_small_group_shows_the_carried_by_state(open_page):
     assert 'carried by 2 of 2' in card.locator('[data-ledger]').inner_text()
     assert card.locator('[data-ledger] .group-chips-list button').count() == 2
     assert 'fewer than the 10 a class direction needs' in card.locator('[data-guide]').inner_text()
-    assert '2 receptors (melatonin).' in card.locator('[data-scope]').inner_text()
+    card.locator('[data-method-toggle]').click()
+    expect(card.locator('[data-src-scope]')).to_have_text('2 receptors (melatonin)')
     card.locator('[data-ledger] .group-chips-list button').first.click()
     assert 'sel=rec:' in page.url
 
@@ -332,8 +337,13 @@ def test_without_javascript_the_server_parts_render(browser, server):
     ctx = browser.new_context(java_script_enabled=False, viewport=DESKTOP)
     page = ctx.new_page()
     page.goto(server + '/statistics.html', wait_until='load')
-    assert page.locator('.glance-fact').count() == 4
-    assert page.locator('.finding').count() == 5
+    assert page.locator('.stats-census a').all_inner_texts() == [
+        '283 receptors', '60 families', '10 ligand types', '213,456 contact pairs',
+        '368 recurrent positions', '50 top-ranked positions']
+    headings = page.locator('section.story > h2').all_inner_texts()
+    assert headings == ['Contact changes', 'Helix contacts', 'Recurrent positions', 'Variant predictions',
+                        'Receptors and families', 'Methods and data']
+    assert page.get_by_role('navigation', name='On this page').get_by_role('link').all_inner_texts() == headings
     assert page.locator('#chart-thresholds svg path.s-dots').count() == 2
     assert page.locator('#cfr-table tbody tr').count() == 50
     assert page.locator('#cfr-pairs-table tbody tr').count() == 20

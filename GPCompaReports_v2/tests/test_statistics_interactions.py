@@ -158,7 +158,7 @@ def test_the_phone_sheet_folds_and_keeps_the_position(open_page):
     p = _profile(page)
     assert not p['peek'] and p['height'] > 200, p
     assert prof.locator('.handle').get_attribute('aria-expanded') == 'true'
-    page.locator('.stats-lede').click()   # a tap on the page folds the sheet
+    page.locator('.stats-head h1').click()   # a tap on the page folds the sheet
     page.wait_for_timeout(200)
     assert _profile(page)['peek'] and 'sel=pos:6.48x48' in page.url
     prof.locator('.x').click()

@@ -470,13 +470,14 @@ def test_built_atlas_map():
 
 
 @needs_build
-def test_built_page_carries_the_findings():
+def test_chart_payloads_preserve_the_section_findings():
     html = (BUILD / 'statistics.html').read_text(encoding='utf-8')
-    assert 'id="sec-scale"' in html, 'the page lost section 1 (sec-scale), which carries the first finding'
-    html = re.sub(r'</?b>', '', html)   # the payload values are bold inside the sentence
-    text = re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', html))
-    for anchor, sentence in EXPECTED_FINDINGS.items():
-        assert sentence in text, anchor
+    urls = json.loads(re.search(r'<script[^>]+id="stats-config"[^>]*>(.*?)</script>', html, re.S)[1])['urls']
+    names = ('class_scale', 'helix_pairs', 'class_positions', 'class_variants', 'receptors')
+    payloads = {name: json.loads((BUILD / urls[name]).read_text(encoding='utf-8')) for name in names}
+    assert cr.finding_sentences(payloads)['findings'] == EXPECTED_FINDINGS
+    for anchor in EXPECTED_FINDINGS:
+        assert f'id="{anchor}"' in html
 
 
 # ------------------------------------------------------------------------------------- review round 1 (numbers)

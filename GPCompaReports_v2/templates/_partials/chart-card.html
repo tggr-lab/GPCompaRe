@@ -7,21 +7,14 @@
       {{ chart_body('chart-x') }}
     {% endcall %}
 
-  The card dict comes from website/page_generators/statistics_page.py (_cards): id, title, guide (one short
-  line or empty), scope_n (the count chip), scope_rest (the data source, shown in the Method panel), pill
-  (how the card follows the page selection), csv, method (HTML: the full reading, method and source), export
-  (file name stem), table.
-
-  Head: title and the short line (hidden when empty). Body: whatever the caller puts there (the chart container from chart_body, with a
-  no-JS note the script replaces). Foot: the count chip, the response pill and a slot the script fills with Table,
-  Method and Export (PNG 2x, SVG, CSV, Copy caption); on phones one "Export and method" button whose menu also holds Table and Method.
+  The Method panel supplies the scope and source for exported captions.
 #}
 {% macro story_card(card, static_prefix='', cls='') -%}
 <article class="scard{% if cls %} {{ cls }}{% endif %}" id="card-{{ card.id }}" data-card="{{ card.id }}" aria-labelledby="{{ card.id }}-title">
   <h3 class="scard-title" id="{{ card.id }}-title">{{ card.title }}</h3>
   <p class="scard-guide" data-guide>{{ card.guide | safe }}</p>
   {{ caller() }}
-  <footer class="scard-foot"><span class="scope" data-scope><b>{{ card.scope_n }}</b></span><span class="pill" data-pill>{{ card.pill }}</span><span class="foot-sp"></span><span class="foot-tools" data-tools{% if card.table %} data-table{% endif %}></span></footer>
+  <footer class="scard-foot"><span class="foot-tools" data-tools{% if card.table %} data-table{% endif %}></span></footer>
   <div class="fine-print scard-method" id="{{ card.id }}-method" hidden>{{ card.method | safe }}</div>
 </article>
 {%- endmacro %}

@@ -5,14 +5,12 @@ Writes output/statistics.html plus the files behind its cards (data/stats/):
     class_scale.json, helix_pairs.json, helix_pair_cells.json, helix_receptor_cells.json,
     class_positions.json, cfr_atlas.json, class_variants.json, cfr_variants.json, receptors.json
         the class payloads (analysis/class_atlas.py, analysis/class_results.py, analysis/cfr_variants.py),
-        fetched by static/js/stats-story.js when a card comes within 600 px of the viewport;
-        atlas_map.json is written by the GPCRome Atlas step (absent without it; the teaser says so)
+        fetched by static/js/stats-story.js when a card comes within 600 px of the viewport
     <table>.csv                         the plain table behind every card (Table view, CSV export)
     coverage.csv, scaffold.csv          written here from the Methods rows and the scaffold payload
     gpcompare_statistics_tables.zip     every CSV in data/stats, one download
 
-The page itself is server-rendered where a reader needs it without JavaScript: the header, the glance facts
-(with small inline drawings), the section headlines, the threshold strips of card 1a as
+The page itself is server-rendered where a reader needs it without JavaScript: the header, the section headings, the threshold strips of card 1a as
 an SVG, the top-ranked table, the pair table and Methods. Every number comes from a payload or a tracked
 table; release labels come from data_versions.json. No card names a source layer on the page.
 """
@@ -43,10 +41,9 @@ NETWORK_ROWS_SHOWN = 20
 STATS_DIR = 'data/stats'
 ZIP_NAME = 'gpcompare_statistics_tables.zip'
 
-#: The class payloads the cards fetch (written by class_atlas.write_stats_data; atlas_map.json by the
-#: GPCRome Atlas step).
+#: The class payloads the cards fetch.
 CLASS_PAYLOADS = ('class_scale', 'helix_pairs', 'helix_pair_cells', 'helix_receptor_cells', 'class_positions',
-                  'cfr_atlas', 'class_variants', 'cfr_variants', 'receptors', 'atlas_map')
+                  'cfr_atlas', 'class_variants', 'cfr_variants', 'receptors')
 
 #: Files of the page this generator no longer writes (removed from a reused output folder before zipping).
 RETIRED_FILES = ('chart-histogram.json', 'chart-histogram.csv', 'chart-tm-bar.json', 'chart-tm-bar.csv',
@@ -63,17 +60,6 @@ def _esc(s):
 
 def _attr(s):
     return _html.escape('' if s is None else str(s), quote=True)
-
-
-# ---------------------------------------------------------------------------- findings
-
-#: A payload value inside a finding: a number, a percent, a generic number or "n of m".
-_VALUE_RE = re.compile(r'(?<![\w.])(\d[\d,]*(?:\.\d+)?(?:x\d+)?%?(?: of \d[\d,]*)?)(?![\w])')
-
-
-def bold_values(text):
-    """A finding sentence as HTML with its payload values in bold (the sentence text is unchanged)."""
-    return _VALUE_RE.sub(r'<b>\1</b>', _esc(text))
 
 
 # ---------------------------------------------------------------------------- server SVG (card 1a)
@@ -181,32 +167,6 @@ def svg_threshold_strips(class_scale, width=1080):
         out.append('</g>')
     out.append('</svg>')
     return ''.join(out)
-
-
-# ---------------------------------------------------------------------------- glance drawings
-
-def glance_svg(fact):
-    """A tiny drawing for each glance fact (colors from stats.css classes)."""
-    k = fact['key']
-    if k in ('scale', 'positions'):
-        w = max(1.0, 120 * float(fact.get('bar') or 0))
-        return ('<svg class="g-draw" viewBox="0 0 120 10" aria-hidden="true"><rect class="g-track" width="120" '
-                'height="10" rx="5"/><rect class="g-teal" width="%.1f" height="10" rx="5"/></svg>' % w)
-    if k == 'bundle':
-        cells = fact.get('cells') or []
-        parts = []
-        for i, cl in enumerate(cells[:2]):
-            cls = 'g-down' if cl['mean_net'] < 0 else 'g-up'
-            parts.append('<g><title>%s: mean net ΔRRCS %s</title><rect class="%s" x="%d" y="0" width="56" height="24" '
-                         'rx="5"/><text class="g-cell" x="%d" y="16.5" text-anchor="middle">%s</text></g>'
-                         % (_esc(cl['pair']), _esc(cl['value']), cls, i * 62, i * 62 + 28, _esc(cl['value'])))
-        return '<svg class="g-draw" viewBox="0 0 118 24" aria-hidden="true">%s</svg>' % ''.join(parts)
-    if k == 'variants':
-        a, b = (fact.get('bars') or [0, 0])[:2]
-        return ('<svg class="g-draw" viewBox="0 0 120 22" aria-hidden="true"><rect class="g-path" width="%.1f" '
-                'height="8" rx="2"/><rect class="g-path-soft" y="13" width="%.1f" height="8" rx="2"/></svg>'
-                % (120 * a, max(1.0, 120 * b - 1)))
-    return ''
 
 
 # ---------------------------------------------------------------------------- Methods coverage
@@ -317,17 +277,14 @@ def keep_abs_together(html):
     return ''.join(parts)
 
 
-def _card(cid, title, guide, scope_n, scope_rest, pill, csv_name=None, method='', export=None, table=True):
-    """One card. On the page the card shows its title, a short line (SHORT_GUIDES; none when the chart reads on its
-    own) and a receptor-count chip; the full reading (the longer guide), the method, the full scope and the data
-    source sit in the collapsed Method panel, whose scope line the copied caption repeats."""
+def _card(cid, title, guide, scope_n, scope_rest, csv_name=None, method='', export=None, table=True):
+    """Keep the full guide, scope and data source in the Method panel for display and export."""
     short = SHORT_GUIDES.get(cid, guide)
     about = '' if short == guide or not guide else '<p>%s</p>' % guide
     source = '<p data-src>Scope: <span data-src-scope>%s</span>.%s</p>' % (
         _esc(scope_n.rstrip('.')), (' <span data-src-data>%s</span>' % _esc(scope_rest)) if scope_rest else '')
-    return {'id': cid, 'title': title, 'guide': short, 'scope_n': scope_n.split(', ')[0].rstrip('.') + '.',
-            'scope_rest': scope_rest,
-            'pill': pill, 'csv': ('%s/%s' % (STATS_DIR, csv_name)) if csv_name else None,
+    return {'id': cid, 'title': title, 'guide': short,
+            'csv': ('%s/%s' % (STATS_DIR, csv_name)) if csv_name else None,
             'method': about + method + source,
             'export': export or cid.replace('chart-', ''), 'table': table}
 
@@ -355,7 +312,7 @@ SHORT_GUIDES = {
 
 def _cards(ctx):
     """Every card of the page, in page order: title, guide (the full reading; it moves into the Method panel where
-    SHORT_GUIDES gives the card a shorter line), scope (count + rest), response pill, CSV, method note."""
+    SHORT_GUIDES gives the card a shorter line), scope (count + rest), CSV, method note."""
     c = ctx
     n = c['total']
     cards = [
@@ -363,11 +320,11 @@ def _cards(ctx):
               'A contact pair is above threshold when its |ΔRRCS| reaches its receptor\'s threshold: the mean '
               'plus one standard deviation of that receptor\'s |ΔRRCS| values. Left: the threshold of each '
               'receptor. Right: how many of every 100 contact pairs pass it.',
-              '%d receptors.' % n, c['rrcs'] + '.', 'Follows receptor', 'thresholds.csv',
+              '%d receptors.' % n, c['rrcs'] + '.', 'thresholds.csv',
               '<p>%s</p><p>Above-threshold pairs per 100 pairs: the receptor\'s above-threshold contact pairs '
               'divided by all its contact pairs, times 100.</p>' % _esc(c['threshold_rule'])),
         _card('chart-histogram', 'ΔRRCS of every contact pair', c['notes'].get('histogram', ''),
-              '%s contact pairs, %d receptors.' % (format(c['pairs'], ','), n), '', 'Follows receptor',
+              '%s contact pairs, %d receptors.' % (format(c['pairs'], ','), n), '',
               'histogram.csv',
               '<p>ΔRRCS = RRCS in the active model minus RRCS in the inactive model, for every contact pair of '
               'every receptor. Bins are 1 unit wide; the y axis is logarithmic.</p>'),
@@ -376,7 +333,7 @@ def _cards(ctx):
               'receptor, <span class="t-up">red</span> stronger in the active model, '
               '<span class="t-down">blue</span> stronger in the inactive model. Width: receptors that change in '
               'the majority direction. Pairs carried by fewer than %d receptors are not drawn.' % c['min_receptors'],
-              '%d receptors.' % n, '%s; %s.' % (c['rrcs'], c['numbering']), 'Follows receptor and helix pair',
+              '%d receptors.' % n, '%s; %s.' % (c['rrcs'], c['numbering']),
               'helix_pairs.csv',
               '<p>For each receptor, every contact pair at or above its threshold is assigned to the segment pair '
               'of its two residues (GPCRdb segment annotation). Net ΔRRCS per receptor and helix pair is the '
@@ -394,23 +351,23 @@ def _cards(ctx):
               'change. Click a line, a row or a cell for the receptors behind it.</p>'
               % (c['min_contacts'], c['maps'], c['min_receptors'], c['min_receptors'])),
         _card('chart-segments', 'Change per contact, by segment', c['notes'].get('segments', ''),
-              '%d receptors.' % n, '%s.' % c['maps'], 'Follows position and helix pair', 'segments.csv',
+              '%d receptors.' % n, '%s.' % c['maps'], 'segments.csv',
               '<p>Every contact endpoint counts once for the segment of its residue. Unsigned: how much contacts '
               'change, not in which direction.</p>'),
         _card('chart-scaffold', 'Recurrence on the receptor scaffold',
               'Each residue of the %s layout is colored by how many of the %d receptors have a CFR at its generic '
               'position. Ringed residues mark activation motifs. Hover a residue for its position and count.'
               % (c['scaffold_gene'], n),
-              '%d receptors.' % n, 'Layout: %s snake plot from GPCRdb.' % c['scaffold_gene'], 'Follows position',
+              '%d receptors.' % n, 'Layout: %s snake plot from GPCRdb.' % c['scaffold_gene'],
               'scaffold.csv',
               '<p>Residues are placed as in the GPCRdb snake plot of %s, from 6 residues before TM1 to 8 after H8. '
               'The fill is the recurrence band of the generic position (the same bands as the recurrence groups in '
-              'section 4). Residues without a GPCRdb generic number are hollow.</p>' % c['scaffold_gene']),
+              'Variant predictions). Residues without a GPCRdb generic number are hollow.</p>' % c['scaffold_gene']),
         _card('chart-ranking', 'The %d top-ranked positions' % CFR_TOP_N,
               'Ranked by CFR score, which weighs how many receptors have a CFR at the position together with the '
               'mean |ΔRRCS| of those contacts. Bar: receptors with a CFR there, of %d. Last column: mean '
               '|ΔRRCS|. Tags: activation motifs.' % n,
-              '%d receptors, %d positions.' % (n, c['recurrent']), '%s.' % c['maps'], 'Follows position',
+              '%d receptors, %d positions.' % (n, c['recurrent']), '%s.' % c['maps'],
               'ranking_368.csv',
               '<p>CFR score: the mean of normalized recurrence (receptors in which the position is a CFR) and '
               'normalized mean |ΔRRCS| of those contacts. %d generic positions are CFRs in three or more '
@@ -420,19 +377,19 @@ def _cards(ctx):
                  _esc(c['notes'].get('motifs_in_top', '')))),
         _card('chart-recovery', 'Known activation positions down the ranking', c['recovery_guide'],
               '%d positions, %d known.' % (c['universe'], c['known']),
-              'Structure positions numbered in at least half of the %d receptors.' % n, 'Follows position',
+              'Structure positions numbered in at least half of the %d receptors.' % n,
               'activation_recovery.csv',
               '<p>%s</p><p>Known positions: %s.</p>' % (_esc(c['recovery_rule']), _esc(c['reference_source']))),
         _card('chart-partners', 'Positions recur in more receptors than their exact contacts do', c['partners_guide'],
               '%d receptors, %d positions, %s distinct pairs.' % (n, c['recurrent'], format(c['n_pairs'], ',')), '',
-              'Follows position', 'partners.csv',
+              'partners.csv',
               '<p>Partners are generic positions joined to the position by an above-threshold contact in which both '
               'residues are CFRs. The pair counts are receptors in which that exact pair of generic positions is '
               'above threshold.</p>'),
         _card('chart-cfr-atlas', 'Every receptor at the %d top-ranked positions' % CFR_TOP_N,
               'One row per receptor, one column per top-ranked position. Rows grouped by ligand type and sorted by '
               'how many of the %d are CFRs.' % CFR_TOP_N,
-              '%d receptors, %d positions.' % (n, CFR_TOP_N), '', 'Follows receptor and position', 'cfr_atlas.csv',
+              '%d receptors, %d positions.' % (n, CFR_TOP_N), '', 'cfr_atlas.csv',
               '<p>Direction view: red, the net change of the CFR contacts is stronger in the active model; blue, '
               'stronger in the inactive model. On a phone the grid folds into one row per ligand type (the share '
               'with a CFR at each position); the full receptor-by-position grid is in the Table view.</p>'
@@ -440,34 +397,34 @@ def _cards(ctx):
               'It is a CFR there when at least one contact pair touching that residue is at or above the '
               'receptor\'s threshold. Direction: the sign of the summed ΔRRCS of those contacts.</p>'),
         _card('chart-pathogenicity', 'Predicted class of the substitutions seen in people', c['am_guide'],
-              '%d receptors.' % c['am_receptors'], '%s; AlphaMissense.' % c['batch_gnomad'], 'Follows position',
+              '%d receptors.' % c['am_receptors'], '%s; AlphaMissense.' % c['batch_gnomad'],
               'am_comparison.csv', c['am_method']),
         _card('chart-am-bands', 'Predicted pathogenic share by recurrence',
               'Share of decisive AlphaMissense calls that are predicted pathogenic, with positions grouped by the '
               'number of receptors in which they are a CFR. Same allele set as above.',
-              '%d receptors, %d positions.' % (c['am_receptors'], c['band_positions']), '', 'Follows position',
+              '%d receptors, %d positions.' % (c['am_receptors'], c['band_positions']), '',
               'am_bands.csv', '<p>%s</p>' % _esc(c['notes'].get('am_bands_method', ''))),
         _card('chart-position-conservation', 'Conservation at top-ranked and other positions',
               'Mean conservation of the residues at each generic position (VarSite, via ProtVar), for positions '
               'with at least %d scored residues. Conservation is observed across species; the ranking does not '
               'use it.' % c['min_residues'],
-              '%d positions.' % c['cons_positions'], '%s.' % c['conservation_label'], 'Follows position',
+              '%d positions.' % c['cons_positions'], '%s.' % c['conservation_label'],
               'position_conservation.csv',
               '<p>Per generic position, the mean conservation score of the residues numbered there, over the '
               'receptors with a score. Rings: activation motif positions.</p>'),
         _card('chart-am-quintiles', 'Within groups of similar conservation', c['fifths_guide'],
               '%d receptors, %s decisive calls.' % (c['am_receptors'], format(c['decisive_fifths'], ',')), '',
-              'Class-wide', 'am_conservation_fifths.csv',
+              'am_conservation_fifths.csv',
               '<p>%s</p>' % _esc(c['notes'].get('am_fifths_method', ''))),
         _card('chart-cfr-variants', 'Variants at each top-ranked position', c['variants_guide'],
               '%d receptors.' % c['variants_receptors'], '%s; %s; AlphaMissense.' % (c['site_gnomad'], c['clinvar']),
-              'Follows position', 'cfr_variants.csv',
+              'cfr_variants.csv',
               '<p>Unique receptor, position, reference and alternate substitutions, pooled over the receptors in '
               'which the position is numbered. Predicted pathogenic share: predicted pathogenic over predicted '
               'pathogenic plus predicted benign.</p>'),
         _card('chart-receptors', 'Receptor explorer',
               'One dot per receptor. Color: ligand group. Dot size: top-ranked positions with a CFR in the receptor.',
-              '%d receptors.' % n, '', 'Follows receptor, position and helix pair', 'receptors.csv',
+              '%d receptors.' % n, '', 'receptors.csv',
               '<p>Above-threshold pairs per 100 pairs: above-threshold contact pairs over all contact pairs. Share '
               'stronger in the active model: the fraction of above-threshold pairs with ΔRRCS above 0. Total '
               '|ΔRRCS|: the sum over all contact pairs; it grows with receptor size. Similar receptors: cosine '
@@ -530,7 +487,6 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
     cv = payloads.get('class_variants') or {}
     hp = payloads.get('helix_pairs') or {}
     have = bool(sc and pos and cv and hp and payloads.get('receptors'))
-    story = class_results.finding_sentences(payloads) if have else {'findings': {}, 'glance': []}
     notes = class_results.computed_notes(payloads) if have else {}
     if pos:
         _write_text(stats_dir / 'scaffold.csv', scaffold_csv(pos))
@@ -629,12 +585,6 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
         'p': g['pct_of_scored']['predicted_pathogenic'], 'a': g['pct_of_scored']['ambiguous'],
         'b': g['pct_of_scored']['predicted_benign']} for g in groups]
 
-    glance = []
-    for g in story['glance']:
-        g = dict(g)
-        g['svg'] = glance_svg(g)
-        glance.append(g)
-
     kruskal = ((payloads.get('receptors') or {}).get('kruskal') or {}).get('sum_abs')
     families_text = ''
     if kruskal:
@@ -673,14 +623,14 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
     n_tables = sum(1 for _ in stats_dir.glob('*.csv'))
     write_manifest(output_dir)   # every file of data/stats/, the ones written above included
 
-    rail = [
-        {'href': '#sec-scale', 'n': '1', 'label': 'What changes'},
-        {'href': '#sec-a', 'n': '2', 'label': 'Where in the bundle'},
-        {'href': '#sec-c', 'n': '3', 'label': 'Which positions'},
-        {'href': '#sec-d', 'n': '4', 'label': 'Variants'},
-        {'href': '#sec-e', 'n': '5', 'label': 'Receptors and families'},
-        {'href': '#sec-methods', 'n': '•', 'label': 'Methods and downloads'},
-    ]
+    sections = {
+        'sec-scale': 'Contact changes',
+        'sec-a': 'Helix contacts',
+        'sec-c': 'Recurrent positions',
+        'sec-d': 'Variant predictions',
+        'sec-e': 'Receptors and families',
+        'sec-methods': 'Methods and data',
+    }
 
     exc = atlas.get('exclusions') or {}
     exclusions = ({'listed': exc['listed'], 'names': class_results.names_list(exc['not_modeled'])}
@@ -704,9 +654,7 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
         total_gpcrs=total,
         cards=cards,
         census=census_items,
-        glance=glance,
-        rail=rail,
-        findings={k: bold_values(v) for k, v in story['findings'].items()},
+        sections=sections,
         notes=notes,
         svg_thresholds=svg_threshold_strips(sc) if sc else '',
         cfr_table=cfr_table,

@@ -36,8 +36,8 @@ CLINICAL_HEX = ('#B4234B', '#555C68', '#2B6E2F', '#F48FB1', '#B0B4BC', '#81C784'
 #: Code blocks of stats-story.js allowed to draw red and blue: the renderers of signed ΔRRCS.
 SIGNED = {'divColor', 'chart-histogram', 'chart-helix-pairs', 'legendFor', 'bundle', 'gridView', 'ledger', 'openCell',
           'paintMatrix', 'chart-cfr-atlas', 'Profile', 'scatterFigure', 'TOKENS', 'readTokens'}
-#: Code blocks allowed to use ligand hues (section 5: explorer and Atlas teaser).
-LIGAND = {'LIGAND_DARK', 'ligandColors', 'scatterFigure', 'explorerTable', 'teaser'}
+#: Code blocks allowed to use ligand hues (section 5: receptor explorer).
+LIGAND = {'LIGAND_DARK', 'ligandColors', 'scatterFigure', 'explorerTable'}
 
 
 def _visible(html):
@@ -148,4 +148,7 @@ def test_the_atlas_is_named_only_as_the_gpcrome_atlas_and_called_a_preview():
     for m in re.finditer(r'\b[Aa]tlas\b', text):
         before = text[max(0, m.start() - 8):m.start()]
         assert 'GPCRome' in before, text[max(0, m.start() - 60):m.end() + 20]
-    assert 'Open the GPCRome Atlas (Preview)' in text and 'experimental preview' in text
+    html = STATS.read_text(encoding='utf-8')
+    explorer = html.split('id="sec-e"', 1)[1].split('</section>', 1)[0]
+    assert '<a href="atlas.html">GPCRome Atlas</a>' in explorer
+    assert '<span class="nav-pill">Experimental preview</span>' in html

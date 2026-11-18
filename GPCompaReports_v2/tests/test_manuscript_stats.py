@@ -167,15 +167,11 @@ def test_the_enrichment_values_match_the_corrected_supplement():
     from GPCompaReports_v2.analysis.manuscript_stats import load_am_comparison
     html = STATS.read_text(encoding='utf-8')
     am = load_am_comparison()
-    required = [
-        '%.1f%%' % am['decisive_pct']['top'],
-        '%.1f%%' % am['decisive_pct']['other'],
-        format(am['groups'][0]['n'], ','),
-        format(am['groups'][1]['n'], ','),
-    ]
-    for value in required:
-        assert value in html, (
-            'the enrichment section does not show %s from the corrected summary' % value)
+    groups = json.loads((STATS.parent / 'data/stats/class_variants.json').read_text())['groups']
+    for g, key in zip(groups, ('top', 'other'), strict=True):
+        assert round(g['pct_predicted_pathogenic_of_decisive'], 1) == round(am['decisive_pct'][key], 1)
+    for g in am['groups']:
+        assert format(g['n'], ',') in html
 
 
 @needs_build

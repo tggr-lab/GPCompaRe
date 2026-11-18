@@ -86,8 +86,9 @@ def test_section_d_shows_the_class_counts_and_no_test_statistic():
     d = _text(_section_d(STATS.read_text(encoding='utf-8')))
     assert INTRO in d
     assert GUIDE_4A in d
-    assert '66.9% predicted pathogenic at the 50 top-ranked positions, 43.6% at others.' in re.sub(r'\s+', ' ', re.sub(r'</?b>', '', _section_d(
-                STATS.read_text(encoding='utf-8'))))
+    groups = json.loads((BUILD_DIR / 'data/stats/class_variants.json').read_text())['groups']
+    assert [(g['label'], round(g['pct_predicted_pathogenic_of_decisive'], 1)) for g in groups] == [
+        ('Top 50 positions by CFR score', 66.9), ('Other generic-numbered positions', 43.6)]
     for label in ('Top 50 positions by CFR score', 'Other generic-numbered positions'):
         assert label in d
     assert 'predicted pathogenic' in d and 'are pathogenic' not in d

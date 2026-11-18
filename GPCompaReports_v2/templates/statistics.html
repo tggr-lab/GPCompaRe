@@ -2,22 +2,6 @@
 {% from "_partials/chart-card.html" import story_card, chart_body %}
 {% from "_partials/fine_print.html" import fine_print, data_versions_table %}
 
-{#
-  The Statistics page: four questions from top to bottom, then the reader's receptor.
-    header   h1, a one-line lede, census line, four glance facts, the selection box
-    Visual first: a section shows its question and a short numeric headline; a card its title and at most one
-    short line. Definitions, readings, sources and caveats sit in each card's Method panel and in Methods.
-    1 sec-scale   what changes between the inactive and the active model
-    2 sec-a       where in the helix bundle
-    3 sec-c       which positions, and how consistently
-    4 sec-d       what it means for variants
-    5 sec-e       where a receptor sits
-    sec-methods   coverage, definitions, the activation reference, releases, downloads
-  Section ids sec-a, sec-c, sec-d and sec-e are linked from the landing page and pinned by tests.
-  Every number comes from statistics_page.py (payloads and tracked tables); the cards are drawn by
-  static/js/stats-story.js from data/stats/*.json, fetched when a card comes within 600 px.
-#}
-
 {% block head %}
 {% include "_partials/plotly-lazy.html" %}
 {% endblock %}
@@ -33,54 +17,32 @@
 {% block content %}
 <div class="stats" id="top" data-plotly-on-demand>
 <script type="application/json" id="stats-config">{{ config_json | safe }}</script>
-<div class="stats-wrap">
-  <aside class="stats-rail" aria-label="On this page">
-    <nav><ol class="rail-list">
-      {% for r in rail %}<li><a href="{{ r.href }}" data-rail="{{ r.href[1:] }}"><i aria-hidden="true">{{ r.n }}</i>{{ r.label }}</a></li>{% endfor %}
-    </ol></nav>
-    <div class="sel-slot" data-sel-slot="rail"></div>
-  </aside>
-
-  <div class="stats-main">
-    <header class="stats-head">
-      <h1>Database statistics</h1>
-      <p class="stats-lede">How contacts change between the inactive and active models of {{ total_gpcrs }} human Class A GPCRs.</p>
-      <p class="stats-census">{% for v, l, h in census %}<a href="{{ h }}"><b>{{ v }}</b> {{ l }}</a>{% if not loop.last %}<span class="sep" aria-hidden="true"> · </span>{% endif %}{% endfor %}</p>
-
-      <ul class="glance" aria-label="At a glance">
-        {% for g in glance %}
-        <li><a class="glance-fact glance-{{ g.key }}" href="{{ g.href }}">
-          <span class="glance-big">{{ g.big }}</span>
-          <span class="glance-line">{{ g.line }}</span>
-          {{ g.svg | safe }}
-        </a></li>
-        {% endfor %}
-      </ul>
-
-      <div class="sel-slot" data-sel-slot="main">
-        <div class="sel" id="stats-sel" hidden>
-          <label class="sel-label" for="sel-input">Follow a receptor, position or helix pair</label>
-          <div class="sel-field">
-            <input id="sel-input" type="text" autocomplete="off" spellcheck="false" role="combobox"
-                   aria-expanded="false" aria-controls="sel-list" aria-autocomplete="list"
-                   placeholder="Gene symbol, UniProt name, 6.48x48 or TM3-TM6">
-            <ul class="sel-list" id="sel-list" role="listbox" hidden></ul>
-          </div>
-          <div class="sel-chips" data-sel-chips></div>
-          <p class="sel-summary" data-sel-summary aria-live="polite">Nothing selected.</p>
+<div class="stats-main">
+  <header class="stats-head">
+    <h1>Database statistics</h1>
+    <p class="stats-census">{% for v, l, h in census %}<a href="{{ h }}"><b>{{ v }}</b> {{ l }}</a>{% if not loop.last %}<span class="sep" aria-hidden="true"> · </span>{% endif %}{% endfor %}</p>
+  </header>
+  <div class="stats-wrap">
+    <aside class="stats-rail">
+      <nav aria-label="On this page"><ul class="rail-list">
+        {% for id, label in sections.items() %}<li><a href="#{{ id }}" data-rail="{{ id }}">{{ label }}</a></li>{% endfor %}
+      </ul></nav>
+      <div class="sel" id="stats-sel" hidden>
+        <label class="sel-label" for="sel-input">Highlight across charts</label>
+        <div class="sel-field">
+          <input id="sel-input" type="text" autocomplete="off" spellcheck="false" role="combobox"
+                 aria-expanded="false" aria-controls="sel-list" aria-autocomplete="list"
+                 placeholder="Gene, position or helix pair">
+          <ul class="sel-list" id="sel-list" role="listbox" hidden></ul>
         </div>
+        <div class="sel-chips" data-sel-chips></div>
+        <p class="sel-summary sr-only" data-sel-summary aria-live="polite">Nothing selected.</p>
       </div>
-
-      <ol class="stats-toc">
-        {% for r in rail %}<li><a href="{{ r.href }}"><i aria-hidden="true">{{ r.n }}</i>{{ r.label }}</a></li>{% endfor %}
-      </ol>
-    </header>
-
+    </aside>
+    <div class="stats-sections">
     {# ---------------------------------------------------------------- 1 scale #}
     <section class="story" id="sec-scale" aria-labelledby="sec-scale-q">
-      <div class="sec-head"><span class="sec-num" aria-hidden="true">1</span>
-        <h2 id="sec-scale-q">What changes between the inactive and the active model?</h2>
-        <p class="finding">{{ findings['sec-scale'] | safe }}</p></div>
+      <h2 id="sec-scale-q">{{ sections['sec-scale'] }}</h2>
 
       {% call story_card(cards['chart-thresholds'], static_prefix) %}
         {% call chart_body('chart-thresholds', 'strip-host') %}{{ svg_thresholds | safe }}{% endcall %}
@@ -96,9 +58,7 @@
 
     {# ---------------------------------------------------------------- 2 bundle #}
     <section class="story" id="sec-a" aria-labelledby="sec-a-q">
-      <div class="sec-head"><span class="sec-num" aria-hidden="true">2</span>
-        <h2 id="sec-a-q">Where in the helix bundle does it happen?</h2>
-        <p class="finding">{{ findings['sec-a'] | safe }}</p></div>
+      <h2 id="sec-a-q">{{ sections['sec-a'] }}</h2>
 
       {% call story_card(cards['chart-helix-pairs'], static_prefix) %}
         <div class="controls">
@@ -133,9 +93,7 @@
 
     {# ---------------------------------------------------------------- 3 positions #}
     <section class="story" id="sec-c" aria-labelledby="sec-c-q">
-      <div class="sec-head"><span class="sec-num" aria-hidden="true">3</span>
-        <h2 id="sec-c-q">Which positions change in most receptors?</h2>
-        <p class="finding">{{ findings['sec-c'] | safe }}</p></div>
+      <h2 id="sec-c-q">{{ sections['sec-c'] }}</h2>
 
       {% call fine_print(summary="What are Core Functional Residues (CFRs)?", cls="cfr-def") %}
         <ul class="defs" aria-label="Definitions">
@@ -218,9 +176,7 @@
 
     {# ---------------------------------------------------------------- 4 variants #}
     <section class="story" id="sec-d" aria-labelledby="sec-d-q">
-      <div class="sec-head"><span class="sec-num" aria-hidden="true">4</span>
-        <h2 id="sec-d-q">What does it mean for variants?</h2>
-        <p class="finding">{{ findings['sec-d'] | safe }}</p></div>
+      <h2 id="sec-d-q">{{ sections['sec-d'] }}</h2>
 
       {% call story_card(cards['chart-pathogenicity'], static_prefix) %}
         {{ chart_body('chart-pathogenicity') }}
@@ -262,9 +218,7 @@
 
     {# ---------------------------------------------------------------- 5 receptors #}
     <section class="story" id="sec-e" aria-labelledby="sec-e-q">
-      <div class="sec-head"><span class="sec-num" aria-hidden="true">5</span>
-        <h2 id="sec-e-q">Where does my receptor sit, and which are like it?</h2>
-        <p class="finding">{{ findings['sec-e'] | safe }}</p></div>
+      <h2 id="sec-e-q">{{ sections['sec-e'] }}</h2>
 
       {% call story_card(cards['chart-receptors'], static_prefix) %}
         <div class="tabs" role="group" aria-label="View" data-ctl="tab">
@@ -279,22 +233,12 @@
         <p class="small-note families-text" data-families-text hidden>{{ families_text }}</p>
       {% endcall %}
 
-      <article class="scard atlas-teaser" id="card-atlas-teaser" aria-labelledby="atlas-teaser-title">
-        <div class="teaser-grid">
-          <div>
-            <h3 class="scard-title" id="atlas-teaser-title">Receptors with similar change patterns</h3>
-            <p class="scard-guide" title="A browsing aid, not a classification. The GPCRome Atlas shows every receptor's helix bundle, a sequence tree and other groupings.">Receptors whose contacts change alike sit together. An experimental preview.</p>
-            <a class="btn btn-primary btn-sm" href="{{ static_prefix }}atlas.html">Open the GPCRome Atlas (Preview)</a>
-          </div>
-          <div class="teaser-map" id="atlas-teaser-map" data-chart="atlas-teaser"><p class="nojs-note">Interactive chart (needs JavaScript).</p></div>
-        </div>
-      </article>
+      <a href="{{ static_prefix }}atlas.html">GPCRome Atlas</a>
     </section>
 
     {# ---------------------------------------------------------------- methods #}
     <section class="story" id="sec-methods" aria-labelledby="sec-methods-q">
-      <div class="sec-head"><span class="sec-num" aria-hidden="true">•</span>
-        <h2 id="sec-methods-q">Methods, sources and downloads</h2></div>
+      <h2 id="sec-methods-q">{{ sections['sec-methods'] }}</h2>
 
       <div class="scard methods-card">
         <h3 class="scard-title">What each result covers</h3>
@@ -350,6 +294,7 @@
       </p>
       {% endcall %}
     </section>
+    </div>
   </div>
 </div>
 </div>

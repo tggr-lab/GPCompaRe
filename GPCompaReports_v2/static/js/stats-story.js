@@ -386,12 +386,6 @@
     var chips = box.querySelector('[data-sel-chips]'), summary = box.querySelector('[data-sel-summary]');
     var shown = [], active = -1, ready = null;
     box.hidden = false;
-    function place() {
-      var slot = document.querySelector('[data-sel-slot="' + (WIDE.matches ? 'rail' : 'main') + '"]');
-      if (slot && box.parentNode !== slot) slot.appendChild(box);
-    }
-    place();
-    WIDE.addEventListener('change', place);
     function data() {
       if (!ready) ready = Promise.all([load('receptors'), load('class_positions'), load('helix_pairs')]);
       return ready;
@@ -440,7 +434,7 @@
       var below = window.innerHeight - r.bottom - 16, above = r.top - hb - 16;
       list.style.maxHeight = '340px';
       var need = Math.min(340, list.scrollHeight + 2), up = below < need && above > below;   // the whole list, if it fits
-      var rail = !!box.closest('.stats-rail');
+      var rail = WIDE.matches;
       list.style.maxHeight = Math.round(Math.max(120, Math.min(340, up ? above : below))) + 'px';
       list.style.position = rail ? 'fixed' : '';
       list.style.left = rail ? Math.round(r.left) + 'px' : '';
@@ -481,7 +475,9 @@
     }
     function render(st) {
       clear(chips);
-      if (!st.rec && !st.pos && !st.pair) { summary.textContent = 'Nothing selected.'; return; }
+      var empty = !st.rec && !st.pos && !st.pair;
+      summary.classList.toggle('sr-only', empty);
+      if (empty) { summary.textContent = 'Nothing selected.'; return; }
       data().then(function (arr) {
         clear(chips);
         var R = receptorIndex(arr[0]), P = positionIndex(arr[1]), hp = arr[2], lines = [];
@@ -527,7 +523,7 @@
       id: id, def: def, el: article, chart: article.querySelector('#' + id) || article.querySelector('[data-chart]'),
       table: article.querySelector('.scard-table'), side: article.querySelector('.chart-card-side'),
       body: article.querySelector('.scard-body'), legend: article.querySelector('[data-legend]'),
-      guide: article.querySelector('[data-guide]'), scope: article.querySelector('[data-scope]'),
+      guide: article.querySelector('[data-guide]'),
       meta: (CFG.cards || {})[id] || { export: id.replace('chart-', '') },
       state: {}, loaded: false, drawn: false, dirty: false, lastW: 0
     };
@@ -730,11 +726,10 @@
     h('p', 'table-note', box, list.length > MAX ? 'The first ' + fmt(MAX) + ' of ' + fmt(list.length) + ' rows; the CSV has all of them.' : fmt(list.length) + ' rows.');
   }
 
-  // the full scope and source: the Method panel's scope line (the footer chip shows only the count)
+  // the full scope and source: the Method panel's scope line
   function scopeLine(card) {
     var src = card.el.querySelector('[data-src]');
-    if (src) return src.textContent.replace(/\s+/g, ' ').trim().replace(/^Scope:\s*/, '');
-    return card.scope ? card.scope.textContent.replace(/\s+/g, ' ').trim() : '';
+    return src ? src.textContent.replace(/\s+/g, ' ').trim().replace(/^Scope:\s*/, '') : '';
   }
   function captionText(card) {
     var guide = card.guide ? card.guide.textContent.replace(/\s+/g, ' ').trim() : '';
@@ -1154,7 +1149,6 @@
         gbox.hidden = st.mode === 'magnitude';
         segBox.hidden = st.mode !== 'grid';
         var scope = (st.group === 'all' || st.mode === 'magnitude') ? NREC + ' receptors.' : G.n + ' receptors (' + G.label.replace(/ receptors$/, '').toLowerCase() + ').';
-        card.scope.querySelector('b').textContent = scope;
         // the Method panel's scope line (and so the copied caption) follows the group, its source the mode
         var sScope = card.el.querySelector('[data-src-scope]'), sData = card.el.querySelector('[data-src-data]');
         if (sScope) sScope.textContent = scope.replace(/\.$/, '');
@@ -2677,42 +2671,6 @@
     });
   }
 
-  // ---- the GPCRome Atlas teaser
-  function teaser() {
-    var node = document.getElementById('atlas-teaser-map');
-    if (!node) return null;
-    var T = { node: node, drawn: false };
-    T.draw = function () {
-      Promise.all([load('atlas_map'), load('receptors')]).then(function (arr) {
-        var m = arr[0], RI = receptorIndex(arr[1]), P = rows(m.columns, m.rows), rec = StatsSel.get().rec;
-        clear(node);
-        var w = Math.min(520, width(node)), hh = Math.round(w * 0.72), cv = h('canvas', '', node);
-        cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', 'Receptors placed by the similarity of their contact changes');
-        var dpr = Math.min(2, window.devicePixelRatio || 1);
-        cv.width = w * dpr; cv.height = hh * dpr; cv.style.width = w + 'px'; cv.style.height = hh + 'px';
-        var g = cv.getContext('2d'); g.scale(dpr, dpr);
-        var xs = P.map(function (p) { return p.x; }), ys = P.map(function (p) { return p.y; });
-        var x0 = minOf(xs), x1 = maxOf(xs), y0 = minOf(ys), y1 = maxOf(ys);
-        var colors = m.ligand_groups.map(function (gg) { return C.dark ? (gg.color_dark || gg.color) : gg.color; });
-        g.fillStyle = C.plate; g.beginPath(); if (g.roundRect) g.roundRect(0, 0, w, hh, 14); else g.rect(0, 0, w, hh); g.fill();
-        var px = function (p) { return [14 + (p.x - x0) / (x1 - x0) * (w - 28), 14 + (1 - (p.y - y0) / (y1 - y0)) * (hh - 28)]; };
-        P.forEach(function (p) { var q = px(p); g.fillStyle = colors[p.group] || C.muted; g.globalAlpha = 0.85; g.beginPath(); g.arc(q[0], q[1], 3.4, 0, 7); g.fill(); g.globalAlpha = 1; });
-        var f = rec && P.filter(function (p) { return p.gid === rec; })[0];
-        if (f) {
-          var q = px(f), r = RI.by[rec];
-          g.strokeStyle = C.fg; g.lineWidth = 2; g.beginPath(); g.arc(q[0], q[1], 9, 0, 7); g.stroke();
-          g.font = '700 12px system-ui, sans-serif'; g.fillStyle = C.fg; g.textAlign = q[0] > w - 80 ? 'right' : 'left';
-          g.fillText(r ? r.symbol : rec, q[0] + (q[0] > w - 80 ? -12 : 12), q[1] + 4);
-        }
-        var lg = h('div', 'legend', node);
-        lg.innerHTML = m.ligand_groups.map(function (gg, i) { return '<span><span class="sw" style="background:' + colors[i] + ';border-radius:50%"></span>' + esc(gg.key.replace(/ receptors$/, '')) + '</span>'; }).join('');
-        node.setAttribute('data-chart-rendered', '1');
-        T.drawn = true;
-      }, function () { clear(node); h('p', 'load-note', node, 'This chart could not load.'); });
-    };
-    return T;
-  }
-
   // ================================================================== start
   function init() {
     refreshTokens();
@@ -2723,7 +2681,6 @@
         io.unobserve(en.target);
         var c = CARDS[en.target.getAttribute('data-card')];
         if (c) loadCard(c);
-        if (en.target.id === 'card-atlas-teaser' && T && !T.drawn) T.draw();
       });
     }, { rootMargin: '600px 0px' }) : null;
     document.querySelectorAll('.stats .scard[data-card]').forEach(function (a) {
@@ -2736,8 +2693,6 @@
       }
       if (io) io.observe(a); else loadCard(c);
     });
-    var T = teaser(), tEl = document.getElementById('card-atlas-teaser');
-    if (T && tEl) { if (io) io.observe(tEl); else T.draw(); }
 
     // the selection: every loaded card follows it
     document.addEventListener('gpc:stats-select', function () {
@@ -2746,12 +2701,11 @@
         if (!c.D || c.failed) return;
         if (c.def.onSelect) { if (visible(c.chart) || id === 'chart-receptors') c.def.onSelect(c); else c.dirty = true; }
       });
-      if (T && T.drawn) T.draw();
     });
 
     // theme: tokens are read again; visible charts redraw now, hidden ones when next shown
     document.addEventListener('gpcrsynth-theme-change', function () {
-      requestAnimationFrame(function () { refreshTokens(); redrawAll(true); if (T && T.drawn) T.draw(); });
+      requestAnimationFrame(function () { refreshTokens(); redrawAll(true); });
     });
     var rT = null;
     window.addEventListener('resize', function () {
@@ -2762,7 +2716,6 @@
           if (!c.drawn || !visible(c.chart)) { if (c.drawn) c.dirty = true; return; }
           if (width(c.chart) !== c.lastW) draw(c, {});
         });
-        if (T && T.drawn && Math.min(520, width(T.node)) !== (T.node.querySelector('canvas') || {}).clientWidth) T.draw();
       }, 150);
     });
     document.addEventListener('gpc:segment-order', function () {
@@ -2773,19 +2726,25 @@
     var links = {};
     document.querySelectorAll('.rail-list a[data-rail]').forEach(function (a) { links[a.getAttribute('data-rail')] = a; });
     if ('IntersectionObserver' in window) {
-      var current = null, seen = {};
+      var header = document.querySelector('.stats-head');
+      var current = null, seen = {}, readingHeader = false;
       var ro = new IntersectionObserver(function (entries) {
-        entries.forEach(function (en) { seen[en.target.id] = en.isIntersecting ? en.boundingClientRect.top : null; });
+        entries.forEach(function (en) {
+          if (en.target === header) readingHeader = en.isIntersecting;
+          else seen[en.target.id] = en.isIntersecting ? en.boundingClientRect.top : null;
+        });
         var best = null;
         Object.keys(seen).forEach(function (id) { if (seen[id] !== null && (best === null || Math.abs(seen[id]) < Math.abs(seen[best]))) best = id; });
         // no section in the band: above the first section (the header, after Home) nothing is marked; between two
         // sections the last mark stays
-        if (!best) { var first = document.querySelector('.stats section.story[id]'); if (!first || first.getBoundingClientRect().top < window.innerHeight * 0.2) return; }
+        if (readingHeader) best = null;
+        else if (!best) { var first = document.querySelector('.stats section.story[id]'); if (!first || first.getBoundingClientRect().top < window.innerHeight * 0.2) return; }
         if (best !== current) {
           current = best;
           Object.keys(links).forEach(function (k) { links[k].classList.toggle('is-current', k === best); if (k === best) links[k].setAttribute('aria-current', 'location'); else links[k].removeAttribute('aria-current'); });
         }
       }, { rootMargin: '-20% 0px -55% 0px' });
+      ro.observe(header);
       document.querySelectorAll('.stats section.story[id]').forEach(function (s) { ro.observe(s); });
     }
     // a link to a card inside a closed disclosure opens it
