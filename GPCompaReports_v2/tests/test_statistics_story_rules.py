@@ -117,8 +117,10 @@ def test_visible_text_has_no_em_dash_and_no_banned_wording():
 @needs_build
 def test_no_test_statistic_outside_the_families_lines():
     html = STATS.read_text(encoding='utf-8')
-    fam = re.search(r'<p class="small-note families-text"[^>]*>(.*?)</p>', html, re.S)
-    assert fam and 'Kruskal-Wallis' in fam.group(1) and fam.group(1).count('p = ') == 2
+    fam = re.search(r'<table class="v2-table family-tests">(.*?)</table>', html, re.S)
+    assert fam and 'Kruskal-Wallis' in fam.group(1) and '<th>p</th>' in fam.group(1)
+    assert '<td>27.9</td><td>0.001</td>' in fam.group(1)
+    assert '<td>27.4</td><td>0.026</td>' in fam.group(1)
     rest = _visible(html.replace(fam.group(0), ' '))
     for pat in (r'odds ratio', r'\bOR\s', r'\bCI\b', r'95%', r'Mantel', r'\bAUC\b', r'\bp\s*=', r'\bp\s*<'):
         assert not re.search(pat, rest, re.I if pat.islower() else 0), pat

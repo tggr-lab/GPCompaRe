@@ -86,23 +86,20 @@
 
       {% call story_card(cards['chart-segments'], static_prefix) %}
         <div class="controls seg-order-row"><span class="seg-order-slot" data-seg-order-slot></span>
-          <span class="ctl-note">Segment order for every chart on this page.</span></div>
+        </div>
         {{ chart_body('chart-segments') }}
       {% endcall %}
     </section>
 
     {# ---------------------------------------------------------------- 3 positions #}
     <section class="story" id="sec-c" aria-labelledby="sec-c-q">
-      <h2 id="sec-c-q">{{ sections['sec-c'] }}</h2>
-
-      {% call fine_print(summary="What are Core Functional Residues (CFRs)?", cls="cfr-def") %}
-        <ul class="defs" aria-label="Definitions">
-          <li><b>CFR (Core Functional Residue)</b>: a residue in at least one above-threshold contact of its receptor.</li>
-          <li><b>{{ cfr_total_positions }} recurrent positions</b>: generic positions that are CFRs in three or more receptors.</li>
-          <li><b>{{ cfr_top_n }} top-ranked positions</b>: the highest CFR score, which weighs how many receptors have a CFR at the position together with the mean |ΔRRCS| of those contacts. They are highlighted across the site.</li>
-        </ul>
-        <p>Cross-receptor recurrence analyses are limited to residues assigned GPCRdb generic numbers.</p>
-      {% endcall %}
+      <div class="cfr-heading">
+        <h2 id="sec-c-q">{{ sections['sec-c'] }}</h2>
+        <div class="cfr-term" data-glossary-skip>
+          <a class="cfr-link" href="{{ static_prefix }}glossary.html#cfr" aria-describedby="cfr-definition">CFR</a>
+          <span id="cfr-definition" role="tooltip">Core functional residue: in at least one above-threshold contact</span>
+        </div>
+      </div>
 
       {% call story_card(cards['chart-scaffold'], static_prefix) %}
         {{ chart_body('chart-scaffold') }}
@@ -110,7 +107,7 @@
 
       {% call story_card(cards['chart-ranking'], static_prefix, 'has-server-table') %}
         <div class="chips" role="group" aria-label="Order" data-ctl="sort">
-          <button type="button" data-value="score" aria-pressed="true">CFR score</button>
+          <button type="button" data-value="score" data-tip="Mean of normalized CFR recurrence and normalized mean |ΔRRCS|" aria-pressed="true">CFR score</button>
           <button type="button" data-value="receptors" aria-pressed="false">Receptors</button>
           <button type="button" data-value="segment" aria-pressed="false">Segment order</button>
         </div>
@@ -129,7 +126,7 @@
           </div>
           <aside class="chart-card-side" hidden></aside>
         </div>
-        <h4 class="sub-head">All {{ cfr_total_positions }} recurrent positions, in CFR score order</h4>
+        <h4 class="sub-head">{{ cfr_total_positions }} recurrent positions</h4>
         <div class="schart-sub" data-strip368></div>
       {% endcall %}
 
@@ -143,12 +140,11 @@
             <button type="button" data-value="partners" aria-pressed="true">Positions and partners</button>
             <button type="button" data-value="pairs" aria-pressed="false">Most recurrent pairs</button>
           </div>
-          <p class="scard-guide tab-guide" data-tab-guide="pairs" hidden>The 20 exact contact pairs (both residues CFRs) that recur in the most receptors, of {{ "{:,}".format(cfr_network_total) }} distinct pairs. All {{ cfr_network|length }} join two top-ranked positions.</p>
           <div class="scard-body">
             <div class="schart" id="chart-partners" data-chart="chart-partners"><p class="nojs-note">Interactive chart (needs JavaScript).</p></div>
             <div class="scard-table server-table" data-server-table="pairs">
               <table class="v2-table" id="cfr-pairs-table">
-                <caption>The {{ cfr_network|length }} most recurrent CFR contact pairs, of {{ "{:,}".format(cfr_network_total) }}</caption>
+                <caption>The {{ cfr_network|length }} most recurrent CFR contact pairs, of {{ "{:,}".format(cfr_network_total) }}{% if top_pairs_both_ranked %} · Both residues top-ranked{% endif %}</caption>
                 <thead><tr><th>Position 1</th><th>Position 2</th><th class="num">Receptors</th><th class="num">% of receptors</th></tr></thead>
                 <tbody>
                 {% for row in cfr_network -%}
@@ -180,18 +176,6 @@
 
       {% call story_card(cards['chart-pathogenicity'], static_prefix) %}
         {{ chart_body('chart-pathogenicity') }}
-        <details class="am-classes" id="am-classes">
-          <summary>All three classes, including ambiguous</summary>
-          <div class="am-comp">
-          {% for g in am_rows %}
-            <div class="am-comp-row">
-              <span class="am-comp-label">{{ g.label }}</span>
-              <span class="am-comp-bar" aria-hidden="true"><i class="c-path" style="width:{{ '%.2f'|format(g.p) }}%"></i><i class="c-amb" style="width:{{ '%.2f'|format(g.a) }}%"></i><i class="c-ben" style="width:{{ '%.2f'|format(g.b) }}%"></i></span>
-              <span class="am-comp-text">{{ "%.1f"|format(g.p) }}% predicted pathogenic, {{ "%.1f"|format(g.a) }}% ambiguous, {{ "%.1f"|format(g.b) }}% predicted benign of {{ "{:,}".format(g.scored) }} scored ({{ "{:,}".format(g.decisive) }} decisive calls; {{ "{:,}".format(g.ambiguous) }} ambiguous)</span>
-            </div>
-          {% endfor %}
-          </div>
-        </details>
       {% endcall %}
 
       <div class="grid2">
@@ -230,7 +214,19 @@
         <p class="view-text" data-view-text aria-live="polite"></p>
         {{ chart_body('chart-receptors') }}
         <div class="explorer-table" hidden></div>
-        <p class="small-note families-text" data-families-text hidden>{{ families_text }}</p>
+        <div data-families-text hidden>
+          {% if family_tests %}
+          <table class="v2-table family-tests">
+            <caption>Kruskal-Wallis · total |ΔRRCS|</caption>
+            <thead><tr><th>Groups</th><th>Receptors</th><th>H</th><th>p</th></tr></thead>
+            <tbody>
+              {% for group, n, h, p in family_tests %}
+              <tr><th scope="row">{{ group }}</th><td>{{ n }}</td><td>{{ "%.1f"|format(h) }}</td><td>{{ "%.3f"|format(p) }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% endif %}
+        </div>
       {% endcall %}
 
       <a href="{{ static_prefix }}atlas.html">GPCRome Atlas</a>

@@ -96,6 +96,26 @@ def _errors(page):
 
 
 @needs_build
+def test_cfr_definition_opens_by_focus_or_tap_and_links_to_glossary(open_page):
+    phone = open_page(viewport=PHONE_390)
+    term = phone.locator('.cfr-link')
+    tip = phone.locator('#cfr-definition')
+    term.tap()
+    expect(tip).to_have_text('Core functional residue: in at least one above-threshold contact')
+    expect(tip).to_be_visible()
+    assert _no_horizontal_scroll(phone)
+    term.tap()
+    expect(phone).to_have_url(re.compile(r'/glossary\.html#cfr$'))
+
+    desktop = open_page()
+    term = desktop.locator('.cfr-link')
+    term.focus()
+    expect(desktop.locator('#cfr-definition')).to_be_visible()
+    desktop.keyboard.press('Escape')
+    expect(desktop.locator('#cfr-definition')).to_be_hidden()
+
+
+@needs_build
 @needs_plotly
 @pytest.mark.parametrize('scheme', ['light', 'dark'])
 @pytest.mark.parametrize('viewport', ['desktop', 'phone'])
@@ -105,9 +125,27 @@ def test_every_card_draws_once_without_errors_or_sideways_scroll(open_page, sche
     for cid in CARDS:
         assert page.locator('#' + cid).get_attribute('data-chart-rendered') == '1', cid
         assert page.locator('#%s .load-note' % cid).count() == 0, cid
+    assert page.locator('.scard-guide, [data-tab-guide], #am-classes').count() == 0
+    for chart_selector, label in (
+        ('chart-histogram', 'Inactive stronger · 52.0%'),
+        ('chart-histogram', '25 pairs beyond ±20 not drawn'),
+        ('chart-helix-pairs', 'Extracellular view'),
+        ('chart-helix-pairs', 'Receptors agreeing'),
+        ('chart-recovery', 'Observed'),
+        ('chart-recovery', 'Chance'),
+        ('chart-recovery', 'Rank among 262 structure positions'),
+        ('card-chart-position-conservation [data-legend]', '352 positions'),
+        ('chart-cfr-variants', 'gnomAD v4.1.2 · 281 receptors'),
+        ('chart-pathogenicity', '276 receptors'),
+    ):
+        expect(page.locator('#' + chart_selector).get_by_text(label, exact=True)).to_be_visible()
     chart = page.locator('#chart-pathogenicity svg')
     expect(chart.get_by_text('66.9%', exact=True)).to_be_visible()
     expect(chart.get_by_text('43.6%', exact=True)).to_be_visible()
+    widths = chart.locator('rect[data-tip]').evaluate_all("bars => bars.map(b => b.getBBox().width)")
+    assert len(widths) == 6
+    for row, expected in zip((widths[:3], widths[3:]), ((56.6, 15.3, 28.0), (37.0, 15.1, 47.9))):
+        assert [round(100 * width / sum(row), 1) for width in row] == list(expected)
     assert page.locator('#chart-receptors .plot-container').count() == 1
     assert _errors(page) == []
     assert _no_horizontal_scroll(page)
@@ -145,13 +183,25 @@ def test_exports_are_named_and_the_csv_is_plain(open_page):
         assert path.stat().st_size > 1000
         if ext == '.svg':
             text = path.read_text(encoding='utf-8')
-            assert 'Predicted class of the substitutions seen in people' in text and '#ffffff' in text
+            assert 'AlphaMissense predictions by position group' in text and '#ffffff' in text
     card.locator('[data-export-toggle]').click()
     with page.expect_download(timeout=20000) as dl:
         card.locator('[data-export="csv"]').click()
     assert dl.value.suggested_filename == 'gpcompare_pathogenicity.csv'
-    header = next(csv.reader(io.StringIO(pathlib.Path(dl.value.path()).read_text(encoding='utf-8'))))
-    assert header[:3] == ['group', 'scored', 'decisive'] and 'series' not in header
+    with pathlib.Path(dl.value.path()).open(encoding='utf-8') as downloaded:
+        reader = csv.DictReader(downloaded)
+        assert reader.fieldnames[:3] == ['group', 'scored', 'decisive'] and 'series' not in reader.fieldnames
+        groups = list(reader)
+    assert [int(g['scored']) for g in groups] == [7268, 11040]
+    keys = ['predicted_pathogenic', 'ambiguous', 'predicted_benign']
+    assert [[round(float(g['pct_' + k + '_of_scored']), 1) for k in keys] for g in groups] == [
+        [56.6, 15.3, 28.0], [37.0, 15.1, 47.9]]
+    card.locator('[data-table-toggle]').click()
+    expect(card.locator('.scard-table tbody tr')).to_have_count(len(groups))
+    for g, row in zip(groups, card.locator('.scard-table tbody tr').all(), strict=True):
+        cells = row.locator('td').all_inner_texts()
+        assert cells[:6] == [g[k] for k in reader.fieldnames[:6]]
+        assert [float(v) for v in cells[6:]] == [round(float(g[k]), 2) for k in reader.fieldnames[6:]]
     # the matrix (canvas) exports a PNG too
     _settle(page, ['chart-cfr-atlas'])
     m = page.locator('#card-chart-cfr-atlas')
@@ -225,7 +275,7 @@ def test_a_small_group_shows_the_carried_by_state(open_page):
     page.wait_for_timeout(300)
     assert 'carried by 2 of 2' in card.locator('[data-ledger]').inner_text()
     assert card.locator('[data-ledger] .group-chips-list button').count() == 2
-    assert 'fewer than the 10 a class direction needs' in card.locator('[data-guide]').inner_text()
+    assert 'Direction requires ≥10 receptors' in card.locator('[data-legend]').inner_text()
     card.locator('[data-method-toggle]').click()
     expect(card.locator('[data-src-scope]')).to_have_text('2 receptors (melatonin)')
     card.locator('[data-ledger] .group-chips-list button').first.click()
@@ -326,7 +376,7 @@ def test_copied_caption_names_title_scope_and_source(open_page):
     card.locator('[data-copy-caption]').click()
     page.wait_for_timeout(200)
     text = page.evaluate('window.__copied')
-    assert text and text.startswith('Predicted class of the substitutions seen in people.')
+    assert text and text.startswith('AlphaMissense predictions by position group.')
     assert 'Scope: 276 receptors' in text and 'gnomAD v4.1.0' in text
     assert 'paper' not in text.lower() and 'layer' not in text.lower() and 'Supplementary' not in text
     assert 'statistics.html#card-chart-pathogenicity' in text
@@ -340,11 +390,13 @@ def test_without_javascript_the_server_parts_render(browser, server):
     assert page.locator('.stats-census a').all_inner_texts() == [
         '283 receptors', '60 families', '10 ligand types', '213,456 contact pairs',
         '368 recurrent positions', '50 top-ranked positions']
-    headings = page.locator('section.story > h2').all_inner_texts()
+    headings = page.locator('section.story h2').all_inner_texts()
     assert headings == ['Contact changes', 'Helix contacts', 'Recurrent positions', 'Variant predictions',
                         'Receptors and families', 'Methods and data']
     assert page.get_by_role('navigation', name='On this page').get_by_role('link').all_inner_texts() == headings
     assert page.locator('#chart-thresholds svg path.s-dots').count() == 2
+    for label in ('● One receptor', 'Min 1.23', 'Max 3.78', 'Median 2.40', 'Median 10.84'):
+        expect(page.locator('#chart-thresholds').get_by_text(label, exact=True)).to_be_visible()
     assert page.locator('#cfr-table tbody tr').count() == 50
     assert page.locator('#cfr-pairs-table tbody tr').count() == 20
     assert page.locator('.nojs-note').count() >= 10
@@ -509,7 +561,7 @@ def test_recovery_and_scaffold_name_their_ranks_and_counts(open_page):
     page = open_page('/statistics.html?sel=pos:3.51x51')
     _settle(page, ['chart-recovery', 'chart-scaffold'])
     rc = page.locator('#card-chart-recovery')
-    assert 'rank among the 262 positions' in rc.locator('#chart-recovery').inner_text()
+    assert 'Rank among 262 structure positions' in rc.locator('#chart-recovery').inner_text()
     note = rc.locator('[data-rec-note]').inner_text()
     assert '113 of the 262' in note and 'rank 117 by CFR score' in note
     tip = page.evaluate("document.querySelector('#chart-scaffold [data-gn=\"4.47x47\"]').getAttribute('data-tip')")
@@ -526,7 +578,7 @@ def test_small_group_grid_and_the_numbered_receptor_table(open_page):
     page.wait_for_timeout(300)
     assert page.locator('#chart-helix-pairs rect[data-hit]').count() > 0
     assert '2/2' in page.locator('#chart-helix-pairs').inner_text()
-    assert 'without a direction' in card.locator('[data-guide]').inner_text()
+    assert 'Direction requires ≥10 receptors' in card.locator('[data-legend]').inner_text()
     assert card.locator('[data-ledger] .group-chips-list button').count() == 2
     # the per-position side table marks which receptors have a CFR there
     page = open_page('/statistics.html?sel=pos:8.48x48')

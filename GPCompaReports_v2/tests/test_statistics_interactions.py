@@ -273,7 +273,7 @@ def test_exports_keep_title_scope_and_legend_inside(open_page, viewport):
         text = re.sub(r'<[^>]+>', ' ', svg)
         assert 'GPCompaRe database, statistics.html#card-' + cid in re.sub(r'\s+', ' ', text)
         if cid == 'chart-helix-pairs':
-            assert 'stronger in the inactive model' in text and 'stronger in the active model' in text
+            assert 'Inactive stronger' in text and 'Active stronger' in text
         if cid == 'chart-pathogenicity':
             assert 'predicted pathogenic' in text and 'predicted benign' in text
         page.keyboard.press('Escape')
@@ -286,8 +286,8 @@ def test_bar_labels_fit_their_segments_at_768(open_page):
     page = open_page(viewport={'width': 768, 'height': 900})
     _settle(page, ['chart-pathogenicity'])
     bad = page.evaluate("""() => { const s = document.querySelector('#chart-pathogenicity svg'), out = [];
-        const rects = Array.from(s.querySelectorAll('rect.grow'));
-        s.querySelectorAll('text').forEach(t => { if (!/predicted|^[\\d,]+$/.test(t.textContent)) return;
+        const rects = Array.from(s.querySelectorAll('rect[data-tip]'));
+        s.querySelectorAll('text').forEach(t => { if (!/^[\\d.]+%$/.test(t.textContent)) return;
           const b = t.getBBox(), cy = b.y + b.height / 2;
           const r = rects.find(r => { const rb = r.getBBox(); return cy > rb.y && cy < rb.y + rb.height && b.x >= rb.x - 1 && b.x <= rb.x + rb.width; });
           if (!r) return; const rb = r.getBBox();

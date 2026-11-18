@@ -177,6 +177,6 @@ def test_positions_below_the_cutoff_are_not_called_non_cfrs():
 @needs_build
 def test_the_network_table_says_what_it_contains_and_how_much_it_shows():
     html = STATS.read_text(encoding='utf-8')
-    assert re.search(r'The 20 exact contact pairs \(both residues CFRs\) that recur in the most receptors, of '
-                     r'2,231 distinct pairs\. All 20 join two top-ranked positions\.', html), (
-        'the pair card does not say what the pairs are, how many it shows and out of how large a pair universe')
+    assert 'The 20 most recurrent CFR contact pairs, of 2,231' in html
+    assert 'Both residues top-ranked' in html
+    assert 'Partners are generic positions joined to the position by an above-threshold contact in which both residues are CFRs.' in html

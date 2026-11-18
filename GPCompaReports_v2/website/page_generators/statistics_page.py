@@ -131,21 +131,20 @@ def svg_threshold_strips(class_scale, width=1080):
     r = 3.0
     panels = [
         ('Threshold |ΔRRCS|', [x['threshold'] for x in rows], True,
-         'range %.2f to %.2f, median %.2f' % (c['threshold_min'], c['threshold_max'], c['threshold_median']), 2),
-        ('Above-threshold pairs per 100 pairs', [x['above_per_100'] for x in rows], False,
-         'median %.2f per receptor' % c['above_per_100_median'], 2),
+         '● One receptor'),
+        ('Above-threshold pairs per 100 pairs', [x['above_per_100'] for x in rows], False, ''),
     ]
     layouts = []
-    for title, vals, half, note, dec in panels:
+    for title, vals, half, note in panels:
         lo, hi = strip_domain(vals, half)
         pts, step = strip_layout(vals, lo, hi, 8, pw - 8, r)
         layouts.append((title, vals, lo, hi, pts, step, note, half))
     max_off = max(max(abs(p[1]) for p in L[4]) for L in layouts)
-    top = 30
+    top = 42
     half_h = (max_off + 1) * layouts[0][5]
     cy = top + half_h
     axis_y = cy + half_h + 6
-    height = int(axis_y + 26)
+    height = int(axis_y + 48)
     out = ['<svg class="strip-svg" viewBox="0 0 %d %d" role="img" aria-label="%s" preserveAspectRatio="xMinYMin meet">'
            % (width, height, _attr('One dot per receptor: its |ΔRRCS| threshold, and its above-threshold pairs per '
                                    '100 contact pairs'))]
@@ -156,9 +155,17 @@ def svg_threshold_strips(class_scale, width=1080):
         out.append('<g transform="translate(%.0f 0)">' % ox)
         out.append('<text class="s-title" x="0" y="13">%s</text>' % _esc(title))
         out.append('<text class="s-note" x="%.1f" y="13" text-anchor="end">%s</text>' % (pw, _esc(note)))
+        if half:
+            low, high = xs(c['threshold_min']), xs(c['threshold_max'])
+            range_y = axis_y + 27
+            out.append('<path class="s-axis" fill="none" d="M%.1f %.1fv4H%.1fv-4"/>' % (low, range_y - 4, high))
+            out.append('<text class="s-note" x="%.1f" y="%.1f">Min %.2f</text>' % (low, range_y + 14, c['threshold_min']))
+            out.append('<text class="s-note" x="%.1f" y="%.1f" text-anchor="end">Max %.2f</text>'
+                       % (high, range_y + 14, c['threshold_max']))
         d = _dots_path([(p[0], cy + p[1] * step) for p in pts])
         out.append('<path class="s-dots" d="%s" stroke-width="%.1f"/>' % (d, 2 * r))
         mx = xs(med)
+        out.append('<text class="s-note" x="%.1f" y="%.1f" text-anchor="middle">Median %.2f</text>' % (mx, top - 9, med))
         out.append('<line class="s-median" x1="%.1f" x2="%.1f" y1="%.1f" y2="%.1f"/>' % (mx, mx, top - 4, cy + half_h + 2))
         out.append('<line class="s-axis" x1="8" x2="%.1f" y1="%.1f" y2="%.1f"/>' % (pw - 8, axis_y, axis_y))
         for t in _ticks(lo, hi, 0.5 if half else 1.0):
@@ -277,58 +284,35 @@ def keep_abs_together(html):
     return ''.join(parts)
 
 
-def _card(cid, title, guide, scope_n, scope_rest, csv_name=None, method='', export=None, table=True):
-    """Keep the full guide, scope and data source in the Method panel for display and export."""
-    short = SHORT_GUIDES.get(cid, guide)
-    about = '' if short == guide or not guide else '<p>%s</p>' % guide
+def _card(cid, title, reading, scope_n, scope_rest, csv_name=None, method='', export=None, table=True):
+    """Keep the method, scope and data source available for display and export."""
+    about = '<p>%s</p>' % reading if reading else ''
     source = '<p data-src>Scope: <span data-src-scope>%s</span>.%s</p>' % (
         _esc(scope_n.rstrip('.')), (' <span data-src-data>%s</span>' % _esc(scope_rest)) if scope_rest else '')
-    return {'id': cid, 'title': title, 'guide': short,
+    return {'id': cid, 'title': title,
             'csv': ('%s/%s' % (STATS_DIR, csv_name)) if csv_name else None,
             'method': about + method + source,
             'export': export or cid.replace('chart-', ''), 'table': table}
 
 
-#: The one visible line of a card, only where the chart cannot be read without it ('' = none). Cards not listed
-#: keep their guide (the histogram, inside its own disclosure).
-SHORT_GUIDES = {
-    'chart-thresholds': 'One dot per receptor.',
-    'chart-helix-pairs': ('Lines join helices with above-threshold contacts. Width: receptors that agree in '
-                          'direction.'),
-    'chart-segments': '',
-    'chart-scaffold': '%s snake layout. Point at a residue for its position and count.',
-    'chart-ranking': '',
-    'chart-recovery': 'Known activation positions found walking down the ranking. Dashed: chance.',
-    'chart-partners': '',
-    'chart-cfr-atlas': 'Rows: receptors, grouped by ligand type. Columns: the top-ranked positions.',
-    'chart-pathogenicity': 'Missense substitutions seen in gnomAD at strongly changing contacts.',
-    'chart-am-bands': 'Positions grouped by how many receptors have a CFR there.',
-    'chart-position-conservation': 'Mean conservation per position. The ranking does not use it.',
-    'chart-am-quintiles': 'Residues grouped by conservation, Q1 lowest.',
-    'chart-cfr-variants': 'All gnomAD missense substitutions at each top-ranked position: a separate allele set.',
-    'chart-receptors': '',
-}
-
-
 def _cards(ctx):
-    """Every card of the page, in page order: title, guide (the full reading; it moves into the Method panel where
-    SHORT_GUIDES gives the card a shorter line), scope (count + rest), CSV, method note."""
+    """Chart titles, sources, downloads and Method notes, in page order."""
     c = ctx
     n = c['total']
     cards = [
-        _card('chart-thresholds', 'Each receptor has its own threshold',
+        _card('chart-thresholds', 'Thresholds by receptor',
               'A contact pair is above threshold when its |ΔRRCS| reaches its receptor\'s threshold: the mean '
               'plus one standard deviation of that receptor\'s |ΔRRCS| values. Left: the threshold of each '
               'receptor. Right: how many of every 100 contact pairs pass it.',
               '%d receptors.' % n, c['rrcs'] + '.', 'thresholds.csv',
               '<p>%s</p><p>Above-threshold pairs per 100 pairs: the receptor\'s above-threshold contact pairs '
               'divided by all its contact pairs, times 100.</p>' % _esc(c['threshold_rule'])),
-        _card('chart-histogram', 'ΔRRCS of every contact pair', c['notes'].get('histogram', ''),
+        _card('chart-histogram', 'ΔRRCS of every contact pair', '',
               '%s contact pairs, %d receptors.' % (format(c['pairs'], ','), n), '',
               'histogram.csv',
               '<p>ΔRRCS = RRCS in the active model minus RRCS in the inactive model, for every contact pair of '
               'every receptor. Bins are 1 unit wide; the y axis is logarithmic.</p>'),
-        _card('chart-helix-pairs', 'The helix bundle, seen from the extracellular side',
+        _card('chart-helix-pairs', 'Helix-pair contacts',
               'Each line joins two helices that share above-threshold contacts. Color: mean net ΔRRCS per '
               'receptor, <span class="t-up">red</span> stronger in the active model, '
               '<span class="t-down">blue</span> stronger in the inactive model. Width: receptors that change in '
@@ -354,7 +338,7 @@ def _cards(ctx):
               '%d receptors.' % n, '%s.' % c['maps'], 'segments.csv',
               '<p>Every contact endpoint counts once for the segment of its residue. Unsigned: how much contacts '
               'change, not in which direction.</p>'),
-        _card('chart-scaffold', 'Recurrence on the receptor scaffold',
+        _card('chart-scaffold', 'CFR recurrence on the %s scaffold' % c['scaffold_gene'],
               'Each residue of the %s layout is colored by how many of the %d receptors have a CFR at its generic '
               'position. Ringed residues mark activation motifs. Hover a residue for its position and count.'
               % (c['scaffold_gene'], n),
@@ -375,18 +359,18 @@ def _cards(ctx):
               'full GPCRdb residue maps.</p><p>%s</p><p>%s</p>'
               % (c['recurrent'], CFR_TOP_N, _esc(c['notes'].get('ranking_outlier', '')),
                  _esc(c['notes'].get('motifs_in_top', '')))),
-        _card('chart-recovery', 'Known activation positions down the ranking', c['recovery_guide'],
+        _card('chart-recovery', 'Activation position recovery', c['recovery_guide'],
               '%d positions, %d known.' % (c['universe'], c['known']),
               'Structure positions numbered in at least half of the %d receptors.' % n,
               'activation_recovery.csv',
               '<p>%s</p><p>Known positions: %s.</p>' % (_esc(c['recovery_rule']), _esc(c['reference_source']))),
-        _card('chart-partners', 'Positions recur in more receptors than their exact contacts do', c['partners_guide'],
+        _card('chart-partners', 'Position and pair recurrence', c['partners_guide'],
               '%d receptors, %d positions, %s distinct pairs.' % (n, c['recurrent'], format(c['n_pairs'], ',')), '',
               'partners.csv',
               '<p>Partners are generic positions joined to the position by an above-threshold contact in which both '
               'residues are CFRs. The pair counts are receptors in which that exact pair of generic positions is '
               'above threshold.</p>'),
-        _card('chart-cfr-atlas', 'Every receptor at the %d top-ranked positions' % CFR_TOP_N,
+        _card('chart-cfr-atlas', 'CFRs at the top %d positions' % CFR_TOP_N,
               'One row per receptor, one column per top-ranked position. Rows grouped by ligand type and sorted by '
               'how many of the %d are CFRs.' % CFR_TOP_N,
               '%d receptors, %d positions.' % (n, CFR_TOP_N), '', 'cfr_atlas.csv',
@@ -396,7 +380,7 @@ def _cards(ctx):
               '<p>A position is numbered in a receptor when the GPCRdb residue map assigns it that generic number. '
               'It is a CFR there when at least one contact pair touching that residue is at or above the '
               'receptor\'s threshold. Direction: the sign of the summed ΔRRCS of those contacts.</p>'),
-        _card('chart-pathogenicity', 'Predicted class of the substitutions seen in people', c['am_guide'],
+        _card('chart-pathogenicity', 'AlphaMissense predictions by position group', '',
               '%d receptors.' % c['am_receptors'], '%s; AlphaMissense.' % c['batch_gnomad'],
               'am_comparison.csv', c['am_method']),
         _card('chart-am-bands', 'Predicted pathogenic share by recurrence',
@@ -412,7 +396,7 @@ def _cards(ctx):
               'position_conservation.csv',
               '<p>Per generic position, the mean conservation score of the residues numbered there, over the '
               'receptors with a score. Rings: activation motif positions.</p>'),
-        _card('chart-am-quintiles', 'Within groups of similar conservation', c['fifths_guide'],
+        _card('chart-am-quintiles', 'Predicted pathogenic share by conservation', c['fifths_guide'],
               '%d receptors, %s decisive calls.' % (c['am_receptors'], format(c['decisive_fifths'], ',')), '',
               'am_conservation_fifths.csv',
               '<p>%s</p>' % _esc(c['notes'].get('am_fifths_method', ''))),
@@ -431,9 +415,7 @@ def _cards(ctx):
               'similarity of the signed fingerprint over the %d top-ranked positions, a browsing aid.</p>'
               % CFR_TOP_N, table=False),   # its own Table tab is the table view; the CSV stays in Export
     ]
-    out = {cd['id']: cd for cd in cards}
-    out['chart-scaffold']['guide'] = out['chart-scaffold']['guide'] % c['scaffold_gene']
-    return out
+    return {cd['id']: cd for cd in cards}
 
 
 # ---------------------------------------------------------------------------- the page
@@ -532,10 +514,6 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
                            'contacts its most frequent partner, the same pair of generic positions. Right: how '
                            'many different partner positions it has across the class.'),
         'am_receptors': am_receptors, 'batch_gnomad': batch_gnomad, 'site_gnomad': site_gnomad, 'clinvar': clinvar,
-        'am_guide': ('Unique missense substitutions observed in %s (accessed %s) at residues in contacts with '
-                     '|ΔRRCS| of 3.0 or more, at generic-numbered positions of %d receptors. Bars: decisive '
-                     'calls (predicted pathogenic or predicted benign); ambiguous calls are counted beside them '
-                     'and left out of the share.' % (batch_gnomad, month, am_receptors)),
         'band_positions': totals.get('positions_bands', 0),
         'min_residues': cons.get('min_residues', 20),
         'cons_positions': cons.get('n_top', 0) + cons.get('n_other', 0),
@@ -577,24 +555,30 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
                                                    format(un['top50'], ','), CFR_TOP_N))
     cards = _cards(ctx)
 
-    # the 4a composition rows (all three classes), rounded once
-    am_rows = [{
-        'label': g['label'], 'scored': g['scored'], 'decisive': g['decisive'], 'ambiguous': g['ambiguous'],
-        'predicted_pathogenic': g['predicted_pathogenic'], 'predicted_benign': g['predicted_benign'],
-        'pct': g['pct_predicted_pathogenic_of_decisive'],
-        'p': g['pct_of_scored']['predicted_pathogenic'], 'a': g['pct_of_scored']['ambiguous'],
-        'b': g['pct_of_scored']['predicted_benign']} for g in groups]
+    if groups:
+        # The chart download includes the three existing shares of all scored calls.
+        # Keep the versioned bulk tables and their size manifest reproducible.
+        source = stats_dir / 'am_comparison.csv'
+        by_label = {g['label']: g['pct_of_scored'] for g in groups}
+        classes = ('predicted_pathogenic', 'ambiguous', 'predicted_benign')
+        chart_csv = 'data/am_comparison_scored.csv'
+        with source.open(encoding='utf-8', newline='') as src_csv, (output_dir / chart_csv).open(
+                'w', encoding='utf-8', newline='') as out_csv:
+            reader = csv.DictReader(src_csv)
+            writer = csv.writer(out_csv, lineterminator='\n')
+            writer.writerow([*reader.fieldnames, *('pct_' + k + '_of_scored' for k in classes)])
+            for row in reader:
+                writer.writerow([*row.values(), *(by_label[row['group']][k] for k in classes)])
+        cards['chart-pathogenicity']['csv'] = chart_csv
 
     kruskal = ((payloads.get('receptors') or {}).get('kruskal') or {}).get('sum_abs')
-    families_text = ''
+    family_tests = []
     if kruskal:
-        a, b = kruskal['ligand_types'], kruskal['families']
-        families_text = (
-            'The Families tab compares groups with a Kruskal-Wallis test on total |ΔRRCS|. Across all %d '
-            'ligand types: H = %.1f, p = %.3f (%d receptors). Across the %d families with at least %d receptors: '
-            'H = %.1f, p = %.3f (%d receptors). A test of spread across groups, not between two chosen groups. '
-            'The total grows with receptor size.'
-            % (a['k'], a['H'], a['p'], a['n'], b['k'], FAMILY_MIN_KW, b['H'], b['p'], b['n']))
+        ligand, family = kruskal['ligand_types'], kruskal['families']
+        family_tests = [
+            ('%d ligand types' % ligand['k'], ligand['n'], ligand['H'], ligand['p']),
+            ('%d families (≥%d receptors)' % (family['k'], FAMILY_MIN_KW), family['n'], family['H'], family['p']),
+        ]
 
     census_items = [
         (format(census.get('receptors', total), ','), 'receptors', '#sec-e'),
@@ -660,17 +644,16 @@ def generate_statistics_page(env: Environment, store, analysis_results, output_d
         cfr_table=cfr_table,
         cfr_network=cfr_network,
         cfr_network_total=len(pairs) if pairs is not None else 0,
-        n_both_top50=(pos.get('pairs') or {}).get('n_both_top50', 0),
+        top_pairs_both_ranked=(pos.get('pairs') or {}).get('top_all_both_top50', False),
         cfr_top_n=CFR_TOP_N,
         cfr_total_positions=census.get('recurrent_positions') or paper.get('n_recurrent_positions', 0),
-        am_rows=am_rows,
         am_receptors=am_receptors,
         am_allele_set=batch_gnomad,
         am_month=month,
         coverage_rows=coverage_rows,
         reference=[dict(zip(pos.get('reference_columns', []), r)) for r in pos.get('reference', [])],
         reference_source=pos.get('reference_source', ''),
-        families_text=families_text,
+        family_tests=family_tests,
         exclusions=exclusions,
         kruskal=kruskal,
         stats_dir=STATS_DIR,

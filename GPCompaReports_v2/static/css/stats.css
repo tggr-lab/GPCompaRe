@@ -83,22 +83,20 @@
 /* ---- sections ---- */
 .story { scroll-margin-top: calc(var(--topbar-height, 68px) + 12px); }
 .story + .story { margin-top: 36px; }
-.story > h2 { font-family: inherit; font-size: 1.5rem; font-weight: 600; line-height: 1.25; margin: 0 0 16px; padding: 0; border: 0; }
+.story h2 { font-family: inherit; font-size: 1.5rem; font-weight: 600; line-height: 1.25; margin: 0 0 16px; padding: 0; border: 0; }
 @media (max-width: 720px) {
   .stats-head h1 { font-size: 2rem; }
-  .story > h2 { font-size: 1.3rem; }
+  .story h2 { font-size: 1.3rem; }
 }
-.defs { list-style: none; padding: 0; margin: 8px 0 12px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.defs li { background: var(--st-surface); border: 1px solid var(--st-line); border-radius: 10px; padding: 10px 14px; font-size: 0.86rem; color: var(--st-muted); }
-.defs b { color: var(--st-fg); }
-@media (max-width: 900px) { .defs { grid-template-columns: minmax(0, 1fr); } }
-.cfr-def { margin: 0 0 16px; }
+.cfr-heading { position: relative; display: flex; align-items: baseline; gap: .75rem; }
+.cfr-term { font-size: .86rem; }
+.cfr-link { text-decoration: underline dotted; text-underline-offset: .2em; }
+.cfr-term [role="tooltip"] { display: none; position: absolute; z-index: 16; top: 100%; left: 0; width: max-content; max-width: min(32rem, 85vw); padding: 6px 9px; border-radius: 5px; color: var(--st-surface); background: var(--st-fg); }
+.cfr-term:not(.dismissed):is(:hover, :focus-within) [role="tooltip"], .cfr-term.tapped [role="tooltip"] { display: block; }
 
 /* ---- cards ---- */
 .scard { position: relative; scroll-margin-top: calc(var(--topbar-height, 68px) + 12px); border-bottom: 1px solid var(--st-line); padding-bottom: 12px; margin: 0 0 18px; min-width: 0; }
 .scard-title { font-family: inherit; font-size: 1.05rem; font-weight: 600; margin: 0 0 2px; color: var(--st-fg); }
-.scard-guide { font-size: 0.86rem; color: var(--st-muted); margin: 0 0 12px; max-width: 92ch; }
-.scard-guide:empty { display: none; }
 .t-up { color: var(--st-active); font-weight: 600; } .t-down { color: var(--st-inactive); font-weight: 600; }
 .scard-body { position: relative; min-width: 0; }
 .schart { position: relative; min-width: 0; min-height: 40px; }
@@ -258,16 +256,6 @@ details.more[open] > summary { margin-bottom: 8px; }
 
 /* clinical tint (section 4 and the profile) */
 .c-path { background: var(--path); } .c-amb { background: var(--amb); } .c-ben { background: var(--ben); }
-.am-classes { margin: 12px 0 0; font-size: 0.84rem; }
-.am-classes > summary { cursor: pointer; color: var(--st-muted); }
-.am-comp { display: grid; gap: 8px; margin-top: 8px; }
-.am-comp-row { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 4px 12px; align-items: center; }
-.am-comp-label { font-weight: 600; }
-.am-comp-bar { display: flex; height: 14px; border-radius: 3px; overflow: hidden; }
-.am-comp-bar i { display: block; height: 100%; }
-.am-comp-text { grid-column: 2; color: var(--st-muted); font-size: 0.8rem; }
-@media (max-width: 720px) { .am-comp-row { grid-template-columns: minmax(0, 1fr); } .am-comp-text { grid-column: 1; } }
-
 /* explorer */
 .explorer-table { max-height: 520px; overflow: auto; }
 .explorer-table th button { font: inherit; font-weight: 600; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; white-space: nowrap; }
@@ -277,7 +265,9 @@ details.more[open] > summary { margin-bottom: 8px; }
 .explorer-table .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
 .schart.plotly-host { height: 480px; }
 @media (max-width: 720px) { .schart.plotly-host { height: 460px; } }   /* room for the plot above its wrapped legend */
-.families-text { max-width: 92ch; }
+.family-tests { font-size: .85rem; max-width: 100%; }
+.family-tests caption { text-align: left; font-weight: 600; }
+.family-tests th:first-child { white-space: normal; }
 
 /* methods */
 .methods-card .cov-table { width: 100%; font-size: 0.86rem; }

@@ -31,9 +31,8 @@ SUPPLEMENT_COPY = pathlib.Path(
     '02_supplement/source_tables/FigS4_S7_summary_modelnum_2026-11-05b.json')
 
 INTRO = 'AlphaMissense predicted classes. Predictions, not clinical evidence. Conservation is an observation across species.'
-GUIDE_4A = ('Unique missense substitutions observed in gnomAD v4.1.0 (accessed February 2026) at residues in contacts with '
-            '|\u0394RRCS| of 3.0 or more, at generic-numbered positions of 276 receptors. Bars: decisive calls (predicted '
-            'pathogenic or predicted benign); ambiguous calls are counted beside them and left out of the share.')
+ALLELE_SET = ('Allele set: gnomAD v4.1.0 missense alleles, February 2026 query of residues in contacts with '
+              '|ΔRRCS| of 3.0 or more, 276 receptors.')
 RETIRED = ('2.58', '1.52', '7,445', '11,150', '6,312', '9,461', '67.0%', '44.1%', '2.42 to 2.76',
            '1.41 to 1.65', 'most recurrent', '279 receptors')
 
@@ -85,7 +84,7 @@ def test_section_d_shows_the_class_counts_and_no_test_statistic():
     am = load_am_comparison()
     d = _text(_section_d(STATS.read_text(encoding='utf-8')))
     assert INTRO in d
-    assert GUIDE_4A in d
+    assert ALLELE_SET in d
     groups = json.loads((BUILD_DIR / 'data/stats/class_variants.json').read_text())['groups']
     assert [(g['label'], round(g['pct_predicted_pathogenic_of_decisive'], 1)) for g in groups] == [
         ('Top 50 positions by CFR score', 66.9), ('Other generic-numbered positions', 43.6)]

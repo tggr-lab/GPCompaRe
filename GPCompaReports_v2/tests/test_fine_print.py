@@ -159,8 +159,8 @@ def test_landing_prose_sits_in_fine_print_and_keeps_the_limitation_statement():
 @needs_build
 def test_statistics_text_is_untouched_by_the_presentation_changes():
     html = (BUILD_DIR / 'statistics.html').read_text(encoding='utf-8')
-    # 2026-11-06: the box plots became the explorer's Families tab; the Kruskal-Wallis sentence moved with them
-    for needle in ('The Families tab compares groups with a Kruskal-Wallis test', 'What are Core Functional Residues (CFRs)?',
+    # 2026-11-06: the box plots became the explorer's Families tab; the Kruskal-Wallis results moved with them
+    for needle in ('Kruskal-Wallis · total', 'Core functional residue: in at least one above-threshold contact',
                    'Where these cross-receptor numbers come from.', 'Predictions, not clinical evidence.'):
         assert needle in html, needle
 
